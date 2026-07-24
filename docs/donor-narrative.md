@@ -30,20 +30,22 @@ accountability habit. Bengaluru first, and a second city in year two.
 
 ## 2 · The moment
 
-Bengaluru's last ward election was roughly a decade ago. In that time the city
-grew past 1.4 crore residents, and its municipal boundaries were redrawn into
-**369 new wards** under the Greater Bengaluru Authority. Somewhere between 90
-and 100 lakh people are eligible to vote in a ward election most of them have
-never voted in.
+**Bengaluru last elected its ward corporators in 2015.** That is eleven years
+ago. In the years since, the city grew past 1.4 crore residents and its
+municipal boundaries were redrawn into **369 new wards** under the Greater
+Bengaluru Authority. Somewhere between 90 and 100 lakh people are eligible to
+vote in a ward election most of them have never voted in.
 
-The first-time cohort is unusually wide. After ten years without ward polls,
-nearly everyone in Bengaluru under thirty has never voted for a corporator, and
-neither has anyone who moved to the city in the last decade — a group that, in
-Bengaluru, is very large.
+Eleven years does something specific to the electorate. Nearly everyone in
+Bengaluru under thirty has never voted for a corporator. Neither has anyone who
+moved to the city in the last eleven years — which, in Bengaluru, is an enormous
+number of people. This is not an election with a first-time-voter segment. It is
+an election where first-time ward voters may be the majority.
 
-<!-- INPUT NEEDED: confirm the exact gap since the last BBMP ward election, and
-the current registered-voter figure, with a citable source for each. Donors
-check both. -->
+<!-- INPUT NEEDED: confirm the current registered-voter figure with a citable
+source — donors check it. Also decide whether to state that the council's term
+expired in 2020 and the city has been run by administrators since; it is a
+strong fact if we can cite it. -->
 
 ---
 
@@ -183,7 +185,8 @@ cheaper than the first. It is, and this is why.
 the platform itself, the ward and candidate data model, the affidavit extraction
 pipeline, the curator handbook and training, the flag-and-correct workflow, the
 audit and rollback machinery, the neutrality standard, the comms templates, the
-partner kit format.
+partner kit format — and, in four other cities, a Citizen Matters newsroom that
+already has readers and civic relationships there.
 
 **Does not travel — bought fresh in every city:**
 ward boundary and delimitation data, local curators, local partner
@@ -197,41 +200,80 @@ is people and data.
 
 ## 10 · The second city
 
-We are not naming it in this document, and we will not name it to a donor before
-we can name a local partner alongside it. A city announced without a committed
-partner organisation is a city a programme officer will correctly price as
-likely to fail.
+**We are not starting from scratch in the second city, because Citizen Matters
+is already there.**
 
-Instead we commit to the criteria and to a date. **The second city is selected
-and named by month 12**, against four tests:
+Oorvani's civic newsroom operates in **Bengaluru, Chennai, Mumbai, Delhi/NCR and
+Hyderabad**. In each of those cities it already has reporters, an audience, and
+working relationships with resident associations and civic groups. The hardest
+input for a new city — a local organisation that citizens already trust to write
+about their municipality — is one we own rather than one we have to go and find.
+
+The second city therefore comes from that set. We are not naming it in this
+document, because the choice depends on an election calendar that moves, and a
+city announced against a date that then slips is a commitment we would rather
+not make. **The second city is selected and named by month 12**, against four
+tests:
 
 1. A ULB election falling inside the grant window
 2. Ward-level boundary and budget data that can actually be obtained
-3. A local civic organisation that has agreed to be the partner on the ground
-4. Existing Oorvani presence, or a credible route to one
+3. A Citizen Matters newsroom already operating in the city
+4. A local civic partner network we can activate for distribution
 
-<!-- INPUT NEEDED: if a shortlist is defensible by the time this ships — cities
-with ULB elections due in the window — name two or three with the timing
-rationale. It is stronger than criteria alone, and safe as long as no
-partnership is claimed. -->
+Test three is already satisfied in four cities. That is the difference between a
+pilot that depends on a partnership we hope to sign and one that depends on a
+calendar.
+
+<!-- INPUT NEEDED: check ULB election timing in Chennai, Mumbai, Delhi/NCR and
+Hyderabad, and name the two or three whose polls plausibly fall in the grant
+window. Naming a shortlist is safe here — the newsroom presence is a fact, and
+we are claiming no partnership beyond our own programme. -->
+
+<!-- INPUT NEEDED: confirm whether Citizen Matters' city operations have the
+capacity to take on an election programme, or whether the ~₹55L second-city
+budget needs to fund newsroom time explicitly. -->
 
 ---
 
 ## 11 · Why Oorvani
 
-<!-- INPUT NEEDED: this section carries the credibility of the whole document
-and currently contains no numbers. Supply: years Open City has operated, its
-usage figures, datasets published, cities covered, any government or press
-citations of its data, and whether Citizen Matters is Oorvani-operated (open
-question, PRD §17). -->
+The Oorvani Foundation exists to *empower citizens to make better cities*. It
+runs four programmes, and this platform sits at the intersection of the first
+two:
 
-The Oorvani Foundation runs [Open City](https://opencity.in), an open urban data
-platform for Bengaluru. It is the operator named on the platform's About and
-Privacy pages, and it is a trust with the compliance posture — FCRA
-registration, audited accounts, an existing team — to take institutional money
-and report on it properly.
+- **[Citizen Matters](https://citizenmatters.in)** — a civic newsroom operating
+  in Bengaluru, Chennai, Mumbai, Delhi/NCR and Hyderabad, covering governance,
+  mobility, environment, water, waste and health at the level where citizens
+  actually experience them.
+- **[Open City](https://opencity.in)** — India's leading urban data commons.
+  Datasets across eleven themes, including a masterplan viewer covering 27
+  cities, published under open licences (CC BY-NC-SA 4.0 and ODbL).
+- **Civic Learning Hub** — courses and workshops for citizens who want to act on
+  what they have read.
+- **India Civic Summit** — an annual convening; the 2026 theme is *Citizens and
+  Urban Governance*.
 
-Three things about how we have worked so far are worth a donor's attention:
+Across those programmes: **15,000+ resources published**, **30+ collaborative
+events** including datajams and design jams, a network of **2,000+ citizens**
+with **800+ civic storytellers and experts**, and resources used by **lakhs of
+users every month**.
+
+Oorvani is a registered trust with **FCRA registration**, audited accounts and
+published statutory disclosures. Its board carries people who have built exactly
+this kind of thing before: **Meera K**, co-founder and Managing Trustee, an
+Ashoka Fellow and former Knight Fellow at the International Center for
+Journalists; **Ashwin Mahesh**, urbanist and social technologist, formerly a
+NASA climate scientist, co-founder of India Together and Mapunity; **Meenakshi
+Ramesh**, IIM-Ahmedabad, formerly Executive Director of United Way Chennai and a
+finance lead at CRISIL and Pratham; and **Vikram Rai**, co-founder of the impact
+consulting firm Sattva.
+
+<!-- INPUT NEEDED: Oorvani's founding year, 80G status, and any awards or
+government/press citations of Open City data. The awards page exists but lists
+nothing specific — supply the two or three worth naming. -->
+
+Three things about how we have worked on this project are worth a donor's
+attention:
 
 **We built before we asked.** The election platform exists. The specification,
 architecture, information architecture and go-to-market plan are written,
@@ -367,14 +409,36 @@ receive the same figures with spend attached.
 
 ## 16 · The team
 
-<!-- INPUT NEEDED: named people with roles and one-line bios — current Oorvani
-staff on this project, and the roles funded by this grant. HNI and CSR donors
-in particular fund people, and this section is currently empty. -->
+**Leading this work**
 
-This grant funds, incrementally to Oorvani's existing team: two engineers, a
-half-time product and programme lead, two curator operations managers, a
-bilingual content editor, a partnerships lead, contract design, and honoraria
-for the ward curator network.
+- **Meera K** — Co-founder and Managing Trustee, Oorvani Foundation. Ashoka
+  Fellow; former Knight Fellow at the International Center for Journalists.
+  Works on cities, community media, urban governance and civic technology.
+- **Satarupa Bhattacharya** — Programme Director. Twenty years in editorial and
+  content; oversees programmes and editorial policy at Citizen Matters.
+
+<!-- INPUT NEEDED: name the specific people from Oorvani's existing team who
+will work on this platform and what share of their time it takes. The team page
+lists a strong editorial bench — Sahana Charan, Bhanu Sridharan, Archita Raghu,
+Rahul Vinay and others — and the curator and content roles here draw directly on
+that capacity. Say who, concretely. -->
+
+**Behind them, an existing organisation.** Oorvani employs roughly fourteen
+people across editorial, programmes, design and operations, with trustees and
+advisors listed publicly at [oorvani.org/team](https://oorvani.org/team). This
+grant does not stand up a new organisation. It adds capacity to one that has
+been running civic media and open data for years.
+
+**What this grant hires,** incrementally: two engineers, a half-time product and
+programme lead, two curator operations managers, a bilingual content editor, a
+partnerships lead, contract design, and honoraria for the ward curator network.
+
+One thing worth naming rather than hiding: Oorvani's existing bench is strongest
+in journalism, editorial and urban data, and thinner in software engineering.
+That is precisely why engineering is the largest line in this budget. The
+counterweight is that Open City is a working civic-tech platform Oorvani already
+operates, so this is a team extending a competence it has, not acquiring one it
+lacks.
 
 ---
 
@@ -449,7 +513,7 @@ the first one.
 | **Ward budget and works data proves hard to obtain.** | Delimitation data is already in hand — all 369 wards with boundaries. Budget and works data is pursued through RTI, with digitisation funded as an explicit line rather than assumed to be free. Where a ward's data cannot be obtained, we publish that fact. |
 | **We are accused of partisanship.** | A source on every field, an audit log on every change, no paid advertising, funders named publicly, and a total blackout during the legal silence period. The defence is built into the product rather than issued as a statement. |
 | **The election audience does not stay for accountability.** | The consent to contact people about civic tools beyond this election is collected at registration, today, because gathering an election list and reusing it for a different purpose later is both bad practice and unlawful. The corporator report card also gives returning citizens a reason to come back that they already understand. |
-| **The second city's local partner does not materialise.** | The second city is gated on a signed local partner, and named only at month 12. If no city passes the test, Bengaluru's outcomes stand on their own and the replication playbook still ships. Those funds are ring-fenced and can be returned or redeployed by agreement. |
+| **No second city has an election in the window.** | The binding constraint is a calendar, not a partnership — Citizen Matters already operates in four other candidate cities. If no ULB poll falls inside the window, the funds are ring-fenced and either returned or redeployed by agreement, and the ward accountability layer ships in a Citizen Matters city without an election attached. Bengaluru's outcomes stand on their own. |
 | **Curator coverage skews to central Bengaluru.** | Honoraria weighted toward under-served zones, and a public ward-coverage dashboard that makes the skew visible in week three rather than month six. |
 | **Data protection exposure.** | We collect phone numbers, emails and address-to-ward at scale. The privacy policy is lawyer-reviewed for DPDP Act compliance and ships before any citizen data is collected. Citizen contact data is deleted or anonymised within three months of results. |
 
@@ -487,9 +551,14 @@ who knows the Digital Personal Data Protection Act.
 
 ## 21 · Contact
 
-<!-- INPUT NEEDED: named spokesperson, role, email, phone. -->
+**Meera K**
+Co-founder and Managing Trustee, Oorvani Foundation
 
-Oorvani Foundation · [opencity.in](https://opencity.in)
+<!-- INPUT NEEDED: Meera K's email and phone for the deck's contact slide. -->
+
+Oorvani Foundation · [oorvani.org](https://oorvani.org) ·
+[citizenmatters.in](https://citizenmatters.in) ·
+[opencity.in](https://opencity.in)
 
 ---
 
@@ -501,7 +570,7 @@ between §3 and §19 stays identical.
 | Section | Indian foundations | Corporate CSR | International funders | HNIs |
 |---|---|---|---|---|
 | **§2 The moment** | As written | As written | Add one line on what a corporator is and what a ULB election is | Lead with the city, not the institution |
-| **§11 Why Oorvani** | Track record and theory of change | Schedule VII eligibility, compliance, audited accounts, employee-engagement options | FCRA status stated up front; independence from government and party | The people, and why they are doing this |
+| **§11 Why Oorvani** | Track record and theory of change | Schedule VII eligibility, compliance, audited accounts, employee-engagement options | FCRA stated up front; Meera K's Ashoka and Knight fellowships; independence from government and party | Lead with Meera K and the trustees; the people, and why they are doing this |
 | **§20 The ask** | Lead-funder framing, full programme | A single named component sized to a CSR budget | Full programme or the second-city pilot | A single named component |
 
 ## Appendix B · Facts still needed
@@ -510,14 +579,25 @@ This document does not go to a donor until every one is resolved. Every claim in
 it has to survive a diligence call, and for a platform whose product is
 neutrality, an invented number is the one mistake we cannot make.
 
-- [ ] Years since the last BBMP ward election, and current registered-voter figure, each with a citable source
+**Resolved 2026-07-24**
+
+- [x] Last BBMP ward election: **2015** — eleven years
+- [x] Citizen Matters is Oorvani-operated, in five cities *(also resolves the open question in PRD §17 and the `INPUT NEEDED` in `content/pages/en/about.md`)*
+- [x] Oorvani track record: programmes, 15,000+ resources, 30+ events, 2,000+ network, lakhs of monthly users
+- [x] Trustees and board credentials
+- [x] Named spokesperson: **Meera K**, Co-founder and Managing Trustee
+
+**Still needed**
+
+- [ ] Current registered-voter figure for Bengaluru, with a citable source
+- [ ] Whether to state the 2020 term expiry and administrator rule, with a citation
 - [ ] Build status as of the ship date: pages live, public demo URL, wards with real candidate data
-- [ ] Open City track record: years operating, usage, datasets, cities, citations
-- [ ] Whether Citizen Matters is Oorvani-operated (open question, PRD §17)
-- [ ] Named team members, roles and bios
+- [ ] Oorvani's founding year, 80G status, and two or three nameable awards or citations of Open City data
+- [ ] Which named Oorvani staff work on this platform, and at what share of time
 - [ ] Oorvani's actual pay bands and overhead rate
+- [ ] ULB election timing in Chennai, Mumbai, Delhi/NCR and Hyderabad — to shortlist two or three for §10
+- [ ] Whether the ~₹55L second-city budget must fund Citizen Matters newsroom time explicitly
 - [ ] Year-two and second-city targets
 - [ ] The four component prices in §20, summing to the total
 - [ ] Current funders, for the public funding disclosure
-- [ ] Named spokesperson and contact details
-- [ ] Optional: a defensible two-or-three-city shortlist for §10
+- [ ] Meera K's email and phone for the contact slide
