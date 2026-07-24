@@ -41,10 +41,26 @@ replaced it on 2 September 2025, and final delimitation was notified on 19
 November 2025: **369 wards across five corporations** — Bengaluru West (112),
 North (72), South (72), Central (63) and East (50).
 
+**88,95,361 citizens are registered to vote** across those 369 wards, at 8,023
+polling stations — per the GBA's final electoral roll published on 18 April
+2026. Almost nine million people, most of whom have never voted in a ward
+election.
+
 **The Supreme Court has now set a hard deadline of 31 December 2026.** The
 extension granted in July 2026 was the third; deadlines of 30 June and 31 August
 2026 were both missed, and the Chief Justice warned that no further extension
 will be granted. Bengaluru is going to vote, and it is going to vote soon.
+
+<!-- Date-stamp the voter figure wherever it appears. An ECI Special Intensive
+Revision of Karnataka's rolls is running now, with the final roll due 7 October
+2026 — the revision the Court extended the poll deadline to accommodate. The
+88.95 lakh figure will likely be superseded before the election. A dated,
+sourced number survives that; an undated one becomes wrong.
+
+Do NOT use "over 1 crore voters" — that is Bengaluru Urban district (1,02,64,714
+in 2025), a materially larger geography than the GBA's 712 km². And do not state
+voters as a percentage of population; the population estimates use a different
+boundary and the ratio would be an artefact. -->
 
 Eleven years does something specific to the electorate. Nearly everyone in
 Bengaluru under thirty has never voted for a corporator. Neither has anyone who
@@ -177,12 +193,21 @@ audience. The page a resident already bookmarked changes what it shows.
 
 ## 8 · The two-year arc
 
+Anchored to **E**, the Bengaluru poll — which the Supreme Court has ordered to
+happen by 31 December 2026.
+
 | Period | Bengaluru | Second city |
 |---|---|---|
-| Months 0–6 | Election platform at full load: teaser, candidate launch, countdown, poll day | — |
-| Months 6–12 | Results, corporator report cards, ward budget and works layer ships | Selection criteria applied; city named at month 12 |
-| Months 12–18 | Accountability layer in daily operation; first annual ward scorecards | Local partner signed, curators recruited, ward data acquired |
-| Months 18–24 | Second annual cycle; playbook published | Platform live in city two |
+| **Now → E** (months) | Election platform at full load: ward finder, candidate report cards, issue voting, booth logistics, poll day | — |
+| **E → E+6** | Results. Candidate report cards become corporator report cards. Ward budget and works layer ships | Election calendar assessed; city named by month 12 |
+| **E+6 → E+12** | Accountability layer in daily operation; first annual ward scorecards | Newsroom briefed, curators recruited, ward data acquired |
+| **E+12 → E+18** | Second annual cycle | Platform live in city two, through its own election |
+| **E+18 → E+24** | Replication playbook published | Handover to steady-state operation |
+
+**The election phase is already under way, and it is short.** That is the
+timing problem this proposal has to be honest about, and §20 addresses it
+directly: a small part of this money is needed within weeks, and the large part
+funds everything after the poll.
 
 ---
 
@@ -267,7 +292,8 @@ programmes, and this platform sits at the intersection of the first two:
   launched 2016. Over 400 datasets and 3,500 resources across eleven themes,
   including a masterplan viewer covering 27 cities, published under open
   licences (CC BY-NC-SA 4.0 and ODbL). Citizens use it to file RTIs and to check
-  the claims officials make to them.
+  the claims officials make to them. **It already publishes the GBA's 2026
+  electoral roll data** — this election is not a new subject for us.
 - **Civic Learning Hub** — courses and workshops for citizens who want to act on
   what they have read.
 - **India Civic Summit** — an annual convening; the 2026 theme is *Citizens and
@@ -626,19 +652,51 @@ the first one.
 
 ## 20 · The ask
 
-**₹2.3 crore over two years.**
+**₹2.3 crore over two years — of which ₹25 lakh is needed within weeks.**
 
-We are not asking every donor for the whole amount. The programme is built from
-components, each of which stands alone, has a price, and produces an outcome you
-can point to:
+We are going to be direct about the timing, because you will work it out anyway.
+Bengaluru votes by 31 December 2026. A philanthropic grant of this size takes
+three to six months from first conversation to disbursement. **Most of this
+money will therefore arrive at or after the election, not before it.**
+
+That is not a flaw in the plan. It is the plan: the election platform is built
+and Oorvani is already operating it, and this proposal has argued from the start
+that the election is the acquisition event and accountability is the product.
+The grant funds the product.
+
+But there is a part that cannot wait.
+
+### The bridge — ₹25 lakh, needed now
+
+Drawn forward from the total, not added to it. It funds the things that only
+work before the poll:
+
+- **Curator honoraria through the election months** — the ward data has to be
+  right when the traffic arrives, and it will not be right on goodwill alone
+- **The comms programme at election scale** — WhatsApp and email to registered
+  citizens, including the electoral roll deadline alert, the one message in this
+  funnel whose value expires
+- **Final engineering and legal** — the privacy policy that gates WhatsApp
+  onboarding, and the last of the candidate-data pipeline
+
+A single donor can write this quickly, and it is the highest-leverage ₹25 lakh
+in the proposal, because it is the only part with a deadline set by a court.
+
+### The programme — ₹2.05 crore over two years
+
+The remainder, disbursed on a normal grant timeline. We are not asking every
+donor for the whole amount. The programme is built from components, each of
+which stands alone, has a price, and produces an outcome you can point to:
 
 | Component | What it delivers | ₹ (2 years) |
 |---|---|---|
-| **The ward accountability layer** | Budgets, works, officials and corporator report cards across 369 wards | 80L |
-| **The curator network** | A paid, trained curator in every ward, holding the data accurate | 65L |
-| **Bilingual reach** | Every page and message in English and Kannada; the electoral roll deadline alert; the partner cascade | 48L |
+| **The ward accountability layer** | Budgets, works, officials and corporator report cards across 369 wards | 70L |
+| **The curator network** | A paid, trained curator in every ward, holding the data accurate | 55L |
+| **Bilingual reach** | Every page and message in English and Kannada; the partner cascade | 41L |
 | **The second-city pilot** | The model proven outside Bengaluru, and a published replication playbook | 39L |
-| **Total** | | **2.32 Cr** |
+| **Total programme** | | **2.05 Cr** |
+| *plus the bridge* | *Election-phase work that cannot wait* | *25L* |
+| **Total ask** | | **2.30 Cr** |
 
 <!-- INPUT NEEDED: confirm this split reflects how Oorvani wants to package the
 work. The four components sum to the total, but the boundaries are a judgement
@@ -725,9 +783,11 @@ neutrality, an invented number is the one mistake we cannot make.
 - [ ] **Which Schedule VII head this programme is booked under** — decides whether the corporate CSR audience is actually reachable (see Appendix A)
 - [ ] Confirm every rate in §17, especially engineering, which Oorvani has not contracted before
 - [ ] Decide how to handle working capital: FY24 and FY25 both closed in deficit, ₹2.01 lakh in the bank at 31.03.2025
-- [ ] Current registered-voter figure for Bengaluru, with a citable source
+- [ ] Re-check the voter figure after the SIR final roll on 7 October 2026 — 88,95,361 is likely to be superseded
 - [ ] Build status as of the ship date: pages live, public demo URL, wards with real candidate data
-- [ ] **Re-time the two-year arc in §8** against the 31 December 2026 court deadline — the election phase is months away, not half a year
+- [x] Registered voters: **88,95,361** across 369 wards, 8,023 polling stations (GBA final roll, 18 Apr 2026)
+- [x] Arc re-timed against the court deadline; ask split into a ₹25L bridge and a ₹2.05 Cr programme
+- [ ] Confirm the ₹25L bridge scope and amount with the team — it is my sizing, not Oorvani's
 - [ ] Which named Oorvani staff work on this platform, and at what share of time
 - [ ] ULB election timing in Chennai, Mumbai, Delhi/NCR and Hyderabad — to shortlist two or three for §10
 - [ ] Whether the ₹39L second-city budget must fund Citizen Matters newsroom time explicitly
