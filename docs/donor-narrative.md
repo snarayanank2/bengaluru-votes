@@ -31,11 +31,20 @@ accountability habit. Bengaluru first, and a second city in year two.
 
 ## 2 · The moment
 
-**Bengaluru last elected its ward corporators in 2015.** That is eleven years
-ago. In the years since, the city grew past 1.4 crore residents and its
-municipal boundaries were redrawn into **369 new wards** under the Greater
-Bengaluru Authority. Somewhere between 90 and 100 lakh people are eligible to
-vote in a ward election most of them have never voted in.
+**Bengaluru last elected its ward corporators in August 2015.** The council's
+term expired on **10 September 2020**, and the city has had no elected municipal
+representatives since — the longest such gap in its history. Nearly eleven years
+without a fresh municipal mandate, in a city of more than 1.4 crore people.
+
+In that time the BBMP itself was dissolved. The **Greater Bengaluru Authority**
+replaced it on 2 September 2025, and final delimitation was notified on 19
+November 2025: **369 wards across five corporations** — Bengaluru West (112),
+North (72), South (72), Central (63) and East (50).
+
+**The Supreme Court has now set a hard deadline of 31 December 2026.** The
+extension granted in July 2026 was the third; deadlines of 30 June and 31 August
+2026 were both missed, and the Chief Justice warned that no further extension
+will be granted. Bengaluru is going to vote, and it is going to vote soon.
 
 Eleven years does something specific to the electorate. Nearly everyone in
 Bengaluru under thirty has never voted for a corporator. Neither has anyone who
@@ -210,25 +219,29 @@ working relationships with resident associations and civic groups. The hardest
 input for a new city — a local organisation that citizens already trust to write
 about their municipality — is one we own rather than one we have to go and find.
 
-The second city therefore comes from that set. We are not naming it in this
-document, because the choice depends on an election calendar that moves, and a
-city announced against a date that then slips is a commitment we would rather
-not make. **The second city is selected and named by month 12**, against four
-tests:
+So the constraint is not partnership. It is the municipal election calendar,
+which we do not control. Here is what it currently looks like across our four
+other cities:
 
-1. A ULB election falling inside the grant window
-2. Ward-level boundary and budget data that can actually be obtained
-3. A Citizen Matters newsroom already operating in the city
-4. A local civic partner network we can activate for distribution
+| City | Wards | Position as of July 2026 |
+|---|---|---|
+| **Chennai** (GCC) | 200 | Council term runs to March 2027; statewide Tamil Nadu local body polls expected February–March 2027. No date announced. |
+| **Delhi** (MCD) | 250 | Elected December 2022; next general election due 2027. No date announced. |
+| **Hyderabad** (GHMC) | 150 + 76 + 74 | Term expired February 2026; GHMC since split into three corporations. Government indicates November–December 2026, but delimitation is under High Court challenge. |
+| **Mumbai** (BMC) | 227 | Polled January 2026. Out of scope until 2031. |
 
-Test three is already satisfied in four cities. That is the difference between a
-pilot that depends on a partnership we hope to sign and one that depends on a
-calendar.
+**Chennai is the strongest candidate** — its poll falls inside the grant window,
+its newsroom is Oorvani's second-strongest, and Tamil Nadu conducts its local
+body elections statewide, which means one engagement reaches far beyond one
+city. Delhi is the fallback if Chennai's timing moves. Hyderabad's poll may
+arrive before we have finished Bengaluru, and its ward boundaries are in
+litigation. Mumbai has just voted and is out.
 
-<!-- INPUT NEEDED: check ULB election timing in Chennai, Mumbai, Delhi/NCR and
-Hyderabad, and name the two or three whose polls plausibly fall in the grant
-window. Naming a shortlist is safe here — the newsroom presence is a fact, and
-we are claiming no partnership beyond our own programme. -->
+We are still not naming the city in this document. Every one of these dates is
+an expectation rather than a notified schedule, and Bengaluru's own experience —
+three missed Supreme Court deadlines — is the argument against committing to a
+municipal election date in writing. **The second city is confirmed and named by
+month 12.**
 
 <!-- INPUT NEEDED: confirm whether Citizen Matters' city operations have the
 capacity to take on an election programme, or whether the ₹39L second-city
@@ -600,7 +613,7 @@ the first one.
 
 | Risk | What we do about it |
 |---|---|
-| **The election date slips.** GBA poll dates have moved before. | Our entire calendar is anchored to relative dates, not absolute ones. The ward finder and the accountability layer are useful whenever the poll lands. A delay costs us timing, not the programme. |
+| **The election date slips again.** Three Supreme Court deadlines have already passed unmet, and the electoral roll revision is still running. | Our entire calendar is anchored to relative dates, not absolute ones — nothing in the plan breaks if the poll moves. The ward finder and the accountability layer are useful whenever it lands, and a delay lengthens the accountability phase rather than cancelling it. The Court has ruled out further extension, but we have not built a plan that requires it to hold. |
 | **Ward budget and works data proves hard to obtain.** | Delimitation data is already in hand — all 369 wards with boundaries. Budget and works data is pursued through RTI, with digitisation funded as an explicit line rather than assumed to be free. Where a ward's data cannot be obtained, we publish that fact. |
 | **We are accused of partisanship.** | A source on every field, an audit log on every change, no paid advertising, funders named publicly, and a total blackout during the legal silence period. The defence is built into the product rather than issued as a statement. |
 | **The election audience does not stay for accountability.** | The consent to contact people about civic tools beyond this election is collected at registration, today, because gathering an election list and reusing it for a different purpose later is both bad practice and unlawful. The corporator report card also gives returning citizens a reason to come back that they already understand. |
@@ -701,6 +714,8 @@ neutrality, an invented number is the one mistake we cannot make.
 - [x] Named spokesperson: **Meera K**, Co-founder and Managing Trustee
 - [x] Budget rebuilt on Oorvani's consultancy cost base; component prices set
 - [x] Founding dates: Citizen Matters 2008, trust 2013, Open City 2016
+- [x] Election timing: BBMP term expired 10 Sep 2020; GBA replaced BBMP 2 Sep 2025; 369 wards across five corporations notified 19 Nov 2025; Supreme Court deadline 31 Dec 2026
+- [x] Second-city calendar: Chennai Feb–Mar 2027 (best fit), Delhi 2027, Hyderabad Nov–Dec 2026 (contested), Mumbai out until 2031
 - [x] Awards: Gene Burd 2025, Ashoka 2016, IPI Local News Accelerator 2023, Manthan 2014, Namma Bengaluru 2013
 - [x] Full funder and collaborator list, including BPAC, Janaagraha and Praja
 
@@ -711,8 +726,8 @@ neutrality, an invented number is the one mistake we cannot make.
 - [ ] Confirm every rate in §17, especially engineering, which Oorvani has not contracted before
 - [ ] Decide how to handle working capital: FY24 and FY25 both closed in deficit, ₹2.01 lakh in the bank at 31.03.2025
 - [ ] Current registered-voter figure for Bengaluru, with a citable source
-- [ ] Whether to state the 2020 term expiry and administrator rule, with a citation
 - [ ] Build status as of the ship date: pages live, public demo URL, wards with real candidate data
+- [ ] **Re-time the two-year arc in §8** against the 31 December 2026 court deadline — the election phase is months away, not half a year
 - [ ] Which named Oorvani staff work on this platform, and at what share of time
 - [ ] ULB election timing in Chennai, Mumbai, Delhi/NCR and Hyderabad — to shortlist two or three for §10
 - [ ] Whether the ₹39L second-city budget must fund Citizen Matters newsroom time explicitly
