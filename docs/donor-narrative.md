@@ -237,17 +237,23 @@ budget needs to fund newsroom time explicitly. -->
 
 ## 11 · Why Oorvani
 
-The Oorvani Foundation exists to *empower citizens to make better cities*. It
-runs four programmes, and this platform sits at the intersection of the first
-two:
+**We have been doing this since 2008.** Citizen Matters began that year, founded
+by Subramaniam Vincent and Meera K; the Oorvani Foundation was constituted as a
+trust in 2013; Open City launched in 2016. Eighteen years of civic journalism
+and a decade of urban data sit behind this proposal.
+
+The foundation exists to *empower citizens to make better cities*. It runs four
+programmes, and this platform sits at the intersection of the first two:
 
 - **[Citizen Matters](https://citizenmatters.in)** — a civic newsroom operating
   in Bengaluru, Chennai, Mumbai, Delhi/NCR and Hyderabad, covering governance,
   mobility, environment, water, waste and health at the level where citizens
   actually experience them.
-- **[Open City](https://opencity.in)** — India's leading urban data commons.
-  Datasets across eleven themes, including a masterplan viewer covering 27
-  cities, published under open licences (CC BY-NC-SA 4.0 and ODbL).
+- **[Open City](https://opencity.in)** — India's leading urban data commons,
+  launched 2016. Over 400 datasets and 3,500 resources across eleven themes,
+  including a masterplan viewer covering 27 cities, published under open
+  licences (CC BY-NC-SA 4.0 and ODbL). Citizens use it to file RTIs and to check
+  the claims officials make to them.
 - **Civic Learning Hub** — courses and workshops for citizens who want to act on
   what they have read.
 - **India Civic Summit** — an annual convening; the 2026 theme is *Citizens and
@@ -282,21 +288,47 @@ and waste at Namma Metro sites, and citizens documented debris being cleared.
 Our associate editor Shobana Radhakrishnan was shortlisted for the Kamla
 Mankekar Award for Journalism on Gender, 2024.
 
-**Existing funders.** Oorvani's work is currently supported by **Rohini Nilekani
-Philanthropies**, the **Rainmatter Foundation** (Zerodha), **Unboxing BLR** and
-the **Bengaluru Sustainability Forum**, alongside a group of individual donors.
-Collaborators include the **Bangalore Apartments' Federation**, **ADDA**, **WRI
-India**, **WELL Labs**, **NCBS** and **Socratus**. These funders have already
-diligenced this organisation.
+**Recognition.** Meera K received the **Gene Burd Award for Urban Journalism**
+in 2025 and an **Ashoka Changemaker Fellowship** in 2016. Citizen Matters was
+selected for the **International Press Institute's Local News Accelerator** in
+2023, won two **Manthan Awards** from the Digital Empowerment Foundation in
+2014, and a **Namma Bengaluru Award** in the media category in 2013. The BBC
+profiled the organisation as early as 2009.
+
+**Existing funders.** Oorvani's work is supported by **Rohini Nilekani
+Philanthropies** (part-funding the "Revival of cities" reporting), the
+**Rainmatter Foundation** (Zerodha — a three-year grant to Citizen Matters'
+Urban Environment Practice), **Unboxing BLR** and the **Bengaluru Sustainability
+Forum**. Past and recent supporters include the **A.T.E. Chandra Foundation**,
+**Wipro Foundation** and **Climate Trends**, alongside a group of individual
+donors.
+
+**Civic network.** Collaborators include the **Bangalore Apartments'
+Federation**, **ADDA**, **BPAC**, **Janaagraha**, **Praja**, **WRI India**,
+**WELL Labs**, **NCBS**, **Socratus**, **CivicDataLab**, **Mongabay India**, the
+**Vidhi Centre for Legal Policy** and **Bangalore International Centre**. For an
+election platform that has no advertising budget and depends entirely on
+partner-led distribution, that network is not a credential. It is the
+distribution channel.
 
 Oorvani is a charitable trust registered on **6 August 2013**
 (BNG-BMH244/2013-14), with **12A** and **80G** exemptions current, accounts
 audited by P N R & Co., and **twelve consecutive annual reports published**
 going back to FY 2013-14.
 
-<!-- INPUT NEEDED: FCRA registration number. The statutory page lists trust
-registration, 12A and 80G but no FCRA, and every named donor is domestic. The
-deck must not claim FCRA to an international funder without the number. -->
+<!-- BLOCKER — decide before targeting two of the four donor audiences:
+
+FCRA: not listed on the statutory page and not mentioned in the FY22-23,
+FY23-24 or FY24-25 annual reports. Every named donor is domestic. The deck must
+not claim FCRA to an international funder without a registration number.
+
+CSR-1: also absent. Without CSR-1 registration, Indian companies cannot legally
+route CSR funds to Oorvani — which removes the corporate CSR audience entirely.
+
+Both are registrations rather than judgements, so both are fixable, but they
+carry lead time. Confirm status before the deck goes to any international or
+corporate funder. If neither exists, the audience list narrows to Indian
+philanthropic foundations and individual donors, and Appendix A changes. -->
 
 Its board carries people who have built exactly
 this kind of thing before: **Meera K**, co-founder and Managing Trustee, an
@@ -639,6 +671,14 @@ Oorvani Foundation · [oorvani.org](https://oorvani.org) ·
 The narrative above is the master. Three sections change by audience; everything
 between §3 and §19 stays identical.
 
+**Two of these four audiences are currently gated on registrations Oorvani may
+not hold.** Corporate CSR money cannot legally reach an organisation without
+**CSR-1** registration, and foreign contributions require **FCRA**. Neither
+appears in Oorvani's published statutory record. Until both are confirmed, the
+reachable audience is Indian philanthropic foundations and individual donors —
+which, given that Rohini Nilekani Philanthropies and Rainmatter already fund
+Oorvani, is not a bad place to start.
+
 | Section | Indian foundations | Corporate CSR | International funders | HNIs |
 |---|---|---|---|---|
 | **§2 The moment** | As written | As written | Add one line on what a corporator is and what a ULB election is | Lead with the city, not the institution |
@@ -664,10 +704,14 @@ neutrality, an invented number is the one mistake we cannot make.
 - [x] Trustees and board credentials
 - [x] Named spokesperson: **Meera K**, Co-founder and Managing Trustee
 - [x] Budget rebuilt on Oorvani's consultancy cost base; component prices set
+- [x] Founding dates: Citizen Matters 2008, trust 2013, Open City 2016
+- [x] Awards: Gene Burd 2025, Ashoka 2016, IPI Local News Accelerator 2023, Manthan 2014, Namma Bengaluru 2013
+- [x] Full funder and collaborator list, including BPAC, Janaagraha and Praja
 
 **Still needed**
 
-- [ ] **FCRA registration number** — not on the statutory page; the deck must not claim it to an international funder without it
+- [ ] **FCRA registration** — absent from the statutory page and three annual reports; blocks international funders
+- [ ] **CSR-1 registration** — likewise absent; without it Indian companies cannot legally give CSR funds, which blocks the corporate audience entirely
 - [ ] Confirm every rate in §17, especially engineering, which Oorvani has not contracted before
 - [ ] Decide how to handle working capital: FY24 and FY25 both closed in deficit, ₹2.01 lakh in the bank at 31.03.2025
 - [ ] Current registered-voter figure for Bengaluru, with a citable source
