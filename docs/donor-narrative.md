@@ -3,7 +3,7 @@
 **Date:** 2026-07-24
 **Operator:** Oorvani Foundation — charitable trust, 12A and 80G current
 **Audience:** Indian philanthropic foundations, corporate CSR, and individual donors *(CSR-1 registered; no FCRA, so international funders are out of scope)*
-**Ask:** ₹2.2–2.4 crore over two years
+**Ask:** ₹2.30 crore over two years
 **Status:** Draft — contains `INPUT NEEDED` markers that must be resolved before this goes to any donor
 
 > **How to use this document.** This is the source of truth for the donor deck.
@@ -67,11 +67,6 @@ Bengaluru under thirty has never voted for a corporator. Neither has anyone who
 moved to the city in the last eleven years — which, in Bengaluru, is an enormous
 number of people. This is not an election with a first-time-voter segment. It is
 an election where first-time ward voters may be the majority.
-
-<!-- INPUT NEEDED: confirm the current registered-voter figure with a citable
-source — donors check it. Also decide whether to state that the council's term
-expired in 2020 and the city has been run by administrators since; it is a
-strong fact if we can cite it. -->
 
 ---
 
@@ -581,12 +576,14 @@ editorial rates the rest of the budget is built on. -->
 
 **Year two — accountability in operation, plus the second city**
 
-About **₹1.2 crore**. Bengaluru continues at roughly ₹81 lakh, with engineering
+About **₹1.24 crore**. Bengaluru continues at roughly ₹85 lakh, with engineering
 tapering and ward budget and works data acquisition rising as the accountability
 layer becomes the main product. The second city costs about **₹39 lakh**.
 
-**Two-year total: ₹2.2–2.4 crore** (~$255–275k at ₹87 to the dollar), plus
-Oorvani's overhead rate.
+**Two-year total: ₹2.30 crore** (~$264k at ₹87 to the dollar), plus Oorvani's
+overhead rate. The figures reconcile three ways: year one (₹1.06 Cr) plus year
+two (₹1.24 Cr); Bengaluru (₹1.91 Cr) plus the second city (₹39 L); and the
+bridge (₹25 L) plus the four programme components (₹2.05 Cr).
 
 **What this does to the organisation, stated plainly.** Oorvani spent ₹1.07
 crore in FY 2024-25. This grant roughly doubles the foundation's annual budget
@@ -617,7 +614,7 @@ single best defence against this becoming a central-Bengaluru project.
 
 ## 18 · What a second city costs
 
-**Bengaluru over two years: ₹1.87 crore. The second city: ₹39 lakh.**
+**Bengaluru over two years: ₹1.91 crore. The second city: ₹39 lakh.**
 
 To be precise about what that second number is: it is the **incremental** cost
 of adding a city to a platform and a core team already funded by this grant. It
@@ -652,7 +649,7 @@ the first one.
 
 ## 20 · The ask
 
-**₹2.3 crore over two years — of which ₹25 lakh is needed within weeks.**
+**₹2.30 crore over two years — of which ₹25 lakh is needed within weeks.**
 
 We are going to be direct about the timing, because you will work it out anyway.
 Bengaluru votes by 31 December 2026. A philanthropic grant of this size takes
