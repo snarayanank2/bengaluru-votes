@@ -68,7 +68,7 @@ all four, which is what keeps the deck maintainable.
 | # | Slide | Job it does |
 |---|---|---|
 | 1 | Title | Oorvani Foundation · two-year ask |
-| 2 | The moment | First ward polls in ~a decade · 369 redrawn wards · ~1.4 cr voters |
+| 2 | The moment | First ward polls in ~a decade · 369 redrawn wards · 1.4 cr residents, ~90–100 lakh voters |
 | 3 | The citizen's problem | Don't know their ward, can't evaluate candidates |
 | 4 | The problem that outlasts the election | No one knows the ward budget, the officials, whether the works happened |
 | 5 | **The insight** | Cheapest acquisition moment in civic tech — and every city has one coming |
