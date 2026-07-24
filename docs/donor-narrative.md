@@ -1,7 +1,8 @@
 # The case for support — a two-year ask
 
 **Date:** 2026-07-24
-**Operator:** Oorvani Foundation (FCRA registered)
+**Operator:** Oorvani Foundation — charitable trust, 12A and 80G current
+**Audience:** Indian philanthropic foundations and individual donors *(no FCRA or CSR-1, so international and corporate CSR funders are out of scope)*
 **Ask:** ₹2.2–2.4 crore over two years
 **Status:** Draft — contains `INPUT NEEDED` markers that must be resolved before this goes to any donor
 
@@ -316,19 +317,8 @@ Oorvani is a charitable trust registered on **6 August 2013**
 audited by P N R & Co., and **twelve consecutive annual reports published**
 going back to FY 2013-14.
 
-<!-- BLOCKER — decide before targeting two of the four donor audiences:
-
-FCRA: not listed on the statutory page and not mentioned in the FY22-23,
-FY23-24 or FY24-25 annual reports. Every named donor is domestic. The deck must
-not claim FCRA to an international funder without a registration number.
-
-CSR-1: also absent. Without CSR-1 registration, Indian companies cannot legally
-route CSR funds to Oorvani — which removes the corporate CSR audience entirely.
-
-Both are registrations rather than judgements, so both are fixable, but they
-carry lead time. Confirm status before the deck goes to any international or
-corporate funder. If neither exists, the audience list narrows to Indian
-philanthropic foundations and individual donors, and Appendix A changes. -->
+Oorvani holds neither FCRA nor CSR-1 registration, so this raise targets Indian
+philanthropic foundations and individual donors. Giving is **80G**-deductible.
 
 Its board carries people who have built exactly
 this kind of thing before: **Meera K**, co-founder and Managing Trustee, an
@@ -671,19 +661,24 @@ Oorvani Foundation · [oorvani.org](https://oorvani.org) ·
 The narrative above is the master. Three sections change by audience; everything
 between §3 and §19 stays identical.
 
-**Two of these four audiences are currently gated on registrations Oorvani may
-not hold.** Corporate CSR money cannot legally reach an organisation without
-**CSR-1** registration, and foreign contributions require **FCRA**. Neither
-appears in Oorvani's published statutory record. Until both are confirmed, the
-reachable audience is Indian philanthropic foundations and individual donors —
-which, given that Rohini Nilekani Philanthropies and Rainmatter already fund
-Oorvani, is not a bad place to start.
+**Two audiences are out of scope for this raise.** Oorvani holds neither
+**CSR-1** nor **FCRA** registration, so Indian corporate CSR funds and foreign
+contributions cannot lawfully reach the foundation. Corporate CSR and
+international funders are therefore not targets for this deck. Both are
+registrations rather than judgements, so both could be pursued — but on their
+own timeline, not this one.
 
-| Section | Indian foundations | Corporate CSR | International funders | HNIs |
-|---|---|---|---|---|
-| **§2 The moment** | As written | As written | Add one line on what a corporator is and what a ULB election is | Lead with the city, not the institution |
-| **§11 Why Oorvani** | Track record and theory of change | Schedule VII eligibility, compliance, audited accounts, employee-engagement options | FCRA stated up front; Meera K's Ashoka and Knight fellowships; independence from government and party | Lead with Meera K and the trustees; the people, and why they are doing this |
-| **§20 The ask** | Lead-funder framing, full programme | A single named component sized to a CSR budget | Full programme or the second-city pilot | A single named component |
+The reachable audience is **Indian philanthropic foundations** and **individual
+donors**, which is where Oorvani's existing relationships already sit.
+
+| Section | Indian philanthropic foundations | Individual donors / HNIs |
+|---|---|---|
+| **§2 The moment** | As written | Lead with the city, not the institution — this is their ward too |
+| **§11 Why Oorvani** | Track record, theory of change, the 2024 election projects, audited discipline | Lead with Meera K, the Gene Burd Award and the trustees; the people, and why they are doing this |
+| **§20 The ask** | Lead-funder framing, full programme | A single named component, with 80G stated plainly |
+
+Individual donors get one addition foundations do not need: Oorvani's **80G**
+exemption is current, so their giving is tax-deductible. Say it.
 
 ## Appendix B · Facts still needed
 
@@ -710,8 +705,7 @@ neutrality, an invented number is the one mistake we cannot make.
 
 **Still needed**
 
-- [ ] **FCRA registration** — absent from the statutory page and three annual reports; blocks international funders
-- [ ] **CSR-1 registration** — likewise absent; without it Indian companies cannot legally give CSR funds, which blocks the corporate audience entirely
+- [x] FCRA and CSR-1: **neither held** (confirmed 2026-07-24). Corporate CSR and international funders removed from scope; audience is Indian philanthropic foundations and individual donors
 - [ ] Confirm every rate in §17, especially engineering, which Oorvani has not contracted before
 - [ ] Decide how to handle working capital: FY24 and FY25 both closed in deficit, ₹2.01 lakh in the bank at 31.03.2025
 - [ ] Current registered-voter figure for Bengaluru, with a citable source
