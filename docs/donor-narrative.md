@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-24
 **Operator:** Oorvani Foundation (FCRA registered)
-**Ask:** ₹3.2–3.5 crore over two years
+**Ask:** ₹2.2–2.4 crore over two years
 **Status:** Draft — contains `INPUT NEEDED` markers that must be resolved before this goes to any donor
 
 > **How to use this document.** This is the source of truth for the donor deck.
@@ -230,7 +230,7 @@ window. Naming a shortlist is safe here — the newsroom presence is a fact, and
 we are claiming no partnership beyond our own programme. -->
 
 <!-- INPUT NEEDED: confirm whether Citizen Matters' city operations have the
-capacity to take on an election programme, or whether the ~₹55L second-city
+capacity to take on an election programme, or whether the ₹39L second-city
 budget needs to fund newsroom time explicitly. -->
 
 ---
@@ -253,13 +253,52 @@ two:
 - **India Civic Summit** — an annual convening; the 2026 theme is *Citizens and
   Urban Governance*.
 
-Across those programmes: **15,000+ resources published**, **30+ collaborative
-events** including datajams and design jams, a network of **2,000+ citizens**
-with **800+ civic storytellers and experts**, and resources used by **lakhs of
-users every month**.
+**In FY 2024-25 alone:** 505 articles published across **9 Indian cities**, 134
+of them written by citizens; **3.4 million page views** across articles and
+datasets; 15 events with 1,281 participants; 5 datajams with 212 participants;
+32,000 social followers reaching an average of 41,738 unique accounts. The
+second India Civic Summit drew over 150 participants across 8 sessions led by 14
+experts.
 
-Oorvani is a registered trust with **FCRA registration**, audited accounts and
-published statutory disclosures. Its board carries people who have built exactly
+**We have already done this at parliamentary scale.** In 2024 Oorvani ran
+election projects across **21 constituencies in Chennai, Bengaluru, Mumbai and
+Delhi** — candidate profiles, constituency maps, past election results, polling
+booth lookup and the key issues in each seat — plus 15 sitting-MP profiles, 18
+voter resource guides, 13 ground reports and 9 candidate interviews, followed by
+Maharashtra assembly coverage in partnership with **Mumbai Votes** and **Praja
+Foundation**.
+
+That matters more than any other fact in this document. **The GBA platform is
+not our first election project. It is the ward-level version of something we
+have already built four times, in four cities.** What is new here is depth —
+369 wards instead of 21 constituencies, structured affidavit data instead of
+profiles, and a platform that keeps working after the result is declared.
+
+**And the reporting changes things.** Four months after our series on domestic
+violence in Chennai's resettlement areas, the government established a One Stop
+Centre at Perumbakkam — the specific demand the series had surfaced. After our
+reporting on construction dust, BMRCL published a plan to address air pollution
+and waste at Namma Metro sites, and citizens documented debris being cleared.
+Our associate editor Shobana Radhakrishnan was shortlisted for the Kamla
+Mankekar Award for Journalism on Gender, 2024.
+
+**Existing funders.** Oorvani's work is currently supported by **Rohini Nilekani
+Philanthropies**, the **Rainmatter Foundation** (Zerodha), **Unboxing BLR** and
+the **Bengaluru Sustainability Forum**, alongside a group of individual donors.
+Collaborators include the **Bangalore Apartments' Federation**, **ADDA**, **WRI
+India**, **WELL Labs**, **NCBS** and **Socratus**. These funders have already
+diligenced this organisation.
+
+Oorvani is a charitable trust registered on **6 August 2013**
+(BNG-BMH244/2013-14), with **12A** and **80G** exemptions current, accounts
+audited by P N R & Co., and **twelve consecutive annual reports published**
+going back to FY 2013-14.
+
+<!-- INPUT NEEDED: FCRA registration number. The statutory page lists trust
+registration, 12A and 80G but no FCRA, and every named donor is domestic. The
+deck must not claim FCRA to an international funder without the number. -->
+
+Its board carries people who have built exactly
 this kind of thing before: **Meera K**, co-founder and Managing Trustee, an
 Ashoka Fellow and former Knight Fellow at the International Center for
 Journalists; **Ashwin Mahesh**, urbanist and social technologist, formerly a
@@ -280,9 +319,11 @@ architecture, information architecture and go-to-market plan are written,
 reviewed and public in our repository. This request funds operation and
 extension, not discovery.
 
-**We run cheap.** The platform is a single application and a database on one
-virtual machine. Infrastructure costs a few lakh a year, not tens. Almost every
-rupee in this budget is people and data.
+**We run cheap, and we can prove it.** Oorvani delivered 505 articles across
+nine cities, 3.4 million page views, 15 events and 5 datajams on a total FY
+2024-25 spend of **₹1.07 crore**. The election platform itself is a single
+application and a database on one virtual machine; infrastructure costs a few
+lakh a year, not tens. Almost every rupee in this budget is people and data.
 
 **We wrote down the hard decisions before they were convenient.** We committed
 to no paid acquisition, to naming our funders publicly, to going dark for the
@@ -332,8 +373,12 @@ It buys a platform nobody can credibly accuse of campaigning.
 There is no advertising budget in this proposal. Distribution runs through
 people who already have the audience:
 
-**Resident welfare associations and apartment groups.** The unit of distribution
-is a message pasted into a building's WhatsApp group. Every partner gets a kit —
+**Resident welfare associations and apartment groups.** We are not starting cold
+here either: the **Bangalore Apartments' Federation** and **ADDA**, the
+apartment-management platform, are existing Oorvani collaborators, and between
+them they reach a very large share of Bengaluru's apartment residents. The unit
+of distribution is a message pasted into a building's WhatsApp group. Every
+partner gets a kit —
 pre-written forward text in English and Kannada, a poster sized for WhatsApp, a
 tagged link so their forwards are counted, and a one-paragraph neutrality
 statement they can point to when someone accuses them of campaigning. That last
@@ -423,11 +468,12 @@ lists a strong editorial bench — Sahana Charan, Bhanu Sridharan, Archita Raghu
 Rahul Vinay and others — and the curator and content roles here draw directly on
 that capacity. Say who, concretely. -->
 
-**Behind them, an existing organisation.** Oorvani employs roughly fourteen
-people across editorial, programmes, design and operations, with trustees and
-advisors listed publicly at [oorvani.org/team](https://oorvani.org/team). This
-grant does not stand up a new organisation. It adds capacity to one that has
-been running civic media and open data for years.
+**Behind them, an existing organisation.** Oorvani works with roughly fourteen
+people across editorial, programmes, design and operations — engaged on a
+consultancy basis, which is how the foundation has always run — with trustees
+and advisors listed publicly at [oorvani.org/team](https://oorvani.org/team).
+This grant does not stand up a new organisation. It adds capacity to one that
+has been running civic media and open data since 2013.
 
 **What this grant hires,** incrementally: two engineers, a half-time product and
 programme lead, two curator operations managers, a bilingual content editor, a
@@ -444,37 +490,59 @@ lacks.
 
 ## 17 · Use of funds
 
-All figures below are indicative pending final confirmation of Oorvani's pay
-bands and overhead rate.
+Costed at Oorvani's actual engagement rates, which are consultancy-based rather
+than salaried. The foundation's audited FY 2024-25 expenditure was ₹1.07 crore
+across roughly fourteen people; these figures are built on that basis, not on
+commercial market salaries.
 
-<!-- INPUT NEEDED: replace every figure in this section with Oorvani's actual
-salary bands and overhead rate before this document goes to a donor. -->
+<!-- INPUT NEEDED: confirm each rate below against what Oorvani actually pays.
+Engineering is the least certain line — the foundation has not previously
+contracted full-time engineers, and civic-tech developer rates run above the
+editorial rates the rest of the budget is built on. -->
 
 **Year one — the election, and the foundations of the accountability layer**
 
 | Line | What it buys | ₹ |
 |---|---|---|
-| Engineering (2 FTE) | Election platform, then the ward accountability layer | 36L |
-| Product / programme lead (0.5 FTE) | | 12L |
-| Curator operations (2 FTE) | Recruiting, training and quality across 369 wards | 20L |
-| Bilingual content editor | English and Kannada, every page and every message | 9L |
-| Partnerships lead | RWAs, colleges, employers, press | 12L |
-| Design (contract) | | 6L |
-| Curator honoraria | ~150 curators, active months | 30L |
-| Infrastructure, WhatsApp API, AI extraction | Hosting, 25,000 users × 7 messages, affidavit parsing | 12L |
-| Legal | Data protection compliance, terms, privacy | 6L |
-| Ward data acquisition | RTI, digitisation, geodata | 8L |
-| Field, training, travel, press assets | | 11L |
-| **Year one total** | | **~1.6 Cr** |
+| Engineering (2) | Election platform, then the ward accountability layer | 24L |
+| Product / programme lead (half-time) | | 6L |
+| Curator operations (2) | Recruiting, training and quality across 369 wards | 14L |
+| Bilingual content editor | English and Kannada, every page and every message | 6L |
+| Partnerships lead | RWAs, colleges, employers, press | 7L |
+| Design (contract) | | 4L |
+| Curator honoraria | ~150 curators across the active election months | 18L |
+| Infrastructure, WhatsApp API, AI extraction | Hosting, 25,000 users × 7 messages, affidavit parsing | 8L |
+| Legal | Data protection compliance, terms, privacy | 5L |
+| Ward data acquisition | RTI, digitisation, geodata | 6L |
+| Field, training, travel, press assets | | 8L |
+| **Year one total** | | **~1.06 Cr** |
 
 **Year two — accountability in operation, plus the second city**
 
-About **₹1.8 crore**: the Bengaluru programme continues at roughly ₹1.25 crore,
-with engineering tapering and data work rising, plus about ₹55 lakh for the
-second city.
+About **₹1.2 crore**. Bengaluru continues at roughly ₹81 lakh, with engineering
+tapering and ward budget and works data acquisition rising as the accountability
+layer becomes the main product. The second city costs about **₹39 lakh**.
 
-**Two-year total: ₹3.2–3.5 crore** (~$370–400k at ₹87 to the dollar), plus
+**Two-year total: ₹2.2–2.4 crore** (~$255–275k at ₹87 to the dollar), plus
 Oorvani's overhead rate.
+
+**What this does to the organisation, stated plainly.** Oorvani spent ₹1.07
+crore in FY 2024-25. This grant roughly doubles the foundation's annual budget
+for two years. We are not pretending otherwise, and we would rather discuss it
+now than in diligence.
+
+Three things make the growth absorbable. The work is a **programme**, not
+general expansion — it has a defined scope, a defined end, and a team hired
+against named roles. Most of the added cost is **curator honoraria and data
+acquisition** rather than permanent institutional headcount, so the organisation
+does not have to sustain this size afterwards. And Oorvani has run a five-city
+newsroom and a national data platform on ₹1.07 crore, which is the relevant
+evidence about whether it can manage ₹1.13 crore a year.
+
+<!-- INPUT NEEDED: FY 2024-25 and FY 2023-24 both closed in small deficit, with
+₹2.01 lakh in the bank at 31.03.2025. A careful funder will notice. Decide
+whether to address working capital directly — e.g. asking for the first tranche
+up front — and whether Oorvani wants that in the deck or held for diligence. -->
 
 **On curator honoraria.** We originally planned an all-volunteer curator
 network. We are asking you to fund it instead. Data accuracy across 369 wards is
@@ -487,7 +555,7 @@ single best defence against this becoming a central-Bengaluru project.
 
 ## 18 · What a second city costs
 
-**City one: ₹1.6 crore. City two: ₹55 lakh.**
+**Bengaluru over two years: ₹1.87 crore. The second city: ₹39 lakh.**
 
 To be precise about what that second number is: it is the **incremental** cost
 of adding a city to a platform and a core team already funded by this grant. It
@@ -514,6 +582,7 @@ the first one.
 | **We are accused of partisanship.** | A source on every field, an audit log on every change, no paid advertising, funders named publicly, and a total blackout during the legal silence period. The defence is built into the product rather than issued as a statement. |
 | **The election audience does not stay for accountability.** | The consent to contact people about civic tools beyond this election is collected at registration, today, because gathering an election list and reusing it for a different purpose later is both bad practice and unlawful. The corporator report card also gives returning citizens a reason to come back that they already understand. |
 | **No second city has an election in the window.** | The binding constraint is a calendar, not a partnership — Citizen Matters already operates in four other candidate cities. If no ULB poll falls inside the window, the funds are ring-fenced and either returned or redeployed by agreement, and the ward accountability layer ships in a Citizen Matters city without an election attached. Bengaluru's outcomes stand on their own. |
+| **The grant doubles Oorvani's budget, and the foundation is running lean.** FY 2024-25 closed at ₹1.07 crore with a small deficit and ₹2 lakh in the bank. | The work is a scoped programme with named roles and a defined end, not general institutional expansion, and most of the added cost is honoraria and data acquisition rather than permanent headcount. We would rather structure the first tranche to land before hiring starts than discover a working-capital gap in month two. |
 | **Curator coverage skews to central Bengaluru.** | Honoraria weighted toward under-served zones, and a public ward-coverage dashboard that makes the skew visible in week three rather than month six. |
 | **Data protection exposure.** | We collect phone numbers, emails and address-to-ward at scale. The privacy policy is lawyer-reviewed for DPDP Act compliance and ships before any citizen data is collected. Citizen contact data is deleted or anonymised within three months of results. |
 
@@ -521,7 +590,7 @@ the first one.
 
 ## 20 · The ask
 
-**₹3.2–3.5 crore over two years.**
+**₹2.3 crore over two years.**
 
 We are not asking every donor for the whole amount. The programme is built from
 components, each of which stands alone, has a price, and produces an outcome you
@@ -529,13 +598,16 @@ can point to:
 
 | Component | What it delivers | ₹ (2 years) |
 |---|---|---|
-| **The ward accountability layer** | Budgets, works, officials and corporator report cards across 369 wards | <!-- INPUT NEEDED --> |
-| **Curator honoraria** | A paid, trained curator network holding data accurate in all 369 wards | <!-- INPUT NEEDED --> |
-| **The bilingual comms programme** | Every page and message in English and Kannada; the electoral roll deadline alert | <!-- INPUT NEEDED --> |
-| **The second-city pilot** | The model proven outside Bengaluru, and a published replication playbook | <!-- INPUT NEEDED --> |
+| **The ward accountability layer** | Budgets, works, officials and corporator report cards across 369 wards | 80L |
+| **The curator network** | A paid, trained curator in every ward, holding the data accurate | 65L |
+| **Bilingual reach** | Every page and message in English and Kannada; the electoral roll deadline alert; the partner cascade | 48L |
+| **The second-city pilot** | The model proven outside Bengaluru, and a published replication playbook | 39L |
+| **Total** | | **2.32 Cr** |
 
-<!-- INPUT NEEDED: split the two-year budget across these four components so
-each has a price. They must sum to the total. -->
+<!-- INPUT NEEDED: confirm this split reflects how Oorvani wants to package the
+work. The four components sum to the total, but the boundaries are a judgement
+call — particularly whether engineering sits inside the accountability layer or
+is broken out as its own fundable component. -->
 
 We are looking for one lead funder and two or three co-funders. A lead
 commitment is what makes the rest of the conversation possible, and we will say
@@ -583,21 +655,28 @@ neutrality, an invented number is the one mistake we cannot make.
 
 - [x] Last BBMP ward election: **2015** — eleven years
 - [x] Citizen Matters is Oorvani-operated, in five cities *(also resolves the open question in PRD §17 and the `INPUT NEEDED` in `content/pages/en/about.md`)*
-- [x] Oorvani track record: programmes, 15,000+ resources, 30+ events, 2,000+ network, lakhs of monthly users
+- [x] Oorvani track record and FY 2024-25 reach figures
+- [x] Prior election projects: 21 constituencies across four cities, 2024
+- [x] Registration: trust BNG-BMH244/2013-14 (6 Aug 2013), 12A and 80G current, twelve annual reports published
+- [x] Audited financials: FY25 income ₹1,05,35,516, expenditure ₹1,06,58,444
+- [x] Existing funders: Rohini Nilekani Philanthropies, Rainmatter Foundation, Unboxing BLR, Bengaluru Sustainability Forum
+- [x] Documented impact: Perumbakkam One Stop Centre, BMRCL response, Kamla Mankekar shortlisting
 - [x] Trustees and board credentials
 - [x] Named spokesperson: **Meera K**, Co-founder and Managing Trustee
+- [x] Budget rebuilt on Oorvani's consultancy cost base; component prices set
 
 **Still needed**
 
+- [ ] **FCRA registration number** — not on the statutory page; the deck must not claim it to an international funder without it
+- [ ] Confirm every rate in §17, especially engineering, which Oorvani has not contracted before
+- [ ] Decide how to handle working capital: FY24 and FY25 both closed in deficit, ₹2.01 lakh in the bank at 31.03.2025
 - [ ] Current registered-voter figure for Bengaluru, with a citable source
 - [ ] Whether to state the 2020 term expiry and administrator rule, with a citation
 - [ ] Build status as of the ship date: pages live, public demo URL, wards with real candidate data
-- [ ] Oorvani's founding year, 80G status, and two or three nameable awards or citations of Open City data
 - [ ] Which named Oorvani staff work on this platform, and at what share of time
-- [ ] Oorvani's actual pay bands and overhead rate
 - [ ] ULB election timing in Chennai, Mumbai, Delhi/NCR and Hyderabad — to shortlist two or three for §10
-- [ ] Whether the ~₹55L second-city budget must fund Citizen Matters newsroom time explicitly
+- [ ] Whether the ₹39L second-city budget must fund Citizen Matters newsroom time explicitly
 - [ ] Year-two and second-city targets
-- [ ] The four component prices in §20, summing to the total
-- [ ] Current funders, for the public funding disclosure
+- [ ] Confirm the four-component split in §20 matches how Oorvani wants to package the work
+- [ ] Whether existing funders are content to be named in a fundraising deck
 - [ ] Meera K's email and phone for the contact slide
