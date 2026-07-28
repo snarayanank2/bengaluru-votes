@@ -25,7 +25,21 @@ RUN npm ci
 # public/, tsconfig.json, drizzle.config.ts, etc.
 COPY . .
 
-RUN npm run build
+# Both OPTIONAL, and unset (the CI/production case) this RUN is exactly
+# `npm run build` with no env of its own. They exist because astro.config.mjs
+# resolves BOTH `site` and `security.allowedDomains` once, HERE, at build
+# time — so an image destined for anything other than the two baked-in
+# `*.opencity.in` hostnames has to be told at build time or it 403s every
+# POST it serves. Used by the interim Hostinger VPS deploy; never passed by
+# CI. The `-n` guards matter: BuildKit exposes a declared-but-unpassed ARG
+# as an EMPTY string, and `process.env.SITE_ORIGIN ?? <default>` would take
+# `''` over its default (`??` is nullish, not falsy) and build with an
+# invalid empty `site`.
+ARG SITE_ORIGIN
+ARG EXTRA_ALLOWED_ORIGIN
+RUN if [ -n "$SITE_ORIGIN" ]; then export SITE_ORIGIN; else unset SITE_ORIGIN; fi; \
+    if [ -n "$EXTRA_ALLOWED_ORIGIN" ]; then export EXTRA_ALLOWED_ORIGIN; else unset EXTRA_ALLOWED_ORIGIN; fi; \
+    npm run build
 
 ########################################################################
 # Stage 2: deps-prod — production-only node_modules for the runtime image.

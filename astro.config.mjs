@@ -1,6 +1,21 @@
 import { defineConfig } from 'astro/config';
 import node from '@astrojs/node';
 
+/**
+ * Parses `EXTRA_ALLOWED_ORIGIN` into one `security.allowedDomains` entry.
+ * See the call site below for when this is (and isn't) used. An omitted
+ * `port` matches any port — Astro's matcher treats an absent pattern port
+ * as a wildcard (`matchPort` in @astrojs/internal-helpers/remote).
+ */
+function extraAllowedDomain(origin) {
+  const url = new URL(origin);
+  return {
+    hostname: url.hostname,
+    protocol: url.protocol.replace(':', ''),
+    ...(url.port ? { port: url.port } : {}),
+  };
+}
+
 export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'standalone' }),
@@ -58,6 +73,19 @@ export default defineConfig({
       ...(process.env.E2E_ALLOWED_HOST
         ? [{ hostname: process.env.E2E_ALLOWED_HOST, protocol: 'http', port: process.env.E2E_ALLOWED_PORT }]
         : []),
+      // One escape hatch for a TEMPORARY deployment on a hostname that
+      // isn't either of the two above — currently the interim Hostinger VPS
+      // standing in until the DigitalOcean Droplet of §14 is provisioned.
+      // This whole block is resolved once at BUILD time (same as `site`
+      // above), so a build served from any other origin rejects EVERY
+      // unsafe-method request with 403 — including `POST /api/ward-lookup`,
+      // the site's primary feature — unless that origin is listed here.
+      // Distinct from E2E_ALLOWED_HOST above deliberately: that one is the
+      // Playwright suite's, is http-only and port-pinned, and its own
+      // comment says it must never be set for a non-e2e build.
+      // Set to a full origin (`http://host[:port]`). Unset — the normal
+      // case, and every CI/staging/production build — this is a no-op.
+      ...(process.env.EXTRA_ALLOWED_ORIGIN ? [extraAllowedDomain(process.env.EXTRA_ALLOWED_ORIGIN)] : []),
     ],
   },
 });
