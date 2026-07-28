@@ -6,9 +6,6 @@
 # reachable and is deliberately NOT excluded below. See Dockerfile for what
 # gets copied into the final image.
 
-# Design/legacy prototype tree — not part of the shipped app.
-prototype/
-
 # Reinstalled fresh in every build stage; never trust the host's copy.
 node_modules/
 

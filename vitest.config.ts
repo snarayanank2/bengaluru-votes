@@ -8,7 +8,7 @@ import { getViteConfig } from 'astro/config';
 export default getViteConfig({
   test: {
     include: ['tests/**/*.test.ts'],
-    exclude: ['prototype/**', 'node_modules/**', 'dist/**'],
+    exclude: ['node_modules/**', 'dist/**'],
     // All DB-backed tests share ONE Postgres database; running test files in
     // parallel worker processes causes cross-file races (a temporary DDL rule
     // in audit.test.ts breaks other files' INSERT...RETURNING with 0A000;
