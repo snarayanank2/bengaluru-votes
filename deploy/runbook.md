@@ -23,7 +23,7 @@ commands, not prose — copy-paste, adjusting the bracketed placeholders.
 - The vendor accounts this app talks to, each with an API key ready:
   SendGrid, Twilio, Google Cloud (Geocoding + Programmable Search),
   Anthropic, reCAPTCHA v3, Google Analytics, Sentry, healthchecks.io.
-- An SSH key pair you're willing to dedicate to the `deploy` CI user (a
+- An SSH key pair you're willing to dedicate to the `deploy` user (a
   **separate** key from your personal login key).
 
 ---
@@ -100,17 +100,16 @@ dig +short staging.bengaluruvotes.opencity.in
 # Docker Engine + Compose plugin (official convenience script).
 curl -fsSL https://get.docker.com | sudo sh
 
-# Dedicated CI deploy user — key-only, docker group (architecture §14.4).
+# Dedicated deploy user — key-only, docker group (architecture §14.4).
 # NOTE (§13): docker group membership is root-equivalent on this host — the
-# entire "CI holds the keys to the box" accepted risk starts here.
+# accepted "whoever deploys holds the keys to the box" risk starts here.
 sudo adduser --disabled-password --gecos "" deploy
 sudo usermod -aG docker deploy
 
-# Install the CI-side public key (generate a DEDICATED keypair for this,
-# not your personal one — the private half becomes the DEPLOY_SSH_KEY
-# GitHub secret in step 4 below).
+# Install the deploy public key (generate a DEDICATED keypair for this, not
+# your personal one). Its private half is what you SSH in with to deploy.
 sudo -u deploy mkdir -p /home/deploy/.ssh
-echo "<deploy-ci-public-key>" | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys
+echo "<deploy-public-key>" | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys
 sudo -u deploy chmod 700 /home/deploy/.ssh
 sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
 ```
@@ -119,8 +118,10 @@ sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
 
 ## 4. Clone the repo and write the `.env` files
 
-**Exact path** — the deploy workflows (Task 62: `deploy-staging.yml`,
-`deploy-production.yml`) hardcode `/opt/bengaluru-votes`:
+**Exact path** — `/opt/bengaluru-votes`. This checkout is no longer just a
+source of Compose files: since images are built on the box (architecture
+§14.3, revised 2026-08-13), it is what every deploy builds *from*, so the
+ref it sits on is the version that ships.
 
 ```sh
 sudo mkdir -p /opt/bengaluru-votes
@@ -300,7 +301,7 @@ here in the same PR.
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | DO Spaces key pair (restic's S3-compatible backend reads the standard AWS_* vars). |
 | `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch (architecture §10). |
 | `SENTRY_DSN` | recommended | Server-side error reporting (`src/lib/logger.ts`) — **unset means Sentry is a clean no-op**, not a broken deploy; set it once the free-tier project exists. |
-| `IMAGE_TAG` | supplied by the deploy workflow, not stored in the `.env` file | Pins the exact GHCR image tag pulled (`deploy/compose.production.yml`'s `${IMAGE_TAG:-latest}`); the deploy workflow exports this over SSH per run, it isn't a persisted secret. |
+| `IMAGE_TAG` | optional, not stored in the `.env` file | Selects which **local** image tag the stack runs (`deploy/compose.production.yml`'s `${IMAGE_TAG:-latest}`). Left unset for a normal deploy; it exists so a rollback can point the stack at `:previous` without rebuilding. |
 
 ### `.env.staging`
 
@@ -322,26 +323,60 @@ Postgres is disposable — no restic vars needed for it.
 
 ---
 
-## GitHub deploy secrets
+## Deploying
 
-Task 62's `deploy-staging.yml` / `deploy-production.yml` SSH into the box
-using per-**environment** GitHub secrets (Settings -> Environments):
+Revised 2026-08-13: deploys are **manual** (architecture §14.4). There is no
+`.github/workflows/`, no registry, and nothing that fires on push, merge or
+release. Images are built on the box from the `/opt/bengaluru-votes`
+checkout (§14.3).
 
-| Environment | Secret | Value |
-|---|---|---|
-| `staging` | `DEPLOY_HOST` | the Reserved IP (or `bengaluruvotes.opencity.in`) |
-| `staging` | `DEPLOY_USER` | `deploy` |
-| `staging` | `DEPLOY_SSH_KEY` | the **private** half of the deploy keypair installed in step 3 |
-| `production` | `DEPLOY_HOST` | same host |
-| `production` | `DEPLOY_USER` | `deploy` |
-| `production` | `DEPLOY_SSH_KEY` | same private key (one Droplet, one `deploy` user — architecture §14.2) |
+**Run the checks first — nothing else will.** On your machine, not the box:
 
-**Before election week**, enable the architecture §14.4 production
-protection rule: repo Settings -> Environments -> `production` -> "Required
-reviewers" -> add at least one reviewer. This is off by default (every
-`main` push already deploys staging with no gate); it only adds friction to
-the `production` environment's release-triggered/`workflow_dispatch` jobs,
-which is exactly the surface worth slowing down once real votes/ registrations are flowing.
+```sh
+npm run translate -- --check   # bilingual completeness (architecture §9)
+npm run typecheck
+npm test
+```
+
+Then, on the box as `deploy`, per stack (`STACK=production` or `staging`):
+
+```sh
+cd /opt/bengaluru-votes
+git fetch && git checkout <ref>          # this checkout IS what ships
+
+# 1. Rollback anchor — do this BEFORE building over :latest.
+docker image tag bengaluru-votes:latest bengaluru-votes:previous
+
+# 2. Build, migrate, restart.
+docker compose -f deploy/compose.$STACK.yml build
+docker compose -f deploy/compose.$STACK.yml run --rm app npm run migrate
+docker compose -f deploy/compose.$STACK.yml up -d
+
+# 3. ALWAYS re-run static-init (production only) — `up -d` skips it once it
+#    has completed successfully, and stale /_astro assets are the result.
+docker compose -f deploy/compose.production.yml run --rm static-init
+```
+
+**Deploy staging first and look at it.** No pipeline enforces the order any
+more, and staging-before-production is the only thing that exercises a
+migration before it touches real data (§14.7).
+
+**Verification must include a real POST**, not just `GET /healthz`. A stack
+built without the origin build args serves every page with a healthy 200 and
+403s every write, and nothing in `docker compose ps`, the healthcheck, or the
+logs reveals it:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' https://<host>/healthz
+curl -sS -X POST https://<host>/api/ward-lookup \
+  -H 'content-type: application/json' -H 'Origin: https://<host>' \
+  -d '{"pincode":"560102"}'      # 403 here means rebuild; see §14.3
+```
+
+`.claude/skills/deploy-vps/deploy.sh` automates this whole sequence
+(including the POST check) against the interim Hostinger VPS — it is the
+working reference for what a correct deploy does, even though that box is
+not the Droplet.
 
 ---
 
@@ -506,8 +541,17 @@ zone rate/burst, not the Droplet size.
   hasn't gone red (a missed ping = an ops alert by design, architecture
   §10). Rehearse a full restore (step 6 above) periodically, not just once
   at provisioning time.
-- **Rollback:** `gh workflow run deploy-production.yml -f tag=<previous-vYYYY.MM.DD>`
-  (or the Actions UI's "Run workflow" with the `tag` input) — pulls and
-  restarts an already-built image, **no migration step runs on this path**
-  (architecture §14.4/§14.7: migrations are forward-only/backward-compatible,
-  so rollback is never a schema operation).
+- **Rollback:** retag the previous image and restart — **no migration step
+  runs on this path** (architecture §14.4/§14.7: migrations are
+  forward-only/backward-compatible, so rollback is never a schema
+  operation):
+
+  ```sh
+  docker image tag bengaluru-votes:previous bengaluru-votes:latest
+  docker compose -f deploy/compose.production.yml up -d
+  docker compose -f deploy/compose.production.yml run --rm static-init
+  ```
+
+  This depends on `:previous` still existing **on the box** — there is no
+  registry to fall back on (§14.3). Tag it before every deploy, and don't
+  `docker image prune` without checking what you're about to delete.

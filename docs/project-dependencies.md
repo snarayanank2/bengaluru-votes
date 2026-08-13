@@ -165,7 +165,7 @@ At the Phase 1 target of 25,000 citizens × 7 sends ≈ **175,000 messages**, bi
 | 6.13 | **reCAPTCHA v3 keys** — site key + secret for the anonymous EOI form (`docs/architecture.md` §7); disclosed in `/privacy` alongside GA | `/partner-with-us` | unassigned |
 | 6.14 | **Monitoring accounts** — DigitalOcean Uptime checks (incl. the SSL-expiry alert) wired to an ops alert email; a Sentry project (free tier, server-side only); a healthchecks.io check for the backup dead-man's-switch (`docs/architecture.md` §10) | Knowing the site is down; budget alarms landing somewhere; backup failure being loud | unassigned |
 | 6.15 | **Google Programmable Search Engine + Custom Search JSON API key** — for candidate news-link suggestions (PRD §5.2; `docs/architecture.md` §7), configured against the repo's news-domain allowlist, with a daily query budget + alert | News-link suggestions only — degrades gracefully to curator-added links | unassigned |
-| 6.16 | **GitHub — repository, Actions CI, and GHCR** — the org/repo hosting the code, the Actions workflows that build, test, and deploy (`docs/architecture.md` §14.4), the public `app`/`jobs` images on GHCR (§14.3), and the `staging`/`production` **Environment secrets** holding the deploy SSH keys (§14.4) | Any deployment — CI is the only path onto the box | unassigned |
+| 6.16 | **GitHub — repository hosting** — the org/repo holding the code, which the Droplet clones and builds from (`docs/architecture.md` §14.3) | Any deployment — the box builds from a checkout of this repo | unassigned |
 
 **6.4 is the one to look at first, because it is not obvious.** Google Maps Platform's terms restrict using Google Maps content — **geocoding results included** — in an application that displays a **non-Google map**. The decided split is *Google geocodes, MapLibre renders*, which is precisely the pattern that restriction targets.
 
@@ -179,7 +179,9 @@ What is needed is a deliberate confirmation rather than a product spec's reading
 
 **6.9 deserves its own line.** "An unrehearsed backup is not a backup" is a task with a date, not a principle. It is the kind of thing that is genuinely fine until the one day it is not, which for this project is a day that cannot be rescheduled.
 
-**6.16 is free but not incidental.** Public GHCR images cost nothing and the Droplet pulls them anonymously (`docs/architecture.md` §14.3), so this row carries no bill — but CI is the *only* path onto the box, and the deploy key lives in a GitHub Environment secret that fires on every push to `main` (§14.4). That puts the GitHub account inside the production trust boundary, not merely where the source lives: a compromised Actions workflow or a malicious merge is full compromise of both stacks, the accepted single-VM limitation recorded in `docs/architecture.md` §13. The dependency is the account, its access control, and secrets custody (§6.10) — not money.
+**6.16 is free but not incidental.** Repository hosting carries no bill, but the Droplet builds what it runs from a clone of this repo (`docs/architecture.md` §14.3), so whatever is on the deployed ref is what ships. The dependency is the account and its access control, not money.
+
+*Revised 2026-08-13.* This row previously also covered GitHub Actions and GHCR, and CI was the *only* path onto the box — the deploy key lived in an Environment secret that fired on every push to `main`, putting the GitHub account squarely inside the production trust boundary. CI has been removed (§14.4) and deploys are manual, which narrows this dependency to source hosting and moves the deploy key into ordinary human custody (§6.10). Note the trade: nothing automated now tests or gates what reaches production.
 
 ---
 

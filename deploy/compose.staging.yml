@@ -13,10 +13,17 @@
 # Bring this stack up AFTER compose.production.yml (nginx must already own
 # `gba_front` for `external: true` below to resolve).
 #
-# IMAGE: staging tracks `:edge` (every `main` build — architecture §14.3),
-# same `${IMAGE_TAG:-...}` indirection as production. Local verification:
-#   docker build -t ghcr.io/snarayanank2/bengaluru-votes:local .
-#   IMAGE_TAG=local docker compose -f deploy/compose.staging.yml up -d
+# IMAGE: built ON THE BOX from this checkout (architecture §14.3, revised
+# 2026-08-13) — no registry, nothing pulled. Staging uses its OWN local tag
+# (`bengaluru-votes-staging:*`), never production's: sharing one tag would
+# mean deploying staging silently swaps the image production restarts onto.
+# `app-staging` carries the build; `jobs-staging` references the tag with
+# `pull_policy: never` (two services building the same tag race on export).
+#
+# THE ORIGIN BUILD ARGS ARE LOAD-BEARING — astro.config.mjs resolves `site`
+# and `security.allowedDomains` at BUILD time. Built without them, every GET
+# is a healthy 200 and every POST a 403, with nothing in the logs. Verify a
+# real POST after deploying.
 #
 # ENV: `./.env.staging` (deploy/.env.staging), gitignored, never committed.
 # MUST NOT contain production Twilio/SendGrid keys and MUST set
@@ -27,7 +34,13 @@
 
 services:
   app-staging:
-    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-edge}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        SITE_ORIGIN: ${SITE_ORIGIN:-https://staging.bengaluruvotes.opencity.in}
+        EXTRA_ALLOWED_ORIGIN: ${EXTRA_ALLOWED_ORIGIN:-}
+    image: bengaluru-votes-staging:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ${STAGING_ENV_FILE:-./.env.staging}
     networks:
@@ -47,7 +60,8 @@ services:
       options: { max-size: 10m, max-file: '5' }
 
   jobs-staging:
-    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-edge}
+    image: bengaluru-votes-staging:${IMAGE_TAG:-latest}
+    pull_policy: never
     restart: unless-stopped
     command: ['supercronic', '/app/deploy/crontab']
     env_file: ${STAGING_ENV_FILE:-./.env.staging}

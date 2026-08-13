@@ -28,7 +28,7 @@ npm run build               # production build (see the SITE_ORIGIN warning belo
 npm test                    # vitest, whole suite — requires DATABASE_URL
 npm run typecheck           # astro check && tsc --noEmit
 npm run migrate             # drizzle migrations, forward-only, idempotent
-npm run translate -- --check  # CI staleness gate; no API calls, no key needed
+npm run translate -- --check  # bilingual staleness gate; no API calls, no key needed
 npm run translate           # regenerate stale Kannada via Anthropic API (needs ANTHROPIC_API_KEY)
 ```
 
@@ -54,11 +54,11 @@ npm run build-pincode       # regenerates data/pincode-wards.json (still a place
 docker compose -f deploy/compose.local.yml up --build -d   # http://localhost:4321
 ```
 
-Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). The other two Compose files (`compose.staging.yml`, `compose.production.yml`) target the Droplet — they pull GHCR images and front everything with TLS nginx + certbot, and will not come up locally.
+Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). The other two Compose files (`compose.staging.yml`, `compose.production.yml`) target the Droplet — they build the same Dockerfile but add TLS nginx, certbot and the jobs container, and expect real credentials, so they won't come up on a laptop.
 
 ### Tests need a database
 
-Every DB-backed test reads `DATABASE_URL` and throws without it. CI provisions a `postgres:16` service. **No Compose file in this repo serves the `localhost:54329` / `bv_test` convention the test files' error messages name** — supply your own Postgres, or point at `deploy/compose.local.yml`'s (exposed on `127.0.0.1:5433`) and create `bv_test` / `bv_e2e` there.
+Every DB-backed test reads `DATABASE_URL` and throws without it. **No Compose file in this repo serves the `localhost:54329` / `bv_test` convention the test files' error messages name** (those messages also claim "CI always sets this" — there is no longer any CI; see Fixed decisions). Supply your own Postgres, or point at `deploy/compose.local.yml`'s (exposed on `127.0.0.1:5433`) and create `bv_test` / `bv_e2e` there.
 
 `vitest.config.ts` sets `fileParallelism: false` and `singleFork` on purpose: all DB-backed tests share one database, and parallel files race (a temporary DDL rule in `audit.test.ts` breaks other files' `INSERT ... RETURNING`; fixture ids collide). Don't re-enable parallelism.
 
@@ -147,7 +147,8 @@ Anonymous citizen (no account, most traffic, read-only) · Registered citizen ·
 - **Auth:** one email / WhatsApp OTP mechanism for *all* roles. No passwords, no 2FA.
 - **Curator publish:** trusted; immediate, no approval gate.
 - **Bilingual:** EN at root, KN under `/kn/`, each with its own URL.
-- **Deployment:** DigitalOcean — one BLR1 Droplet running staging + production Compose stacks; CI-built public GHCR images; push-to-main builds `:edge` and deploys staging, a GitHub Release (date tags `vYYYY.MM.DD`) deploys production. `deploy/runbook.md` is the operational reference. `architecture.md` §14.
+- **Deployment:** DigitalOcean — one BLR1 Droplet running staging + production Compose stacks. **There is no CI and no registry** (removed 2026-08-13): images are built on the box from a git checkout, and deploys are run by hand. Nothing fires on push, merge or release. `deploy/runbook.md` ("Deploying") is the procedure; `architecture.md` §14.3/§14.4 is the design.
+- **Consequence worth holding onto:** `npm test`, `npm run typecheck` and `npm run translate -- --check` no longer gate anything. Run them before deploying — nothing else will.
 - **Staging isolation:** `compose.staging.yml` must never join `back_prod`, and staging must keep `SENDS_DISABLED=true` with vendor keys omitted entirely. Those are two independent guards; keep both.
 
 Open questions live in `docs/prd.md` §17 — check there before inventing an answer.

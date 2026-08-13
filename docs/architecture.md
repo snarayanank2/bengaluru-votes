@@ -24,7 +24,7 @@ This document records the production architecture for the platform defined in `d
 | Spike strategy | nginx micro-cache (~60 s TTL on pages) — no purge machinery; CDN slots in front later unchanged |
 | Geo | Ward polygons as static GeoJSON (MapLibre reads them directly) + in-memory point-in-polygon (Turf.js); **no PostGIS** |
 | Client JS | Zero by default; islands only for modals, maps, and lookup forms |
-| Deployment | **DigitalOcean Droplet (BLR1)**; staging + production on one box; CI-built public GHCR images; push-to-main → staging, GitHub Release → production (§14) |
+| Deployment | **DigitalOcean Droplet (BLR1)**; staging + production on one box; images built on the box from a checkout; deploys run by hand (§14) |
 | Migrations | **Drizzle SQL migrations**, forward-only and backward-compatible; run as an explicit deploy step before restart (§14.7) |
 | Media | Curator uploads (affidavit PDFs, candidate photos) stored **as bytea in Postgres**, served at immutable content-hashed URLs (§6, §7) |
 | News suggestions | `jobs`-driven Google Programmable Search over a repo-committed news-domain allowlist; suggestions are curator-only until approved, and approval is a normal audit-logged publish (§7) |
@@ -43,7 +43,7 @@ Four Compose services on the single VM:
 | `postgres` | Single database |
 | `jobs` | Cron-driven Node scripts: campaign sends, translation retries, sitemap regeneration, nightly `pg_dump` shipped off-box |
 
-No Redis, no queue, no separate API service. Deploys pull CI-built images from GHCR and restart — nothing builds on the VM (§14).
+No Redis, no queue, no separate API service. Deploys build the image on the VM from a git checkout and restart (§14).
 
 ## 4. Routing & rendering
 
@@ -129,7 +129,7 @@ No layer translates at request time; every render is from stored text.
 
 **Glossary:** one repo file of canonical Kannada renderings for recurring terms — party names, corporation names, "corporator", "ward", "affidavit" — included in the prompt by **both** the dev-time script and the runtime curator-data path, so the same term never renders two ways in different parts of the site. Effectively the site-wide layer of the hints mechanism.
 
-**CI staleness check** (`npm run translate -- --check`): CI fails when any `kn/` file or key is missing, or its stored English-source hash no longer matches — an English-only or out-of-date `/kn/` page cannot merge. The check only compares hashes; it makes no API calls, so CI needs no Anthropic key.
+**Staleness check** (`npm run translate -- --check`): exits non-zero when any `kn/` file or key is missing, or its stored English-source hash no longer matches. The check only compares hashes; it makes no API calls, so it needs no Anthropic key. This was a CI gate that blocked the merge of an English-only or out-of-date `/kn/` page; with CI removed (§14.4) it is a manual pre-deploy step, and nothing now prevents such a page from being committed.
 
 **Runtime path (curator data), per field:**
 
@@ -147,7 +147,7 @@ Never machine-translated: official bilingual data (ward names arrive with Kannad
 - Structured logs to stdout via Compose logging, with `logging` options capping size and rotating files (Docker's default driver never rotates — an unbounded disk consumer otherwise); a healthcheck endpoint.
 - **Monitoring is external and minimal** (decided 2026-07-19). DigitalOcean Uptime checks probe the healthcheck and one public page per language from outside the box, alerting ops by email — including an **SSL-expiry alert** on the production hostname (§14.5). A **disk-utilization alert** via the stock DO metrics agent is the one deliberate exception to "nothing on the VM" (see the disk bullet below). **Sentry (free tier), server-side only** — `app` and `jobs` report errors; there is no client-side Sentry, so no added JS and no CSP change; event content is scrubbed per §13. The OTP-send and geocode budget alarms (§13) are SendGrid emails to the same ops address. Compose logs remain the forensic layer, within the §13 content rules.
 - **Backup success is verified, not assumed.** After each nightly run the backup script checks `restic snapshots` actually gained one, then pings a dead-man's-switch (healthchecks.io, free tier); a missed ping emails ops. Without this, a wedged cron or expired Spaces credential silently converts the accepted 24-hour RPO into unbounded loss.
-- **Disk has an owner.** One ~80 GB disk carries two Postgres instances (media as bytea — bounded: ≤20 MB per affidavit, ≤2 MB per photo, across 369 wards' candidates), the dump staging file (removed after restic ships it), the nginx cache, rotated logs (above), and pulled images — the deploy workflow prunes superseded images. The DO disk alert (above) fires at 80% so exhaustion never takes Postgres down mid-spike.
+- **Disk has an owner.** One ~80 GB disk carries two Postgres instances (media as bytea — bounded: ≤20 MB per affidavit, ≤2 MB per photo, across 369 wards' candidates), the dump staging file (removed after restic ships it), the nginx cache, rotated logs (above), and locally built images — pruning superseded ones is now a manual step, and a careful one: `:previous` is the only rollback path (§14.3), so never prune blindly. The DO disk alert (above) fires at 80% so exhaustion never takes Postgres down mid-spike.
 - **Recovery targets, stated plainly.** RPO 24 hours: losing the Droplet's disk loses up to a day of registrations, issue votes, flags, and audit entries — an accepted limitation (§13). RTO is hours, not minutes: restore the weekly snapshot, or rebuild from the §14.6 runbook plus a restic restore. Nothing shortens the data-loss window but the nightly dump's age.
 - Nightly `pg_dump` shipped off-box with **restic** — chosen over rclone because it encrypts at rest by default; the dump contains DPDP-regulated personal data (contacts, home wards, consent records, identity-linked issue votes). The restic repository is a **DO Spaces bucket in BLR1** — India-resident by choice (§14); the same-region trade is recorded in §13. Repository key held off-box, admin-only. Rehearsed restore (dependency register §6.9).
 
@@ -168,7 +168,7 @@ Never machine-translated: official bilingual data (ward names arrive with Kannad
 - A route test asserting public GETs set no cookies and contain no session-dependent bytes — the guard on the §5 cache invariant.
 - Route tests for the §7 webhook endpoints (invalid signatures rejected; a bounce event lands in `suppressions`) and for media ingest (over-size and off-allowlist uploads rejected).
 - A route test asserting unapproved news-link suggestions never appear in public HTML — the guard on the curator-only rule (§7).
-- The translation staleness check (`npm run translate -- --check`, §9) runs in CI on every PR and on `main` — the guard on bilingual completeness.
+- The translation staleness check (`npm run translate -- --check`, §9) is the guard on bilingual completeness. With no CI to enforce it (§14.4), it runs as a step of the manual pre-deploy check — a missing or stale `kn/` file is a release blocker, not a warning.
 
 ## 13. Security
 
@@ -190,7 +190,7 @@ Decided 2026-07-17 after a security review of this design. The per-mechanism det
   - Sessions have a uniform 1-hour idle timeout instead of per-role lifetimes; no session revocation on role change, no login notifications for privileged accounts — the short timeout carries the weight.
   - Backups share a region with the VM: the restic Spaces bucket sits in BLR1 alongside the Droplet, so a region-wide DigitalOcean failure loses the site and its backups together. India residency for the DPDP-regulated dump won over disaster isolation (decided 2026-07-19); weekly Droplet snapshots are the second layer, and they share the region too.
   - Backups are nightly only: up to 24 hours of registrations, issue votes, flags, and audit entries are lost if the Droplet's disk dies (decided 2026-07-19). WAL archiving would shrink the window to minutes and was rejected as a second backup mechanism to operate and rehearse — even election-week write volume was judged worth less than that operational load. Recovery targets: §10.
-  - CI holds the keys to the box: the `deploy` user's `docker` group membership is root-equivalent on the host, and the staging key fires on every push to `main` with no approval gate — so a compromised Actions workflow or a malicious merge is full compromise of both stacks, production included (§14.2 shares the host). Accepted for a single-VM project; the mitigations are environment-scoped secrets, key-only SSH, enabling the §14.4 production reviewer gate before election week, and a planned forced-command wrapper restricting the deploy key to pull-migrate-restart.
+  - Whoever deploys holds the keys to the box: the `deploy` user's `docker` group membership is root-equivalent on the host, so a compromised deploy key is full compromise of both stacks, production included (§14.2 shares the host). Accepted for a single-VM project; the mitigations are key-only SSH and ordinary key custody. Revised 2026-08-13 — this exposure was previously larger and automated (a CI system held the key and the staging deploy fired on every push to `main` with no approval gate, so a compromised Actions workflow or a malicious merge reached production). Removing CI (§14.4) removed that path; the trade is that nothing now gates a deploy except the person running it.
 
 ## 14. Deployment (DigitalOcean)
 
@@ -208,19 +208,40 @@ Production and staging run as **two Compose projects** side by side:
 - Staging has its **own `app`, `postgres`, and `jobs`** — nothing shared below nginx. Staging containers join only nginx's front network: **no route from any staging container to production Postgres**, so less-tested staging code cannot reach production data laterally. Staging Postgres is disposable: not backed up, safe to reset.
 - **Staging `jobs` cannot message real people.** Its `.env` carries no production Twilio/SendGrid keys, and a `SENDS_DISABLED` flag makes the campaign runner log instead of send. Both guards, deliberately.
 - **Staging is invisible to the public:** its server block sends `X-Robots-Tag: noindex` and requires basic auth.
-- Accepted trade (chosen over a second Droplet): staging shares CPU and disk with production — and the kernel, Docker daemon, and deploy user, which is the blast-radius limitation recorded in §13. Mitigation: images build in CI, never on the Droplet, so the heaviest work never lands on the box.
+- Accepted trade (chosen over a second Droplet): staging shares CPU and disk with production — and the kernel, Docker daemon, and deploy user, which is the blast-radius limitation recorded in §13. Note that image builds now land on the box too (§14.3): a build is the heaviest thing that runs there, and it competes with live production traffic. Deploy off-peak, and never during election week without a reason.
 
 ### 14.3 Images & registry
 
-CI builds the `app` and `jobs` images; the Droplet only ever pulls. Images are **public packages on GHCR** next to the repo — free for public images, pushed with the workflow's built-in `GITHUB_TOKEN`, and anyone can pull the exact image a release ran, which suits an open-source civic project. The Droplet pulls anonymously. Tags: every build gets `:sha-<short-sha>`; `main` builds add `:edge`; release builds add the release tag and `:latest`.
+Revised 2026-08-13: **there is no registry.** The `app` and `jobs` images are built **on the Droplet** from a git checkout, by the same `Dockerfile` used everywhere else, and referenced by a purely local tag (`bengaluru-votes:${IMAGE_TAG:-latest}`). Nothing is pushed or pulled.
+
+This replaces the original design (CI-built public GHCR images, Droplet pulls only). That design assumed an automated pipeline; with deploys run by hand (§14.4) a registry is a step that buys nothing — the box needs a checkout anyway to get the Compose files and `deploy/crontab`.
+
+What the change costs, stated plainly:
+
+- **Builds compete with production traffic** on a 2 vCPU box (§14.2). A full `npm ci && astro build` is minutes of loaded CPU.
+- **No immutable artifact.** Two builds of the same commit are not guaranteed byte-identical, and "the exact image a release ran" is no longer reproducible from a registry. Rollback (§14.4) depends on keeping the previous image *on the box* rather than on tag immutability.
+- **Nothing else can pull the image** — an open-source civic project no longer publishes runnable artifacts. Reintroducing GHCR is a small change to §14.4 if that matters later.
+
+Retagging is what makes rollback work: before each deploy the current image is tagged `:previous`, so the last-known-good is still resolvable after the new build overwrites `:latest`. Docker's image cache is the only store, so `docker image prune` is not safe to run blindly (§10's disk budget).
 
 ### 14.4 Release flow
 
-- **Staging — every merge.** Push to `main` → Actions runs tests, builds and pushes images, then SSHes to the Droplet and, on the staging stack, runs `docker compose pull`, the migration step (§14.7), and `docker compose up -d`.
-- **Production — on release.** Publishing a **GitHub Release** triggers the production workflow: build the images fresh from the release tag's commit, push, SSH in, then pull, migrate (§14.7), and restart the production stack. Release notes live on the Release page (`Generate release notes` compiles merged PRs); `gh release create v2026.07.19 --generate-notes` does the same from a terminal.
-- **Versioning is date-based:** `vYYYY.MM.DD`, with `.2` appended for a second same-day release. Semver encodes API-compatibility promises this site doesn't make; a date tag states the fact operators actually ask for — how old is what's live.
-- **Rollback:** re-run the production deploy workflow (`workflow_dispatch`) with the previous release tag. Images are immutable in GHCR, so rollback is a pull and restart, not a rebuild — and never a schema step, because migrations are backward-compatible (§14.7).
-- **SSH from CI:** a dedicated `deploy` user (key-only, `docker` group). Keys live in GitHub **Environment** secrets — separate `staging` and `production` environments; the `production` environment can require reviewer approval before deploying (off at first, enable if wanted).
+Revised 2026-08-13: deploys are **manual**. There is no `.github/workflows/`; nothing deploys on push, on merge, or on release.
+
+The sequence, run over SSH on the box, per stack:
+
+1. `git fetch && git checkout` the intended ref.
+2. `docker image tag <current> <image>:previous` — the rollback anchor (§14.3).
+3. `docker compose -f deploy/compose.<env>.yml build`.
+4. Migrate: `docker compose -f deploy/compose.<env>.yml run --rm app npm run migrate` (§14.7).
+5. `docker compose -f deploy/compose.<env>.yml up -d`, then re-run `static-init` — it does **not** re-run on its own once it has completed successfully, and skipping it serves stale CSS/JS.
+6. **Verify, including a real POST.** A stack built without the origin build args serves every GET with a healthy 200 and 403s every write; nothing in `ps`, the healthcheck or the logs shows it. `.claude/skills/deploy-vps/` automates exactly this sequence for the interim VPS and is the working reference.
+
+- **Staging first.** With no pipeline enforcing it, "staging exercises every migration before production" (§14.7) is now a discipline rather than a property of the system. Deploy staging, check it, then production.
+- **Versioning is date-based:** `vYYYY.MM.DD`, with `.2` appended for a second same-day release — still worth tagging in git so "how old is what's live" has an answer, even though no tag triggers anything.
+- **Rollback:** `docker image tag <image>:previous <image>:latest` and `up -d` again. Never a schema step, because migrations are backward-compatible (§14.7).
+- **Access:** a dedicated `deploy` user (key-only, `docker` group). The keys are now held by whoever deploys, not by a CI system — which removes the "CI holds the keys to the box" exposure in §13 and replaces it with ordinary human key custody.
+- **The tests are not gone, only unenforced.** `npm test`, `npm run typecheck` and `npm run translate -- --check` (§9) previously blocked a merge. Run them before deploying; nothing else will.
 
 ### 14.5 Network & TLS
 
@@ -243,10 +264,10 @@ No Terraform — one Droplet doesn't justify it. Provisioning is this runbook:
 Decided 2026-07-19.
 
 - **Drizzle Kit generates SQL migration files**, committed and reviewed like any other code.
-- Both deploy workflows (§14.4) run migrations as an explicit step between image pull and restart: `docker compose run --rm app npm run migrate`, using the just-pulled image. Staging therefore exercises every migration before production by construction.
+- The deploy sequence (§14.4) runs migrations as an explicit step between build and restart: `docker compose run --rm app npm run migrate`, using the just-built image. Deploying staging first therefore exercises every migration before production — a discipline now, not a property of the system, since no pipeline enforces the order.
 - **Migrations are forward-only and backward-compatible** — expand, backfill, contract in a later release. The previous app image must run correctly against the new schema, so §14.4 rollback stays a pull-and-restart, never a schema downgrade.
 - A failed migration aborts the deploy before any container restarts; the running version continues against the unchanged schema.
 
 ### 14.8 Running cost
 
-Droplet ~$28 + Spaces ~$5 + snapshots ~$1–2 + GHCR $0 + monitoring & CAPTCHA $0 (DO Uptime, Sentry free tier, reCAPTCHA) ≈ **$34–35/mo** before messaging, geocoding, and Anthropic spend — a concrete input to the open total-budget question (dependency register §6.11).
+Droplet ~$28 + Spaces ~$5 + snapshots ~$1–2 + monitoring & CAPTCHA $0 (DO Uptime, Sentry free tier, reCAPTCHA) ≈ **$34–35/mo** before messaging, geocoding, and Anthropic spend — a concrete input to the open total-budget question (dependency register §6.11).

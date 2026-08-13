@@ -7,13 +7,24 @@
 # staging never joins — that absence is the whole network-isolation
 # guarantee (verified live; see task-61-report.md).
 #
-# IMAGE: the Droplet only pulls public GHCR images (architecture §14.3) —
-# never builds locally. `${IMAGE_TAG:-latest}` lets a release pin an exact
-# tag (`vYYYY.MM.DD`) via `--env-file`/exported var while defaulting to
-# `:latest`. For LOCAL verification, build+tag the Task 59 Dockerfile to
-# match this reference before `docker compose up`:
-#   docker build -t ghcr.io/snarayanank2/bengaluru-votes:local .
-#   IMAGE_TAG=local docker compose -f deploy/compose.production.yml up -d
+# IMAGE: built ON THE BOX from this checkout (architecture §14.3, revised
+# 2026-08-13) — there is no registry and nothing is pulled. `app` carries
+# the build; `jobs` and `static-init` reference the resulting local tag with
+# `pull_policy: never`, because two services declaring a build for the SAME
+# tag makes Compose run both concurrently and the loser dies with "image
+# already exists". Compose finishes the whole build phase before starting
+# any container, so the tag exists by the time they start.
+#
+# `${IMAGE_TAG:-latest}` is retained as the rollback mechanism (§14.4):
+# tag the running image `:previous` before deploying, then roll back with
+#   docker image tag bengaluru-votes:previous bengaluru-votes:latest
+# and `up -d` again.
+#
+# THE ORIGIN BUILD ARGS ARE LOAD-BEARING. astro.config.mjs resolves `site`
+# and `security.allowedDomains` once, at BUILD time. They default to the
+# real production hostname below; a stack built without them serves every
+# GET with a healthy 200 and 403s every POST, invisibly. Any deploy
+# verification must include a real POST.
 #
 # ENV FILES: `./.env.production` (resolved relative to THIS file's
 # directory, i.e. deploy/.env.production) is intentionally gitignored
@@ -122,7 +133,8 @@ services:
   # automatically on `docker compose up -d` once already "completed".
   # ---------------------------------------------------------------------
   static-init:
-    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-latest}
+    image: bengaluru-votes:${IMAGE_TAG:-latest}
+    pull_policy: never
     user: '0:0'
     entrypoint: ['/bin/sh', '-c']
     command:
@@ -140,7 +152,14 @@ services:
   # The Astro SSR app (Task 59 image, default CMD).
   # ---------------------------------------------------------------------
   app:
-    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-latest}
+    # The one service that builds; see this file's header.
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        SITE_ORIGIN: ${SITE_ORIGIN:-https://bengaluruvotes.opencity.in}
+        EXTRA_ALLOWED_ORIGIN: ${EXTRA_ALLOWED_ORIGIN:-}
+    image: bengaluru-votes:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ${PROD_ENV_FILE:-./.env.production}
     networks:
@@ -164,7 +183,8 @@ services:
   # Needs Postgres, not the public network — no `front` membership.
   # ---------------------------------------------------------------------
   jobs:
-    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-latest}
+    image: bengaluru-votes:${IMAGE_TAG:-latest}
+    pull_policy: never
     restart: unless-stopped
     command: ['supercronic', '/app/deploy/crontab']
     env_file: ${PROD_ENV_FILE:-./.env.production}

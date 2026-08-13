@@ -9,7 +9,7 @@ description: Use when deploying, updating, redeploying, or rolling back bengalur
 
 The Hostinger VPS at `srv1408795.hstgr.cloud` is a **temporary preview**, not
 the deployment story in `docs/architecture.md` §14. It builds the image
-locally (CI has never published a GHCR image) and serves it over plain HTTP
+locally (there is no registry — architecture §14.3) and serves it over plain HTTP
 from a cut-down stack that lives outside the repo.
 
 Run `.claude/skills/deploy-vps/deploy.sh` — it does the whole sequence and
@@ -81,7 +81,13 @@ verified.
 ## When the Droplet is live
 
 Delete this skill and `/root/vps-deploy` rather than adapting either one. The
-real deployment is `deploy/compose.production.yml` driven by the GitHub
-Actions workflows in `.github/`, documented in `deploy/runbook.md`. Nothing
-here should migrate into it — this stack exists precisely because it is
-allowed to cut corners the Droplet is not.
+real deployment is `deploy/compose.production.yml`, deployed by hand per
+`deploy/runbook.md` ("Deploying"). Nothing here should migrate into it — this
+stack exists precisely because it is allowed to cut corners the Droplet is
+not.
+
+Note that the Droplet flow now also **builds on the box** (architecture
+§14.3, revised 2026-08-13), so it and this skill are no longer different in
+kind — only in what they're allowed to skip (TLS, the `jobs` container,
+secret rotation, seeding). The one thing that transfers is the verification
+discipline: the POST check below is mandatory on the Droplet too.

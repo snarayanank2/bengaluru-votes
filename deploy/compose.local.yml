@@ -1,11 +1,12 @@
 # Local development stack — `docker compose -f deploy/compose.local.yml up`.
 #
-# NOT a deployment. compose.production.yml / compose.staging.yml pull public
-# GHCR images and front everything with a TLS nginx; this file BUILDS the
-# Dockerfile from the working tree and exposes the Astro server directly on
-# http://localhost:4321. No nginx, no certbot, no jobs container (its cron
-# entries need restic + DO Spaces + healthchecks.io credentials that no
-# laptop has, and the local database is disposable demo data).
+# NOT a deployment. compose.production.yml / compose.staging.yml also build
+# the Dockerfile now (architecture §14.3), but they front it with a TLS
+# nginx, run certbot and the jobs container, and expect real vendor
+# credentials. This file exposes the Astro server directly on
+# http://localhost:4321 with none of that — no nginx, no certbot, no jobs
+# container (its cron entries need restic + DO Spaces + healthchecks.io
+# credentials no laptop has, and the local database is disposable demo data).
 #
 # Secrets here are deliberately fixed, weak and committed: this stack binds
 # to localhost only and holds nothing real. Never reuse these values anywhere
