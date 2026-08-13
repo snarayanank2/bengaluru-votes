@@ -7,7 +7,7 @@
  * Reading a JSON file synchronously here — rather than re-querying the DB
  * from every spec — keeps each spec file's setup to one import, and keeps
  * the seed step (which DOES need a DB connection) a separate, explicit
- * command a human/CI runs before `playwright test` (see this repo's
+ * command a human runs before `playwright test` (see this repo's
  * task-64 report for the exact sequence).
  */
 import { readFileSync } from 'node:fs';

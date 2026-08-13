@@ -136,7 +136,7 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
  * GA gating (Task 58, src/lib/analytics.ts) — kept in its own describe
  * block, toggling `GA_MEASUREMENT_ID` only for these cases, so the main
  * describe block above (and every other suite) keeps running with GA
- * unset — the test/CI default — and stays unperturbed by it.
+ * unset — the test default — and stays unperturbed by it.
  */
 describe('Base layout — Google Analytics gating (Task 58)', () => {
   const ORIGINAL_GA_ID = process.env.GA_MEASUREMENT_ID;
@@ -146,7 +146,7 @@ describe('Base layout — Google Analytics gating (Task 58)', () => {
     else process.env.GA_MEASUREMENT_ID = ORIGINAL_GA_ID;
   });
 
-  it('GA_MEASUREMENT_ID unset (test/CI default): no GA snippet at all, on any page', async () => {
+  it('GA_MEASUREMENT_ID unset (test default): no GA snippet at all, on any page', async () => {
     delete process.env.GA_MEASUREMENT_ID;
     const html = await renderBase('en', '/ward/57');
     expect(html).not.toContain('googletagmanager.com');

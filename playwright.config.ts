@@ -57,7 +57,7 @@ const HOST = '127.0.0.1';
 // spec file that imports tests/e2e/support/db.ts see the SAME DATABASE_URL
 // even if the invoking shell didn't export one — this is the one place
 // that default is allowed to live for the e2e run.
-process.env.DATABASE_URL ??= 'postgres://postgres@localhost:54329/bv_e2e';
+process.env.DATABASE_URL ??= 'postgres://gba:gba_local_dev@localhost:5433/bv_e2e';
 
 const SESSION_SECRET = process.env.E2E_SESSION_SECRET ?? 'e2e-test-only-session-secret-never-use-in-prod';
 

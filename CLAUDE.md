@@ -58,7 +58,24 @@ Builds from the working tree; runs migrations automatically; seeding is manual (
 
 ### Tests need a database
 
-Every DB-backed test reads `DATABASE_URL` and throws without it. **No Compose file in this repo serves the `localhost:54329` / `bv_test` convention the test files' error messages name** (those messages also claim "CI always sets this" — there is no longer any CI; see Fixed decisions). Supply your own Postgres, or point at `deploy/compose.local.yml`'s (exposed on `127.0.0.1:5433`) and create `bv_test` / `bv_e2e` there.
+Every DB-backed test reads `DATABASE_URL` and throws without it — the guard in each file points back here. Tests need a database **separate from the one the local app stack uses**, since they truncate and re-seed freely.
+
+Start the local Postgres and create the two test databases once:
+
+```sh
+docker compose -f deploy/compose.local.yml up -d postgres
+createdb -h localhost -p 5433 -U gba bv_test    # password: gba_local_dev
+createdb -h localhost -p 5433 -U gba bv_e2e     # only needed for Playwright
+```
+
+Then, for any test run:
+
+```sh
+export DATABASE_URL=postgres://gba:gba_local_dev@localhost:5433/bv_test
+npm test
+```
+
+Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`.
 
 `vitest.config.ts` sets `fileParallelism: false` and `singleFork` on purpose: all DB-backed tests share one database, and parallel files race (a temporary DDL rule in `audit.test.ts` breaks other files' `INSERT ... RETURNING`; fixture ids collide). Don't re-enable parallelism.
 

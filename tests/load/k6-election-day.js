@@ -13,7 +13,7 @@
  * This file is the REAL VALIDATION IS DEFERRED artifact: the run itself
  * happens off-box, against staging, before election week (see the "Run
  * procedure" section added to deploy/runbook.md). This file only needs to
- * be correct and realistic; it is not executed as part of CI or the app
+ * be correct and realistic; it is not executed automatically or by the app
  * test suite.
  *
  * ─────────────────────────────────────────────────────────────────────────

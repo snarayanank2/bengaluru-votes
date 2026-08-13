@@ -51,8 +51,8 @@ import { restoreAuditEntry, listAuditEntries, isRestorable } from '../../src/lib
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
-    'DATABASE_URL is not set. CI always sets this; for local runs export ' +
-      'DATABASE_URL=postgres://postgres@localhost:54329/bv_test (see task brief).',
+    'DATABASE_URL is not set. These tests need a Postgres database of their ' +
+      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -274,7 +274,7 @@ describe('audit log forward-write rollback (Task 47)', () => {
         { candidateId, fieldKey, valueEn: 'V3', sourceUrl: null, sourceType: 'curator', authoredLang: 'en' },
       );
 
-      // Scoped to entityId (deterministic across repeated CI runs against
+      // Scoped to entityId (deterministic across repeated runs against
       // the same append-only table — see suite docstring).
       const scoped = await listAuditEntries({ entityType: 'candidate_field', entityId });
       expect(scoped.total).toBe(3);

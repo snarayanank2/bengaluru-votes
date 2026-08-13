@@ -10,8 +10,8 @@ import { seedDev, assertNotProduction } from '../../scripts/seed-dev';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
-    'DATABASE_URL is not set. CI always sets this; for local runs export ' +
-      'DATABASE_URL=postgres://postgres@localhost:54329/bv_test (see task brief).',
+    'DATABASE_URL is not set. These tests need a Postgres database of their ' +
+      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
   );
 }
 

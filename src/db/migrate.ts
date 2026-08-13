@@ -6,8 +6,9 @@ const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
   console.error(
-    'DATABASE_URL is not set. Set it before running migrations, e.g.:\n' +
-    'export DATABASE_URL=postgres://postgres@localhost:54329/bv_test'
+    'DATABASE_URL is not set. Set it before running migrations, e.g. against\n' +
+    'the local stack (deploy/compose.local.yml):\n' +
+    'export DATABASE_URL=postgres://gba:gba_local_dev@localhost:5433/gba'
   );
   process.exit(1);
 }

@@ -22,7 +22,7 @@ const POLL_INTERVAL_MS = 200;
 
 /**
  * Polls `otp_test_codes` for the most recent code sent to `destination`
- * since `sinceMs` (default: 30s ago, generous enough for a slow CI box),
+ * since `sinceMs` (default: 30s ago, generous enough for a slow machine),
  * up to `timeoutMs` (default 10s). Throws if no row appears in time — a
  * calling spec should never silently proceed without a real code.
  */

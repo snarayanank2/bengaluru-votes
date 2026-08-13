@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 // SENTRY_DSN must be unset for this whole file — importing logger.ts with no
 // DSN configured must be a clean no-op (no network, no throw). Cleared
-// up-front in case a shell/CI environment happens to export one.
+// up-front in case the surrounding shell happens to export one.
 delete process.env.SENTRY_DSN;
 
 import { scrubPii, sentryBeforeSend, isSentryInitialized } from '../../src/lib/logger';

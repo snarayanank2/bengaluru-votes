@@ -3,7 +3,7 @@
  * single named enforcement point for the five guarantees that recur across
  * this codebase's individual route suites. Some assertions here re-exercise
  * behavior already covered elsewhere (Task 28/38/53); that duplication is
- * intentional — this file is the one place a reviewer (or CI) can look to
+ * intentional — this file is the one place a reviewer can look to
  * see every §12 guard proven end to end, in one run, against the real DB
  * and the real middleware.
  *
@@ -65,8 +65,8 @@ import { POST as twilioPOST } from '../../src/pages/api/webhooks/twilio';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
-    'DATABASE_URL is not set. CI always sets this; for local runs export ' +
-      'DATABASE_URL=postgres://postgres@localhost:54329/bv_test (see task brief).',
+    'DATABASE_URL is not set. These tests need a Postgres database of their ' +
+      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
   );
 }
 

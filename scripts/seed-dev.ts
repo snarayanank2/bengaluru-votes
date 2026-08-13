@@ -99,8 +99,9 @@ async function main() {
   const DATABASE_URL = process.env.DATABASE_URL;
   if (!DATABASE_URL) {
     console.error(
-      'DATABASE_URL is not set. Set it before running, e.g.:\n' +
-        'export DATABASE_URL=postgres://postgres@localhost:54329/bv_test',
+      'DATABASE_URL is not set. Set it before running, e.g. against the\n' +
+        'local stack (deploy/compose.local.yml):\n' +
+        'export DATABASE_URL=postgres://gba:gba_local_dev@localhost:5433/gba',
     );
     process.exit(1);
   }

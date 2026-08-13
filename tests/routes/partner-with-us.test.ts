@@ -129,7 +129,7 @@ describe('Partner with us (/partner-with-us, /kn/partner-with-us) — IA §3.15,
       expect(html).toMatch(/data-recaptcha-site-key="test-site-key-123"/);
     });
 
-    it('RECAPTCHA_SITE_KEY absent (this repo\'s dev/CI env) -> no reCAPTCHA script tag, form still renders', async () => {
+    it('RECAPTCHA_SITE_KEY absent (this repo\'s dev/test env) -> no reCAPTCHA script tag, form still renders', async () => {
       delete process.env.RECAPTCHA_SITE_KEY;
       const { html } = await renderPage(PartnerWithUs, 'en', '/partner-with-us');
       expect(html).not.toMatch(RECAPTCHA_SCRIPT_RE);
