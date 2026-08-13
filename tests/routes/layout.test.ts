@@ -3,7 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import Base from '../../src/layouts/Base.astro';
 import { localePath, otherLang, type Lang } from '../../src/i18n';
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 /**
  * The container API (run in dev mode) decorates every element with

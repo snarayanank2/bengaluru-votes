@@ -196,7 +196,7 @@ const flagTargets = row
 
 // Person + Breadcrumb JSON-LD (architecture §8/§13, Task 56) — built from
 // data this page already loaded, via the shared src/lib/seo.ts builders.
-// The breadcrumb's "Home" node uses the static, untranslated "Bangalore
+// The breadcrumb's "Home" node uses the static, untranslated "Bengaluru
 // Votes" brand string — same convention AppBar.astro's own logo text/
 // aria-label already uses (never machine-translated), avoiding a new i18n
 // key for a nice-to-have trail.
@@ -204,7 +204,7 @@ const candidateJsonLd = row
   ? [
       personLd({ name: candidateName, party: partyName || null, path: localePath(lang, pagePath) }),
       breadcrumbLd([
-        { name: 'Bangalore Votes', url: localePath(lang, '/') },
+        { name: 'Bengaluru Votes', url: localePath(lang, '/') },
         { name: wardName, url: localePath(lang, `/ward/${row.wardId}`) },
         { name: candidateName, url: localePath(lang, pagePath) },
       ]),

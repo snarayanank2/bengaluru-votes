@@ -41,7 +41,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
@@ -420,7 +420,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       expect(breadcrumb, 'expected a BreadcrumbList JSON-LD block').toBeTruthy();
       const items = breadcrumb.itemListElement;
       expect(items).toHaveLength(3);
-      expect(items[0]).toEqual({ '@type': 'ListItem', position: 1, name: 'Bangalore Votes', item: `${SITE_ORIGIN}/` });
+      expect(items[0]).toEqual({ '@type': 'ListItem', position: 1, name: 'Bengaluru Votes', item: `${SITE_ORIGIN}/` });
       expect(items[1]).toEqual({
         '@type': 'ListItem',
         position: 2,

@@ -136,7 +136,7 @@ const { lang, title, description, path, ogImage, noindex = false, jsonLd: jsonLd
 // production origin when SITE_ORIGIN is unset) — the local fallback here
 // only satisfies strict typing (Astro.site: URL | undefined) and is never
 // reached against the request's Host.
-const siteOrigin = Astro.site ?? new URL('https://bangalore-votes.opencity.in');
+const siteOrigin = Astro.site ?? new URL('https://bengaluruvotes.opencity.in');
 
 const canonicalHref = new URL(localePath(lang, path), siteOrigin).href;
 const enHref = new URL(localePath('en', path), siteOrigin).href;

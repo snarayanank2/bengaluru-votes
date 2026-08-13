@@ -19,7 +19,7 @@ import PartnerWithUs from '../../src/features/pages/PartnerWithUs.astro';
 import Home from '../../src/features/pages/Home.astro';
 import About from '../../src/features/pages/About.astro';
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 const RECAPTCHA_SCRIPT_RE = /<script[^>]*src="https:\/\/www\.google\.com\/recaptcha\/api\.js\?render=[^"]*"[^>]*>/;
 
 const ORIGINAL_SITE_KEY = process.env.RECAPTCHA_SITE_KEY;

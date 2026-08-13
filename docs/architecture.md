@@ -204,7 +204,7 @@ One Premium AMD Droplet, **2 vCPU / 4 GB** (~$28/mo), in **BLR1 (Bengaluru)** â€
 
 Production and staging run as **two Compose projects** side by side:
 
-- **One shared nginx container** (owned by the production stack; staging joins its network) terminates TLS for `bangalore-votes.opencity.in` and `staging.bangalore-votes.opencity.in` and proxies to the per-environment `app` containers.
+- **One shared nginx container** (owned by the production stack; staging joins its network) terminates TLS for `bengaluruvotes.opencity.in` and `staging.bengaluruvotes.opencity.in` and proxies to the per-environment `app` containers.
 - Staging has its **own `app`, `postgres`, and `jobs`** â€” nothing shared below nginx. Staging containers join only nginx's front network: **no route from any staging container to production Postgres**, so less-tested staging code cannot reach production data laterally. Staging Postgres is disposable: not backed up, safe to reset.
 - **Staging `jobs` cannot message real people.** Its `.env` carries no production Twilio/SendGrid keys, and a `SENDS_DISABLED` flag makes the campaign runner log instead of send. Both guards, deliberately.
 - **Staging is invisible to the public:** its server block sends `X-Robots-Tag: noindex` and requires basic auth.

@@ -36,7 +36,7 @@ const WARD = {
   boundaryRef: 'send-to-user-test-ward',
 };
 
-const W1_VARS = { ward: 'Send-To-User Test Ward', language: 'English', notificationsLink: 'https://bangalore-votes.opencity.in/account/notifications' };
+const W1_VARS = { ward: 'Send-To-User Test Ward', language: 'English', notificationsLink: 'https://bengaluruvotes.opencity.in/account/notifications' };
 
 const FIXTURES = {
   full: { email: 'send-to-user-full@example.com', phone: '+919000000101' },

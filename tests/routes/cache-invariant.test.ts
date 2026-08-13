@@ -70,7 +70,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 const SITE_URL = new URL(SITE_ORIGIN);
 
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
@@ -461,11 +461,11 @@ describe('§12 cache-invariant + security guard suite', () => {
       try {
         const params = new URLSearchParams({ From: `whatsapp:${WEBHOOK_STOP_PHONE}`, Body: 'STOP' });
         const res = await twilioPOST({
-          request: new Request('https://bangalore-votes.opencity.in/api/webhooks/twilio', {
+          request: new Request('https://bengaluruvotes.opencity.in/api/webhooks/twilio', {
             method: 'POST',
             headers: {
               'content-type': 'application/x-www-form-urlencoded',
-              host: 'bangalore-votes.opencity.in',
+              host: 'bengaluruvotes.opencity.in',
               'x-forwarded-proto': 'https',
             },
             body: params.toString(),
@@ -488,7 +488,7 @@ describe('§12 cache-invariant + security guard suite', () => {
       const originalToken = process.env.TWILIO_AUTH_TOKEN;
       process.env.TWILIO_AUTH_TOKEN = 'cache-invariant-test-token';
       try {
-        const url = 'https://bangalore-votes.opencity.in/api/webhooks/twilio';
+        const url = 'https://bengaluruvotes.opencity.in/api/webhooks/twilio';
         const params = new URLSearchParams({ From: `whatsapp:${WEBHOOK_STOP_PHONE}`, Body: 'STOP' });
         const wrongSignature = computeTwilioSignature('a-completely-different-token', url, params);
 
@@ -497,7 +497,7 @@ describe('§12 cache-invariant + security guard suite', () => {
             method: 'POST',
             headers: {
               'content-type': 'application/x-www-form-urlencoded',
-              host: 'bangalore-votes.opencity.in',
+              host: 'bengaluruvotes.opencity.in',
               'x-forwarded-proto': 'https',
               'x-twilio-signature': wrongSignature,
             },

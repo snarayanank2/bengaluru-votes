@@ -19,7 +19,7 @@ if (!process.env.DATABASE_URL) {
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 const SITE_URL = new URL(SITE_ORIGIN);
 
 // High, task-specific ward ids (this file owns 99001/99002 — see task-25/26

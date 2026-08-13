@@ -1,6 +1,6 @@
 ---
 name: deploy-vps
-description: Use when deploying, updating, redeploying, or rolling back bangalore-votes on the interim Hostinger VPS (srv1408795.hstgr.cloud) — the temporary no-TLS preview standing in until the DigitalOcean Droplet exists. Also use when that box serves stale content, 403s form submissions, or shows outdated CSS/JS after a push.
+description: Use when deploying, updating, redeploying, or rolling back bengaluru-votes on the interim Hostinger VPS (srv1408795.hstgr.cloud) — the temporary no-TLS preview standing in until the DigitalOcean Droplet exists. Also use when that box serves stale content, 403s form submissions, or shows outdated CSS/JS after a push.
 ---
 
 # Deploying to the interim VPS

@@ -12,7 +12,7 @@
 # tag (`vYYYY.MM.DD`) via `--env-file`/exported var while defaulting to
 # `:latest`. For LOCAL verification, build+tag the Task 59 Dockerfile to
 # match this reference before `docker compose up`:
-#   docker build -t ghcr.io/snarayanank2/bangalore-votes:local .
+#   docker build -t ghcr.io/snarayanank2/bengaluru-votes:local .
 #   IMAGE_TAG=local docker compose -f deploy/compose.production.yml up -d
 #
 # ENV FILES: `./.env.production` (resolved relative to THIS file's
@@ -97,8 +97,8 @@ services:
       test:
         - CMD-SHELL
         - >-
-          curl -sk -f --resolve bangalore-votes.opencity.in:443:127.0.0.1
-          https://bangalore-votes.opencity.in/healthz || exit 1
+          curl -sk -f --resolve bengaluruvotes.opencity.in:443:127.0.0.1
+          https://bengaluruvotes.opencity.in/healthz || exit 1
       interval: 15s
       timeout: 5s
       retries: 5
@@ -122,7 +122,7 @@ services:
   # automatically on `docker compose up -d` once already "completed".
   # ---------------------------------------------------------------------
   static-init:
-    image: ghcr.io/snarayanank2/bangalore-votes:${IMAGE_TAG:-latest}
+    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-latest}
     user: '0:0'
     entrypoint: ['/bin/sh', '-c']
     command:
@@ -140,7 +140,7 @@ services:
   # The Astro SSR app (Task 59 image, default CMD).
   # ---------------------------------------------------------------------
   app:
-    image: ghcr.io/snarayanank2/bangalore-votes:${IMAGE_TAG:-latest}
+    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ${PROD_ENV_FILE:-./.env.production}
     networks:
@@ -164,7 +164,7 @@ services:
   # Needs Postgres, not the public network — no `front` membership.
   # ---------------------------------------------------------------------
   jobs:
-    image: ghcr.io/snarayanank2/bangalore-votes:${IMAGE_TAG:-latest}
+    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-latest}
     restart: unless-stopped
     command: ['supercronic', '/app/deploy/crontab']
     env_file: ${PROD_ENV_FILE:-./.env.production}

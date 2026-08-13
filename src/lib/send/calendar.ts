@@ -70,7 +70,7 @@ import { getSettings } from '../settings';
 import type { Channel, SendCode } from './render';
 import { sendToUser, type SendToUserUser } from './send';
 
-const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
 function absoluteUrl(lang: Lang, path: string): string {
   return SITE_ORIGIN + localePath(lang, path);

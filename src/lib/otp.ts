@@ -93,10 +93,10 @@ export const OTP_DESTINATION_DAILY_CAP = 10;
 /** Global daily send budget across every destination (architecture.md §13 "cost amplification"). */
 export const OTP_DAILY_SEND_BUDGET = Number(process.env.OTP_DAILY_SEND_BUDGET ?? 5000);
 
-const OTP_EMAIL_SUBJECT = 'Your Bangalore Votes verification code';
+const OTP_EMAIL_SUBJECT = 'Your Bengaluru Votes verification code';
 
 function otpEmailHtml(code: string): string {
-  return `<p>Your Bangalore Votes verification code is <strong>${code}</strong>. It expires in 10 minutes.</p>`;
+  return `<p>Your Bengaluru Votes verification code is <strong>${code}</strong>. It expires in 10 minutes.</p>`;
 }
 
 /** The approved WhatsApp OTP template SID (Twilio Content API) — unset until WhatsApp onboarding completes (PRD §10). */

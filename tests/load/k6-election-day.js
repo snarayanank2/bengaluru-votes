@@ -96,7 +96,7 @@ import { Counter, Rate } from 'k6/metrics';
 // Keep these here, not buried in scenario logic, so they're easy to tune
 // from the Droplet after seeing the first real run's numbers.
 
-const BASE_URL = (__ENV.BASE_URL || 'https://staging.bangalore-votes.opencity.in').replace(/\/$/, '');
+const BASE_URL = (__ENV.BASE_URL || 'https://staging.bengaluruvotes.opencity.in').replace(/\/$/, '');
 
 // Peak sustained arrival rate (requests/sec) for the cached-page scenario.
 // See the big comment above for the justification. Override with

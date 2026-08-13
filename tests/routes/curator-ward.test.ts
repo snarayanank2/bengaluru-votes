@@ -37,7 +37,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 const SITE_URL = new URL(SITE_ORIGIN);
 
 const client = postgres(process.env.DATABASE_URL, { max: 1 });

@@ -16,7 +16,7 @@ import {
  * shape/absolute-URL/omission behavior.
  */
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 describe('absoluteUrl', () => {
   it('resolves a root-relative path against SITE_ORIGIN', () => {
@@ -57,7 +57,7 @@ describe('orgLd', () => {
     const org = orgLd();
     expect(org['@context']).toBe('https://schema.org');
     expect(org['@type']).toBe('Organization');
-    expect(org.name).toBe('Bangalore Votes');
+    expect(org.name).toBe('Bengaluru Votes');
     expect(org.url).toBe(SITE_ORIGIN);
     expect((org.parentOrganization as any).name).toBe('Oorvani Foundation');
     expect((org.publisher as any).name).toBe('Oorvani Foundation');
@@ -146,7 +146,7 @@ describe('faqLd', () => {
 describe('breadcrumbLd', () => {
   it('builds a BreadcrumbList with positions 1..n and absolute item URLs', () => {
     const trail = breadcrumbLd([
-      { name: 'Bangalore Votes', url: '/' },
+      { name: 'Bengaluru Votes', url: '/' },
       { name: 'Test Ward', url: '/ward/57' },
       { name: 'Jane Doe', url: '/candidate/jane-doe' },
     ]);
@@ -154,7 +154,7 @@ describe('breadcrumbLd', () => {
     expect(trail['@type']).toBe('BreadcrumbList');
     const items = trail.itemListElement as any[];
     expect(items).toHaveLength(3);
-    expect(items[0]).toEqual({ '@type': 'ListItem', position: 1, name: 'Bangalore Votes', item: `${SITE_ORIGIN}/` });
+    expect(items[0]).toEqual({ '@type': 'ListItem', position: 1, name: 'Bengaluru Votes', item: `${SITE_ORIGIN}/` });
     expect(items[1]).toEqual({ '@type': 'ListItem', position: 2, name: 'Test Ward', item: `${SITE_ORIGIN}/ward/57` });
     expect(items[2]).toEqual({
       '@type': 'ListItem',

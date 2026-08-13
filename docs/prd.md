@@ -1,6 +1,6 @@
 # GBA Elections Citizen Platform — Product Requirements (PRD)
 
-**Status:** Draft (for review) · **Scope:** Pre-election MVP · **Owner:** Product · **Domain:** `bangalore-votes.opencity.in` · **Date:** July 2026
+**Status:** Draft (for review) · **Scope:** Pre-election MVP · **Owner:** Product · **Domain:** `bengaluruvotes.opencity.in` · **Date:** July 2026
 
 > The authoritative product requirements for the pre-election MVP. When a requirement is ambiguous, this document wins. Page-level detail lives in the Information Architecture document; the stakeholder summary is `docs/overview.md`.
 
@@ -432,7 +432,7 @@ Before N, the candidate routes show the pre-nomination empty state already speci
 | Curator scope size | **Uncapped — an owned risk.** How many wards a curator is assigned is an admin judgement; nothing technical prevents a broad or city-wide scope. With publish-immediately trust and OTP-only login, scope is a curator's unreviewed blast radius; vetting, the audit log, and rollback are the nets. Uncapped scope lets coverage follow curator supply — the binding constraint across 369 wards. |
 | Curator scoping unit | **Per-ward.** A curator's scope is a set of wards; "assign a zone" is an admin UI shortcut that expands to that zone's wards (§10). |
 | Curator sourcing | Recruiting/vetting curators is an offline process, out of scope here — tracked as a dependency. |
-| URLs | Every page has a distinct URL under `bangalore-votes.opencity.in`. |
+| URLs | Every page has a distinct URL under `bengaluruvotes.opencity.in`. |
 | Language URLs | English at the root, Kannada under `/kn/`, `hreflang`-linked; the app-bar toggle navigates between them (§8). |
 | Production stack | Astro SSR monolith (TypeScript) + Postgres + nginx micro-cache, on the single-VM Docker Compose host; a CDN can be added in front later unchanged. Full design: `docs/architecture.md`. |
 | Launch phasing | Ward + logistics pages ship first; candidate pages open at the EC notification (§13.1). |

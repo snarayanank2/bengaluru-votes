@@ -116,7 +116,7 @@ export function buildFieldTranslationPrompt(params: {
   contextNote: string;
 }): string {
   const { sourceText, fromLang, toLang, contextNote } = params;
-  return `You are translating one field of curator-authored content on a neutral, non-partisan civic election information platform (Bangalore Votes / GBA ward elections), from ${LANG_NAME[fromLang]} to ${LANG_NAME[toLang]}.
+  return `You are translating one field of curator-authored content on a neutral, non-partisan civic election information platform (Bengaluru Votes / GBA ward elections), from ${LANG_NAME[fromLang]} to ${LANG_NAME[toLang]}.
 
 Context: ${contextNote}
 

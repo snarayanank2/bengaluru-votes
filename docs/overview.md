@@ -1,6 +1,6 @@
 # GBA Elections Citizen Platform — Stakeholder Overview
 
-**Status:** Draft v2 (for review) · **Scope:** Pre-election MVP · **Owner:** Product · **Domain:** `bangalore-votes.opencity.in` · **Date:** July 2026
+**Status:** Draft v2 (for review) · **Scope:** Pre-election MVP · **Owner:** Product · **Domain:** `bengaluruvotes.opencity.in` · **Date:** July 2026
 
 > A high-level overview of the platform, its user roles, and what each role can do — for stakeholder alignment before detailed design and engineering. Full detail lives in the **PRD** and **Information Architecture** documents.
 
@@ -98,7 +98,7 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 - **Bilingual by default** — the whole platform works in **English and Kannada**; each language has its own shareable URL (Kannada under `/kn/`), with a toggle available to everyone and a saved preference for registered users.
 - **One simple login** — citizens, curators, and admins all sign in the same way, via **email / WhatsApp OTP** (no passwords, no 2FA).
 - **No redirects** — registration and flagging are popups, so users stay on the page they were reading.
-- **Distinct URLs** — every page has its own shareable link under `bangalore-votes.opencity.in`.
+- **Distinct URLs** — every page has its own shareable link under `bengaluruvotes.opencity.in`.
 
 ---
 

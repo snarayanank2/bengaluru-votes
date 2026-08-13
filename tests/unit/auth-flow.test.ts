@@ -330,7 +330,7 @@ describe('src/lib/auth-flow.ts resolveOrRegister', () => {
     expect(sentVars).toEqual({
       ward: WARD.nameEn,
       language: 'English',
-      notificationsLink: 'https://bangalore-votes.opencity.in/account/notifications',
+      notificationsLink: 'https://bengaluruvotes.opencity.in/account/notifications',
     });
     expect(sentOpts).toEqual({ wardId: WARD.id });
   });
@@ -345,7 +345,7 @@ describe('src/lib/auth-flow.ts resolveOrRegister', () => {
     expect(sentVars).toEqual({
       ward: WARD.nameKn,
       language: 'Kannada',
-      notificationsLink: 'https://bangalore-votes.opencity.in/kn/account/notifications',
+      notificationsLink: 'https://bengaluruvotes.opencity.in/kn/account/notifications',
     });
   });
 

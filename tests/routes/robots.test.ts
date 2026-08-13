@@ -22,7 +22,7 @@ describe('robots.txt (Task 57; architecture §7/§8)', () => {
     expect(body).toContain('Disallow: /partner/');
     expect(body).toContain('Disallow: /api/');
     expect(body).toContain('Disallow: /login');
-    expect(body).toContain('Sitemap: https://bangalore-votes.opencity.in/sitemap.xml');
+    expect(body).toContain('Sitemap: https://bengaluruvotes.opencity.in/sitemap.xml');
   });
 
   it('does not set cache-control: no-store (public, cacheable response)', async () => {

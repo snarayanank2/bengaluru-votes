@@ -29,7 +29,7 @@ export async function canEditWard(userId: number, role: Role, wardId: number): P
 }
 
 /** Same default used by src/middleware.ts's `passesOriginCheck` fallback. */
-const DEFAULT_SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const DEFAULT_SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 /**
  * Validates a post-login (or any other) return-target as a same-origin

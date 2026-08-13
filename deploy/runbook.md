@@ -32,7 +32,7 @@ commands, not prose — copy-paste, adjusting the bracketed placeholders.
 
 ```sh
 # Create the Droplet — Premium AMD, 2 vCPU / 4 GB, BLR1, Ubuntu 24.04 LTS.
-doctl compute droplet create bangalore-votes \
+doctl compute droplet create bengaluru-votes \
   --region blr1 \
   --size c2-2vcpu-4gb \
   --image ubuntu-24-04-x64 \
@@ -48,7 +48,7 @@ doctl compute reserved-ip-action assign <reserved-ip> <droplet-id>
 # Cloud Firewall: inbound 22, 80, 443 ONLY. No other inbound port, ever —
 # Postgres/nginx-cache/metrics never need to be reachable from the internet.
 doctl compute firewall create \
-  --name bangalore-votes-fw \
+  --name bengaluru-votes-fw \
   --inbound-rules "protocol:tcp,ports:22,address:0.0.0.0/0,address:::/0 protocol:tcp,ports:80,address:0.0.0.0/0,address:::/0 protocol:tcp,ports:443,address:0.0.0.0/0,address:::/0" \
   --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0,address:::/0 protocol:udp,ports:all,address:0.0.0.0/0,address:::/0" \
   --droplet-ids <droplet-id>
@@ -80,16 +80,16 @@ Point both hostnames at the Reserved IP (dependency register §6.8 — under
 Oorvani's `opencity.in` zone):
 
 ```
-bangalore-votes.opencity.in.          A     <reserved-ip>
-staging.bangalore-votes.opencity.in.  A     <reserved-ip>
+bengaluruvotes.opencity.in.          A     <reserved-ip>
+staging.bengaluruvotes.opencity.in.  A     <reserved-ip>
 ```
 
 Verify propagation before continuing (certbot's HTTP-01 challenge in step 5
 will fail otherwise):
 
 ```sh
-dig +short bangalore-votes.opencity.in
-dig +short staging.bangalore-votes.opencity.in
+dig +short bengaluruvotes.opencity.in
+dig +short staging.bengaluruvotes.opencity.in
 ```
 
 ---
@@ -120,37 +120,37 @@ sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
 ## 4. Clone the repo and write the `.env` files
 
 **Exact path** — the deploy workflows (Task 62: `deploy-staging.yml`,
-`deploy-production.yml`) hardcode `/opt/bangalore-votes`:
+`deploy-production.yml`) hardcode `/opt/bengaluru-votes`:
 
 ```sh
-sudo mkdir -p /opt/bangalore-votes
-sudo chown deploy:deploy /opt/bangalore-votes
-sudo -u deploy git clone git@github.com:snarayanank2/bangalore-votes.git /opt/bangalore-votes
+sudo mkdir -p /opt/bengaluru-votes
+sudo chown deploy:deploy /opt/bengaluru-votes
+sudo -u deploy git clone git@github.com:snarayanank2/bengaluru-votes.git /opt/bengaluru-votes
 ```
 
 Write the two env files **outside the repo tree** (architecture §13:
 "one `.env` outside the repo, mode 600, referenced by Compose") — e.g.
-`/etc/bangalore-votes/.env.production` and
-`/etc/bangalore-votes/.env.staging` — then point the Compose files at them
+`/etc/bengaluru-votes/.env.production` and
+`/etc/bengaluru-votes/.env.staging` — then point the Compose files at them
 via `PROD_ENV_FILE` / `STAGING_ENV_FILE` (see `deploy/compose.production.yml`
 / `compose.staging.yml`, which default to `./.env.production` /
 `./.env.staging` for local verification but accept this override):
 
 ```sh
-sudo mkdir -p /etc/bangalore-votes
-sudo touch /etc/bangalore-votes/.env.production /etc/bangalore-votes/.env.staging
-sudo chown deploy:deploy /etc/bangalore-votes/.env.*
-sudo chmod 600 /etc/bangalore-votes/.env.*
+sudo mkdir -p /etc/bengaluru-votes
+sudo touch /etc/bengaluru-votes/.env.production /etc/bengaluru-votes/.env.staging
+sudo chown deploy:deploy /etc/bengaluru-votes/.env.*
+sudo chmod 600 /etc/bengaluru-votes/.env.*
 ```
 
-Then edit each file (as `deploy`, `sudo -u deploy -e /etc/bangalore-votes/.env.production` or your editor of choice) using the **Required environment
+Then edit each file (as `deploy`, `sudo -u deploy -e /etc/bengaluru-votes/.env.production` or your editor of choice) using the **Required environment
 variables** tables below. Export the indirection so Compose picks the files
 up by default for that user's sessions (add to `/home/deploy/.bashrc` or a
 systemd unit's `Environment=`):
 
 ```sh
-export PROD_ENV_FILE=/etc/bangalore-votes/.env.production
-export STAGING_ENV_FILE=/etc/bangalore-votes/.env.staging
+export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
+export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
 ```
 
 ---
@@ -163,7 +163,7 @@ self-signed pair first, issue real certs against the running stack, then
 reload:
 
 ```sh
-cd /opt/bangalore-votes
+cd /opt/bengaluru-votes
 
 # --- 5a. Throwaway self-signed cert so nginx can start at all -----------
 # Uses the `certbot` service's own image (already declares the `certs`
@@ -172,7 +172,7 @@ cd /opt/bangalore-votes
 # that for us.
 docker compose -f deploy/compose.production.yml run --rm --entrypoint sh certbot -c '
   set -e
-  for host in bangalore-votes.opencity.in staging.bangalore-votes.opencity.in; do
+  for host in bengaluruvotes.opencity.in staging.bengaluruvotes.opencity.in; do
     mkdir -p /etc/letsencrypt/live/$host
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
       -keyout /etc/letsencrypt/live/$host/privkey.pem \
@@ -188,7 +188,7 @@ docker compose -f deploy/compose.production.yml run --rm --entrypoint sh certbot
 #     a not-yet-existing host path into an empty DIRECTORY instead, which
 #     then fails nginx's `auth_basic_user_file` load. -------------------
 docker run --rm httpd:2-alpine htpasswd -Bbn <tester-username> '<tester-password>' \
-  | sudo tee /opt/bangalore-votes/deploy/nginx/staging.htpasswd
+  | sudo tee /opt/bengaluru-votes/deploy/nginx/staging.htpasswd
 
 # --- 5c. Bring up production (owns the shared nginx + front network) ----
 docker compose -f deploy/compose.production.yml up -d
@@ -196,10 +196,10 @@ docker compose -f deploy/compose.production.yml up -d
 # --- 5d. Real certs via certbot's webroot plugin, one run per hostname --
 docker compose -f deploy/compose.production.yml run --rm certbot \
   certbot certonly --webroot -w /var/www/certbot \
-  -d bangalore-votes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
+  -d bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
 docker compose -f deploy/compose.production.yml run --rm certbot \
   certbot certonly --webroot -w /var/www/certbot \
-  -d staging.bangalore-votes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
+  -d staging.bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
 
 # nginx's own daily reload loop (deploy/compose.production.yml) picks up
 # the new certs within 24h; force it immediately instead of waiting:
@@ -212,8 +212,8 @@ docker compose -f deploy/compose.staging.yml up -d
 Verify both hostnames serve real certs:
 
 ```sh
-curl -sI https://bangalore-votes.opencity.in/healthz
-curl -sI -u <tester-username>:<tester-password> https://staging.bangalore-votes.opencity.in/healthz
+curl -sI https://bengaluruvotes.opencity.in/healthz
+curl -sI -u <tester-username>:<tester-password> https://staging.bengaluruvotes.opencity.in/healthz
 ```
 
 ---
@@ -225,7 +225,7 @@ curl -sI -u <tester-username>:<tester-password> https://staging.bangalore-votes.
 # resident by choice, architecture §13/§14). Run as the `deploy` user with
 # the production .env sourced (it carries RESTIC_REPOSITORY/RESTIC_PASSWORD/
 # AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY — see the env table below).
-set -a; source /etc/bangalore-votes/.env.production; set +a
+set -a; source /etc/bengaluru-votes/.env.production; set +a
 restic init
 
 # Rehearse a restore NOW, before you need one for real (dependency register
@@ -276,7 +276,7 @@ here in the same PR.
 | `NODE_ENV` | yes | `production` — flips `SESSION_SECRET`'s fail-closed check (throws instead of a dev fallback), among other prod-only behavior. |
 | `DATABASE_URL` | yes | `postgres://<user>:<pass>@postgres:5432/<db>` — must match the `POSTGRES_*` values below. |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | yes | Read by the `postgres:16` image itself to initialize, and by its healthcheck (`pg_isready -U ... -d ...`). Keep in sync with `DATABASE_URL`. |
-| `SITE_ORIGIN` | yes | `https://bangalore-votes.opencity.in` — same-origin check in `src/middleware.ts` for unsafe methods, and CSP/absolute-URL building. |
+| `SITE_ORIGIN` | yes | `https://bengaluruvotes.opencity.in` — same-origin check in `src/middleware.ts` for unsafe methods, and CSP/absolute-URL building. |
 | `SESSION_SECRET` | yes | 32+ random bytes (e.g. `openssl rand -hex 32`). HMACs session cookies and peppers OTP code hashes (`src/lib/session.ts`, `src/lib/otp.ts`). App refuses to start without it when `NODE_ENV=production`. |
 | `SENDGRID_API_KEY` | yes (real sends) | Email OTP + campaign sends (`src/lib/send/sendgrid.ts`). |
 | `SENDGRID_FROM_EMAIL` | yes (real sends) | Verified sender address for SendGrid. |
@@ -313,7 +313,7 @@ whole point of the staging guard** (architecture §14.2):
 | `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_WEBHOOK_PUBLIC_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_OTP_TEMPLATE_SID` | **omit entirely** | Guard #2, independent of guard #1 — even if `SENDS_DISABLED` were ever accidentally unset, there is no real vendor key present to send with. Email OTP on staging will fail closed (`send_failed`); that's expected — staging testers use WhatsApp-disabled/email-disabled paths or a curator-seeded session instead. |
 
 Everything else (`DATABASE_URL` pointing at `postgres-staging`,
-`SITE_ORIGIN=https://staging.bangalore-votes.opencity.in`,
+`SITE_ORIGIN=https://staging.bengaluruvotes.opencity.in`,
 `SESSION_SECRET` — **a different value than production's**,
 `RETENTION_ENABLED=false`, `GOOGLE_*`/`ANTHROPIC_API_KEY`/`RECAPTCHA_*` if
 you want staging to exercise those integrations against sandbox/test
@@ -329,7 +329,7 @@ using per-**environment** GitHub secrets (Settings -> Environments):
 
 | Environment | Secret | Value |
 |---|---|---|
-| `staging` | `DEPLOY_HOST` | the Reserved IP (or `bangalore-votes.opencity.in`) |
+| `staging` | `DEPLOY_HOST` | the Reserved IP (or `bengaluruvotes.opencity.in`) |
 | `staging` | `DEPLOY_USER` | `deploy` |
 | `staging` | `DEPLOY_SSH_KEY` | the **private** half of the deploy keypair installed in step 3 |
 | `production` | `DEPLOY_HOST` | same host |
@@ -454,7 +454,7 @@ staging server block for the run and remove it again after):
 
 ```sh
 k6 run \
-  -e BASE_URL=https://staging.bangalore-votes.opencity.in \
+  -e BASE_URL=https://staging.bengaluruvotes.opencity.in \
   -e STAGING_USER=<tester-username> \
   -e STAGING_PASS=<tester-password> \
   -e CANDIDATE_SLUGS=<comma-separated-real-slugs-if-any-are-seeded> \

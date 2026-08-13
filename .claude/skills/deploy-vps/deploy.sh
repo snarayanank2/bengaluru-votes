@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Deploy bangalore-votes to the interim Hostinger VPS.
+# Deploy bengaluru-votes to the interim Hostinger VPS.
 # See SKILL.md in this directory for context and failure modes.
 #
 #   ./deploy.sh              deploy origin/main
@@ -11,10 +11,10 @@ set -euo pipefail
 
 SSH_ALIAS=${VPS_SSH_ALIAS:-vps}
 ORIGIN=${VPS_ORIGIN:-http://srv1408795.hstgr.cloud}
-REPO=/root/src/bangalore-votes
+REPO=/root/src/bengaluru-votes
 STACK=/root/vps-deploy
-IMAGE=bangalore-votes:vps
-PREV=bangalore-votes:previous
+IMAGE=bengaluru-votes:vps
+PREV=bengaluru-votes:previous
 
 say()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 fail() { printf '\n\033[31mFAILED: %s\033[0m\n' "$*" >&2; exit 1; }

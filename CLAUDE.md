@@ -8,7 +8,7 @@ This is currently a **documentation / specification repository** — there is no
 
 ## What is being built
 
-**GBA Elections Citizen Platform** (`bangalore-votes.opencity.in`) — a pre-election MVP giving Bengaluru citizens trustworthy, ward-level information for the upcoming GBA (corporator) ward elections. Citizens find their new post-delimitation ward, read neutral sourced candidate report cards, compare candidates, vote on the top-3 local issues, and access voting logistics (registration check, voter-ID, how-to-vote, booth locator). Fully bilingual (English / Kannada).
+**GBA Elections Citizen Platform** (`bengaluruvotes.opencity.in`) — a pre-election MVP giving Bengaluru citizens trustworthy, ward-level information for the upcoming GBA (corporator) ward elections. Citizens find their new post-delimitation ward, read neutral sourced candidate report cards, compare candidates, vote on the top-3 local issues, and access voting logistics (registration check, voter-ID, how-to-vote, booth locator). Fully bilingual (English / Kannada).
 
 **Explicitly out of scope this release:** promise/accountability tracking, ward budgets, civic-issue officer directory, remote voting, candidate outreach tooling.
 

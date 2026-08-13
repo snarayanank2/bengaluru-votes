@@ -103,7 +103,7 @@ function redirectToLogin(currentPathAndQuery: string): Response {
 
 /**
  * Same-origin check for an unsafe-method request. `siteOrigin` is this
- * deployment's own origin string (e.g. `https://bangalore-votes.opencity.in`).
+ * deployment's own origin string (e.g. `https://bengaluruvotes.opencity.in`).
  */
 function passesOriginCheck(request: Request, siteOrigin: string): boolean {
   const secFetchSite = request.headers.get('sec-fetch-site');
@@ -179,7 +179,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // --- unsafe-method Origin/Sec-Fetch-Site check --------------------------
   if (UNSAFE_METHODS.has(method) && !isWebhook) {
-    const siteOrigin = (site ?? new URL(process.env.SITE_ORIGIN ?? 'https://bangalore-votes.opencity.in')).origin;
+    const siteOrigin = (site ?? new URL(process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in')).origin;
     if (!passesOriginCheck(request, siteOrigin)) {
       return respond(forbidden());
     }

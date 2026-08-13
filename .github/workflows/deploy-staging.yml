@@ -8,7 +8,7 @@
 # failed/cancelled test run must never deploy).
 #
 # DEPLOY DIR: the Droplet already has this repo (and deploy/compose.*.yml)
-# checked out at /opt/bangalore-votes — set up once by the Task 63
+# checked out at /opt/bengaluru-votes — set up once by the Task 63
 # provisioning runbook (architecture §14.6 step 4: "clone the repo"). This
 # workflow only ever `pull`s images; it never builds on the Droplet.
 #
@@ -68,7 +68,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -euo pipefail
-            cd /opt/bangalore-votes
+            cd /opt/bengaluru-votes
             docker compose -f deploy/compose.staging.yml pull
             docker compose -f deploy/compose.staging.yml run --rm app-staging npm run migrate
             docker compose -f deploy/compose.staging.yml up -d

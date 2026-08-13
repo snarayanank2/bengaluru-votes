@@ -10,7 +10,7 @@ import {
   isValidSrcSlug,
 } from '../../src/lib/attribution';
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 const NONCE = 'test-nonce-abc123==';
 
 /**
