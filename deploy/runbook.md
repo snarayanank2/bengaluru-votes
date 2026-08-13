@@ -317,15 +317,24 @@ rm -rf /root/vps-deploy
 rm -rf /root/src/bengaluru-votes     # the old single checkout — superseded
                                       # by the two per-environment trees
                                       # (step 4 above)
-docker image rm bengaluru-votes:vps bengaluru-votes:previous
+docker image rm bengaluru-votes:vps
 ```
 
-**Leave the new stacks' images alone.** Do not touch `bengaluru-votes:latest`
-or `bengaluru-votes-staging:latest` — production and staging are running
-those right now — and do not run `docker image prune` here or casually at
-any later point: `:previous` is the only rollback anchor either new stack
-has (there is no registry — architecture §14.3), so pruning "unused" images
-is exactly how a rollback stops being possible.
+**Deliberately not `bengaluru-votes:previous`.** That tag is the interim
+stack's own leftover *only* if nothing has deployed production since
+provisioning — the first `deploy/deploy.sh production` run retags whatever
+image is currently `:latest` (by then the new stack's own build) as
+`:previous`, and from that point on the tag means the new stack's rollback
+anchor, not the interim stack's. Telling the two apart reliably costs more
+than it saves — one small leftover image is nothing on a 193 GB disk, so
+leave it. **Never `docker image prune` here either, or casually at any
+later point** — `:previous` is the only rollback anchor either new stack
+has (there is no registry — architecture §14.3), and pruning "unused"
+images is exactly how a rollback stops being possible.
+
+**Leave the new stacks' running images alone too.** Do not touch
+`bengaluru-votes:latest` or `bengaluru-votes-staging:latest` — production
+and staging are running those right now.
 
 ---
 
