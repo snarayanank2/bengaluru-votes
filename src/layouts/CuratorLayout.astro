@@ -41,6 +41,11 @@ const { lang, title, description } = Astro.props;
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="robots" content="noindex" />
+    {/* Same self-hosted Open City icon set as Base.astro. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/img/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/img/favicon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
   </head>
   <body>
     <SkipLink lang={lang} />

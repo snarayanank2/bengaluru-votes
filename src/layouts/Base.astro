@@ -183,6 +183,14 @@ const showGa = !noindex && !!gaMeasurementId;
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
 
+    {/* Open City's icon, self-hosted under public/ — CSP img-src is 'self'
+        (src/lib/csp.ts), so these must not be hot-linked from opencity.in.
+        /favicon.ico covers browsers that probe the root path directly. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/img/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/img/favicon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+
     <link rel="canonical" href={canonicalHref} />
     <link rel="alternate" hreflang="en" href={enHref} />
     <link rel="alternate" hreflang="kn" href={knHref} />
