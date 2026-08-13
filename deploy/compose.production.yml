@@ -45,6 +45,16 @@
 # report for the exact commands); the daily reload loop picks up whatever
 # is on that volume either way, real or stubbed.
 
+# Compose project name, pinned rather than inferred. Without this, Compose
+# derives the project from the directory holding this file — `deploy/` —
+# which is identical in the staging checkout (architecture §14.3's
+# per-environment trees), so both stacks would share one project namespace
+# and each `up -d` would treat the other's containers as orphans. It also
+# fixes the volume prefix: `bengaluru-votes-production_pg_data_prod`.
+# NEVER change this value on a live box — a new project name means a new,
+# empty pg_data volume, which reads as "the database vanished".
+name: bengaluru-votes-production
+
 services:
   # ---------------------------------------------------------------------
   # Shared TLS terminator. Owns `front`; serves static assets straight off
