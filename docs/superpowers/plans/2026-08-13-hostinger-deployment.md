@@ -1514,11 +1514,13 @@ Only after every check above passes:
 cd /root/vps-deploy
 docker compose down -v          # removes its containers AND volumes (demo data)
 cd / && rm -rf /root/vps-deploy /root/src/bengaluru-votes
-docker image rm bengaluru-votes:vps bengaluru-votes:previous 2>/dev/null || true
+docker image rm bengaluru-votes:vps 2>/dev/null || true
 docker image ls
 ```
 
-Note `/root/src/bengaluru-votes` (the old single checkout) goes too — it is superseded by the two per-environment trees. Leave the new `bengaluru-votes:latest` and `bengaluru-votes-staging:latest` images alone.
+Note `/root/src/bengaluru-votes` (the old single checkout) goes too — it is superseded by the two per-environment trees.
+
+**Do NOT remove `bengaluru-votes:previous` here**, even though it began life as the interim stack's rollback anchor. Step 2 above ran `deploy/deploy.sh production`, which retags `bengaluru-votes:latest` → `:previous` *before* building — so by the time you reach this step that tag no longer refers to the interim image at all. It is the rollback anchor for the production stack you just brought live, and there is no registry to recover it from. Leave `bengaluru-votes:latest`, `bengaluru-votes:previous`, and `bengaluru-votes-staging:latest` alone; `bengaluru-votes:vps` is the only interim image safe to delete.
 
 - [ ] **Step 7: Add the `AAAA` records, then confirm**
 
