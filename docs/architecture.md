@@ -280,7 +280,7 @@ No Terraform — one box doesn't justify it. Provisioning is `deploy/runbook.md`
 8. Verify both hostnames **including a real POST** (§14.4), then retire the interim preview stack.
 9. Initialize the restic repository and rehearse a restore — **blocked**: no backup target has been chosen (§10, dependency register §6.9).
 
-Step 6's admin seed is the root of the authorization chain: a one-time CLI (`docker compose run --rm app npm run seed:admin -- <address>`) inserts the named admin identity, since OTP-only auth means role is nothing but a DB field. Every later role grant is an admin action in `/admin`, audit-logged; role is never inferred from the authenticating address.
+Step 7's admin seed is the root of the authorization chain: a one-time CLI (`docker compose run --rm app npm run seed:admin -- <address>`) inserts the named admin identity, since OTP-only auth means role is nothing but a DB field. Every later role grant is an admin action in `/admin`, audit-logged; role is never inferred from the authenticating address.
 
 ### 14.7 Database migrations
 

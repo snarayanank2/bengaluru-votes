@@ -129,15 +129,7 @@ SITE_ORIGIN. Every form on the site is broken. Rebuild with this script."
 
 restart_and_verify() {
   say "Restarting the $ENV_NAME stack"
-  # `|| true` on this and the other `tail`/`grep | tail` pipelines below:
-  # under `set -o pipefail`, a `grep -v` that happens to filter every line
-  # of output exits 1, which would abort the script right here with a bare
-  # exit 1 and no `FAILED:` banner — even though the remote command itself
-  # succeeded. What actually matters is the remote command's own success,
-  # and that's already surfaced by the checks that follow (verify(), the
-  # next step's own preflight, etc.), so don't let the display pipeline's
-  # exit status decide the script's fate.
-  remote "$COMPOSE up -d" 2>&1 | tail -5 || true
+  remote "$COMPOSE up -d" 2>&1 | tail -5
 
   # ALWAYS, unconditionally: `up -d` does NOT re-run a one-shot service that
   # has already completed successfully, so without this the new image's
@@ -203,12 +195,21 @@ else
 fi
 
 say "Building $IMAGE"
-remote "$COMPOSE build" 2>&1 | tail -5 || true
+remote "$COMPOSE build" 2>&1 | tail -5
 
 # Forward-only and idempotent, so this is safe when there is nothing new. A
 # failure here aborts the deploy BEFORE any container restarts — the running
 # version continues against the unchanged schema.
 say "Running migrations"
-remote "$COMPOSE run --rm $APP_SERVICE npm run migrate" 2>&1 | grep -v '^npm notice' | tail -5 || true
+# `|| true` ONLY on the `grep -v`, not on the whole pipeline: under
+# `set -o pipefail`, a `grep -v` that happens to filter every line of output
+# (e.g. no npm notices this run) exits 1 on its own, which would abort the
+# script right here with a bare exit 1 and no `FAILED:` banner — even though
+# the remote migration itself succeeded. `tail -5` can never fail this way
+# (it exits 0 on empty input), so it carries no guard, and the remote
+# command's own exit status still decides the pipeline's fate. Don't add
+# `|| true` to the other pipelines in this file "for consistency" — they
+# would then swallow real command failures instead of a display artifact.
+remote "$COMPOSE run --rm $APP_SERVICE npm run migrate" 2>&1 | { grep -v '^npm notice' || true; } | tail -5
 
 restart_and_verify
