@@ -37,13 +37,14 @@ verified. This holds for both environments.
 | Forms 403, pages fine | Image built with the wrong `SITE_ORIGIN` | Redeploy via `deploy.sh` — it passes the right one per environment |
 | New CSS/JS 404s, or old styling persists | `static-init` did not re-run — `up -d` skips a one-shot that already succeeded | `deploy.sh` always re-runs it; by hand it is `docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm static-init` |
 | App container restart-loops | Usually a migration that has not run | `docker compose -p <project> -f <file> run --rm <app-service> npm run migrate` |
-| Staging verification 401s | `STAGING_USER`/`STAGING_PASS` unset or wrong (nginx basic auth) | Export both; credentials are in the box's htpasswd, generated per `deploy/runbook.md` |
+| Staging verification 401s | `auth_basic` is back on the staging server block — it was removed 2026-08-13 and nothing should be sending a challenge | Check `deploy/nginx/conf.d/site.conf`; staging takes no credentials |
+| Staging deploy fails on `X-Robots-Tag` | The header was dropped from the staging server block — likely a new `location` with its own `add_header` (nginx's `add_header` is all-or-nothing per location) | Restore it in `deploy/nginx/conf.d/site.conf`. It is the only thing keeping staging's fictional candidates out of search results |
 | `git pull`/checkout refuses | The checkout has local modifications | Reconcile by hand — never `--force` blindly, someone edited that box for a reason |
 | Staging stack will not come up | Production stack is down, so `gba_front` does not exist | Bring production up first; staging joins that network as external |
 | Real Bengaluru pincodes say "out of coverage" | `data/pincode-wards.json` is still a 12-row placeholder | Not a deploy bug — run `npm run build-pincode` and commit the result |
 
 ## Not automated, deliberately
 
-- **Provisioning.** First certs, env files, the htpasswd, seeding: `deploy/runbook.md`.
+- **Provisioning.** First certs, env files, seeding: `deploy/runbook.md`.
 - **Release tagging.** Deciding a commit is production-worthy is a human step (`git tag -a vYYYY.MM.DD`), done after staging verifies.
 - **Secret rotation.** `/etc/bengaluru-votes/.env.*` holds the only copy of each environment's `SESSION_SECRET` and Postgres password.

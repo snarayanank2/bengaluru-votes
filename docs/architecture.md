@@ -211,7 +211,11 @@ Production and staging run as **two Compose projects** side by side:
 - **One shared nginx container** (owned by the production stack; staging joins its network) terminates TLS for `bengaluruvotes.opencity.in` and `staging-bengaluruvotes.opencity.in` and proxies to the per-environment `app` containers.
 - Staging has its **own `app`, `postgres`, and `jobs`** — nothing shared below nginx. Staging containers join only nginx's front network: **no route from any staging container to production Postgres**, so less-tested staging code cannot reach production data laterally. Staging Postgres is disposable: not backed up, safe to reset.
 - **Staging `jobs` cannot message real people.** Its `.env` carries no production Twilio/SendGrid keys, and a `SENDS_DISABLED` flag makes the campaign runner log instead of send. Both guards, deliberately.
-- **Staging is invisible to the public:** its server block sends `X-Robots-Tag: noindex` and requires basic auth.
+- **Staging is open to anyone with the URL** (changed 2026-08-13). Its server block sends `X-Robots-Tag: noindex` and nothing else — the `auth_basic` htpasswd that used to sit alongside it was removed on request, so what was a two-mechanism guard is now one, and that one binds only crawlers that choose to honour it. `deploy/deploy.sh` asserts the header on every staging deploy, because losing it is silent.
+
+  **What is therefore public, stated plainly:** staging is seeded with `seed:dev` — 6 fictional candidates carrying "Demo Party A" / "(FICTIONAL)" labels, attached to the real 369 ward names — and it tracks `main`, so work merged but not yet released to production is visible there too. The on-page labels are what make the fixture data safe, and a cropped screenshot does not carry them; the platform's own distribution channel is WhatsApp forwards (`docs/gtm-plan.md`). Accepted knowingly as the cost of frictionless tester access. What staging still does **not** expose is unchanged and load-bearing: no real citizen data (369 wards is public data, 0 real candidates), no ability to message anyone (`SENDS_DISABLED=true` plus vendor keys omitted entirely), and no route to production Postgres.
+
+  If this becomes a problem, the cheap mitigations in rough order of cost are: a permanent staging banner in the AppBar so no screenshot is ambiguous; dropping `seed:dev` from staging; an IP allowlist; or restoring `auth_basic` (needs the directive in `deploy/nginx/conf.d/site.conf`, the htpasswd bind mount in `deploy/compose.production.yml`, and step 5b of `deploy/runbook.md` — all three, or nginx fails its config load).
 - Accepted trade (chosen over a second box): staging shares CPU and disk with production — and the kernel, Docker daemon, and deploying account (root, §14.4), which is the blast-radius limitation recorded in §13. Note that image builds now land on the box too (§14.3): a build is the heaviest thing that runs there, and it competes with live production traffic. Deploy off-peak, and never during election week without a reason. The 4 vCPU / 16 GB box (§14.1) makes this contention less acute than the 2 vCPU Droplet would have — not harmless.
 
 ### 14.3 Images & registry
@@ -274,7 +278,7 @@ No Terraform — one box doesn't justify it. Provisioning is `deploy/runbook.md`
 2. Harden the host: `ufw` allowing 22/80/443, SSH key-only, no password auth.
 3. Install Docker Engine + Compose plugin.
 4. Clone the repo twice (§14.3's per-environment trees); write the two `.env` files (mode 600, outside both checkouts — §13).
-5. Generate the staging basic-auth htpasswd; bootstrap self-signed certs so nginx can start; bring production up; issue real certs; bring staging up.
+5. Bootstrap self-signed certs so nginx can start; bring production up; issue real certs; bring staging up. (No staging htpasswd step any more — basic auth was removed 2026-08-13, §14.2.)
 6. **Run migrations on both databases** (`docker compose run --rm app npm run migrate`, and the staging equivalent) — neither compose file migrates on `up -d`, so skipping this leaves both databases schema-less and step 7's ward seed fails outright. This is first-provisioning-only; §14.7 covers migrations as an ongoing deploy step.
 7. Seed wards on both, the first admin on production, demo content on staging.
 8. Verify both hostnames **including a real POST** (§14.4), then retire the interim preview stack.

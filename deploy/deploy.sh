@@ -13,8 +13,11 @@
 #
 # Env overrides:
 #   VPS_SSH_ALIAS   ssh host/alias to deploy to        (default: vps)
-#   STAGING_USER    staging basic-auth username        (needed to verify staging)
-#   STAGING_PASS    staging basic-auth password
+#
+# Staging needs no credentials: its basic auth was removed on 2026-08-13
+# (architecture §14.2). It is reachable by anyone with the URL, and the only
+# thing keeping it out of search results is `X-Robots-Tag: noindex`, which
+# verify() below asserts on every staging deploy.
 #
 # THE ONE THING THAT BREAKS SILENTLY: astro.config.mjs resolves `site` and
 # `security.allowedDomains` at BUILD time. An image built without the right
@@ -79,40 +82,44 @@ COMPOSE="export $ENV_VAR; cd $TREE && docker compose -p $PROJECT -f $COMPOSE_FIL
 # --- Verification ----------------------------------------------------------
 
 verify() {
-  # curl_auth is populated only for staging. Under `set -u`, expanding an
-  # EMPTY array as "${curl_auth[@]}" is a fatal "unbound variable" error on
-  # bash 3.2 (macOS's /bin/bash, which is what runs this script) — so every
-  # expansion below uses the ${arr[@]+"${arr[@]}"} idiom instead. Do not
-  # "simplify" this back to "${curl_auth[@]}".
-  local code asset curl_auth=()
-
-  if [ "$ENV_NAME" = staging ]; then
-    [ -n "${STAGING_USER:-}" ] && [ -n "${STAGING_PASS:-}" ] \
-      || fail "staging verification needs STAGING_USER and STAGING_PASS (nginx basic auth)"
-    curl_auth=(-u "$STAGING_USER:$STAGING_PASS")
-  fi
+  local code asset robots
 
   say "Verifying $ORIGIN"
 
   for path in /healthz / /kn/; do
-    code=$(curl -fsS ${curl_auth[@]+"${curl_auth[@]}"} -o /dev/null -w '%{http_code}' "$ORIGIN$path" || true)
-    [ "$code" = 401 ] && fail "GET $path returned 401 — wrong STAGING_USER/STAGING_PASS"
+    code=$(curl -fsS -o /dev/null -w '%{http_code}' "$ORIGIN$path" || true)
     [ "$code" = 200 ] || fail "GET $path returned $code"
     printf '  GET %-10s 200\n' "$path"
   done
 
+  # Staging has been open to anyone since 2026-08-13 (architecture §14.2), so
+  # this header is the ONLY thing keeping it out of search results — and it is
+  # one `add_header` in conf.d/site.conf away from being dropped by accident,
+  # silently, with staging looking perfectly healthy. Assert it on every
+  # staging deploy. NB: nginx's `add_header` is all-or-nothing per location, so
+  # a future location block that adds any header of its own loses this one.
+  if [ "$ENV_NAME" = staging ]; then
+    robots=$(curl -fsSI "$ORIGIN/" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-robots-tag"{print tolower($2)}')
+    case "$robots" in
+      *noindex*) echo "  X-Robots-Tag: $robots" ;;
+      *) fail "staging did not send 'X-Robots-Tag: noindex' (got '${robots:-<absent>}').
+Staging has no basic auth any more — that header is the only thing keeping
+fictional candidate data out of search results. Fix conf.d/site.conf." ;;
+    esac
+  fi
+
   # Catches a stale static_assets volume: the HTML references a hashed asset
   # filename that exists only if static-init copied THIS image's build output.
-  asset=$(curl -fsS ${curl_auth[@]+"${curl_auth[@]}"} "$ORIGIN/" | grep -o '/_astro/[^"]*\.js' | head -1 || true)
+  asset=$(curl -fsS "$ORIGIN/" | grep -o '/_astro/[^"]*\.js' | head -1 || true)
   [ -n "$asset" ] || fail "no /_astro/ asset referenced in the homepage HTML"
-  code=$(curl -fsS ${curl_auth[@]+"${curl_auth[@]}"} -o /dev/null -w '%{http_code}' "$ORIGIN$asset" || true)
+  code=$(curl -fsS -o /dev/null -w '%{http_code}' "$ORIGIN$asset" || true)
   [ "$code" = 200 ] || fail "asset $asset returned $code — static-init did not re-run"
   echo "  $asset  200"
 
   # The load-bearing check. Status only, never the body: an out-of-coverage
   # pincode is still a valid 200, so this keeps working once
   # data/pincode-wards.json holds real pincodes.
-  code=$(curl -fsS ${curl_auth[@]+"${curl_auth[@]}"} -o /dev/null -w '%{http_code}' \
+  code=$(curl -fsS -o /dev/null -w '%{http_code}' \
     -X POST "$ORIGIN/api/ward-lookup" \
     -H 'content-type: application/json' \
     -H "Origin: $ORIGIN" \

@@ -131,9 +131,10 @@ const CANDIDATE_SLUGS = (__ENV.CANDIDATE_SLUGS || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
-// Optional staging basic-auth (deploy/nginx/conf.d/site.conf's `auth_basic`
-// on the staging server block). Leave unset when running against a target
-// that doesn't require it.
+// Optional basic-auth. Vestigial as of 2026-08-13: staging's `auth_basic` was
+// removed (architecture §14.2), so neither target needs credentials and both
+// of these stay unset in practice. Kept because it costs nothing and is what
+// you would reach for if staging is ever put back behind a password.
 const STAGING_USER = __ENV.STAGING_USER || '';
 const STAGING_PASS = __ENV.STAGING_PASS || '';
 const AUTH_HEADERS = STAGING_USER

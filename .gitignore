@@ -11,8 +11,10 @@ dist/
 .env.*
 !.env.example
 
-# Staging basic-auth credential file (architecture §14.2/§14.6, Task 63) —
-# generated on the box by deploy/runbook.md step 5, never committed.
+# Staging basic-auth credential file. Staging no longer has basic auth
+# (removed 2026-08-13, architecture §14.2) so nothing generates this any
+# more — the rule stays so a leftover or regenerated file can never be
+# committed by accident.
 deploy/nginx/staging.htpasswd
 
 # Logs

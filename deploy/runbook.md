@@ -232,23 +232,32 @@ $COMPOSE run --rm --entrypoint sh certbot -c '
   done
 '
 
-# --- 5b. Staging basic-auth htpasswd -----------------------------------
-# MUST exist as a real FILE before the first `up`: compose.production.yml
-# bind-mounts ./nginx/staging.htpasswd read-only, and Docker turns a
-# bind-mount of a non-existent host path into an empty DIRECTORY, which then
-# fails nginx's auth_basic_user_file load. Gitignored, never committed.
+# --- 5b. (removed) Staging basic-auth htpasswd -------------------------
+# Nothing to do here any more. Staging basic auth was removed on 2026-08-13
+# (architecture §14.2): staging is reachable by anyone with the URL, and
+# `X-Robots-Tag: noindex` is the only thing keeping it out of search results.
+# deploy/deploy.sh asserts that header on every staging deploy.
 #
-# It must also be WORLD-READABLE (644). nginx's master process starts as root
-# but its WORKERS drop to the unprivileged `nginx` user (nginx.conf's `user`
-# directive), and the worker is what opens this file per request. Mode 600
-# gives every staging request a 500, with `open() ".../staging.htpasswd"
-# failed (13: Permission denied)` in the nginx error log and nothing wrong
-# anywhere else — app-staging stays healthy, so it reads as an app fault.
-# Hit for real during the 2026-08-13 cutover. 644 is correct and not a leak:
-# the file holds a bcrypt hash, not a password, and is mounted read-only.
-docker run --rm httpd:2-alpine htpasswd -Bbn <tester-username> '<tester-password>' \
-  > /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
-chmod 644 /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
+# If you ever restore it, all three of these move together or nginx will not
+# start: the `auth_basic` + `auth_basic_user_file` directives in
+# deploy/nginx/conf.d/site.conf, the htpasswd bind mount in
+# deploy/compose.production.yml, and generating the file here. Two traps that
+# cost real time in the 2026-08-13 cutover and would cost it again:
+#
+#   - It must exist as a real FILE before the first `up`. Docker turns a
+#     bind-mount of a non-existent host path into an empty DIRECTORY, which
+#     then fails nginx's `auth_basic_user_file` load.
+#   - It must be WORLD-READABLE (644). nginx's master starts as root but its
+#     WORKERS drop to the unprivileged `nginx` user (nginx.conf's `user`
+#     directive), and the worker is what opens the file per request. Mode 600
+#     gives every staging request a 500 with `open() ".../staging.htpasswd"
+#     failed (13: Permission denied)` in the nginx error log and nothing
+#     wrong anywhere else — app-staging stays healthy, so it reads as an app
+#     fault. 644 is not a leak: the file holds a bcrypt hash, mounted ro.
+#
+#   docker run --rm httpd:2-alpine htpasswd -Bbn <user> '<pass>' \
+#     > /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
+#   chmod 644 /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
 
 # --- Port contention with the interim stack, MUST run before 5c --------
 # The old /root/vps-deploy stack also binds 80. `up -d` below fails to bind
@@ -549,11 +558,12 @@ Staging is whatever is on `main`. Push, then:
 
 ```sh
 git push origin main
-STAGING_USER=<tester-username> STAGING_PASS=<tester-password> \
-  deploy/deploy.sh staging
+deploy/deploy.sh staging
 ```
 
-Then **look at it in a browser**. That is the point of staging.
+Then **look at it in a browser**. That is the point of staging. No credentials
+— staging basic auth was removed 2026-08-13 (architecture §14.2); the URL is
+all anyone needs, testers and strangers alike.
 
 ### Production
 
@@ -568,6 +578,46 @@ deploy/deploy.sh production v2026.08.14
 **Deploy staging first, always.** No pipeline enforces the order any more,
 and staging-before-production is the only thing that exercises a migration
 before it touches real citizen data (architecture §14.7).
+
+### The one exception: changes under `deploy/nginx/`
+
+**nginx config changes take effect on a PRODUCTION deploy, including the ones
+that only affect staging.** The single nginx container is owned by the
+production stack and bind-mounts its config from the *production* checkout
+(`compose.production.yml`), so a staging deploy updates the staging checkout
+and changes nothing about how any request is routed or authorized. Deploying
+staging first here does nothing at all; worse, a staging deploy can fail its
+own verification because the nginx behaviour it asserts has not shipped yet.
+
+For an nginx-only change the order inverts: **production first, then
+staging.** And because both hostnames are behind that one container, a config
+error takes production down with it — validate before you deploy, from the
+box, against the real certs and network:
+
+```sh
+# on the box, after the production checkout is on the new ref
+docker compose -p bengaluru-votes-production -f deploy/compose.production.yml \
+  exec nginx nginx -t
+```
+
+The mount is live, so the running container already sees the checkout's
+current files — and `nginx -t` only tests them, it does not load them. To
+check *before* touching the production checkout at all, run the same test in a
+throwaway container with the candidate config mounted over `conf.d`:
+
+```sh
+docker run --rm --network gba_front \
+  -v /tmp/nginxcheck/conf.d:/etc/nginx/conf.d:ro \
+  -v /root/src/bengaluru-votes-production/deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
+  -v /root/src/bengaluru-votes-production/deploy/nginx/snippets:/etc/nginx/snippets:ro \
+  -v bengaluru-votes-production_certs:/etc/letsencrypt:ro \
+  nginx:stable nginx -t
+```
+
+`--network gba_front` is required, not optional: the production `location /`
+uses a bare `proxy_pass http://app:4321`, which nginx resolves at config-load
+time, so off-network the test fails with "host not found in upstream" and
+tells you nothing about your actual change.
 
 ### What the script does, and why each step is there
 
@@ -716,15 +766,12 @@ echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.i
 sudo apt-get update && sudo apt-get install k6
 ```
 
-**Run it** (staging basic-auth — see step 5b above — is passed via
-`STAGING_USER`/`STAGING_PASS`, or temporarily lift `auth_basic` on the
-staging server block for the run and remove it again after):
+**Run it** (no credentials — staging basic auth was removed 2026-08-13, step
+5b above):
 
 ```sh
 k6 run \
   -e BASE_URL=https://staging-bengaluruvotes.opencity.in \
-  -e STAGING_USER=<tester-username> \
-  -e STAGING_PASS=<tester-password> \
   -e CANDIDATE_SLUGS=<comma-separated-real-slugs-if-any-are-seeded> \
   tests/load/k6-election-day.js
 ```
@@ -816,6 +863,22 @@ a staging container cannot reach production Postgres (proven with
 `pg_isready` against both hosts, so the check is falsifiable in both
 directions); `scripts/backup.sh` fails loudly on its missing
 `RESTIC_REPOSITORY`.
+
+### Changes since cutover
+
+The block above is the record of what was true on 2026-08-13 at cutover; it
+is deliberately not rewritten. What has changed since:
+
+- **2026-08-13, later the same day — staging basic auth removed** (architecture
+  §14.2). The "staging 401s anonymously" line above no longer holds: staging
+  now 200s for anyone with the URL. `X-Robots-Tag: noindex` is unchanged and
+  is now the only guard; `deploy/deploy.sh` asserts it on every staging
+  deploy. The htpasswd generation step (5b) and the bind mount in
+  `compose.production.yml` are both gone. Note what this makes public — the
+  6 fictional `seed:dev` candidates on real ward names, and everything merged
+  to `main` but not yet released.
+- **2026-08-13 — production advanced to `v2026.08.13.2`** (Open City logo in
+  the header lockup), from `v2026.08.13`.
 
 ### Outstanding, both recorded as unresolved dependencies
 
