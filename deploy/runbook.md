@@ -14,140 +14,189 @@ commands, not prose — copy-paste, adjusting the bracketed placeholders.
 
 ## 0. Prerequisites
 
-- A DigitalOcean account with billing set up, API/CLI access (`doctl`) or
-  console access.
+- SSH access to the Hostinger VPS as `root` (key-only). `76.13.244.198`;
+  the box is `srv1408795.hstgr.cloud` until DNS is cut over.
 - Ownership/delegation of the `opencity.in` DNS zone (Oorvani's domain) —
-  you need to create two `A`/`AAAA` records under it.
-- A DigitalOcean Spaces bucket (BLR1) already created for restic, plus an
-  access key pair for it (Spaces -> "Manage Keys").
-- The vendor accounts this app talks to, each with an API key ready:
-  SendGrid, Twilio, Google Cloud (Geocoding + Programmable Search),
-  Anthropic, reCAPTCHA v3, Google Analytics, Sentry, healthchecks.io.
-- An SSH key pair you're willing to dedicate to the `deploy` user (a
-  **separate** key from your personal login key).
+  you need to create two `A` records under it.
+- **A GitHub credential ON THE BOX, before step 4 below.** §4's
+  `git clone git@github.com:…` runs from a fresh hardened root shell that
+  has never talked to GitHub — with nothing set up it fails on `Permission
+  denied (publickey)`, or hangs/aborts on GitHub's unaccepted host key.
+  Before step 4:
+
+  ```sh
+  ssh-keygen -t ed25519 -C "bengaluru-votes-vps" -f ~/.ssh/id_ed25519 -N ''
+  cat ~/.ssh/id_ed25519.pub   # register this as a GitHub deploy key
+  ssh-keyscan github.com >> ~/.ssh/known_hosts
+  ```
+
+  Register the public key as a **read-only deploy key** on the
+  `snarayanank2/bengaluru-votes` repo (repo Settings → Deploy keys → Add
+  deploy key — do not add write access, nothing here pushes). This same key
+  is what `deploy/deploy.sh`'s `git fetch` needs on every future deploy, so
+  it must persist on the box, not just exist long enough for step 4's
+  `clone`.
+- **Off-box backup storage: UNRESOLVED** (dependency register §6.9;
+  `docs/architecture.md` §10). There is no restic target, so step 6 below
+  cannot be completed and the platform runs with no off-box backup. This is
+  a launch blocker, not a nice-to-have.
+- The vendor accounts this app talks to — SendGrid, Twilio, Google Cloud
+  (Geocoding + Programmable Search), Anthropic, reCAPTCHA v3, Google
+  Analytics, Sentry, healthchecks.io. **None are available as of
+  2026-08-13.** Each absence degrades to a documented no-op rather than an
+  error (see the env table below for what each one costs), so provisioning
+  proceeds without them.
 
 ---
 
-## 1. Create the Droplet, firewall, and Reserved IP
+## 1. Harden the host
+
+The prior design used a DigitalOcean Cloud Firewall; on this box the
+committed anchor is `ufw` (`docs/architecture.md` §14.5). Inbound 22, 80,
+443 only — Postgres and the app port are never reachable from the internet.
 
 ```sh
-# Create the Droplet — Premium AMD, 2 vCPU / 4 GB, BLR1, Ubuntu 24.04 LTS.
-doctl compute droplet create bengaluru-votes \
-  --region blr1 \
-  --size c2-2vcpu-4gb \
-  --image ubuntu-24-04-x64 \
-  --ssh-keys "<your-personal-ssh-key-fingerprint>" \
-  --enable-monitoring \
-  --wait
-
-# Reserve a floating IP and assign it to the new Droplet — this is what DNS
-# points at, so the Droplet can be rebuilt later without touching DNS.
-doctl compute reserved-ip create --region blr1
-doctl compute reserved-ip-action assign <reserved-ip> <droplet-id>
-
-# Cloud Firewall: inbound 22, 80, 443 ONLY. No other inbound port, ever —
-# Postgres/nginx-cache/metrics never need to be reachable from the internet.
-doctl compute firewall create \
-  --name bengaluru-votes-fw \
-  --inbound-rules "protocol:tcp,ports:22,address:0.0.0.0/0,address:::/0 protocol:tcp,ports:80,address:0.0.0.0/0,address:::/0 protocol:tcp,ports:443,address:0.0.0.0/0,address:::/0" \
-  --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0,address:::/0 protocol:udp,ports:all,address:0.0.0.0/0,address:::/0" \
-  --droplet-ids <droplet-id>
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+ufw status verbose
 ```
 
-On the Droplet itself, before anything else, disable root login and
-password auth (SSH key-only — architecture §14.5):
+`ufw` and Docker's published ports interact badly in general — Docker writes
+its own iptables rules that bypass ufw's INPUT chain. That is acceptable
+here precisely because the only published ports are 80 and 443, which ufw
+allows anyway. Do not publish any other port expecting ufw to hide it.
+
+SSH: key-only, no passwords, no root password login.
 
 ```sh
-ssh root@<reserved-ip>
-
-# /etc/ssh/sshd_config
-sudo sed -i \
-  -e 's/^#\?PermitRootLogin .*/PermitRootLogin no/' \
+sed -i \
+  -e 's/^#\?PermitRootLogin .*/PermitRootLogin prohibit-password/' \
   -e 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' \
   /etc/ssh/sshd_config
-sudo systemctl restart ssh
 ```
 
-(Do this from a **non-root** admin account you've already created and
-key-authenticated, or you will lock yourself out — create that account
-first if `root` was your only access so far.)
+**Check the drop-in directory too — the `sed` above alone is likely not
+enough.** Ubuntu cloud images ship
+`/etc/ssh/sshd_config.d/50-cloud-init.conf` containing
+`PasswordAuthentication yes`, and the `Include` directive that pulls in
+`sshd_config.d/*.conf` sits near the top of `sshd_config`, where sshd's
+first-obtained-value-wins parsing means that drop-in overrides the setting
+you just changed in the main file. Check it and fix it there too:
+
+```sh
+grep -ri passwordauthentication /etc/ssh/sshd_config.d/*.conf 2>/dev/null
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' \
+  /etc/ssh/sshd_config.d/50-cloud-init.conf 2>/dev/null || true
+systemctl restart ssh
+```
+
+Verify what sshd will actually enforce — not just what you edited — with
+its own effective-config dump, since that's the only thing immune to both
+files disagreeing:
+
+```sh
+sshd -T | grep -E '^(permitrootlogin|passwordauthentication)'
+# expect: permitrootlogin prohibit-password
+#         passwordauthentication no
+```
+
+Still confirm you can open a **second** session before closing the first —
+`sshd -T` proves the setting took effect, not that your key-based access
+survives it; that guards against lockout, which the config check alone does
+not.
 
 ---
 
 ## 2. DNS
 
-Point both hostnames at the Reserved IP (dependency register §6.8 — under
-Oorvani's `opencity.in` zone):
+Point both hostnames at the VPS (dependency register §6.8 — under Oorvani's
+`opencity.in` zone):
 
 ```
-bengaluruvotes.opencity.in.          A     <reserved-ip>
-staging.bengaluruvotes.opencity.in.  A     <reserved-ip>
+bengaluruvotes.opencity.in.          300  IN  A  76.13.244.198
+staging-bengaluruvotes.opencity.in.  300  IN  A  76.13.244.198
 ```
 
-Verify propagation before continuing (certbot's HTTP-01 challenge in step 5
-will fail otherwise):
+**`A` only, deliberately.** The box has a global IPv6 address
+(`2a02:4780:12:4759::1`) but its public reachability is unverified, and
+Let's Encrypt *prefers* `AAAA` when one exists and fails issuance outright
+if it cannot reach it — publishing an unverified `AAAA` is the easiest way
+to make certbot fail in a way that reads as a DNS problem. Add `AAAA` after
+step 5 below succeeds and IPv6 is confirmed working from outside.
+
+TTL 300 during cutover; raise to 3600 once stable. Verify propagation before
+step 5 below (certbot's HTTP-01 challenge fails otherwise):
 
 ```sh
 dig +short bengaluruvotes.opencity.in
-dig +short staging.bengaluruvotes.opencity.in
+dig +short staging-bengaluruvotes.opencity.in
 ```
 
 ---
 
-## 3. Docker Engine, Compose, and the `deploy` user
+## 3. Docker Engine and Compose
 
 ```sh
-# Docker Engine + Compose plugin (official convenience script).
-curl -fsSL https://get.docker.com | sudo sh
-
-# Dedicated deploy user — key-only, docker group (architecture §14.4).
-# NOTE (§13): docker group membership is root-equivalent on this host — the
-# accepted "whoever deploys holds the keys to the box" risk starts here.
-sudo adduser --disabled-password --gecos "" deploy
-sudo usermod -aG docker deploy
-
-# Install the deploy public key (generate a DEDICATED keypair for this, not
-# your personal one). Its private half is what you SSH in with to deploy.
-sudo -u deploy mkdir -p /home/deploy/.ssh
-echo "<deploy-public-key>" | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys
-sudo -u deploy chmod 700 /home/deploy/.ssh
-sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
+curl -fsSL https://get.docker.com | sh
+docker compose version
 ```
+
+Deploys run as `root` (`docs/architecture.md` §14.4). The prior design's
+dedicated `deploy` user is dropped: it had to be in the `docker` group,
+which is root-equivalent on the host, so it read as privilege separation
+while providing none. Architecture §13 records that trade.
 
 ---
 
-## 4. Clone the repo and write the `.env` files
+## 4. Two checkouts and the `.env` files
 
-**Exact path** — `/opt/bengaluru-votes`. This checkout is no longer just a
-source of Compose files: since images are built on the box (architecture
-§14.3, revised 2026-08-13), it is what every deploy builds *from*, so the
-ref it sits on is the version that ships.
+One tree per environment (`docs/architecture.md` §14.3). These are not just
+a source of Compose files — since images are built on the box, each tree is
+what its stack builds *from*, so the ref it sits on is the version that
+ships.
 
-```sh
-sudo mkdir -p /opt/bengaluru-votes
-sudo chown deploy:deploy /opt/bengaluru-votes
-sudo -u deploy git clone git@github.com:snarayanank2/bengaluru-votes.git /opt/bengaluru-votes
-```
-
-Write the two env files **outside the repo tree** (architecture §13:
-"one `.env` outside the repo, mode 600, referenced by Compose") — e.g.
-`/etc/bengaluru-votes/.env.production` and
-`/etc/bengaluru-votes/.env.staging` — then point the Compose files at them
-via `PROD_ENV_FILE` / `STAGING_ENV_FILE` (see `deploy/compose.production.yml`
-/ `compose.staging.yml`, which default to `./.env.production` /
-`./.env.staging` for local verification but accept this override):
+At first provisioning there is no release tag yet — leave the production
+tree on `main` too, same as staging. `deploy/deploy.sh production
+<vYYYY.MM.DD>` checks out the real tag (detached) at the first actual
+production deploy (see "Deploying" below and the plan's Task 7 step 3); this
+step just needs a working tree to build from for §5's first boot.
 
 ```sh
-sudo mkdir -p /etc/bengaluru-votes
-sudo touch /etc/bengaluru-votes/.env.production /etc/bengaluru-votes/.env.staging
-sudo chown deploy:deploy /etc/bengaluru-votes/.env.*
-sudo chmod 600 /etc/bengaluru-votes/.env.*
+mkdir -p /root/src
+git clone git@github.com:snarayanank2/bengaluru-votes.git /root/src/bengaluru-votes-staging
+git clone git@github.com:snarayanank2/bengaluru-votes.git /root/src/bengaluru-votes-production
+
+cd /root/src/bengaluru-votes-staging    && git checkout main
+cd /root/src/bengaluru-votes-production && git checkout main
 ```
 
-Then edit each file (as `deploy`, `sudo -u deploy -e /etc/bengaluru-votes/.env.production` or your editor of choice) using the **Required environment
-variables** tables below. Export the indirection so Compose picks the files
-up by default for that user's sessions (add to `/home/deploy/.bashrc` or a
-systemd unit's `Environment=`):
+Env files go **outside both trees**, mode 600 (`docs/architecture.md` §13),
+so a checkout can be deleted and re-cloned without touching secrets:
+
+```sh
+mkdir -p /etc/bengaluru-votes
+touch /etc/bengaluru-votes/.env.production /etc/bengaluru-votes/.env.staging
+chmod 600 /etc/bengaluru-votes/.env.*
+```
+
+Fill each in from the **Required environment variables** tables below.
+Generate the secrets on the box:
+
+```sh
+openssl rand -hex 32     # SESSION_SECRET — a DIFFERENT value per environment
+openssl rand -hex 24     # POSTGRES_PASSWORD — likewise
+```
+
+The Compose files read these paths through `PROD_ENV_FILE` /
+`STAGING_ENV_FILE`. `deploy/deploy.sh` exports them inline on every remote
+command — deliberately, because `ssh host 'cmd'` is a non-interactive shell
+that does not source `~/.bashrc`, so a profile export would silently not
+apply and Compose would fall back to a `./.env.<env>` that does not exist.
+When running Compose by hand, export them yourself:
 
 ```sh
 export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
@@ -161,19 +210,20 @@ export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
 Certbot needs nginx up to answer the HTTP-01 challenge, but nginx needs
 certs to start its `443 ssl` server blocks — bootstrap with a throwaway
 self-signed pair first, issue real certs against the running stack, then
-reload:
+reload.
+
+All commands below run from the **production** checkout, which owns nginx,
+certbot, and the `gba_front` network.
 
 ```sh
-cd /opt/bengaluru-votes
+cd /root/src/bengaluru-votes-production
+export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
+COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
 
-# --- 5a. Throwaway self-signed cert so nginx can start at all -----------
-# Uses the `certbot` service's own image (already declares the `certs`
-# volume mount in compose.production.yml) rather than guessing the
-# Compose-generated volume name directly — `docker compose run` resolves
-# that for us.
-docker compose -f deploy/compose.production.yml run --rm --entrypoint sh certbot -c '
+# --- 5a. Throwaway self-signed certs so nginx can start at all ----------
+$COMPOSE run --rm --entrypoint sh certbot -c '
   set -e
-  for host in bengaluruvotes.opencity.in staging.bengaluruvotes.opencity.in; do
+  for host in bengaluruvotes.opencity.in staging-bengaluruvotes.opencity.in; do
     mkdir -p /etc/letsencrypt/live/$host
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
       -keyout /etc/letsencrypt/live/$host/privkey.pem \
@@ -182,56 +232,100 @@ docker compose -f deploy/compose.production.yml run --rm --entrypoint sh certbot
   done
 '
 
-# --- 5b. Staging basic-auth htpasswd (architecture §14.2 "invisible to
-#     the public") — MUST exist as a real FILE before the first
-#     `docker compose up` below: compose.production.yml bind-mounts
-#     ./nginx/staging.htpasswd read-only, and Docker turns a bind-mount of
-#     a not-yet-existing host path into an empty DIRECTORY instead, which
-#     then fails nginx's `auth_basic_user_file` load. -------------------
+# --- 5b. Staging basic-auth htpasswd -----------------------------------
+# MUST exist as a real FILE before the first `up`: compose.production.yml
+# bind-mounts ./nginx/staging.htpasswd read-only, and Docker turns a
+# bind-mount of a non-existent host path into an empty DIRECTORY, which then
+# fails nginx's auth_basic_user_file load. Gitignored, never committed.
 docker run --rm httpd:2-alpine htpasswd -Bbn <tester-username> '<tester-password>' \
-  | sudo tee /opt/bengaluru-votes/deploy/nginx/staging.htpasswd
+  > /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
 
-# --- 5c. Bring up production (owns the shared nginx + front network) ----
-docker compose -f deploy/compose.production.yml up -d
+# --- Port contention with the interim stack, MUST run before 5c --------
+# The old /root/vps-deploy stack also binds 80. `up -d` below fails to bind
+# it — or silently steals it — if that stack is still running, so stop it
+# now, immediately before 5c. (Run in a subshell so this doesn't change your
+# cwd out of the production checkout.) Do NOT remove its volumes yet — do
+# not run anything with `-v` here — that stack stays available as the
+# rollback until §5's verification below and §8 both hold; §8 retires it.
+( cd /root/vps-deploy && docker compose down )
 
-# --- 5d. Real certs via certbot's webroot plugin, one run per hostname --
-docker compose -f deploy/compose.production.yml run --rm certbot \
-  certbot certonly --webroot -w /var/www/certbot \
+# --- 5c. Production up (owns the shared nginx + gba_front) --------------
+$COMPOSE up -d
+
+# --- 5d(i). Remove the 5a bootstrap stubs before issuing real certs ----
+# certbot refuses to create a lineage when live/<host> already exists and is
+# non-empty (CertStorageError: live directory exists) — or worse, silently
+# creates a `<host>-0001` lineage that nginx never reads, so the site keeps
+# serving the self-signed stub forever with no error anywhere. nginx keeps
+# serving the already-loaded (self-signed) cert out of the `certs` volume
+# until the next `nginx -s reload`, so removing these files mid-flight is
+# safe — nginx has nothing to lose access to in between.
+$COMPOSE run --rm --entrypoint sh certbot -c '
+  set -e
+  for h in bengaluruvotes.opencity.in staging-bengaluruvotes.opencity.in; do
+    rm -rf /etc/letsencrypt/live/$h /etc/letsencrypt/archive/$h /etc/letsencrypt/renewal/$h.conf
+  done
+'
+
+# --- 5d(ii). Real certs, one certbot run per hostname -------------------
+# `--entrypoint certbot` is REQUIRED here, not cosmetic: the `certbot`
+# service's own entrypoint is `['/bin/sh', '-c']` (see compose.production.yml
+# — it's how the renewal loop's `command:` runs), and `docker compose run
+# SERVICE CMD…` replaces `command` but never `entrypoint`. Without this flag
+# the invocation actually run is `/bin/sh -c certbot`, with `certonly`,
+# `--webroot`, `-d <host>` and everything else silently bound to `$0`, `$1`…
+# — i.e. bare `certbot` with none of the arguments below, and no error. §5a
+# already gets this right with `--entrypoint sh`; match that pattern.
+$COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
   -d bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
-docker compose -f deploy/compose.production.yml run --rm certbot \
-  certbot certonly --webroot -w /var/www/certbot \
-  -d staging.bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
+$COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
+  -d staging-bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
 
-# nginx's own daily reload loop (deploy/compose.production.yml) picks up
-# the new certs within 24h; force it immediately instead of waiting:
-docker compose -f deploy/compose.production.yml exec nginx nginx -s reload
+$COMPOSE exec nginx nginx -s reload
 
-# --- 5e. Start staging (joins production's front network) --------------
-docker compose -f deploy/compose.staging.yml up -d
+# --- 5e. Staging up (joins gba_front, which now exists) ----------------
+cd /root/src/bengaluru-votes-staging
+export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
+docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml up -d
 ```
+
+The interim stack's volumes stay in place until **both**
+`https://bengaluruvotes.opencity.in` **and**
+`https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
+and a non-`403` on `POST /api/ward-lookup` — the same checks
+`deploy/deploy.sh` runs (see "Deploying" below). Step 8 below retires it once
+that gate holds.
 
 Verify both hostnames serve real certs:
 
 ```sh
-curl -sI https://bengaluruvotes.opencity.in/healthz
-curl -sI -u <tester-username>:<tester-password> https://staging.bengaluruvotes.opencity.in/healthz
+curl -fsSI https://bengaluruvotes.opencity.in/healthz
+curl -fsSI -u <tester-username>:<tester-password> https://staging-bengaluruvotes.opencity.in/healthz
 ```
 
 ---
 
-## 6. restic — initialize and rehearse a restore
+## 6. restic — BLOCKED
+
+**No off-box backup target has been chosen** (dependency register §6.9;
+`docs/architecture.md` §10). `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`,
+`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `HEALTHCHECKS_URL` are
+therefore unset in both `.env` files, and `scripts/backup.sh` fails its
+required-variable check every night at 02:00 in the `jobs` container's log.
+
+That nightly failure is intentional and should stay noisy until the target
+exists. **Production is running with no off-box backup**: the stated 24-hour
+RPO is not merely missed, it is unbounded.
+
+Once a target is chosen, the remaining work is exactly:
 
 ```sh
-# One-time repository init against the DO Spaces bucket (BLR1 — India-
-# resident by choice, architecture §13/§14). Run as the `deploy` user with
-# the production .env sourced (it carries RESTIC_REPOSITORY/RESTIC_PASSWORD/
-# AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY — see the env table below).
 set -a; source /etc/bengaluru-votes/.env.production; set +a
 restic init
 
-# Rehearse a restore NOW, before you need one for real (dependency register
-# §6.9) — do this against a scratch directory, never over the live data dir:
-docker compose -f deploy/compose.production.yml run --rm \
+# Rehearse a restore NOW, before you need one — against a scratch directory,
+# never over the live data dir:
+docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm \
   -e DATABASE_URL -e RESTIC_REPOSITORY -e RESTIC_PASSWORD \
   -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
   app sh -c '
@@ -242,24 +336,125 @@ docker compose -f deploy/compose.production.yml run --rm \
 ```
 
 Confirm the snapshot list is non-empty and `pg_restore --list` shows real
-table entries before moving on. Record the rehearsal date somewhere ops can
-find it (this is the "rehearsed restore" the architecture doc references).
+table entries. Record the rehearsal date where ops can find it.
 
 ---
 
-## 7. Seed the first admin
+## 7. Migrate, then seed
 
-The root of the authorization chain — every later role grant is an admin
-action in `/admin`, itself audit-logged; **role is never inferred from the
-authenticating address anywhere else** in this app (architecture §14.6):
+**Required — do not skip.** Neither compose file has a `migrate` service and
+the image's CMD does not migrate on startup (that only happens as an
+explicit deploy step, §14.7), so after §5's `up -d` both databases have no
+schema at all. Skipping this step means `seed:wards` below fails immediately
+on a missing relation.
 
 ```sh
-docker compose -f deploy/compose.production.yml run --rm app \
-  npm run seed:admin -- <admin-email>
+# Production
+cd /root/src/bengaluru-votes-production
+export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
+COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
+$COMPOSE run --rm app npm run migrate
+
+# Staging
+cd /root/src/bengaluru-votes-staging
+export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
+COMPOSE_S="docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml"
+$COMPOSE_S run --rm app-staging npm run migrate
 ```
 
-(`scripts/seed-admin.ts` upserts a `users` row with `role='admin'` for that
-email — idempotent, safe to re-run.)
+Wards first — everything else depends on them.
+
+```sh
+# Production: the real 369 wards, then the first admin.
+cd /root/src/bengaluru-votes-production
+export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
+COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
+$COMPOSE run --rm app npm run seed:wards
+$COMPOSE run --rm app npm run seed:admin -- <admin-email>
+
+# Staging: wards, plus the deliberately-fictional demo content. seed:dev
+# refuses to run under NODE_ENV=production and staging's .env sets exactly
+# that, so the override is explicit and knowing — never copy this to
+# production.
+cd /root/src/bengaluru-votes-staging
+export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
+COMPOSE_S="docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml"
+$COMPOSE_S run --rm app-staging npm run seed:wards
+$COMPOSE_S run --rm -e NODE_ENV=development app-staging npm run seed:dev
+```
+
+`scripts/seed-admin.ts` upserts a `users` row with `role='admin'` for that
+email — idempotent, safe to re-run. It is the root of the authorization
+chain: every later role grant is an admin action in `/admin`, itself
+audit-logged, and role is never inferred from the authenticating address
+anywhere else in this app.
+
+---
+
+## 8. Retire the interim stack
+
+**Only after** both `https://bengaluruvotes.opencity.in` **and**
+`https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
+and a non-`403` on `POST /api/ward-lookup` — the same condition step 5
+above holds you to before touching the interim stack's volumes, and what
+`deploy/deploy.sh` verifies on every deploy. This closes out architecture
+§14.6 step 8 ("Verify both hostnames … then retire the interim preview
+stack").
+
+**Guard first — `-v` is exactly the command that must never resolve to the
+production project.** Before running it, confirm you are actually in
+`/root/vps-deploy` and not, say, a production checkout you `cd`'d into
+earlier in the session:
+
+```sh
+cd /root/vps-deploy
+docker compose config --format json | jq -r .name
+docker volume ls | grep bengaluru
+```
+
+**If the project name printed is `bengaluru-votes-production` (or you see
+`bengaluru-votes-production_pg_data_prod` in the volume list), STOP.** Do
+not run the command below. `-v` against the production project would
+destroy the production Postgres volume, and per §6 there is currently no
+off-box backup to restore it from — this would be unrecoverable data loss
+on a live election platform. The name printed here must be the interim
+stack's own project (whatever `/root/vps-deploy`'s compose file calls
+itself), never `bengaluru-votes-production` or `bengaluru-votes-staging`.
+
+```sh
+docker compose down -v
+```
+
+`-v` destroys the interim stack's Postgres volume. That's fine — it only
+ever held disposable demo data — but the command is still the point of no
+return: once it runs, `/root/vps-deploy` is no longer available as the
+rollback for this cutover. Do not run it before the gate above holds.
+
+Then remove what it leaves behind:
+
+```sh
+rm -rf /root/vps-deploy
+rm -rf /root/src/bengaluru-votes     # the old single checkout — superseded
+                                      # by the two per-environment trees
+                                      # (step 4 above)
+docker image rm bengaluru-votes:vps
+```
+
+**Deliberately not `bengaluru-votes:previous`.** That tag is the interim
+stack's own leftover *only* if nothing has deployed production since
+provisioning — the first `deploy/deploy.sh production` run retags whatever
+image is currently `:latest` (by then the new stack's own build) as
+`:previous`, and from that point on the tag means the new stack's rollback
+anchor, not the interim stack's. Telling the two apart reliably costs more
+than it saves — one small leftover image is nothing on a 193 GB disk, so
+leave it. **Never `docker image prune` here either, or casually at any
+later point** — `:previous` is the only rollback anchor either new stack
+has (there is no registry — architecture §14.3), and pruning "unused"
+images is exactly how a rollback stops being possible.
+
+**Leave the new stacks' running images alone too.** Do not touch
+`bengaluru-votes:latest` or `bengaluru-votes-staging:latest` — production
+and staging are running those right now.
 
 ---
 
@@ -293,13 +488,14 @@ here in the same PR.
 | `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | yes (`/partner-with-us`) | reCAPTCHA v3 on the one anonymous write, `POST /api/eoi`. |
 | `GA_MEASUREMENT_ID` | optional | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). |
 | `OTP_DAILY_SEND_BUDGET` | recommended (default `5000`) | Global daily OTP-send budget across all destinations (architecture §13). |
+| `OTP_TEST_SINK` | **must NOT be set** | `src/lib/otp.ts` — when exactly `'true'`, writes every plaintext OTP code to a `otp_test_codes` table so the Playwright e2e suite can read codes without in-process access. The source comment is explicit: this must NEVER be set in production or staging. Leave unset in both `.env` files. |
 | `RETENTION_ENABLED` | yes — **must be `false`** | DPDP retention enforcement (`jobs/retention.ts`) ships disabled pending PRD §17 legal sign-off on the retention period. Do not flip to `true` without that sign-off. |
 | `RETENTION_PERIOD_DAYS` | only if `RETENTION_ENABLED=true` | Days after results-declared before erasure. |
 | `RETENTION_ACTOR_USER_ID` | only if `RETENTION_ENABLED=true` | The admin user id attributed as actor on the erasure job's audit-log rows. |
-| `RESTIC_REPOSITORY` | yes (jobs, `scripts/backup.sh`) | e.g. `s3:https://blr1.digitaloceanspaces.com/<bucket>`. |
-| `RESTIC_PASSWORD` (or `RESTIC_PASSWORD_FILE`) | yes (jobs) | restic repository encryption password. Custody: dependency register §6.10. |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | DO Spaces key pair (restic's S3-compatible backend reads the standard AWS_* vars). |
-| `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch (architecture §10). |
+| `RESTIC_REPOSITORY` | **blocked** | No target chosen — dependency register §6.9. Leave unset; scripts/backup.sh fails loudly nightly until it exists. |
+| `RESTIC_PASSWORD` (or `RESTIC_PASSWORD_FILE`) | yes (jobs) | restic repository encryption password. Unset until dependency register §6.9 resolves. Custody: dependency register §6.10. |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | Credentials for whatever S3-compatible backup storage dependency register §6.9 settles on (restic's s3 backend reads the standard AWS_* vars). Unset today. |
+| `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch. Only meaningful once backups exist (dependency register §6.9). |
 | `SENTRY_DSN` | recommended | Server-side error reporting (`src/lib/logger.ts`) — **unset means Sentry is a clean no-op**, not a broken deploy; set it once the free-tier project exists. |
 | `IMAGE_TAG` | optional, not stored in the `.env` file | Selects which **local** image tag the stack runs (`deploy/compose.production.yml`'s `${IMAGE_TAG:-latest}`). Left unset for a normal deploy; it exists so a rollback can point the stack at `:previous` without rebuilding. |
 
@@ -314,7 +510,7 @@ whole point of the staging guard** (architecture §14.2):
 | `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_WEBHOOK_PUBLIC_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_OTP_TEMPLATE_SID` | **omit entirely** | Guard #2, independent of guard #1 — even if `SENDS_DISABLED` were ever accidentally unset, there is no real vendor key present to send with. Email OTP on staging will fail closed (`send_failed`); that's expected — staging testers use WhatsApp-disabled/email-disabled paths or a curator-seeded session instead. |
 
 Everything else (`DATABASE_URL` pointing at `postgres-staging`,
-`SITE_ORIGIN=https://staging.bengaluruvotes.opencity.in`,
+`SITE_ORIGIN=https://staging-bengaluruvotes.opencity.in`,
 `SESSION_SECRET` — **a different value than production's**,
 `RETENTION_ENABLED=false`, `GOOGLE_*`/`ANTHROPIC_API_KEY`/`RECAPTCHA_*` if
 you want staging to exercise those integrations against sandbox/test
@@ -325,10 +521,9 @@ Postgres is disposable — no restic vars needed for it.
 
 ## Deploying
 
-Revised 2026-08-13: deploys are **manual** (architecture §14.4). There is no
-`.github/workflows/`, no registry, and nothing that fires on push, merge or
-release. Images are built on the box from the `/opt/bengaluru-votes`
-checkout (§14.3).
+Deploys are **manual** (`docs/architecture.md` §14.4). There is no CI, no
+registry, and nothing that fires on push, merge or release. Images are built
+on the box from the per-environment checkouts (architecture §14.3).
 
 **Run the checks first — nothing else will.** On your machine, not the box:
 
@@ -338,45 +533,67 @@ npm run typecheck
 npm test
 ```
 
-Then, on the box as `deploy`, per stack (`STACK=production` or `staging`):
+### Staging
+
+Staging is whatever is on `main`. Push, then:
 
 ```sh
-cd /opt/bengaluru-votes
-git fetch && git checkout <ref>          # this checkout IS what ships
-
-# 1. Rollback anchor — do this BEFORE building over :latest.
-docker image tag bengaluru-votes:latest bengaluru-votes:previous
-
-# 2. Build, migrate, restart.
-docker compose -f deploy/compose.$STACK.yml build
-docker compose -f deploy/compose.$STACK.yml run --rm app npm run migrate
-docker compose -f deploy/compose.$STACK.yml up -d
-
-# 3. ALWAYS re-run static-init (production only) — `up -d` skips it once it
-#    has completed successfully, and stale /_astro assets are the result.
-docker compose -f deploy/compose.production.yml run --rm static-init
+git push origin main
+STAGING_USER=<tester-username> STAGING_PASS=<tester-password> \
+  deploy/deploy.sh staging
 ```
 
-**Deploy staging first and look at it.** No pipeline enforces the order any
-more, and staging-before-production is the only thing that exercises a
-migration before it touches real data (§14.7).
+Then **look at it in a browser**. That is the point of staging.
 
-**Verification must include a real POST**, not just `GET /healthz`. A stack
-built without the origin build args serves every page with a healthy 200 and
-403s every write, and nothing in `docker compose ps`, the healthcheck, or the
-logs reveals it:
+### Production
+
+Tag the exact commit staging verified, then deploy that tag:
+
+```sh
+git tag -a v2026.08.14 -m "release" origin/main
+git push origin v2026.08.14
+deploy/deploy.sh production v2026.08.14
+```
+
+**Deploy staging first, always.** No pipeline enforces the order any more,
+and staging-before-production is the only thing that exercises a migration
+before it touches real citizen data (architecture §14.7).
+
+### What the script does, and why each step is there
+
+1. **Preflight** — ssh reachable, the tree exists and is clean, the env file
+   is present. A dirty tree stops the deploy: someone edited the box, and
+   clobbering that automatically is never right.
+2. **Tag `:previous`** — before the build, because the build overwrites
+   `:latest`. There is no registry; this image on this box is the entire
+   rollback story.
+3. **Update the tree** to `origin/main` (staging) or the tag (production,
+   detached).
+4. **Build** with that environment's `SITE_ORIGIN`.
+5. **Migrate** — forward-only and idempotent; a failure aborts before
+   anything restarts, so the running version continues against the
+   unchanged schema.
+6. **`up -d`**.
+7. **Production only: re-run `static-init`, unconditionally.** `up -d` does
+   not re-run a one-shot that already succeeded, so skipping it serves the
+   previous build's hashed `/_astro/*` filenames against new HTML and every
+   page 404s its own CSS and JS.
+8. **Verify, including a real POST.** A stack built with the wrong origin
+   serves every page a healthy 200 and 403s every write, and nothing in
+   `docker compose ps`, the healthcheck, or the logs reveals it:
 
 ```sh
 curl -sS -o /dev/null -w '%{http_code}\n' https://<host>/healthz
 curl -sS -X POST https://<host>/api/ward-lookup \
   -H 'content-type: application/json' -H 'Origin: https://<host>' \
-  -d '{"pincode":"560102"}'      # 403 here means rebuild; see §14.3
+  -d '{"pincode":"560102"}'      # 403 here means rebuild
 ```
 
-`.claude/skills/deploy-vps/deploy.sh` automates this whole sequence
-(including the POST check) against the interim Hostinger VPS — it is the
-working reference for what a correct deploy does, even though that box is
-not the Droplet.
+### Cold boot ordering
+
+Production comes up before staging. Production owns the `gba_front` network;
+staging joins it as `external: true` and its `up` fails outright if that
+network does not exist yet.
 
 ---
 
@@ -401,10 +618,15 @@ unconsumed code keeps working exactly as it did before (its expiry was
 computed from `now + 10 minutes` at creation time, independent of
 `created_at`):
 
+`$POSTGRES_USER`/`$POSTGRES_DB` must expand **inside the container**, where
+the postgres image's own env actually holds them — not in your local shell,
+where they're unset and would silently mangle the command into `psql -U ""
+-d ""`. Wrap the psql call in `sh -c '...'` so expansion happens on the
+container side:
+
 ```sh
-docker compose -f deploy/compose.production.yml exec postgres \
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-  "UPDATE otp_codes SET created_at = created_at - INTERVAL '25 hours' WHERE destination = '<normalized-destination>';"
+docker compose -p bengaluru-votes-production -f deploy/compose.production.yml exec postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "UPDATE otp_codes SET created_at = created_at - INTERVAL '\''25 hours'\'' WHERE destination = '\''<normalized-destination>'\'';"'
 ```
 
 Use the **normalized** destination exactly as `src/lib/otp.ts#normalizeDestination`
@@ -419,18 +641,19 @@ immediately after — it should return `'sent'` again rather than
 ## k6 election-day load test (architecture §12; Task 65)
 
 **Why this exists:** one k6 run is the acceptance test for the whole
-single-VM sizing decision (architecture §14.6: 2 vCPU / 4 GB) — it proves
+single-VM sizing decision (architecture §14.1: 4 vCPU / 16 GB) — it proves
 the nginx micro-cache holds election-day read volume with p95 < 500 ms,
-that legitimate traffic through the CGNAT-sized rate-limit zones (§7) never
-sees a 429, and that the app origin renders each unique URL at most once
-per cache TTL rather than once per request. The script itself lives at
+that legitimate traffic through the CGNAT-sized rate-limit zones
+(architecture §7) never sees a 429, and that the app origin renders each
+unique URL at most once per cache TTL rather than once per request. The
+script itself lives at
 `tests/load/k6-election-day.js`; read its file-header comment for the full
 design rationale (peak-RPS assumption, ward-id space, page mix, the
 `X-Cache-Status` dependency).
 
 **WHEN:** run this against **staging**, before election week — not on every
 deploy, and never against production (staging is disposable; production
-isn't). Re-run it any time the Droplet size, nginx cache config, or rate
+isn't). Re-run it any time the VPS size, nginx cache config, or rate
 limits change.
 
 **Prerequisite — staging currently has no cache to measure.** As shipped,
@@ -463,11 +686,11 @@ invariant matters — see `deploy/nginx/snippets/security-headers.conf`'s own
 comment for why that one-line addition is safe against the Task-60
 add_header-inheritance gotcha.
 
-**Install k6 on a separate load-generation machine — NOT the Droplet.**
+**Install k6 on a separate load-generation machine — NOT the VPS.**
 Generating load from the box under test would measure the generator
-competing with the app for the same 2 vCPUs, not the real network path a
+competing with the app for the same 4 vCPUs, not the real network path a
 Bengaluru citizen's request takes. A laptop or a small cloud VM outside
-BLR1 (so the run also reflects real internet latency, not localhost) is
+Mumbai (so the run also reflects real internet latency, not localhost) is
 fine:
 
 ```sh
@@ -489,7 +712,7 @@ staging server block for the run and remove it again after):
 
 ```sh
 k6 run \
-  -e BASE_URL=https://staging.bengaluruvotes.opencity.in \
+  -e BASE_URL=https://staging-bengaluruvotes.opencity.in \
   -e STAGING_USER=<tester-username> \
   -e STAGING_PASS=<tester-password> \
   -e CANDIDATE_SLUGS=<comma-separated-real-slugs-if-any-are-seeded> \
@@ -507,21 +730,20 @@ four must show ✓:**
 |---|---|
 | `http_req_duration{scenario:cached}`: `p(95)<500` | Cached public pages stay fast at election-day volume. |
 | `http_req_failed`: `rate<0.01` | No broad breakage under load. |
-| `rate_limited_429`: `count==0` | Legitimate ward-lookup/browsing traffic never trips the CGNAT-sized `api` zone (§7). |
+| `rate_limited_429`: `count==0` | Legitimate ward-lookup/browsing traffic never trips the CGNAT-sized `api` zone (architecture §7). |
 | `cache_hit_rate`: `rate>0.9` | The micro-cache — not the app origin — is absorbing the load (requires the staging prerequisite above to be addressed first). |
 
-A ✗ on any threshold fails the acceptance test for the current Droplet
+A ✗ on any threshold fails the acceptance test for the current VPS
 size/config.
 
-**If it fails:** the accepted remediation is a **vertical resize** of the
-Droplet (architecture §14.6, §201) — minutes of work via `doctl compute
-droplet-action resize <droplet-id> --size <bigger-size> --resize-disk`
-(or the DO console) followed by a re-run of this same k6 command. This is
-explicitly NOT meant to trigger a re-architecture — the whole point of the
-single-VM design's k6 gate is "resize if short, don't redesign." If the
-`rate_limited_429` threshold specifically fails (not the RPS/latency ones),
-that's a rate-limits.conf zone-sizing question instead (§7) — revisit the
-zone rate/burst, not the Droplet size.
+**If it fails:** the accepted remediation is a **plan upgrade** on the
+Hostinger VPS (`docs/architecture.md` §14.1) followed by a re-run of this
+same k6 command. This is explicitly NOT meant to trigger a
+re-architecture — the whole point of the single-VM design's k6 gate is
+"resize if short, don't redesign." If the `rate_limited_429` threshold
+specifically fails (not the RPS/latency ones), that's a rate-limits.conf
+zone-sizing question instead (architecture §7) — revisit the zone
+rate/burst, not the box size.
 
 ---
 
@@ -536,11 +758,12 @@ zone rate/burst, not the Droplet size.
   Board + affected data principals) — named owner and procedure at
   dependency register §2.9 (architecture §13).
 - **Backup verification:** don't just trust cron — check
-  `docker compose -f deploy/compose.production.yml run --rm app sh -c 'restic snapshots --json | jq length'`
+  `docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm app sh -c 'restic snapshots --json | jq length'`
   trending upward daily, and that the healthchecks.io check for this job
   hasn't gone red (a missed ping = an ops alert by design, architecture
   §10). Rehearse a full restore (step 6 above) periodically, not just once
-  at provisioning time.
+  at provisioning time. **None of this applies until step 6 above's backup
+  target is chosen** — right now there is no restic repository to check.
 - **Rollback:** retag the previous image and restart — **no migration step
   runs on this path** (architecture §14.4/§14.7: migrations are
   forward-only/backward-compatible, so rollback is never a schema
@@ -548,10 +771,13 @@ zone rate/burst, not the Droplet size.
 
   ```sh
   docker image tag bengaluru-votes:previous bengaluru-votes:latest
-  docker compose -f deploy/compose.production.yml up -d
-  docker compose -f deploy/compose.production.yml run --rm static-init
+  docker compose -p bengaluru-votes-production -f deploy/compose.production.yml up -d
+  docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm static-init
   ```
 
-  This depends on `:previous` still existing **on the box** — there is no
-  registry to fall back on (§14.3). Tag it before every deploy, and don't
-  `docker image prune` without checking what you're about to delete.
+  `deploy/deploy.sh production --rollback` does exactly this (retag,
+  restart, re-run `static-init`) and then re-verifies with a real POST —
+  prefer it over the by-hand commands above. Either path depends on
+  `:previous` still existing **on the box** — there is no registry to fall
+  back on (architecture §14.3). Tag it before every deploy, and don't `docker image
+  prune` without checking what you're about to delete.

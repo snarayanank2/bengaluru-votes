@@ -32,13 +32,19 @@
 # task-61-report.md for the full required-vars list. Staging Postgres is
 # disposable: no backup concern, safe to reset/drop at any time.
 
+# Pinned for the same reason as compose.production.yml's — see that file's
+# comment. Both compose files live in a `deploy/` directory, one per
+# checkout, so an inferred project name would be `deploy` for both.
+# NEVER change this value on a live box.
+name: bengaluru-votes-staging
+
 services:
   app-staging:
     build:
       context: ..
       dockerfile: Dockerfile
       args:
-        SITE_ORIGIN: ${SITE_ORIGIN:-https://staging.bengaluruvotes.opencity.in}
+        SITE_ORIGIN: ${SITE_ORIGIN:-https://staging-bengaluruvotes.opencity.in}
         EXTRA_ALLOWED_ORIGIN: ${EXTRA_ALLOWED_ORIGIN:-}
     image: bengaluru-votes-staging:${IMAGE_TAG:-latest}
     restart: unless-stopped

@@ -54,10 +54,10 @@ export default defineConfig({
     // and 403s every real POST, including the no-JS ward-lookup form
     // fallback (Home.astro) submitted from a real browser on either of this
     // platform's two locked-in hostnames (architecture.md §14: production +
-    // staging on one Droplet, both behind the shared nginx).
+    // staging on one VPS, both behind the shared nginx).
     allowedDomains: [
       { hostname: 'bengaluruvotes.opencity.in', protocol: 'https' },
-      { hostname: 'staging.bengaluruvotes.opencity.in', protocol: 'https' },
+      { hostname: 'staging-bengaluruvotes.opencity.in', protocol: 'https' },
       // Task 64's Playwright smoke suite hits the SAME Node standalone
       // adapter directly (no nginx in front) at http://127.0.0.1:4321 —
       // without its own allowedDomains entry, EVERY form-urlencoded POST
@@ -74,8 +74,9 @@ export default defineConfig({
         ? [{ hostname: process.env.E2E_ALLOWED_HOST, protocol: 'http', port: process.env.E2E_ALLOWED_PORT }]
         : []),
       // One escape hatch for a TEMPORARY deployment on a hostname that
-      // isn't either of the two above — currently the interim Hostinger VPS
-      // standing in until the DigitalOcean Droplet of §14 is provisioned.
+      // isn't either of the two above — a preview box, or the VPS's own
+      // `*.hstgr.cloud` name before DNS is cut over. Not used by a normal
+      // staging or production build (architecture §14).
       // This whole block is resolved once at BUILD time (same as `site`
       // above), so a build served from any other origin rejects EVERY
       // unsafe-method request with 403 — including `POST /api/ward-lookup`,

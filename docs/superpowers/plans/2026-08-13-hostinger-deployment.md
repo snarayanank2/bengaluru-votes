@@ -197,7 +197,11 @@ docker run --rm \
   nginx:stable nginx -t
 ```
 
-Expected: this FAILS with `cannot load certificate "/etc/letsencrypt/live/…"` and/or a missing `/etc/nginx/staging.htpasswd`, because neither exists in a bare container. That is the correct outcome. What you are checking is that it does **not** fail with a *syntax* error (`unexpected "}"`, `unknown directive`, `invalid number of arguments`) and that the certificate path it names is the new hostname. If it reports a syntax error, fix it before continuing.
+Expected: this FAILS — the config references things a bare container does not have. That is the correct outcome. What you are checking is that it does **not** fail with a *syntax* error (`unexpected "}"`, `unknown directive`, `invalid number of arguments`).
+
+**The first failure you hit is `host not found in upstream "app"`**, from the production block's `proxy_pass` — Docker's embedded resolver only knows that name inside the Compose network. This is pre-existing and unrelated to this task (confirm with `git stash` if you doubt it). It stops the parse *before* nginx ever reaches the staging block, so it does not verify what this task changed.
+
+To actually reach the staging block and confirm its `ssl_certificate` path names the new hostname, add `--add-host app:127.0.0.1 --add-host app-staging:127.0.0.1` and stub a self-signed production cert into the container. nginx then fails on `cannot load certificate ".../staging-bengaluruvotes.opencity.in/fullchain.pem"` — which is the *desired* outcome: the path it names is the new hostname, spelled correctly.
 
 - [ ] **Step 8: Typecheck and run the suite**
 
@@ -1478,12 +1482,20 @@ curl -sI https://staging-bengaluruvotes.opencity.in/ | head -1          # expect
 curl -sI -u <u>:<p> https://staging-bengaluruvotes.opencity.in/ | grep -i x-robots-tag   # expect noindex
 
 # The isolation guarantee, proven rather than assumed: no route from a
-# staging container to production Postgres.
+# staging container to production Postgres. `nc` is NOT in the runtime image
+# (Dockerfile installs ca-certificates, curl, gnupg, postgresql-client-16,
+# restic, jq — no netcat), so `nc: not found` exits 127 and `|| echo
+# "unreachable (correct)"` would print that string regardless of whether
+# isolation actually holds. `pg_isready` IS in the image and distinguishes a
+# name-resolution failure (no such host — the real isolation case, no route
+# to a `postgres` service on staging's network) from a live connection.
 docker exec $(docker ps -qf name=bengaluru-votes-staging-app-staging) \
-  sh -c 'nc -z -w2 postgres 5432 && echo REACHABLE || echo "unreachable (correct)"'
+  sh -c 'pg_isready -h postgres -p 5432 -t 2 && echo REACHABLE || echo "unreachable (correct)"'
 ```
 
-Expected: `401`, `X-Robots-Tag: noindex`, and `unreachable (correct)`.
+Expected: `401`, `X-Robots-Tag: noindex`, and `unreachable (correct)` (from a
+name-resolution failure — `pg_isready` cannot even find a `postgres` host on
+staging's network, since staging never joins `back_prod`).
 
 - [ ] **Step 4: Verify the unmatched-host rejection**
 
@@ -1510,11 +1522,13 @@ Only after every check above passes:
 cd /root/vps-deploy
 docker compose down -v          # removes its containers AND volumes (demo data)
 cd / && rm -rf /root/vps-deploy /root/src/bengaluru-votes
-docker image rm bengaluru-votes:vps bengaluru-votes:previous 2>/dev/null || true
+docker image rm bengaluru-votes:vps 2>/dev/null || true
 docker image ls
 ```
 
-Note `/root/src/bengaluru-votes` (the old single checkout) goes too — it is superseded by the two per-environment trees. Leave the new `bengaluru-votes:latest` and `bengaluru-votes-staging:latest` images alone.
+Note `/root/src/bengaluru-votes` (the old single checkout) goes too — it is superseded by the two per-environment trees.
+
+**Do NOT remove `bengaluru-votes:previous` here**, even though it began life as the interim stack's rollback anchor. Step 2 above ran `deploy/deploy.sh production`, which retags `bengaluru-votes:latest` → `:previous` *before* building — so by the time you reach this step that tag no longer refers to the interim image at all. It is the rollback anchor for the production stack you just brought live, and there is no registry to recover it from. Leave `bengaluru-votes:latest`, `bengaluru-votes:previous`, and `bengaluru-votes-staging:latest` alone; `bengaluru-votes:vps` is the only interim image safe to delete.
 
 - [ ] **Step 7: Add the `AAAA` records, then confirm**
 

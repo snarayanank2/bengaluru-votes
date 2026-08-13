@@ -5,7 +5,7 @@
  * typed in — every other outbound request the app makes targets a
  * hard-coded, developer-chosen host. Get this wrong and a curator (trusted,
  * but not infallible, and a phishing/compromise target) can turn the
- * server into an open SSRF proxy against the Droplet's own metadata service
+ * server into an open SSRF proxy against the host's own metadata service
  * or its private network.
  *
  * DEFENSE LAYERS (all must hold, independently — this is not one check):
