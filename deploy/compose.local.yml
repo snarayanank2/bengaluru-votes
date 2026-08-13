@@ -1,0 +1,155 @@
+# Local development stack — `docker compose -f deploy/compose.local.yml up`.
+#
+# NOT a deployment. compose.production.yml / compose.staging.yml pull public
+# GHCR images and front everything with a TLS nginx; this file BUILDS the
+# Dockerfile from the working tree and exposes the Astro server directly on
+# http://localhost:4321. No nginx, no certbot, no jobs container (its cron
+# entries need restic + DO Spaces + healthchecks.io credentials that no
+# laptop has, and the local database is disposable demo data).
+#
+# Secrets here are deliberately fixed, weak and committed: this stack binds
+# to localhost only and holds nothing real. Never reuse these values anywhere
+# that is reachable from the internet.
+#
+#   docker compose -f deploy/compose.local.yml up --build -d   # start
+#   docker compose -f deploy/compose.local.yml logs -f app     # tail
+#   docker compose -f deploy/compose.local.yml down            # stop
+#   docker compose -f deploy/compose.local.yml down -v         # stop + wipe DB
+#
+# Migrations run automatically (the `migrate` service). Seeding does not — a
+# fresh database renders every page with a healthy 200 and no wards on it.
+# After the first `up`, once:
+#
+#   C="docker compose -f deploy/compose.local.yml run --rm --no-deps"
+#   $C app npm run seed:wards                      # the real 369 GBA wards
+#   $C -e NODE_ENV=development app npm run seed:dev  # fictional demo content
+#
+# `seed:dev` needs that NODE_ENV override because it refuses to run under
+# NODE_ENV=production (its own guard — it writes fake candidates), and this
+# stack deliberately runs as production; see the `app` service below. The
+# override is safe HERE and nowhere else.
+#
+# Read the database directly with:
+#   psql postgres://gba:gba_local_dev@localhost:5433/gba
+#
+# THE ORIGIN ARGS ARE LOAD-BEARING. astro.config.mjs resolves `site` and
+# `security.allowedDomains` once, at BUILD time, against two hard-coded
+# *.opencity.in hostnames. An image built without SITE_ORIGIN/
+# EXTRA_ALLOWED_ORIGIN serves every GET on localhost with a healthy 200 and
+# 403s every POST — ward lookup, login, votes and flags all break, and
+# nothing in `ps`, the healthcheck or the logs says so (see the deploy-vps
+# skill, "The one thing that breaks silently"). They are wired below, so the
+# only way to hit this is to change PORT without rebuilding: after changing
+# it, re-run with `--build`.
+
+name: bengaluru-votes-local
+
+services:
+  # Same Dockerfile the Droplet images are built from, built here from the
+  # working tree so local edits actually appear. `--build` on `up` to pick
+  # up source changes; the build is a full `npm ci && astro build`, so the
+  # first one takes a few minutes and later ones hit the layer cache.
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        SITE_ORIGIN: http://localhost:${PORT:-4321}
+        EXTRA_ALLOWED_ORIGIN: http://localhost:${PORT:-4321}
+    image: bengaluru-votes:local
+    # 127.0.0.1 only — never 0.0.0.0. This stack has weak fixed credentials
+    # and no TLS; it must not be reachable from the local network.
+    ports:
+      - '127.0.0.1:${PORT:-4321}:4321'
+    environment:
+      # Kept as `production` (matching the Dockerfile's baked-in ENV) so the
+      # runtime behaves like the deployed one — notably SESSION_SECRET's
+      # fail-closed check. Scripts that refuse to run under production
+      # (scripts/seed-dev.ts) take an explicit per-command override — see the
+      # seeding commands in this file's header.
+      NODE_ENV: production
+      DATABASE_URL: postgres://gba:gba_local_dev@postgres:5432/gba
+      SITE_ORIGIN: http://localhost:${PORT:-4321}
+      # Fixed, public, local-only. Rotating it just logs out your local
+      # sessions. `openssl rand -hex 32` for anything that isn't this.
+      SESSION_SECRET: local_dev_only_not_a_secret_0000000000000000000000000000000000
+      # No vendor keys are set below, so nothing can reach a real person
+      # even by accident. This is the same explicit guard staging carries.
+      SENDS_DISABLED: 'true'
+      # Writes each generated OTP in plaintext to `otp_test_codes` so you can
+      # read it back over the psql URL in this file's header. NOTE:
+      # src/lib/otp.ts only reaches this write *after* a successful send, and
+      # with SENDS_DISABLED there is no send — so local login still fails at
+      # `send_failed`. Set here for the e2e path and for the day a sandbox
+      # SendGrid key gets added; it is not a working local login on its own.
+      OTP_TEST_SINK: 'true'
+      RETENTION_ENABLED: 'false'
+      # Deliberately unset: SENDGRID_*, TWILIO_*, GOOGLE_*, ANTHROPIC_API_KEY,
+      # RECAPTCHA_*, SENTRY_DSN, GA_MEASUREMENT_ID. Each degrades to a
+      # documented no-op rather than an error (runbook.md "Required
+      # environment variables"). Address ward-lookup falls back to the
+      # pincode table without GOOGLE_GEOCODING_API_KEY; Kannada MT stays
+      # 'pending' without ANTHROPIC_API_KEY. Add them to a local override
+      # file if you need to exercise those paths.
+    volumes:
+      # Production serves /data/gba.geojson off the nginx `static_assets`
+      # volume (populated by the `static-init` one-shot), and the file is not
+      # in public/ — so without this mount the Astro standalone server 404s
+      # it and every ward map renders empty. Mounting it into the client
+      # build output is the no-nginx equivalent of that one-shot.
+      - ../data/gba.geojson:/app/dist/client/data/gba.geojson:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4321/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # One-shot, forward-only. Runs to completion before `app` starts, so a
+  # plain `up` on a fresh volume yields a migrated database instead of an
+  # app container restart-looping against empty tables.
+  # Deliberately `image:` + `pull_policy: never` rather than repeating `app`'s
+  # build block. Two services declaring a build for the SAME tag makes
+  # Compose run both builds concurrently and both export to
+  # `bengaluru-votes:local`, and the loser dies with `image ... already
+  # exists` (hit while writing this file). Compose finishes the whole build
+  # phase before it creates any container, so `app`'s build has already
+  # produced the tag by the time this service starts; `pull_policy: never`
+  # stops Compose reaching for a registry copy that has never existed.
+  migrate:
+    image: bengaluru-votes:local
+    pull_policy: never
+    command: ['npm', 'run', 'migrate']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://gba:gba_local_dev@postgres:5432/gba
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gba
+      POSTGRES_PASSWORD: gba_local_dev
+      POSTGRES_DB: gba
+    # Exposed for psql/GUI access from the host. 127.0.0.1 only, and on 5433
+    # so it never collides with a Postgres already running on the default
+    # 5432. Containers still reach it as `postgres:5432` on the internal
+    # network — DATABASE_URL above uses that, not this.
+    ports:
+      - '127.0.0.1:5433:5432'
+    volumes:
+      - pg_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gba -d gba']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pg_data_local:
