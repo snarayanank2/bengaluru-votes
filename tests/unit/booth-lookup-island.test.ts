@@ -28,7 +28,8 @@ function buildForm(lang: 'en' | 'kn' = 'en'): {
       data-msg-booth-label="${t(lang, 'findBooth.result.boothLabel')}"
       data-msg-no-booth-data="${t(lang, 'findBooth.result.noBoothData')}"
       data-msg-out-of-coverage="${t(lang, 'home.result.outOfCoverage')}"
-      data-msg-unavailable="${t(lang, 'findBooth.result.unavailable')}">
+      data-msg-unavailable="${t(lang, 'findBooth.result.unavailable')}"
+      data-msg-directions="${t(lang, 'findBooth.result.directions')}">
       <input name="address" required />
       <button type="submit">Search</button>
       <div data-booth-result aria-live="polite"></div>
@@ -113,6 +114,26 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
       expect(result.getAttribute('aria-live')).toBe('polite');
       expect(result.textContent).toContain(BOOTH_A.nameEn);
       expect(result.textContent).toContain(BOOTH_A.address);
+    });
+
+    it('renders a directions link for each booth (spec §7)', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'booth', booths: [BOOTH_A] }),
+      });
+      const { form, input, result } = buildForm('en');
+      initBoothLookup();
+      input.value = '1 Test Street';
+
+      submit(form);
+      await flush();
+
+      const link = result.querySelector<HTMLAnchorElement>('a[href*="google.com/maps/dir"]');
+      expect(link).not.toBeNull();
+      expect(link!.href).toContain('destination=12.97%2C77.59');
+      expect(link!.rel).toContain('noopener');
+      expect(link!.target).toBe('_blank');
+      expect(link!.textContent).toBe(t('en', 'findBooth.result.directions'));
     });
 
     it('booth result in kn: renders the Kannada booth name', async () => {

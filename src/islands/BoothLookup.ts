@@ -23,7 +23,14 @@
  * On any failure to fetch/parse — network error, non-2xx, bad JSON — this
  * lets the native form submission proceed (the no-JS server path), same
  * fallback discipline as WardLookup.
+ *
+ * Each rendered booth also gets a Google Maps directions link, built by the
+ * shared src/lib/maps-links.ts helper (spec §7) from the lat/lng the API
+ * already returns — no separate API call. FindBooth.astro's server-rendered
+ * POST branch renders the identical link from the same helper; keep both in
+ * sync (see that file's header) rather than letting one drift.
  */
+import { directionsUrl } from '../lib/maps-links';
 
 interface BoothRow {
   id: number;
@@ -45,7 +52,13 @@ function boothName(lang: string, booth: BoothRow): string {
   return lang === 'kn' && booth.nameKn ? booth.nameKn : booth.nameEn;
 }
 
-function renderBooths(container: HTMLElement, lang: string, label: string, booths: BoothRow[]): void {
+function renderBooths(
+  container: HTMLElement,
+  lang: string,
+  label: string,
+  directionsLabel: string,
+  booths: BoothRow[],
+): void {
   const list = document.createElement('ul');
   list.setAttribute('aria-label', label);
   for (const booth of booths) {
@@ -54,7 +67,12 @@ function renderBooths(container: HTMLElement, lang: string, label: string, booth
     name.textContent = boothName(lang, booth);
     const address = document.createElement('p');
     address.textContent = booth.address;
-    item.append(name, address);
+    const directions = document.createElement('a');
+    directions.href = directionsUrl(booth.lat, booth.lng);
+    directions.target = '_blank';
+    directions.rel = 'noopener noreferrer';
+    directions.textContent = directionsLabel;
+    item.append(name, address, directions);
     list.appendChild(item);
   }
   container.replaceChildren(list);
@@ -80,7 +98,7 @@ function renderResult(
         renderMessage(container, msgs.noBoothData ?? '');
         return;
       }
-      renderBooths(container, lang, msgs.boothLabel ?? '', data.booths);
+      renderBooths(container, lang, msgs.boothLabel ?? '', msgs.directions ?? '', data.booths);
       return;
     case 'no_booth_data':
       renderMessage(container, msgs.noBoothData ?? '');
@@ -114,6 +132,7 @@ export function initBoothLookup(root: ParentNode = document): void {
     noBoothData: form.dataset.msgNoBoothData ?? '',
     outOfCoverage: form.dataset.msgOutOfCoverage ?? '',
     unavailable: form.dataset.msgUnavailable ?? '',
+    directions: form.dataset.msgDirections ?? '',
   };
 
   form.addEventListener('submit', (event) => {

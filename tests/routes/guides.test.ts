@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
-import { localePath, type Lang } from '../../src/i18n';
+import { localePath, t, type Lang } from '../../src/i18n';
 
 /**
  * Task 21 — the six guide/explainer pages (IA §3.7-§3.12, PRD
@@ -522,6 +522,26 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(html).toContain(BOOTH.nameEn);
       expect(html).toContain(BOOTH.address);
+    });
+
+    it('renders a directions link for each booth (spec §7) — both the label attribute and the href', async () => {
+      await db.insert(schema.booths).values(BOOTH);
+      vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'ward', wardId: WARD.id });
+
+      const request = new Request(`${SITE_ORIGIN}/voting-guide/find-booth`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `address=${encodeURIComponent('42 Guides Test Street')}`,
+      });
+      const { html } = await renderPage(FindBooth, 'en', '/voting-guide/find-booth', request);
+
+      expect(html).toContain('https://www.google.com/maps/dir/');
+      expect(html).toContain(`destination=${encodeURIComponent(`${BOOTH.lat},${BOOTH.lng}`)}`);
+      const anchor = findAnchorTag(html, 'google.com/maps/dir');
+      expect(anchor).toContain('rel="noopener noreferrer"');
+      expect(anchor).toContain('target="_blank"');
+      // Also carried as a data-msg-* attribute for the JS island (BoothLookup.ts) to read.
+      expect(html).toContain(`data-msg-directions="${t('en', 'findBooth.result.directions')}"`);
     });
 
     it('no-JS POST, out_of_coverage: server-renders the explicit not-in-GBA message', async () => {
