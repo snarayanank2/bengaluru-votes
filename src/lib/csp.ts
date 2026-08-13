@@ -61,7 +61,9 @@ function isPartnerWithUsPath(pathname: string): boolean {
  * Builds the full CSP header value for one response.
  *
  * `script-src` is STRICT everywhere: `'self'` + this request's nonce + the
- * GA loader host (`www.googletagmanager.com`) — NO `'unsafe-inline'` on
+ * GA loader host (`www.googletagmanager.com`) + the Google Maps Platform
+ * hosts (`maps.googleapis.com`, `maps.gstatic.com`, spec §8 — see the
+ * `MAPS_HOSTS` comment inside the function body) — NO `'unsafe-inline'` on
  * scripts (architecture §13). The two inline scripts this codebase ever
  * renders (the `?src` attribution writer and the GA config snippet, both in
  * src/layouts/Base.astro) carry `nonce={cspNonce}`, the same `nonce` value
@@ -75,13 +77,12 @@ function isPartnerWithUsPath(pathname: string): boolean {
  * nonce/hash-locking style-src would require threading a nonce through
  * every Astro-scoped-style tag, which Astro's compiler doesn't support.
  *
- * `worker-src 'self' blob:`: maplibre-gl (src/islands/WardMap.ts, the ward
- * boundary map) constructs its own web worker from a `blob:` URL
- * internally — without this the map silently fails (falls back to the
- * static no-JS fallback text, per that module's own fail-silent design).
- * WardMap.ts's base style (`buildBaseStyle`, WardMap.ts:146-160) has NO
- * external tile source — a flat background layer only — so this policy
- * deliberately does NOT add any map-tile host.
+ * `worker-src 'self' blob:`: the Google Maps JavaScript API
+ * (src/islands/WardMap.ts, the ward boundary map) constructs workers from
+ * `blob:` URLs internally — without this the map silently fails and the
+ * container keeps its server-rendered fallback text. This directive
+ * predates the Google migration (MapLibre needed it for the same reason)
+ * and is unchanged by it.
  *
  * GA hosts (`www.googletagmanager.com` / `*.google-analytics.com` /
  * `*.analytics.google.com`) are always present in the base policy —
@@ -103,7 +104,20 @@ function isPartnerWithUsPath(pathname: string): boolean {
  * still does not match after trailing-slash stripping.
  */
 export function buildCsp(nonce: string, pathname: string): string {
-  const scriptSrcHosts = ['https://www.googletagmanager.com'];
+  // Google Maps Platform (spec §8): the ward-boundary map
+  // (src/islands/WardMap.ts) and the ward-lookup Places Autocomplete
+  // (src/islands/WardLookup.ts). These live in the BASE policy rather than
+  // a path-scoped extension like the reCAPTCHA one below, because the two
+  // consumers sit on different routes (/ward/* and /) and maintaining two
+  // more path matchers costs more than it protects.
+  //
+  // `script-src`: @googlemaps/js-api-loader injects a <script src=…> at
+  // runtime. A script element whose src matches an allowlisted host does
+  // not additionally need the nonce, so the nonce-only policy still holds
+  // for inline script.
+  const MAPS_HOSTS = ['https://maps.googleapis.com', 'https://maps.gstatic.com'] as const;
+
+  const scriptSrcHosts = ['https://www.googletagmanager.com', ...MAPS_HOSTS];
   let frameSrc = "'none'";
 
   if (isPartnerWithUsPath(pathname)) {
@@ -119,9 +133,9 @@ export function buildCsp(nonce: string, pathname: string): string {
     `form-action 'self'`,
     `script-src 'self' 'nonce-${nonce}' ${scriptSrcHosts.join(' ')}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com`,
+    `img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com ${MAPS_HOSTS.join(' ')}`,
     `font-src 'self'`,
-    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com`,
+    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${MAPS_HOSTS.join(' ')}`,
     `worker-src 'self' blob:`,
     `frame-src ${frameSrc}`,
   ];

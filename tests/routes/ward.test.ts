@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
@@ -200,12 +200,62 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       expect(parsed.containedInPlace).toBeTruthy();
     });
 
-    it('renders the map container with the boundary URL and a no-JS fallback text', async () => {
+    it('renders the map container with a no-JS fallback text', async () => {
+      // Whether the container also gets the island's data attributes
+      // (data-ward-map/data-boundary-url/data-maps-key/data-maps-map-id)
+      // depends on mapsConfig().enabled, which env vars neither this test
+      // nor its beforeAll/afterAll touch — see the "map container" describe
+      // block below for that behavior, both enabled and disabled.
       const html = normalize(await (await renderWard('en', WARD.id)).text());
-      expect(html).toContain('data-ward-map');
-      expect(html).toContain(`data-boundary-url="/data/gba.geojson#${WARD.boundaryRef}"`);
-      expect(html).toContain(`data-ward-id="${WARD.id}"`);
+      expect(html).toContain('class="map-container"');
       expect(html).toContain(t('en', 'ward.map.fallback'));
+    });
+  });
+
+  describe('map container (spec §3, §8)', () => {
+    const MAPS_KEYS = ['MAPS_ENABLED', 'GOOGLE_MAPS_BROWSER_KEY', 'GOOGLE_MAPS_MAP_ID'] as const;
+    let saved: Record<string, string | undefined>;
+
+    beforeEach(() => {
+      saved = Object.fromEntries(MAPS_KEYS.map((k) => [k, process.env[k]]));
+    });
+
+    afterEach(() => {
+      for (const k of MAPS_KEYS) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k]!;
+      }
+    });
+
+    it('renders the map container with its config when maps are enabled', async () => {
+      process.env.MAPS_ENABLED = 'true';
+      process.env.GOOGLE_MAPS_BROWSER_KEY = 'test-browser-key';
+      process.env.GOOGLE_MAPS_MAP_ID = 'test-map-id';
+
+      const html = normalize(await (await renderWard('en', WARD.id)).text());
+
+      expect(html).toContain('data-ward-map');
+      expect(html).toContain(`data-boundary-url="/ward/${WARD.id}/boundary.json"`);
+      expect(html).toContain('data-maps-key="test-browser-key"');
+      expect(html).toContain('data-maps-map-id="test-map-id"');
+    });
+
+    it('renders only the fallback and no island hook when maps are disabled', async () => {
+      delete process.env.MAPS_ENABLED;
+      delete process.env.GOOGLE_MAPS_BROWSER_KEY;
+
+      const html = normalize(await (await renderWard('en', WARD.id)).text());
+
+      expect(html).not.toContain('data-ward-map');
+      expect(html).not.toContain('data-maps-key');
+      expect(html).toContain(t('en', 'ward.map.fallback'));
+    });
+
+    it('never leaks the browser key when maps are disabled', async () => {
+      delete process.env.MAPS_ENABLED;
+      process.env.GOOGLE_MAPS_BROWSER_KEY = 'secret-key';
+
+      expect(normalize(await (await renderWard('en', WARD.id)).text())).not.toContain('secret-key');
     });
   });
 });

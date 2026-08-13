@@ -3,6 +3,13 @@ import { buildCsp } from '../../src/lib/csp';
 
 const NONCE = 'test-nonce-abc123==';
 
+// Every script-src exact-match assertion below includes these — the Google
+// Maps hosts (spec §8) live in the BASE script-src, so they appear on every
+// path, partner-with-us included, ahead of the reCAPTCHA hosts that only
+// that one path adds. See the "Google Maps hosts" describe block for the
+// substring-based coverage of this same fact.
+const MAPS_SCRIPT_SRC = 'https://maps.googleapis.com https://maps.gstatic.com';
+
 describe('src/lib/csp.ts#buildCsp', () => {
   describe('base policy (non-partner paths)', () => {
     it.each(['/', '/ward/57', '/candidate/some-slug', '/account', '/api/me', '/kn/ward/57'])(
@@ -10,7 +17,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
       (pathname) => {
         const csp = buildCsp(NONCE, pathname);
         const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
-        expect(scriptSrc).toBe(`script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com`);
+        expect(scriptSrc).toBe(`script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC}`);
         expect(scriptSrc).not.toContain("'unsafe-inline'");
       },
     );
@@ -68,7 +75,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
         const csp = buildCsp(NONCE, pathname);
         const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
         expect(scriptSrc).toBe(
-          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com`,
+          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC} https://www.google.com https://www.gstatic.com`,
         );
       },
     );
@@ -85,7 +92,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
         const csp = buildCsp(NONCE, pathname);
         const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
         expect(scriptSrc).toBe(
-          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com`,
+          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC} https://www.google.com https://www.gstatic.com`,
         );
         expect(csp).toContain('frame-src https://www.google.com');
       },
@@ -113,5 +120,40 @@ describe('src/lib/csp.ts#buildCsp', () => {
   it('is a pure function: same inputs always produce the same output', () => {
     expect(buildCsp(NONCE, '/ward/57')).toBe(buildCsp(NONCE, '/ward/57'));
     expect(buildCsp('other-nonce', '/partner-with-us')).toBe(buildCsp('other-nonce', '/partner-with-us'));
+  });
+
+  describe('Google Maps hosts (spec §8)', () => {
+    const MAPS_HOSTS = ['https://maps.googleapis.com', 'https://maps.gstatic.com'];
+
+    it.each(['script-src', 'connect-src', 'img-src'])('allows the maps hosts in %s', (directive) => {
+      const csp = buildCsp('n0nce', '/ward/1');
+      const found = csp.split('; ').find((d) => d.startsWith(`${directive} `));
+      expect(found).toBeDefined();
+      for (const host of MAPS_HOSTS) expect(found).toContain(host);
+    });
+
+    it('keeps the maps hosts on every route, not just the ward page', () => {
+      for (const path of ['/', '/kn/', '/voting-guide', '/partner-with-us']) {
+        expect(buildCsp('n0nce', path)).toContain('https://maps.googleapis.com');
+      }
+    });
+
+    it('still adds the reCAPTCHA hosts on /partner-with-us only', () => {
+      expect(buildCsp('n0nce', '/partner-with-us')).toContain('https://www.gstatic.com');
+      expect(buildCsp('n0nce', '/ward/1')).not.toContain('https://www.gstatic.com');
+    });
+
+    it('still forbids unsafe-inline in script-src', () => {
+      const csp = buildCsp('n0nce', '/ward/1');
+      const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src '));
+      expect(scriptSrc).toBeDefined();
+      // Strengthened from a whole-policy substring check (which passed only
+      // incidentally — style-src's 'unsafe-inline' happens to be followed by
+      // `;` rather than a space, so `not.toContain("'unsafe-inline' ")`
+      // against the full CSP would silently stop testing anything if
+      // directive order ever changed) to asserting against the script-src
+      // directive specifically, where the nonce-only posture actually lives.
+      expect(scriptSrc).not.toContain("'unsafe-inline'");
+    });
   });
 });

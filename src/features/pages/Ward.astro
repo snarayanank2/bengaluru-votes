@@ -23,18 +23,22 @@
  * ward, using the `data-msg-receiving-updates` label below) or removes it
  * (any other ward) — see IA §3.2 and PRD §5.1.
  *
- * Boundary map URL: geo.ts's `wardBoundaryUrl(wardId)` resolves a ward id to
- * its `/data/gba.geojson#<ref>` URL by looking `wardId` up in the *static
- * file's own* in-memory feature index (`loadWardPolygons()`), which only
- * recognizes the 369 real composite ids actually present in
- * data/gba.geojson. Every real `wards` row is seeded FROM that same file
- * (scripts/seed-wards.ts), so in production the two are always in lock
- * step — but this component already has the full `wards` row loaded,
- * including its own `boundaryRef` column (the very value that function
- * would return), so we format the URL directly from the row instead of
- * re-deriving/re-validating it through the static-file index on every
- * render. This also sidesteps needing `loadWardPolygons()` (a full parse of
- * a 3.5MB file) called anywhere at boot for this page to work.
+ * Boundary map URL (spec §4, §8): the map container's `data-boundary-url`
+ * points at this ward's own `GET /ward/<id>/boundary.json`
+ * (src/pages/ward/[id]/boundary.json.ts), which serves one GeoJSON Feature
+ * looked up by `wards.boundaryRef` server-side — NOT the 3.5MB
+ * `/data/gba.geojson` collection the MapLibre-era island fetched and
+ * filtered client-side. This page no longer needs `wardBoundaryUrl`/
+ * `loadWardPolygons()` (geo.ts) at all for that reason.
+ *
+ * The container itself, and its `data-maps-key`/`data-maps-map-id`
+ * attributes carrying the Google Maps Platform browser key and Map ID
+ * (`src/lib/maps-config.ts`), render ONLY when `mapsConfig().enabled` —
+ * the `MAPS_ENABLED` kill switch AND a configured browser key, both. When
+ * disabled, the container renders with no `data-ward-map` hook at all, so
+ * no island mounts and the browser key is never present in the response
+ * (there is none to leak: `maps.browserKey` is simply never read in that
+ * branch).
  *
  * PLACE JSON-LD (architecture §8/§13, Task 56): `src/lib/seo.ts#placeLd`
  * builds this ward's `AdministrativeArea` (name, id, page URL,
@@ -50,6 +54,7 @@ import { db } from '../../db/client';
 import { wards } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { placeLd } from '../../lib/seo';
+import { mapsConfig } from '../../lib/maps-config';
 
 interface Props {
   lang: Lang;
@@ -62,7 +67,13 @@ const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
 
 const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 const corporationLabel = ward ? t(lang, `ward.corporation.${ward.corporation}`) : '';
-const boundaryUrl = ward ? `/data/gba.geojson#${ward.boundaryRef}` : null;
+
+// Boundary geometry now comes from this ward's own URL rather than the
+// 3.5MB full collection (spec §4). `wards.boundaryRef` is still the source
+// of truth for which feature this is — the route resolves it server-side —
+// so this page no longer formats a fragment URL from the row.
+const maps = mapsConfig();
+const boundaryUrl = ward ? `/ward/${wardId}/boundary.json` : null;
 
 const pagePath = `/ward/${wardId}`;
 const title = ward ? t(lang, 'ward.meta.title', { wardName, wardId }) : t(lang, 'ward.notFound.fact');
@@ -97,9 +108,22 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
         </header>
 
         <section aria-label={t(lang, 'ward.map.label')}>
-          <div class="map-container" data-ward-map data-boundary-url={boundaryUrl} data-ward-id={wardId}>
-            <p class="map-fallback">{t(lang, 'ward.map.fallback')}</p>
-          </div>
+          {maps.enabled ? (
+            <div
+              class="map-container"
+              data-ward-map
+              data-boundary-url={boundaryUrl}
+              data-ward-id={wardId}
+              data-maps-key={maps.browserKey}
+              data-maps-map-id={maps.mapId}
+            >
+              <p class="map-fallback">{t(lang, 'ward.map.fallback')}</p>
+            </div>
+          ) : (
+            <div class="map-container">
+              <p class="map-fallback">{t(lang, 'ward.map.fallback')}</p>
+            </div>
+          )}
         </section>
 
         <section class="register-slot">
