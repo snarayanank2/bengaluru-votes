@@ -44,7 +44,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        SITE_ORIGIN: ${SITE_ORIGIN:-https://staging.bengaluruvotes.opencity.in}
+        SITE_ORIGIN: ${SITE_ORIGIN:-https://staging-bengaluruvotes.opencity.in}
         EXTRA_ALLOWED_ORIGIN: ${EXTRA_ALLOWED_ORIGIN:-}
     image: bengaluru-votes-staging:${IMAGE_TAG:-latest}
     restart: unless-stopped
