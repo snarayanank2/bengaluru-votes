@@ -1,8 +1,8 @@
 /**
  * k6 election-day load test (Task 65; architecture.md §12).
  *
- * Proves three things about the single 2 vCPU / 4 GB BLR1 Droplet
- * (architecture §14.6) before election week:
+ * Proves three things about the single 4 vCPU / 16 GB Hostinger VPS
+ * (Mumbai; architecture §14.1) before election week:
  *
  *   1. Cached-page RPS at election-day volume holds p95 < 500 ms.
  *   2. Legitimate-shaped traffic through the CGNAT-sized rate-limit zones
@@ -29,7 +29,7 @@
  *
  * ─────────────────────────────────────────────────────────────────────────
  * PEAK-LOAD ASSUMPTION — READ BEFORE TUNING (this is a hypothesis, not a
- * measurement; the real run on the Droplet is what validates or refutes it)
+ * measurement; the real run on the VPS is what validates or refutes it)
  * ─────────────────────────────────────────────────────────────────────────
  * GTM plan (docs/gtm-plan.md): 300,000 unique visitors is the WHOLE-CAMPAIGN
  * target, not a single day's number. Assume election day itself concentrates
@@ -48,8 +48,8 @@
  * stress margin — a number chosen to be defensible-but-uncomfortable for a
  * single Node process rather than a tightly-derived forecast. If the box
  * holds this, real election-day traffic (almost certainly lower) is safe
- * with headroom; if it doesn't, the remediation is a vertical Droplet
- * resize (architecture §14.6) — minutes of work, not a re-architecture.
+ * with headroom; if it doesn't, the remediation is a Hostinger plan
+ * upgrade (architecture §14.1), not a re-architecture.
  * Tune PEAK_CACHED_RPS below (or via -e PEAK_CACHED_RPS=<n>) once the real
  * run gives actual numbers to react to.
  *
@@ -94,7 +94,7 @@ import { Counter, Rate } from 'k6/metrics';
 
 // ───────────────────────── Tunable constants ──────────────────────────────
 // Keep these here, not buried in scenario logic, so they're easy to tune
-// from the Droplet after seeing the first real run's numbers.
+// from the box after seeing the first real run's numbers.
 
 const BASE_URL = (__ENV.BASE_URL || 'https://staging-bengaluruvotes.opencity.in').replace(/\/$/, '');
 

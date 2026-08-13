@@ -150,7 +150,7 @@ At the Phase 1 target of 25,000 citizens × 7 sends ≈ **175,000 messages**, bi
 
 | # | Dependency | Blocks | Owner |
 |---|---|---|---|
-| 6.1 | **Cloud hosting account + billing** — decided: a DigitalOcean Droplet in BLR1 running Docker Compose, staging and production on the one box (`docs/architecture.md` §14) | Any deployment | unassigned |
+| 6.1 | **Cloud hosting account + billing** — decided: a Hostinger VPS in Mumbai (4 vCPU / 16 GB) running Docker Compose, staging and production on the one box; revised 2026-08-13 from a DigitalOcean Droplet that was never provisioned (`docs/architecture.md` §14) | Any deployment | unassigned |
 | 6.2 | **Google Cloud project + billing account** (card on file) | 6.3, 6.4 | unassigned |
 | 6.3 | **Geocoding API enabled + key**, restricted to the server | Address→ward lookup | unassigned |
 | 6.4 | **Google Maps Platform terms review** — see below | Whether the geocoding architecture is licensed at all | unassigned |
@@ -158,14 +158,14 @@ At the Phase 1 target of 25,000 citizens × 7 sends ≈ **175,000 messages**, bi
 | 6.6 | **Anthropic API key + billing** | Kannada auto-translation (fully automatic — PRD §8); affidavit field extraction (PRD §5.2) | unassigned |
 | 6.7 | **CDN account** — added in front of the VM post-launch for extra headroom; launch itself runs on the nginx micro-cache on the VM (`docs/architecture.md` §5) | Nothing at launch; election-day headroom | unassigned |
 | 6.8 | **DNS for `bengaluruvotes.opencity.in`** — delegated under Oorvani's `opencity.in` | Everything public | unassigned |
-| 6.9 | **Off-box backup storage** — decided: a DO Spaces bucket in BLR1 (India-resident; same-region trade recorded in `docs/architecture.md` §13), encrypted at rest via restic (the dump holds DPDP-regulated personal data; §10) + a rehearsed restore | Launch readiness | unassigned |
+| 6.9 | **Off-box backup storage** — **UNRESOLVED as of 2026-08-13.** Was a DO Spaces bucket in BLR1; the move to Hostinger (`docs/architecture.md` §14) left it with no home. Requirements on the replacement are unchanged: India-resident, S3-compatible, encrypted at rest via restic (the dump holds DPDP-regulated personal data; §10), plus a rehearsed restore. **Until this lands the platform has no off-box backup and the 24-hour RPO is unbounded.** | Launch — this is a blocker, not a nice-to-have | unassigned |
 | 6.10 | **Secrets custody** — who holds the API keys, session signing key, Twilio credentials | Deployment; continuity | unassigned |
 | 6.11 | **Total running budget** — 6.1–6.7 plus messaging (§3.9) | Whether any of this is affordable | unassigned |
 | 6.12 | **Google Analytics property** — created, access shared, and the tracker disclosed in `/privacy` before it ships | The 300,000-unique-visitor target and funnel/attribution measurement (GTM §8) | unassigned |
 | 6.13 | **reCAPTCHA v3 keys** — site key + secret for the anonymous EOI form (`docs/architecture.md` §7); disclosed in `/privacy` alongside GA | `/partner-with-us` | unassigned |
-| 6.14 | **Monitoring accounts** — DigitalOcean Uptime checks (incl. the SSL-expiry alert) wired to an ops alert email; a Sentry project (free tier, server-side only); a healthchecks.io check for the backup dead-man's-switch (`docs/architecture.md` §10) | Knowing the site is down; budget alarms landing somewhere; backup failure being loud | unassigned |
+| 6.14 | **Monitoring accounts** — **partially unresolved as of 2026-08-13.** DigitalOcean Uptime (external liveness + the SSL-expiry alert) went away with the provider move and has no replacement: a silently failed certbot renewal now surfaces as an outage rather than a warning. Still wanted: a Sentry project (free tier, server-side only) and a healthchecks.io check for the backup dead-man's-switch (`docs/architecture.md` §10) | Knowing the site is down; budget alarms landing somewhere; backup failure being loud | unassigned |
 | 6.15 | **Google Programmable Search Engine + Custom Search JSON API key** — for candidate news-link suggestions (PRD §5.2; `docs/architecture.md` §7), configured against the repo's news-domain allowlist, with a daily query budget + alert | News-link suggestions only — degrades gracefully to curator-added links | unassigned |
-| 6.16 | **GitHub — repository hosting** — the org/repo holding the code, which the Droplet clones and builds from (`docs/architecture.md` §14.3) | Any deployment — the box builds from a checkout of this repo | unassigned |
+| 6.16 | **GitHub — repository hosting** — the org/repo holding the code, which the box clones and builds from (`docs/architecture.md` §14.3) | Any deployment — the box builds from a checkout of this repo | unassigned |
 
 **6.4 is the one to look at first, because it is not obvious.** Google Maps Platform's terms restrict using Google Maps content — **geocoding results included** — in an application that displays a **non-Google map**. The decided split is *Google geocodes, MapLibre renders*, which is precisely the pattern that restriction targets.
 
@@ -177,9 +177,9 @@ What is needed is a deliberate confirmation rather than a product spec's reading
 
 **6.11 is the gap.** Five metered services — geocoding, Anthropic, news search (§6.15, the smallest and bounded by design), CDN, and Twilio messaging — plus hosting, and the two largest scale directly with success: more citizens means more sends and more geocodes. Geocoding spend is capped by design (§6.5); nothing caps the rest, and no total has been put on paper. This connects to the funding disclosure question (§7.3) — you cannot publish who pays for the platform without knowing what it costs.
 
-**6.9 deserves its own line.** "An unrehearsed backup is not a backup" is a task with a date, not a principle. It is the kind of thing that is genuinely fine until the one day it is not, which for this project is a day that cannot be rescheduled.
+**6.9 deserves its own line.** "An unrehearsed backup is not a backup" is a task with a date, not a principle. As of 2026-08-13 there is no backup to rehearse, which is strictly worse than an unrehearsed one. It is the kind of thing that is genuinely fine until the one day it is not, which for this project is a day that cannot be rescheduled.
 
-**6.16 is free but not incidental.** Repository hosting carries no bill, but the Droplet builds what it runs from a clone of this repo (`docs/architecture.md` §14.3), so whatever is on the deployed ref is what ships. The dependency is the account and its access control, not money.
+**6.16 is free but not incidental.** Repository hosting carries no bill, but the box builds what it runs from a clone of this repo (`docs/architecture.md` §14.3), so whatever is on the deployed ref is what ships. The dependency is the account and its access control, not money.
 
 *Revised 2026-08-13.* This row previously also covered GitHub Actions and GHCR, and CI was the *only* path onto the box — the deploy key lived in an Environment secret that fired on every push to `main`, putting the GitHub account squarely inside the production trust boundary. CI has been removed (§14.4) and deploys are manual, which narrows this dependency to source hosting and moves the deploy key into ordinary human custody (§6.10). Note the trade: nothing automated now tests or gates what reaches production.
 

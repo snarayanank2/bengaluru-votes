@@ -43,7 +43,10 @@
 # unless RETENTION_ENABLED=true is explicitly set.
 0 6 * * * cd /app && tsx jobs/retention.ts >> /var/log/gba-jobs/retention.log 2>&1
 
-# Nightly backup — pg_dump -> restic (DO Spaces, BLR1) -> verify snapshot
-# count increased -> healthchecks.io ping. See scripts/backup.sh's header
-# for the required env vars.
+# Nightly backup — pg_dump -> restic -> verify snapshot count increased ->
+# healthchecks.io ping. See scripts/backup.sh's header for the required env
+# vars. LEFT ACTIVE DELIBERATELY while no backup target exists (architecture
+# §10, dependency register §6.9): backup.sh fails its RESTIC_REPOSITORY
+# check and logs an error here every night, which is the reminder. Do not
+# comment this out to quiet the log.
 0 2 * * * /app/scripts/backup.sh >> /var/log/gba-jobs/backup.log 2>&1

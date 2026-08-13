@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Nightly backup (Task 55; architecture.md §10 "Backups"): pg_dump ->
-# restic (encrypted, shipped to a DigitalOcean Spaces bucket) -> VERIFY
+# restic (encrypted, shipped to off-box S3-compatible storage) -> VERIFY
 # the backup actually landed (restic snapshots gained exactly one) -> ping
 # a healthchecks.io dead-man's-switch on success. Cron runs this daily
 # (deploy/crontab, 02:00). A missed healthchecks.io ping (because this
@@ -15,12 +15,13 @@
 # Required env vars:
 #   DATABASE_URL       - Postgres connection string for pg_dump (same var
 #                         every app/job/test in this repo uses).
-#   RESTIC_REPOSITORY   - restic repo URL, e.g. s3:https://<region>.digitaloceanspaces.com/<bucket>
+#   RESTIC_REPOSITORY   - restic repo URL, e.g. s3:https://<endpoint>/<bucket>
 #   RESTIC_PASSWORD      - restic repository encryption password (or set
 #                          RESTIC_PASSWORD_FILE instead - restic honours
 #                          either).
-#   AWS_ACCESS_KEY_ID    - DO Spaces access key (restic's s3 backend reads
-#   AWS_SECRET_ACCESS_KEY  the standard AWS_* env vars; Spaces is S3-compatible).
+#   AWS_ACCESS_KEY_ID    - Access key for the S3-compatible backup / storage
+#   AWS_SECRET_ACCESS_KEY  (restic's s3 backend reads the standard AWS_*
+#                          env vars).
 #   HEALTHCHECKS_URL     - the healthchecks.io ping URL for this check.
 # Optional:
 #   BACKUP_STAGING_DIR   - directory for the transient pg_dump file
@@ -30,6 +31,10 @@
 #                          restic ships it").
 #
 # Requires on PATH: pg_dump, restic, curl, jq.
+#
+# NOTE (2026-08-13): no backup target has been chosen yet (architecture §10,
+# dependency register §6.9), so RESTIC_REPOSITORY is unset in production and
+# this script exits 1 nightly. That is intentional — see deploy/crontab.
 
 set -euo pipefail
 

@@ -28,9 +28,10 @@
 #
 # ENV FILES: `./.env.production` (resolved relative to THIS file's
 # directory, i.e. deploy/.env.production) is intentionally gitignored
-# (.gitignore's `.env.*` rule) — never committed. On the Droplet this is
-# written by the provisioning runbook (architecture §14.6 step 4, "outside
-# the repo", mode 600) and kept in sync at that path (or replaced with an
+# (.gitignore's `.env.*` rule) — never committed. On the box this is
+# written by the provisioning runbook (architecture §14.6 step 4) at
+# /etc/bengaluru-votes/.env.production, mode 600, outside both checkouts,
+# and reached through the PROD_ENV_FILE override below (or replaced with an
 # absolute path here if the runbook places it elsewhere — see
 # task-61-report.md's "required env vars" list for what it must contain).
 # `${PROD_ENV_FILE:-./.env.production}` lets local verification point at an

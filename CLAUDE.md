@@ -54,7 +54,7 @@ npm run build-pincode       # regenerates data/pincode-wards.json (still a place
 docker compose -f deploy/compose.local.yml up --build -d   # http://localhost:4321
 ```
 
-Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). The other two Compose files (`compose.staging.yml`, `compose.production.yml`) target the Droplet — they build the same Dockerfile but add TLS nginx, certbot and the jobs container, and expect real credentials, so they won't come up on a laptop.
+Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). The other two Compose files (`compose.staging.yml`, `compose.production.yml`) target the VPS — they build the same Dockerfile but add TLS nginx, certbot and the jobs container, and expect real credentials, so they won't come up on a laptop.
 
 ### Tests need a database
 
@@ -158,13 +158,14 @@ Anonymous citizen (no account, most traffic, read-only) · Registered citizen ·
 - **`data/pincode-wards.json` is a 12-row placeholder.** Real Bengaluru pincodes report "out of coverage" until `npm run build-pincode` is run and the result committed. Not a bug in the lookup code.
 - **`/data/gba.geojson` is not in `public/`.** Production serves it from the nginx static volume, populated by the `static-init` one-shot, which **does not re-run** on `up -d` once it has succeeded — stale CSS/JS after a deploy usually means it needs `docker compose run --rm static-init`.
 - Unset vendor keys (`SENDGRID_*`, `TWILIO_*`, `GOOGLE_*`, `ANTHROPIC_API_KEY`, `RECAPTCHA_*`, `SENTRY_DSN`) each degrade to a documented no-op rather than an error. `deploy/runbook.md` has the exhaustive table with what each one's absence costs.
+- **No off-box backup exists.** The nightly `scripts/backup.sh` cron fails every night by design until a restic target is chosen (`architecture.md` §10, dependency register §6.9). Losing the box's disk loses everything. Don't read the working backup *mechanism* as a working backup.
 
 ## Fixed decisions (don't relitigate without asking)
 
 - **Auth:** one email / WhatsApp OTP mechanism for *all* roles. No passwords, no 2FA.
 - **Curator publish:** trusted; immediate, no approval gate.
 - **Bilingual:** EN at root, KN under `/kn/`, each with its own URL.
-- **Deployment:** DigitalOcean — one BLR1 Droplet running staging + production Compose stacks. **There is no CI and no registry** (removed 2026-08-13): images are built on the box from a git checkout, and deploys are run by hand. Nothing fires on push, merge or release. `deploy/runbook.md` ("Deploying") is the procedure; `architecture.md` §14.3/§14.4 is the design.
+- **Deployment:** one Hostinger VPS (Mumbai, 4 vCPU / 16 GB) running staging + production Compose stacks, from **two checkouts** under `/root/src` — staging tracks `origin/main`, production sits detached on a `vYYYY.MM.DD` tag. **There is no CI and no registry** (removed 2026-08-13): images are built on the box, and deploys are run by hand with `deploy/deploy.sh`. Nothing fires on push, merge or release. `deploy/runbook.md` ("Deploying") is the procedure; `architecture.md` §14.3/§14.4 is the design. Moved off the never-provisioned DigitalOcean Droplet on 2026-08-13.
 - **Consequence worth holding onto:** `npm test`, `npm run typecheck` and `npm run translate -- --check` no longer gate anything. Run them before deploying — nothing else will.
 - **Staging isolation:** `compose.staging.yml` must never join `back_prod`, and staging must keep `SENDS_DISABLED=true` with vendor keys omitted entirely. Those are two independent guards; keep both.
 

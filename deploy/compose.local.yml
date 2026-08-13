@@ -5,7 +5,7 @@
 # nginx, run certbot and the jobs container, and expect real vendor
 # credentials. This file exposes the Astro server directly on
 # http://localhost:4321 with none of that — no nginx, no certbot, no jobs
-# container (its cron entries need restic + DO Spaces + healthchecks.io
+# container (its cron entries need restic + off-box storage + healthchecks.io
 # credentials no laptop has, and the local database is disposable demo data).
 #
 # Secrets here are deliberately fixed, weak and committed: this stack binds
@@ -46,7 +46,7 @@
 name: bengaluru-votes-local
 
 services:
-  # Same Dockerfile the Droplet images are built from, built here from the
+  # Same Dockerfile the deployed images are built from, built here from the
   # working tree so local edits actually appear. `--build` on `up` to pick
   # up source changes; the build is a full `npm ci && astro build`, so the
   # first one takes a few minutes and later ones hit the layer cache.
