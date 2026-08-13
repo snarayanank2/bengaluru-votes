@@ -108,6 +108,20 @@ fictional candidate data out of search results. Fix conf.d/site.conf." ;;
     esac
   fi
 
+  # Both environments carry a site-wide banner above the app bar, selected by
+  # the APP_ENV runtime var in the compose file (src/lib/env-banner.ts). A
+  # missing or misspelled APP_ENV degrades to NO banner — deliberately, since
+  # showing staging's "Testing site: Go away!" to real citizens would be far
+  # worse than showing nothing. That safe default is also silent, which is why
+  # it is asserted here. Matches the element, not the copy, so rewording the
+  # banner never breaks the deploy.
+  if ! curl -fsS "$ORIGIN/" | grep -q "data-env-banner=\"$ENV_NAME\""; then
+    fail "no data-env-banner=\"$ENV_NAME\" in the homepage HTML — APP_ENV is
+unset or wrong in this environment's compose file, so the site-wide banner is
+missing. On production that is the pre-launch notice every visitor should see."
+  fi
+  echo "  env banner        present ($ENV_NAME)"
+
   # Catches a stale static_assets volume: the HTML references a hashed asset
   # filename that exists only if static-init copied THIS image's build output.
   asset=$(curl -fsS "$ORIGIN/" | grep -o '/_astro/[^"]*\.js' | head -1 || true)

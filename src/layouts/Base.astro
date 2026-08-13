@@ -94,6 +94,7 @@
  */
 import '../styles/global.css';
 import SkipLink from '../components/SkipLink.astro';
+import EnvBanner from '../components/EnvBanner.astro';
 import AppBar from '../components/AppBar.astro';
 import Footer from '../components/Footer.astro';
 import RegisterLoginModal from '../components/RegisterLoginModal.astro';
@@ -240,6 +241,10 @@ const showGa = !noindex && !!gaMeasurementId;
   </head>
   <body>
     <SkipLink lang={lang} />
+    {/* Above the AppBar, below the skip link — the skip link must stay the
+        first focusable thing on the page (design-system §10). Renders
+        nothing outside staging/production; see EnvBanner.astro. */}
+    <EnvBanner lang={lang} />
     <AppBar lang={lang} path={path} />
     <main id="main-content">
       <slot />

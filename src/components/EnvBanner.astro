@@ -1,0 +1,79 @@
+---
+/**
+ * EnvBanner — the one-line, site-wide environment notice that sits ABOVE
+ * the AppBar (design-system.md §7.14, information-architecture.md §1).
+ * Renders nothing at all unless `APP_ENV` names an environment that has a
+ * banner, which today means staging and production only; a developer's
+ * laptop and the test suites see no banner. See src/lib/env-banner.ts for
+ * why the signal is `APP_ENV` and not `SITE_ORIGIN`.
+ *
+ * Deliberately NOT sticky, and deliberately above the sticky AppBar rather
+ * than inside it: it is read once on arrival and then wants to be out of
+ * the way, whereas the AppBar has to stay reachable. Scrolling therefore
+ * moves the banner off-screen and lets the AppBar take over `top: 0`,
+ * which also means it never eats into the 56px bar's own tight width
+ * budget (AppBar.astro's phone block).
+ *
+ * Deliberately NOT dismissible. A dismiss control would need per-visitor
+ * state, and the only server-side way to carry that is a cookie — which
+ * would break the caching invariant outright (architecture.md §5: public
+ * page HTML never varies by session, and src/middleware.ts never sets a
+ * cookie on a public GET). Not worth it for one line of text.
+ *
+ * Cache-safety: reads `process.env.APP_ENV` (a container-level constant)
+ * and nothing request-scoped — no cookies, no session, no Host header. The
+ * HTML is identical for every visitor.
+ *
+ * `role="status"` rather than `role="alert"`: this is ambient context, not
+ * something that should interrupt a screen reader mid-sentence.
+ */
+import { t, type Lang } from '../i18n';
+import { resolveEnvBanner, envBannerKey } from '../lib/env-banner';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+
+const variant = resolveEnvBanner(process.env.APP_ENV);
+---
+
+{
+  variant && (
+    <div class={`env-banner env-banner--${variant}`} role="status" data-env-banner={variant}>
+      <p>{t(lang, envBannerKey(variant))}</p>
+    </div>
+  )
+}
+
+<style>
+  .env-banner {
+    /* Above the sticky AppBar in document order, and left non-sticky on
+       purpose — see this component's docstring. */
+    padding: var(--space-2) var(--container-pad-x);
+    text-align: center;
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .env-banner p {
+    max-width: var(--container-app);
+    margin-inline: auto;
+  }
+
+  /* Staging: the loud one. It is aimed at whoever wandered in, and staging
+     carries fictional candidate data (architecture §14.2), so it should be
+     impossible to mistake for the real site. */
+  .env-banner--staging {
+    background: var(--color-danger-surface);
+    color: var(--color-danger);
+  }
+
+  /* Production: informational, not alarming — this is the real site, just
+     not open yet. Same sun-tint surface as the notice Banner (§7.6). */
+  .env-banner--production {
+    background: var(--color-accent-surface);
+    color: var(--color-text);
+  }
+</style>

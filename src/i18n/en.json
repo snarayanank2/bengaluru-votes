@@ -9,6 +9,8 @@
   "footer.terms": "Terms of use",
   "footer.privacy": "Privacy policy",
   "footer.attribution": "Bengaluru Votes, an Oorvani Foundation initiative",
+  "banner.staging": "Testing site: Go away!",
+  "banner.production": "Under construction. Come back on Sep 15!",
   "a11y.skipToContent": "Skip to main content",
   "common.registerForUpdates": "Register for updates",
   "common.receivingUpdates": "You're receiving updates",
@@ -675,6 +677,8 @@
   "press.spokesperson.pendingNote": "Spokesperson details — coming soon.",
   "press.contact.pendingNote": "Press contact details and our stated response time — coming soon.",
   "__hints": {
+    "banner.staging": "Site-wide banner shown above the app bar on the STAGING deployment only (design-system §7.14). Addressed to a stranger who found staging by accident — staging carries fictional candidate data, so this must be blunt and impossible to mistake for the real site. Keep it terse and a little abrupt, exactly like the English; do NOT soften it into a polite formal notice. Two short sentences/clauses, colloquial Kannada.",
+    "banner.production": "Site-wide banner shown above the app bar on the PRODUCTION site until launch (design-system §7.14). Informational and friendly, NOT a warning — the site is real, just not open yet. 'Sep 15' is a calendar date: render it as a date in Kannada convention (September 15), never translate it as a word or change the day/month.",
     "ward.candidates.meta.title": "Browser tab title for the candidates-in-ward list page (/ward/{id}/candidates, IA §3.3); {wardName} is the ward's name in the page's own language.",
     "ward.candidates.meta.description": "Meta description for the candidates-in-ward list page.",
     "ward.candidates.list.label": "aria-label on the candidates-in-ward list (IA §3.3) — alphabetical order, never editorially ranked (design-system §4.3).",

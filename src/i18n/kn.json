@@ -764,7 +764,9 @@
     "press.keyStats.flagsResolved.label": "eeb41547578bde6c93eba77cfd9d8073c4f32a7904e9af0476d965910bec039e",
     "press.logos.pendingNote": "7438c82172e4515c7e7fab4b7668ba8b68d77b5517f308fbc9fb283c542e2b9e",
     "press.spokesperson.pendingNote": "d422c75380f20a23158caabcbb3f62a040537c6c215975349457a4e134faceb1",
-    "press.contact.pendingNote": "b6678feb5cf9013bf3a4f7755664cd39d918c8104bd3468dd391b5c8bde0d4c8"
+    "press.contact.pendingNote": "b6678feb5cf9013bf3a4f7755664cd39d918c8104bd3468dd391b5c8bde0d4c8",
+    "banner.staging": "04d6489a7fc35d054b91e2d3368d2ec4c611ee3241f5a720bafe2660e968b7bd",
+    "banner.production": "b40e49b3689ff4e715bb4dd4b97973efb961c317f741c8b099c1fd01d994481c"
   },
   "legal.courtesyNote": "ಇದು ಸೌಜನ್ಯ ಅನುವಾದವಾಗಿದೆ. ಈ ಪುಟದ ಇಂಗ್ಲಿಷ್ ಆವೃತ್ತಿಯು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಯಂತ್ರಿಸುವ ಪಠ್ಯವಾಗಿದೆ.",
   "error.notFound.title": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
@@ -1356,5 +1358,7 @@
   "press.keyStats.flagsResolved.label": "ಪರಿಹರಿಸಲಾದ ಫ್ಲ್ಯಾಗ್‌ಗಳು",
   "press.logos.pendingNote": "ಪತ್ರಿಕಾ ಬಳಕೆಗಾಗಿ ಲೋಗೊ ಫೈಲ್‌ಗಳು ಮತ್ತು ಉತ್ಪನ್ನ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳು — ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿವೆ.",
   "press.spokesperson.pendingNote": "ವಕ್ತಾರರ ವಿವರಗಳು — ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿವೆ.",
-  "press.contact.pendingNote": "ಪತ್ರಿಕಾ ಸಂಪರ್ಕ ವಿವರಗಳು ಮತ್ತು ನಮ್ಮ ನಿಗದಿತ ಪ್ರತಿಕ್ರಿಯೆ ಸಮಯ — ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿವೆ."
+  "press.contact.pendingNote": "ಪತ್ರಿಕಾ ಸಂಪರ್ಕ ವಿವರಗಳು ಮತ್ತು ನಮ್ಮ ನಿಗದಿತ ಪ್ರತಿಕ್ರಿಯೆ ಸಮಯ — ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿವೆ.",
+  "banner.staging": "ಇದು ಟೆಸ್ಟಿಂಗ್ ಸೈಟ್: ಇಲ್ಲಿಂದ ಹೋಗಿ!",
+  "banner.production": "ಕೆಲಸ ನಡೆಯುತ್ತಿದೆ. ಸೆಪ್ಟೆಂಬರ್ 15ರಂದು ಮತ್ತೆ ಬನ್ನಿ!"
 }

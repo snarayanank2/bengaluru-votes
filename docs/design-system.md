@@ -256,6 +256,23 @@ Horizontal bars, all `--oc-forest` on a `--gray-100` track (§4 rule 5), rank nu
 
 Same tokens, denser rhythm: `--text-sm` table default, 8px cell padding, zebra rows in `--gray-100`, sticky header row. Destructive and publish actions get confirmation dialogs stating scope ("Publishes immediately to /ward/57"). The readiness panel is a pass/fail block: forest tint when passing, sun tint with a listed gap-set when held — never red, because "not ready" is a work state, not an error.
 
+### 7.14 Environment banner
+
+One line of centered `--text-sm` bold, full-bleed, sitting **above** the app bar and below the skip link. It states which deployment the visitor is on, and it exists only on deployments that need to say so — the signal is the `APP_ENV` runtime variable, set per environment in the compose files, and absent everywhere else, so a developer's laptop and the test suites show nothing.
+
+| Environment | Copy (EN) | Surface |
+|---|---|---|
+| staging | "Testing site: Go away!" | `--color-danger-surface` / `--color-danger` |
+| production | "Under construction. Come back on Sep 15!" | `--color-accent-surface` / `--color-text` |
+
+Staging is the loud one on purpose: it carries fictional candidate data and is open to anyone with the URL (architecture §14.2), so it must be impossible to mistake for the real site. Production's is informational, not a warning — the site is real, just not open yet — so it shares the sun tint with the §7.6 notice banner rather than borrowing red.
+
+Not sticky, and not part of the app bar: it is read once on arrival and should then get out of the way, while the app bar has to stay reachable. Scrolling moves it off-screen and lets the app bar take `top: 0`. That also keeps it out of the 56px bar's very tight width budget (§7.1).
+
+Not dismissible. Per-visitor dismissal needs per-visitor state, and the only server-side way to carry that is a cookie, which would break the caching invariant outright (architecture §5). One line of text does not justify that.
+
+`role="status"`, not `role="alert"` — ambient context should not interrupt a screen reader mid-sentence.
+
 ---
 
 ## 8. Iconography and imagery

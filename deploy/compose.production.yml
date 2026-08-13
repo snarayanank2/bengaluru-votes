@@ -168,6 +168,15 @@ services:
     image: bengaluru-votes:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ${PROD_ENV_FILE:-./.env.production}
+    environment:
+      # Selects the site-wide banner above the app bar (src/lib/env-banner.ts,
+      # design-system §7.14) — on production that is the pre-launch "under
+      # construction" notice EVERY citizen sees, so treat changing or
+      # removing it as a product decision, not a config tweak. Read at
+      # REQUEST time, hence a runtime var rather than a build arg like
+      # SITE_ORIGIN above. See compose.staging.yml's copy of this comment for
+      # why it lives here rather than in the box's .env file.
+      APP_ENV: production
     networks:
       - front
       - back_prod

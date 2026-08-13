@@ -49,6 +49,18 @@ services:
     image: bengaluru-votes-staging:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ${STAGING_ENV_FILE:-./.env.staging}
+    environment:
+      # Selects the site-wide banner above the app bar (src/lib/env-banner.ts,
+      # design-system §7.14). Read at REQUEST time, so it is a plain runtime
+      # var here rather than a build arg like SITE_ORIGIN above — the same
+      # image would render either banner depending on this value.
+      #
+      # Set HERE and not in .env.staging on purpose: which environment this
+      # stack IS belongs with the stack definition, in git, next to the
+      # hostname it serves — not in the box's gitignored secrets file where
+      # nobody would think to look for it. Unset anywhere else (a laptop, the
+      # test suites) means no banner at all, which is the intended default.
+      APP_ENV: staging
     networks:
       - front
       - back_staging
