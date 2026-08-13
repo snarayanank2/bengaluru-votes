@@ -15,5 +15,10 @@ export default getViteConfig({
     // fixture-id collisions; concurrent migrate()). Serialize test files.
     fileParallelism: false,
     poolOptions: { forks: { singleFork: true } },
+    // Closes the app's shared Postgres pool after each file. Required, not
+    // hygiene: `singleFork` above means every file's pool outlives it, and
+    // without this teardown the run exhausts `max_connections` around the
+    // 80th file. See tests/setup.ts for the full mechanism.
+    setupFiles: ['tests/setup.ts'],
   },
 });
