@@ -1,15 +1,20 @@
 ---
 /**
- * Footer — design-system.md §7.2, information-architecture.md §1. Forest
- * background, the one dark surface in the system. Footer is the only route
- * to the trust/legal pages (About, Voting guide, Data, Partner with us,
- * Press, Terms, Privacy) plus the Oorvani Foundation attribution.
+ * Footer — design-system.md §7.2, information-architecture.md §1. Black
+ * background with lime text, matching Open City's own footer
+ * (opencity.in serves it as accent-3 on accent-2); the one dark surface in
+ * the system. Footer is the only route to the trust/legal pages (About,
+ * Voting guide, Data, Partner with us, Press, Terms, Privacy), and carries
+ * the Janaagraha + Oorvani Foundation partner lockup.
  *
- * Note: §7.2 calls for "white and lime text" on the forest background, but
- * the semantic token set (tokens.css §2.2) has no lime/leaf text token —
- * only --color-on-primary (white). Per this task's "semantic tokens only"
- * constraint, all footer text uses --color-on-primary; a lime accent token
- * would need a design decision + tokens.css addition first.
+ * Two columns in a 2:1 split at md and up (links left, partners right),
+ * stacked on mobile.
+ *
+ * Both partner logos are dark-on-transparent PNGs, so each sits on its own
+ * white chip rather than being recolored — a partner's mark is theirs, and
+ * inverting it would drop Oorvani's red dot. Self-hosted under
+ * `public/img/` (so `/img/janaagraha-logo.png`), never hot-linked: the CSP
+ * is `img-src 'self'` (src/lib/csp.ts).
  */
 import { t, localePath, type Lang } from '../i18n';
 
@@ -43,41 +48,94 @@ const links = [
         }
       </ul>
     </nav>
-    <p class="attribution">{t(lang, 'footer.attribution')}</p>
+    <div class="footer-partners">
+      <p class="partners-label">{t(lang, 'footer.jointProject')}</p>
+      <ul role="list" class="partner-logos">
+        <li class="partner-chip">
+          <img src="/img/janaagraha-logo.png" alt="Janaagraha" width="133" height="22" />
+        </li>
+        <li class="partner-chip">
+          <img src="/img/oorvani-logo.png" alt="Oorvani Foundation" width="93" height="26" />
+        </li>
+      </ul>
+    </div>
   </div>
 </footer>
 
 <style>
   .site-footer {
-    background: var(--color-primary);
-    color: var(--color-on-primary);
+    background: var(--color-footer);
+    color: var(--color-on-footer);
   }
 
   .footer-inner {
     max-width: var(--container-app);
     margin-inline: auto;
     padding: var(--space-8) var(--container-pad-x);
+    display: grid;
+    gap: var(--space-8);
+  }
+
+  /* 2:1 split at md (literal 768px — --bp-md can't be read in a query). */
+  @media (min-width: 768px) {
+    .footer-inner {
+      grid-template-columns: 2fr 1fr;
+      align-items: start;
+    }
   }
 
   .footer-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-6);
-    margin-bottom: var(--space-6);
+    display: grid;
+    gap: var(--space-3) var(--space-6);
+  }
+
+  /* Seven links read as a list, not a paragraph — two tidy columns once
+     there's room for them (literal 480px = --bp-sm). */
+  @media (min-width: 480px) {
+    .footer-links {
+      grid-template-columns: repeat(2, minmax(0, max-content));
+    }
   }
 
   .footer-links a {
-    color: var(--color-on-primary);
+    color: var(--color-on-footer);
     font-size: var(--text-sm);
+    text-decoration: none;
   }
 
-  /* a11y floor (§10): forest surfaces use the sun-yellow focus outline. */
-  .footer-links a:focus-visible,
-  .attribution:focus-visible {
+  .footer-links a:hover,
+  .footer-links a:focus-visible {
+    text-decoration: underline;
+  }
+
+  /* a11y floor (§10): dark surfaces use the sun-yellow focus outline. */
+  .footer-links a:focus-visible {
     outline-color: var(--color-accent);
   }
 
-  .attribution {
+  .partners-label {
     font-size: var(--text-xs);
+    margin-bottom: var(--space-3);
+  }
+
+  .partner-logos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .partner-chip {
+    display: inline-flex;
+    align-items: center;
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .partner-chip img {
+    display: block;
+    height: auto;
+    max-width: 100%;
   }
 </style>

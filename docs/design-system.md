@@ -40,6 +40,7 @@ Named hex values. The first six come directly from Open City's palette; grays an
 | `--sun-tint` | `#fff8d6` | derived from sun | Deadline/notice surfaces |
 | `--brick-tint` | `#faeceb` | derived from brick | Error surfaces |
 | `--white` | `#ffffff` | — | Page background |
+| `--oc-black` | `#000000` | Open City accent-3 | Footer surface (§7.2) — the one black surface |
 
 ### 2.2 Semantic tokens
 
@@ -60,6 +61,8 @@ Components consume semantic tokens, never primitives. This keeps a future dark t
 | `--color-danger-surface` | `--brick-tint` | Error backgrounds |
 | `--color-on-primary` | `--white` | Text on forest |
 | `--color-on-accent` | `--ink` | Text on sun yellow |
+| `--color-footer` | `--oc-black` | Footer background (§7.2) |
+| `--color-on-footer` | `--oc-lime` | Footer text and links |
 
 ### 2.3 Contrast (checked, WCAG 2.1)
 
@@ -72,6 +75,7 @@ Components consume semantic tokens, never primitives. This keeps a future dark t
 | `#616161` gray-600 on white | 5.7:1 | AA — fine for secondary text |
 | `#1a1a1a` ink on `#ffd527` sun | 13.9:1 | AAA — the only text treatment allowed on yellow |
 | `#c8e537` lime on `#426133` forest | 4.9:1 | AA — accent text on dark green panels |
+| `#c8e537` lime on `#000000` black | 15.0:1 | AAA — the footer's text and links (§7.2) |
 
 Never place white text on sun, lime, or leaf. Never place lime or sun on white as text.
 
@@ -196,7 +200,12 @@ White, 56px, sticky, `--shadow-sticky` on scroll. Left: Open City-family logo lo
 
 ### 7.2 Footer (global)
 
-Forest (`#426133`) background, white and lime text — the one dark surface in the system. Carries the trust links (About, Voting guide, Data, Partner with us, Press, Terms, Privacy) and the Oorvani Foundation attribution.
+Black (`#000000`) background, lime (`#c8e537`) text — the one dark surface in the system, and the same treatment Open City uses for its own footer. Two columns in a 2:1 split at `md` and up, stacked below it:
+
+- **Left (2fr):** the trust links (About, Voting guide, Data, Partner with us, Press, Terms, Privacy), as a list — two sub-columns from `sm` up. Nav links carry no underline until hover/focus (§7.4).
+- **Right (1fr):** "A joint project by" over the Janaagraha and Oorvani Foundation logos.
+
+Both partner logos are dark-on-transparent, so each sits on a white `--radius-sm` chip rather than being recolored — a partner's mark is theirs to set, and inverting it would drop Oorvani's red dot.
 
 ### 7.3 Buttons
 

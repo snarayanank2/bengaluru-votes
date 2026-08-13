@@ -32,6 +32,7 @@
   --sun-tint: #fff8d6;
   --brick-tint: #faeceb;
   --white: #ffffff;
+  --oc-black: #000000;
 
   /* ---------------------------------------------------------------------
    * 2. Semantic tokens (§2.2) — the only layer components may use
@@ -49,6 +50,11 @@
   --color-danger-surface: var(--brick-tint);
   --color-on-primary: var(--white);
   --color-on-accent: var(--ink);
+  /* The footer is the one black surface in the system, matching Open City's
+     own footer (opencity.in: accent-3 background, accent-2 text) — see
+     design-system.md §7.2. Lime on black is 15.0:1 (§2.3). */
+  --color-footer: var(--oc-black);
+  --color-on-footer: var(--oc-lime);
 
   /* ---------------------------------------------------------------------
    * 3. Typography — families (§5.1) and scale (§5.2)

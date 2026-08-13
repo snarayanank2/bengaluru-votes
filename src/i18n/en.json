@@ -8,7 +8,7 @@
   "footer.press": "Press",
   "footer.terms": "Terms of use",
   "footer.privacy": "Privacy policy",
-  "footer.attribution": "Bengaluru Votes, an Oorvani Foundation initiative",
+  "footer.jointProject": "A joint project by",
   "banner.staging": "Testing site: Go away!",
   "banner.production": "Under construction. Come back on Sep 15!",
   "a11y.skipToContent": "Skip to main content",
@@ -677,6 +677,7 @@
   "press.spokesperson.pendingNote": "Spokesperson details — coming soon.",
   "press.contact.pendingNote": "Press contact details and our stated response time — coming soon.",
   "__hints": {
+    "footer.jointProject": "Footer label (design-system §7.2) introducing the two partner logos that follow it — Janaagraha and Oorvani Foundation. A sentence fragment ending in 'by', not a complete sentence: the logo images finish it. Keep it short; Kannada should read naturally as the lead-in to two organisation names shown as images.",
     "banner.staging": "Site-wide banner shown above the app bar on the STAGING deployment only (design-system §7.14). Addressed to a stranger who found staging by accident — staging carries fictional candidate data, so this must be blunt and impossible to mistake for the real site. Keep it terse and a little abrupt, exactly like the English; do NOT soften it into a polite formal notice. Two short sentences/clauses, colloquial Kannada.",
     "banner.production": "Site-wide banner shown above the app bar on the PRODUCTION site until launch (design-system §7.14). Informational and friendly, NOT a warning — the site is real, just not open yet. 'Sep 15' is a calendar date: render it as a date in Kannada convention (September 15), never translate it as a word or change the day/month.",
     "ward.candidates.meta.title": "Browser tab title for the candidates-in-ward list page (/ward/{id}/candidates, IA §3.3); {wardName} is the ward's name in the page's own language.",

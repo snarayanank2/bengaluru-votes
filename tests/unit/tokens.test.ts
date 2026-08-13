@@ -42,6 +42,8 @@ describe('tokens.css — semantic tokens (design-system.md §2.2)', () => {
     '--color-danger-surface',
     '--color-on-primary',
     '--color-on-accent',
+    '--color-footer',
+    '--color-on-footer',
   ];
 
   it.each(semanticTokens)('defines %s', (token) => {
@@ -68,10 +70,11 @@ describe('tokens.css — primitives (design-system.md §2.1)', () => {
     ['--sun-tint', '#fff8d6'],
     ['--brick-tint', '#faeceb'],
     ['--white', '#ffffff'],
+    ['--oc-black', '#000000'],
   ];
 
-  it('has exactly 14 primitives to check (spot-check coverage guard)', () => {
-    expect(primitives).toHaveLength(14);
+  it('has exactly 15 primitives to check (spot-check coverage guard)', () => {
+    expect(primitives).toHaveLength(15);
   });
 
   it.each(primitives)('%s is exactly %s', (token, hex) => {

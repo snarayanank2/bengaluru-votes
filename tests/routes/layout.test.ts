@@ -119,6 +119,18 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     }
   });
 
+  it('renders the partner lockup: the joint-project label and both logos, self-hosted (§7.2)', () => {
+    for (const html of [enHtml, knHtml]) {
+      // Self-hosted under public/img/ — a remote src would be blocked by the
+      // app's own `img-src 'self'` CSP (src/lib/csp.ts).
+      expect(html).toContain('src="/img/janaagraha-logo.png"');
+      expect(html).toContain('src="/img/oorvani-logo.png"');
+      expect(html).toContain('alt="Janaagraha"');
+      expect(html).toContain('alt="Oorvani Foundation"');
+    }
+    expect(enHtml).toContain('A joint project by');
+  });
+
   it('renders the Sign in control anonymously with the MeSlot hook', () => {
     expect(enHtml).toMatch(/data-me-slot[^>]*>Sign in</);
     expect(enHtml).toContain(`href="${localePath('en', '/login')}"`);

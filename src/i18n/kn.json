@@ -8,7 +8,6 @@
   "footer.press": "ಮಾಧ್ಯಮ",
   "footer.terms": "ಬಳಕೆಯ ನಿಯಮಗಳು",
   "footer.privacy": "ಗೌಪ್ಯತಾ ನೀತಿ",
-  "footer.attribution": "Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ",
   "a11y.skipToContent": "ಮುಖ್ಯ ವಿಷಯಕ್ಕೆ ಹೋಗಿ",
   "common.registerForUpdates": "ಅಪ್‌ಡೇಟ್‌ಗಳಿಗಾಗಿ ನೋಂದಾಯಿಸಿ",
   "common.receivingUpdates": "ನೀವು ಅಪ್‌ಡೇಟ್‌ಗಳನ್ನು ಪಡೆಯುತ್ತಿದ್ದೀರಿ",
@@ -96,7 +95,6 @@
     "footer.press": "9ed1273e9b5a55799f5e954a482c04fc2e01af5fa06dbff7706b35067be01299",
     "footer.terms": "8c45a486e4b1cad8da030648c261c5b4bce2ab95de23010415be98229eeec919",
     "footer.privacy": "ba445cff3898a3f24f415f90fbef1c8169ea21949a40680c5e1c5975843d1b5e",
-    "footer.attribution": "7b938cda0c4a3ea4ccc7837dac43d2e6a8a98f17db55dd951bc6f97471043b9e",
     "a11y.skipToContent": "c887f134c26ea8310e1fb4bd6fbab7b640393bd1b556e62691c7a442be92ec2a",
     "common.registerForUpdates": "b855986ea9ae2a35111ff2200bcf36f910a37aa372ac60450cb12b32c951ccd2",
     "common.receivingUpdates": "f2f8a1568044ec6b30bf4e7c862b8883158bc5d9cd517cae3a5585e045f29296",
@@ -766,7 +764,8 @@
     "press.spokesperson.pendingNote": "d422c75380f20a23158caabcbb3f62a040537c6c215975349457a4e134faceb1",
     "press.contact.pendingNote": "b6678feb5cf9013bf3a4f7755664cd39d918c8104bd3468dd391b5c8bde0d4c8",
     "banner.staging": "04d6489a7fc35d054b91e2d3368d2ec4c611ee3241f5a720bafe2660e968b7bd",
-    "banner.production": "b40e49b3689ff4e715bb4dd4b97973efb961c317f741c8b099c1fd01d994481c"
+    "banner.production": "b40e49b3689ff4e715bb4dd4b97973efb961c317f741c8b099c1fd01d994481c",
+    "footer.jointProject": "026811cf0d5284bca76d32fbf07a616c0575bfdd98034bae3e12aef3f48639b9"
   },
   "legal.courtesyNote": "ಇದು ಸೌಜನ್ಯ ಅನುವಾದವಾಗಿದೆ. ಈ ಪುಟದ ಇಂಗ್ಲಿಷ್ ಆವೃತ್ತಿಯು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಯಂತ್ರಿಸುವ ಪಠ್ಯವಾಗಿದೆ.",
   "error.notFound.title": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
@@ -1360,5 +1359,6 @@
   "press.spokesperson.pendingNote": "ವಕ್ತಾರರ ವಿವರಗಳು — ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿವೆ.",
   "press.contact.pendingNote": "ಪತ್ರಿಕಾ ಸಂಪರ್ಕ ವಿವರಗಳು ಮತ್ತು ನಮ್ಮ ನಿಗದಿತ ಪ್ರತಿಕ್ರಿಯೆ ಸಮಯ — ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿವೆ.",
   "banner.staging": "ಇದು ಟೆಸ್ಟಿಂಗ್ ಸೈಟ್: ಇಲ್ಲಿಂದ ಹೋಗಿ!",
-  "banner.production": "ಕೆಲಸ ನಡೆಯುತ್ತಿದೆ. ಸೆಪ್ಟೆಂಬರ್ 15ರಂದು ಮತ್ತೆ ಬನ್ನಿ!"
+  "banner.production": "ಕೆಲಸ ನಡೆಯುತ್ತಿದೆ. ಸೆಪ್ಟೆಂಬರ್ 15ರಂದು ಮತ್ತೆ ಬನ್ನಿ!",
+  "footer.jointProject": "ಇವರ ಜಂಟಿ ಯೋಜನೆ:"
 }
