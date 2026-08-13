@@ -289,6 +289,6 @@ Motion is functional only: modal/toast enter-exit (150–200ms ease-out), accord
 
 ## 12. Open questions
 
-- The exact Open City logo lockup for subdomains (wordmark? "An Open City project" byline?) needs an asset from Oorvani — not inventable here.
+- ~~The exact Open City logo lockup for subdomains (wordmark? "An Open City project" byline?) needs an asset from Oorvani — not inventable here.~~ **Settled 2026-08-13:** the wordmark asset, no byline. The AppBar (§7.1) renders "Bengaluru Votes" then a hairline rule then the Open City wordmark (`public/img/opencity-logo.png`). Both marks show at every width: 768px and up gets the full wordmark with the logo at 20px; below 768px the wordmark abbreviates to "BV" and the logo drops to 18px, which is what makes room for both on a phone. Below 360px the hairline rule goes too. The abbreviation is presentational only — the home link's `aria-label` is "Bengaluru Votes" at every width.
 - Whether Anek Kannada (a display-grade Kannada family) should replace Noto Sans Kannada in headings for more personality. Noto is the safe default; revisit after real Kannada pages exist.
 - Ward boundary map styling depends on the mapping library chosen (tracked in `docs/prd.md` §17).

@@ -1,10 +1,27 @@
 ---
 /**
  * AppBar — design-system.md §7.1, information-architecture.md §1 (global
- * elements). White, 56px, sticky. Left: text wordmark lockup (the real
- * Open City-family logo asset is pending per design-system.md §12 — a
- * text lockup with an aria-label stands in, no fake logo image). Right:
- * the EN | ಕನ್ನಡ language toggle and the Sign in control.
+ * elements). White, 56px, sticky. Left: the brand lockup — the "Bengaluru
+ * Votes" text wordmark (the home link) followed by the Open City logo,
+ * settling design-system.md §12's open question: wordmark asset, no
+ * byline. Right: the EN | ಕನ್ನಡ language toggle and the Sign in control.
+ *
+ * Both marks show at EVERY width. Tablet and up gets the full wordmark;
+ * below 768px it abbreviates to "BV" and the bar's spacing tightens, which
+ * is what buys the room to keep the Open City mark on a phone. The
+ * abbreviation is CSS-only (both spans always render) — see the stylesheet's
+ * phone block for the width arithmetic.
+ *
+ * The Open City mark sits OUTSIDE the home anchor deliberately: nesting it
+ * would put it under that anchor's `aria-label="Bengaluru Votes"`, which
+ * overrides descendant alt text, so screen readers would never hear "Open
+ * City" at all. As a sibling `<img alt="OpenCity">` it names itself.
+ *
+ * Served from `public/img/` (so `/img/opencity-logo.png`), not imported
+ * through `astro:assets` — this repo has no `sharp`, and Astro 5's default
+ * image service needs it. Pre-trimmed and pre-scaled at 4x the 20px render
+ * height; `width`/`height` are set to the RENDERED box so the reserved
+ * space matches and the sticky bar never shifts while it loads.
  *
  * Cache-safety (architecture.md §5): this component never reads
  * cookies/session — the Sign in control always renders the anonymous
@@ -37,7 +54,13 @@ const segments: Array<{ lang: Lang; label: string }> = [
 
 <header class="app-bar">
   <div class="bar-inner">
-    <a class="logo" href={localePath(lang, '/')} aria-label="Bengaluru Votes">Bengaluru Votes</a>
+    <div class="brand">
+      <a class="logo" href={localePath(lang, '/')} aria-label="Bengaluru Votes">
+        <span class="logo-full">Bengaluru Votes</span>
+        <span class="logo-short">BV</span>
+      </a>
+      <img class="oc-logo" src="/img/opencity-logo.png" alt="OpenCity" width="81" height="20" />
+    </div>
 
     <div class="controls">
       <div class="lang-toggle" role="group" aria-label="Language">
@@ -84,6 +107,13 @@ const segments: Array<{ lang: Lang; label: string }> = [
     gap: var(--space-4);
   }
 
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
   .logo {
     font-family: var(--font-heading);
     font-weight: 700;
@@ -91,6 +121,21 @@ const segments: Array<{ lang: Lang; label: string }> = [
     color: var(--color-primary);
     text-decoration: none;
     white-space: nowrap;
+  }
+
+  /* Hairline separator so the two marks read as one lockup rather than as
+     two competing logos crowded together. */
+  .oc-logo {
+    display: block;
+    width: auto;
+    height: 20px;
+    padding-inline-start: var(--space-3);
+    border-inline-start: 1px solid var(--color-border);
+    flex-shrink: 0;
+  }
+
+  .logo-short {
+    display: none;
   }
 
   .controls {
@@ -132,7 +177,75 @@ const segments: Array<{ lang: Lang; label: string }> = [
     color: var(--color-primary);
     font-weight: 700;
     text-decoration: none;
+    /* Without this the EN label wraps to "Sign / in" on a 320px phone and
+       the two-line button breaks out of the 56px bar. */
+    white-space: nowrap;
     border: 1.5px solid var(--color-primary);
     border-radius: var(--radius-sm);
+  }
+
+  /* --- phones (below tokens.css's single 768px breakpoint) ---------------
+     The 56px bar has to carry four things — brand wordmark, Open City mark,
+     language toggle, Sign in — and at desktop spacing they need ~493px. A
+     360px phone gives us 328px inside the padding, so every one of the
+     savings below is load-bearing, not cosmetic:
+
+       "Bengaluru Votes" -> "BV"     saves ~120px
+       lockup gap + rule tightened    saves ~8px
+       controls gap 16 -> 8           saves ~8px
+       segment/Sign in x-padding      saves ~24px
+
+     That lands the whole bar at ~250px, so both marks stay visible down to
+     the ~320px floor. Only HORIZONTAL padding shrinks: `min-height` on
+     `.segment` (32px) and `.sign-in` (44px) is untouched, so the touch
+     targets still meet the a11y floor in design-system.md §10.
+
+     The abbreviation is presentational only. `.logo`'s aria-label is
+     "Bengaluru Votes" at every width and overrides its own text content for
+     assistive tech, so a screen reader never hears "BV". */
+  @media (max-width: 767px) {
+    .bar-inner {
+      gap: var(--space-2);
+    }
+
+    .brand {
+      gap: var(--space-2);
+    }
+
+    .logo-full {
+      display: none;
+    }
+
+    .logo-short {
+      display: inline;
+    }
+
+    .oc-logo {
+      height: 18px;
+      padding-inline-start: var(--space-2);
+    }
+
+    .controls {
+      gap: var(--space-2);
+    }
+
+    .segment {
+      padding-inline: var(--space-2);
+    }
+
+    .sign-in {
+      padding-inline: var(--space-3);
+    }
+  }
+
+  /* The last ~9px, for the 320px floor (old iPhone SE, Galaxy Fold cover
+     screen): the hairline rule and its inset go, and plain space carries the
+     lockup instead. Above 360px the rule stays — it reads better than
+     spacing alone once there is room for it. */
+  @media (max-width: 359px) {
+    .oc-logo {
+      padding-inline-start: 0;
+      border-inline-start: 0;
+    }
   }
 </style>
