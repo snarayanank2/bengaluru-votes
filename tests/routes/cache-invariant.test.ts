@@ -55,6 +55,8 @@ import CandidatePage from '../../src/pages/candidate/[slug].astro';
 import HowToVotePage from '../../src/pages/voting-guide/how-to-vote.astro';
 import AboutPage from '../../src/pages/about.astro';
 import PressPage from '../../src/pages/press.astro';
+import * as WardBoundaryRoute from '../../src/pages/ward/[id]/boundary.json';
+import { loadWardPolygons, wardForPoint } from '../../src/lib/geo';
 
 import AccountPage from '../../src/pages/account/index.astro';
 import CuratorIndexPage from '../../src/pages/curator/index.astro';
@@ -332,6 +334,40 @@ describe('§12 cache-invariant + security guard suite', () => {
         expect(authedHtml).toBe(anonHtml);
       },
     );
+
+    // A route module (src/pages/ward/[id]/boundary.json.ts), not an .astro
+    // page, so it renders through the container API's 'endpoint' path
+    // (routeType: 'endpoint' — see renderThroughMiddleware's docstring) and
+    // is exercised separately from the it.each table above rather than
+    // folded into it. Its wardId comes from the in-memory geo index
+    // (src/lib/geo.ts), not the Postgres `WARD` fixture the other Guard 1
+    // cases use — this route never touches the database.
+    it('/ward/{id}/boundary.json: no Set-Cookie in either case, byte-identical anonymous vs. session-cookie render', async () => {
+      await loadWardPolygons();
+      const boundaryWardId = wardForPoint(12.9716, 77.5946); // central Bengaluru
+      expect(boundaryWardId).not.toBeNull();
+
+      const cookieValue = await sessionFor(await upsertUser(CITIZEN_EMAIL, { role: 'citizen' }));
+      const params = { id: String(boundaryWardId) };
+      const path = `/ward/${boundaryWardId}/boundary.json`;
+
+      const anonRes = await renderThroughMiddleware(WardBoundaryRoute, path, { params, routeType: 'endpoint' });
+      const authedRes = await renderThroughMiddleware(WardBoundaryRoute, path, {
+        params,
+        cookieValue,
+        routeType: 'endpoint',
+      });
+
+      expect(anonRes.status).toBe(200);
+      expect(authedRes.status).toBe(200);
+
+      expect(anonRes.headers.get('set-cookie')).toBeNull();
+      expect(authedRes.headers.get('set-cookie')).toBeNull();
+
+      const anonBody = await anonRes.text();
+      const authedBody = await authedRes.text();
+      expect(authedBody).toBe(anonBody);
+    });
   });
 
   // -------------------------------------------------------------------------

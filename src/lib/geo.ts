@@ -197,3 +197,32 @@ export function wardBoundaryUrl(wardId: number): string {
 
   return `/data/gba.geojson#${feature.boundaryRef}`;
 }
+
+/**
+ * One ward's boundary as a standalone GeoJSON Feature, for
+ * `/ward/<id>/boundary.json` (src/pages/ward/[id]/boundary.json.ts) and the
+ * map island that fetches it. Returns null for an id with no matching
+ * feature — the route turns that into a 404 rather than throwing, unlike
+ * `wardBoundaryUrl` above, whose callers already hold a real wards row.
+ *
+ * `properties` deliberately carries only what the client needs; the raw
+ * source properties (corporation_id, ward_id, …) are not forwarded.
+ */
+export type WardBoundaryFeature = {
+  type: 'Feature';
+  properties: { id: string; wardId: number };
+  geometry: WardGeometry;
+};
+
+export function wardBoundaryFeature(wardId: number): WardBoundaryFeature | null {
+  const { byId } = requireLoaded();
+
+  const feature = byId.get(wardId);
+  if (!feature) return null;
+
+  return {
+    type: 'Feature',
+    properties: { id: feature.boundaryRef, wardId: feature.wardId },
+    geometry: feature.geometry,
+  };
+}

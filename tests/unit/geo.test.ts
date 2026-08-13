@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadWardPolygons, wardForPoint, wardBoundaryUrl } from '../../src/lib/geo';
+import { loadWardPolygons, wardForPoint, wardBoundaryUrl, wardBoundaryFeature } from '../../src/lib/geo';
 
 // Reference points below were derived directly from data/gba.geojson: for each
 // feature, average all vertex [lng, lat] pairs of its outer ring to get an
@@ -107,5 +107,25 @@ describe('geo', () => {
         wardForPoint(WEST_WARD.lat, WEST_WARD.lng);
       }
     });
+  });
+});
+
+describe('wardBoundaryFeature', () => {
+  it('returns a GeoJSON Feature for a known ward id', async () => {
+    await loadWardPolygons();
+    const known = wardForPoint(12.9716, 77.5946); // central Bengaluru
+    expect(known).not.toBeNull();
+
+    const feature = wardBoundaryFeature(known!);
+    expect(feature).not.toBeNull();
+    expect(feature!.type).toBe('Feature');
+    expect(feature!.properties.wardId).toBe(known);
+    expect(typeof feature!.properties.id).toBe('string');
+    expect(['Polygon', 'MultiPolygon']).toContain(feature!.geometry.type);
+  });
+
+  it('returns null for an unknown ward id', async () => {
+    await loadWardPolygons();
+    expect(wardBoundaryFeature(999999)).toBeNull();
   });
 });
