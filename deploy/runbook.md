@@ -213,7 +213,7 @@ compose down`) and do not remove its volumes until **both**
 `https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
 and a non-`403` on `POST /api/ward-lookup` — the same checks
 `deploy/deploy.sh` runs (see "Deploying" below) — that stack is the rollback
-if this cutover goes wrong.
+if this cutover goes wrong. Step 8 below retires it once that gate holds.
 
 Verify both hostnames serve real certs:
 
@@ -287,6 +287,45 @@ email — idempotent, safe to re-run. It is the root of the authorization
 chain: every later role grant is an admin action in `/admin`, itself
 audit-logged, and role is never inferred from the authenticating address
 anywhere else in this app.
+
+---
+
+## 8. Retire the interim stack
+
+**Only after** both `https://bengaluruvotes.opencity.in` **and**
+`https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
+and a non-`403` on `POST /api/ward-lookup` — the same condition step 5
+above holds you to before touching the interim stack's volumes, and what
+`deploy/deploy.sh` verifies on every deploy. This closes out architecture
+§14.6 step 7 ("Verify both hostnames … then retire the interim preview
+stack").
+
+```sh
+cd /root/vps-deploy
+docker compose down -v
+```
+
+`-v` destroys the interim stack's Postgres volume. That's fine — it only
+ever held disposable demo data — but the command is still the point of no
+return: once it runs, `/root/vps-deploy` is no longer available as the
+rollback for this cutover. Do not run it before the gate above holds.
+
+Then remove what it leaves behind:
+
+```sh
+rm -rf /root/vps-deploy
+rm -rf /root/src/bengaluru-votes     # the old single checkout — superseded
+                                      # by the two per-environment trees
+                                      # (step 4 above)
+docker image rm bengaluru-votes:vps bengaluru-votes:previous
+```
+
+**Leave the new stacks' images alone.** Do not touch `bengaluru-votes:latest`
+or `bengaluru-votes-staging:latest` — production and staging are running
+those right now — and do not run `docker image prune` here or casually at
+any later point: `:previous` is the only rollback anchor either new stack
+has (there is no registry — architecture §14.3), so pruning "unused" images
+is exactly how a rollback stops being possible.
 
 ---
 
