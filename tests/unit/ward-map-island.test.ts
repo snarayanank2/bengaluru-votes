@@ -1,140 +1,182 @@
 // @vitest-environment jsdom
 /**
- * Coverage for src/islands/WardMap.ts. Per the task-19 brief: a real
- * MapLibre map needs a WebGL canvas context jsdom doesn't provide, so this
- * file exercises the pure geometry/style helpers directly (no map
- * construction involved) and the container-selection/lazy-init wiring with
- * `maplibre-gl`'s `Map` class mocked out entirely — never a full map render.
+ * Coverage for src/islands/WardMap.ts (Google Maps migration, spec §5).
+ *
+ * A real Google map needs network and a WebGL canvas jsdom does not
+ * provide, so this file exercises the pure helpers directly and mocks
+ * `@googlemaps/js-api-loader` for the wiring. The cases that matter most are
+ * the failure ones: the container's server-rendered fallback must survive
+ * every way this island can fail, including the two Google-specific shapes
+ * (the loader promise rejecting, and `gm_authFailure` firing asynchronously
+ * after an apparently successful mount).
+ *
+ * Note what is deliberately absent from this file: any `google` global. The
+ * island must take `Map` and `LatLngBounds` off the library objects
+ * `importLibrary()` resolves with, never off `window.google.maps` — the
+ * global exists only as a side effect of the real loader script, so
+ * depending on it would couple the island to load order and make exactly
+ * these tests impossible.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// `vi.mock` factories are hoisted above the rest of the file, so anything
-// they reference must be created through `vi.hoisted` rather than a plain
-// top-level `const` (which would still be in the temporal dead zone at the
-// point the hoisted factory runs).
-const { addSource, addLayer, fitBounds, onHandlers, MapMock } = vi.hoisted(() => {
-  const onHandlers: Record<string, () => void> = {};
-  const addSource = vi.fn();
-  const addLayer = vi.fn();
-  const fitBounds = vi.fn();
-  const on = vi.fn((event: string, cb: () => void) => {
-    onHandlers[event] = cb;
+// `vi.mock` factories are hoisted above the rest of the file, so everything
+// they close over has to be created inside `vi.hoisted` rather than as a
+// plain top-level `const` (still in the temporal dead zone when the factory
+// runs).
+const {
+  setOptionsMock,
+  setOptionsCalls,
+  importLibraryMock,
+  MapMock,
+  LatLngBoundsMock,
+  addGeoJsonMock,
+  setStyleMock,
+  fitBoundsMock,
+} = vi.hoisted(() => {
+  const addGeoJsonMock = vi.fn();
+  const setStyleMock = vi.fn();
+  const fitBoundsMock = vi.fn();
+  const MapMock = vi.fn().mockImplementation(() => ({
+    data: { addGeoJson: addGeoJsonMock, setStyle: setStyleMock },
+    fitBounds: fitBoundsMock,
+  }));
+  // Returning an object from a constructor makes it the instance, so this
+  // records the corners it was built from in a directly assertable shape.
+  const LatLngBoundsMock = vi.fn().mockImplementation((sw: unknown, ne: unknown) => ({ sw, ne }));
+  const importLibraryMock = vi.fn();
+  // `setOptions` configures the API process-wide and is called at most once
+  // per module lifetime, so its call history has to outlive the per-test
+  // `vi.clearAllMocks()` for the "exactly once" assertion to be independent
+  // of which test happens to mount first.
+  const setOptionsCalls: unknown[] = [];
+  const setOptionsMock = vi.fn((options: unknown) => {
+    setOptionsCalls.push(options);
   });
-  const MapMock = vi.fn().mockImplementation(() => ({ addSource, addLayer, fitBounds, on }));
-  return { addSource, addLayer, fitBounds, onHandlers, on, MapMock };
+  return {
+    setOptionsMock,
+    setOptionsCalls,
+    importLibraryMock,
+    MapMock,
+    LatLngBoundsMock,
+    addGeoJsonMock,
+    setStyleMock,
+    fitBoundsMock,
+  };
 });
 
-vi.mock('maplibre-gl', () => ({
-  default: { Map: MapMock },
+vi.mock('@googlemaps/js-api-loader', () => ({
+  setOptions: setOptionsMock,
+  importLibrary: importLibraryMock,
 }));
-vi.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}));
 
 import {
-  parseBoundaryUrl,
-  findWardFeature,
   computeFeatureBounds,
   readMapColors,
-  buildBaseStyle,
   mountWardMap,
   initWardMap,
-  type GeoJSONCollectionLike,
-  type GeoJSONFeatureLike,
+  type WardBoundaryFeatureLike,
 } from '../../src/islands/WardMap';
 
-describe('parseBoundaryUrl (pure)', () => {
-  it('splits path and ref on the fragment', () => {
-    expect(parseBoundaryUrl('/data/gba.geojson#ward_369_final.1')).toEqual({
-      path: '/data/gba.geojson',
-      ref: 'ward_369_final.1',
-    });
-  });
+const FEATURE: WardBoundaryFeatureLike = {
+  type: 'Feature',
+  properties: { id: 'ward_369_final.1', wardId: 1001 },
+  geometry: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [77.5, 12.9],
+        [77.6, 12.9],
+        [77.6, 13.0],
+        [77.5, 13.0],
+        [77.5, 12.9],
+      ],
+    ],
+  },
+};
 
-  it('returns an empty ref when there is no fragment', () => {
-    expect(parseBoundaryUrl('/data/gba.geojson')).toEqual({ path: '/data/gba.geojson', ref: '' });
-  });
+const FALLBACK = 'Map of ward boundary';
+
+function makeContainer(): HTMLElement {
+  const el = document.createElement('div');
+  el.setAttribute('data-ward-map', '');
+  el.dataset.boundaryUrl = '/ward/1001/boundary.json';
+  el.dataset.mapsKey = 'test-key';
+  el.dataset.mapsMapId = 'test-map-id';
+  el.innerHTML = `<p class="map-fallback">${FALLBACK}</p>`;
+  document.body.appendChild(el);
+  return el;
+}
+
+/**
+ * The real `importLibrary` resolves a different object per library name:
+ * `Map` lives in `maps`, `LatLngBounds` in `core`. Mocking that split rather
+ * than one merged object is what keeps the test honest — an implementation
+ * that reached for `LatLngBounds` on the maps library (or on a `google`
+ * global) would fail here exactly as it would in a browser.
+ */
+function stubLibraries(): void {
+  importLibraryMock.mockImplementation(async (name: string) =>
+    name === 'core' ? { LatLngBounds: LatLngBoundsMock } : { Map: MapMock },
+  );
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  document.body.innerHTML = '';
+  stubLibraries();
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => FEATURE }));
+  delete (window as unknown as Record<string, unknown>).gm_authFailure;
 });
 
-describe('findWardFeature (pure)', () => {
-  const collection: GeoJSONCollectionLike = {
-    type: 'FeatureCollection',
-    features: [
-      { type: 'Feature', properties: { id: 'a' }, geometry: { type: 'Polygon', coordinates: [] } },
-      { type: 'Feature', properties: { id: 'b' }, geometry: { type: 'Polygon', coordinates: [] } },
-    ],
-  };
-
-  it('finds the feature whose properties.id matches the ref', () => {
-    expect(findWardFeature(collection, 'b')).toBe(collection.features[1]);
-  });
-
-  it('returns undefined when no feature matches', () => {
-    expect(findWardFeature(collection, 'ghost')).toBeUndefined();
-  });
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('computeFeatureBounds (pure)', () => {
-  it('computes the bbox of a simple Polygon', () => {
-    const feature: GeoJSONFeatureLike = {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [77.5, 12.9],
-            [77.6, 12.9],
-            [77.6, 13.0],
-            [77.5, 13.0],
-            [77.5, 12.9],
-          ],
-        ],
-      },
-    };
-    expect(computeFeatureBounds(feature)).toEqual([
+  it('returns the bbox of a Polygon', () => {
+    expect(computeFeatureBounds(FEATURE)).toEqual([
       [77.5, 12.9],
       [77.6, 13.0],
     ]);
   });
 
-  it('computes the bbox across all polygons of a MultiPolygon', () => {
-    const feature: GeoJSONFeatureLike = {
-      type: 'Feature',
-      properties: {},
+  it('spans every polygon of a MultiPolygon', () => {
+    const multi: WardBoundaryFeatureLike = {
+      ...FEATURE,
       geometry: {
         type: 'MultiPolygon',
         coordinates: [
           [
             [
               [77.5, 12.9],
-              [77.55, 12.95],
+              [77.6, 12.9],
               [77.5, 12.9],
             ],
           ],
           [
             [
-              [78.0, 13.5],
-              [78.1, 13.6],
-              [78.0, 13.5],
+              [77.7, 13.1],
+              [77.8, 13.2],
+              [77.7, 13.1],
             ],
           ],
         ],
       },
     };
-    expect(computeFeatureBounds(feature)).toEqual([
+    expect(computeFeatureBounds(multi)).toEqual([
       [77.5, 12.9],
-      [78.1, 13.6],
+      [77.8, 13.2],
     ]);
   });
 });
 
-describe('readMapColors / buildBaseStyle (pure, neutrality guard)', () => {
-  it('reads colors from CSS custom properties, not hardcoded, and never red/party colors', () => {
-    const fakeRoot = {} as HTMLElement;
+describe('readMapColors (pure)', () => {
+  it('reads only the polygon tokens — the basemap background is the Map ID’s job now (spec §5)', () => {
     const getPropertyValue = vi.fn((name: string) => {
       const values: Record<string, string> = {
-        '--gray-100': '#f0f0f0',
-        '--forest-tint': '#eef3ea',
-        '--oc-forest': '#426133',
+        '--gray-100': 'ivory',
+        '--forest-tint': 'honeydew',
+        '--oc-forest': 'darkolivegreen',
       };
       return values[name] ?? '';
     });
@@ -142,186 +184,207 @@ describe('readMapColors / buildBaseStyle (pure, neutrality guard)', () => {
       .spyOn(window, 'getComputedStyle')
       .mockReturnValue({ getPropertyValue } as unknown as CSSStyleDeclaration);
 
-    const colors = readMapColors(fakeRoot);
-    expect(colors).toEqual({ background: '#f0f0f0', fill: '#eef3ea', line: '#426133' });
-    expect(getPropertyValue).toHaveBeenCalledWith('--gray-100');
+    const colors = readMapColors({} as HTMLElement);
+
+    expect(colors).toEqual({ fill: 'honeydew', line: 'darkolivegreen' });
     expect(getPropertyValue).toHaveBeenCalledWith('--forest-tint');
     expect(getPropertyValue).toHaveBeenCalledWith('--oc-forest');
+    expect(getPropertyValue).not.toHaveBeenCalledWith('--gray-100');
 
-    const style = buildBaseStyle(colors);
-    expect(style.layers).toHaveLength(1);
-    expect(style.layers[0]).toMatchObject({ id: 'background', type: 'background' });
-    expect(JSON.stringify(style)).not.toMatch(/red|#ff0000|party/i);
-
-    // Only restore THIS spy — `vi.restoreAllMocks()` would also wipe the
-    // shared, file-scoped `maplibre-gl` mock (MapMock/addSource/etc. from
-    // `vi.hoisted` above), breaking every test in the describe blocks below.
+    // Restore only THIS spy: `vi.restoreAllMocks()` would also wipe the
+    // file-scoped loader mocks every other test depends on.
     spy.mockRestore();
   });
 
-  it('falls back to neutral named colors (never a hardcoded hex) when a custom property is unset', () => {
-    const fakeRoot = {} as HTMLElement;
-    const spy = vi.spyOn(window, 'getComputedStyle').mockReturnValue({
-      getPropertyValue: () => '',
-    } as unknown as CSSStyleDeclaration);
-
-    const colors = readMapColors(fakeRoot);
-    expect(colors.background).toBe('gainsboro');
-    expect(colors.fill).toBe('gray');
-    expect(colors.line).toBe('darkslategray');
-
-    spy.mockRestore();
+  it('falls back to neutral named colors when tokens are absent', () => {
+    const colors = readMapColors(document.documentElement);
+    expect(colors.fill).toBeTruthy();
+    expect(colors.line).toBeTruthy();
+    expect(colors.fill).not.toMatch(/#|red|crimson/i);
+    expect(colors.line).not.toMatch(/#|red|crimson/i);
   });
 });
 
-describe('mountWardMap (DOM wiring, maplibre-gl mocked)', () => {
-  let fetchMock: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-    MapMock.mockClear();
-    addSource.mockClear();
-    addLayer.mockClear();
-    fitBounds.mockClear();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    document.body.innerHTML = '';
-  });
-
-  function buildContainer(boundaryUrl?: string): HTMLElement {
-    document.body.innerHTML = `<div data-ward-map ${
-      boundaryUrl ? `data-boundary-url="${boundaryUrl}"` : ''
-    }><p class="map-fallback">Map of ward boundary</p></div>`;
-    return document.querySelector('[data-ward-map]')!;
-  }
-
-  const collection: GeoJSONCollectionLike = {
-    type: 'FeatureCollection',
-    features: [{ type: 'Feature', properties: { id: 'ward-x' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] } }],
-  };
-
-  it('does nothing when data-boundary-url is absent — fallback text stays', async () => {
-    const container = buildContainer();
-    await mountWardMap(container);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(container.textContent).toContain('Map of ward boundary');
-    expect(MapMock).not.toHaveBeenCalled();
-  });
-
-  it('does nothing on a non-ok fetch response — fallback text stays', async () => {
-    fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
-    const container = buildContainer('/data/gba.geojson#ward-x');
-    await mountWardMap(container);
-    expect(container.textContent).toContain('Map of ward boundary');
-    expect(MapMock).not.toHaveBeenCalled();
-  });
-
-  it('does nothing on a fetch rejection — fallback text stays', async () => {
-    fetchMock.mockRejectedValueOnce(new TypeError('network error'));
-    const container = buildContainer('/data/gba.geojson#ward-x');
-    await mountWardMap(container);
-    expect(container.textContent).toContain('Map of ward boundary');
-    expect(MapMock).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when the ref matches no feature — fallback text stays', async () => {
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => collection });
-    const container = buildContainer('/data/gba.geojson#ghost-ref');
-    await mountWardMap(container);
-    expect(container.textContent).toContain('Map of ward boundary');
-    expect(MapMock).not.toHaveBeenCalled();
-  });
-
-  it('constructs the map, clears the fallback text, and adds the boundary source/layers once the matching feature is found', async () => {
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => collection });
-    const container = buildContainer('/data/gba.geojson#ward-x');
-
+describe('mountWardMap — success', () => {
+  it('builds a map and draws the boundary', async () => {
+    const container = makeContainer();
     await mountWardMap(container);
 
-    expect(fetchMock).toHaveBeenCalledWith('/data/gba.geojson');
-    expect(container.textContent).not.toContain('Map of ward boundary');
     expect(MapMock).toHaveBeenCalledTimes(1);
-    expect(MapMock.mock.calls[0][0]).toMatchObject({ container });
+    expect(MapMock.mock.calls[0][0]).toBe(container);
+    expect(addGeoJsonMock).toHaveBeenCalledWith(FEATURE);
+    expect(container.textContent).not.toContain(FALLBACK);
+  });
 
-    // The 'load' handler wires the source/layers/fitBounds — invoke it as
-    // MapLibre itself would once the style has loaded.
-    onHandlers['load']?.();
-    expect(addSource).toHaveBeenCalledWith('ward-boundary', { type: 'geojson', data: collection.features[0] });
-    expect(addLayer).toHaveBeenCalledTimes(2);
-    expect(fitBounds).toHaveBeenCalledTimes(1);
+  it('passes the Map ID from the container through to the map, with no default UI', async () => {
+    await mountWardMap(makeContainer());
+    expect(MapMock.mock.calls[0][1]).toMatchObject({
+      mapId: 'test-map-id',
+      disableDefaultUI: true,
+    });
+  });
+
+  it('styles the polygon from the CSS tokens and adds no marker (design-system.md §8)', async () => {
+    await mountWardMap(makeContainer());
+
+    const tokens = readMapColors(document.documentElement);
+    expect(setStyleMock).toHaveBeenCalledWith({
+      fillColor: tokens.fill,
+      fillOpacity: 0.3,
+      strokeColor: tokens.line,
+      strokeWeight: 2,
+      clickable: false,
+    });
+    // No marker library is ever loaded, so no pin can ever be dropped.
+    expect(importLibraryMock).not.toHaveBeenCalledWith('marker');
+  });
+
+  it('fits the bounds using LatLngBounds from the core library, not a google global', async () => {
+    await mountWardMap(makeContainer());
+
+    expect(importLibraryMock).toHaveBeenCalledWith('maps');
+    expect(importLibraryMock).toHaveBeenCalledWith('core');
+    expect(LatLngBoundsMock).toHaveBeenCalledWith({ lat: 12.9, lng: 77.5 }, { lat: 13.0, lng: 77.6 });
+    expect(fitBoundsMock).toHaveBeenCalledWith(
+      { sw: { lat: 12.9, lng: 77.5 }, ne: { lat: 13.0, lng: 77.6 } },
+      24,
+    );
+  });
+
+  it('configures the Maps API exactly once, with the key off the container', async () => {
+    await mountWardMap(makeContainer());
+    await mountWardMap(makeContainer());
+
+    // Lifetime history, not this test's: `setOptions` is process-global, so
+    // whichever mount in this file ran first is the only one that may call it.
+    expect(setOptionsCalls).toEqual([{ key: 'test-key', v: 'weekly' }]);
   });
 });
 
-describe('initWardMap (container selection + lazy IntersectionObserver wiring)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    document.body.innerHTML = '';
-    fetchGlobalCleanup();
+describe('mountWardMap — failure closed (spec §5)', () => {
+  it('leaves the fallback when data-boundary-url is missing', async () => {
+    const container = makeContainer();
+    delete container.dataset.boundaryUrl;
+    await mountWardMap(container);
+    expect(container.textContent).toContain(FALLBACK);
+    expect(MapMock).not.toHaveBeenCalled();
   });
 
-  function fetchGlobalCleanup() {
-    // no-op placeholder kept symmetrical with the other describe's afterEach
-  }
+  it('leaves the fallback when data-maps-key is missing', async () => {
+    const container = makeContainer();
+    delete container.dataset.mapsKey;
+    await mountWardMap(container);
+    expect(container.textContent).toContain(FALLBACK);
+    expect(MapMock).not.toHaveBeenCalled();
+  });
 
-  it('does nothing (does not throw) when no [data-ward-map] container is present', () => {
-    document.body.innerHTML = '<p>no map here</p>';
-    expect(() => initWardMap()).not.toThrow();
+  it('leaves the fallback when the boundary fetch is non-2xx', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+    const container = makeContainer();
+    await mountWardMap(container);
+    expect(container.textContent).toContain(FALLBACK);
+    expect(MapMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves the fallback when the boundary fetch throws', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    const container = makeContainer();
+    await mountWardMap(container);
+    expect(container.textContent).toContain(FALLBACK);
+    expect(MapMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves the fallback when the response is not a GeoJSON Feature', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ error: 'not_found' }) }));
+    const container = makeContainer();
+    await mountWardMap(container);
+    expect(container.textContent).toContain(FALLBACK);
+    expect(MapMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves the fallback when the Google loader rejects', async () => {
+    importLibraryMock.mockRejectedValue(new Error('script blocked by CSP'));
+    const container = makeContainer();
+    await mountWardMap(container);
+    expect(container.textContent).toContain(FALLBACK);
+    expect(MapMock).not.toHaveBeenCalled();
+  });
+
+  it('restores the fallback when constructing the map throws', async () => {
+    MapMock.mockImplementationOnce(() => {
+      throw new Error('no WebGL here');
+    });
+    const container = makeContainer();
+    await mountWardMap(container);
+    expect(container.textContent).toContain(FALLBACK);
+  });
+
+  it('restores the fallback when gm_authFailure fires after a successful mount', async () => {
+    const container = makeContainer();
+    await mountWardMap(container);
+    expect(container.textContent).not.toContain(FALLBACK);
+
+    (window as unknown as { gm_authFailure: () => void }).gm_authFailure();
+
+    expect(container.textContent).toContain(FALLBACK);
+  });
+
+  it('restores every mounted container from the one gm_authFailure handler', async () => {
+    const first = makeContainer();
+    const second = makeContainer();
+    await mountWardMap(first);
+    await mountWardMap(second);
+
+    (window as unknown as { gm_authFailure: () => void }).gm_authFailure();
+
+    expect(first.textContent).toContain(FALLBACK);
+    expect(second.textContent).toContain(FALLBACK);
+  });
+
+  it('installs exactly one gm_authFailure handler across multiple mounts', async () => {
+    await mountWardMap(makeContainer());
+    const handler = (window as unknown as Record<string, unknown>).gm_authFailure;
+    expect(typeof handler).toBe('function');
+    await mountWardMap(makeContainer());
+    expect((window as unknown as Record<string, unknown>).gm_authFailure).toBe(handler);
+  });
+});
+
+describe('initWardMap', () => {
+  it('does nothing when no container is present', () => {
+    expect(() => initWardMap(document)).not.toThrow();
+    expect(MapMock).not.toHaveBeenCalled();
   });
 
   it('mounts immediately when IntersectionObserver is unavailable', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ type: 'FeatureCollection', features: [] }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    const original = (globalThis as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
-    // @ts-expect-error deliberately removing it for this test
-    delete globalThis.IntersectionObserver;
-
-    document.body.innerHTML = '<div data-ward-map data-boundary-url="/data/gba.geojson#x"></div>';
-    initWardMap();
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(fetchMock).toHaveBeenCalledWith('/data/gba.geojson');
-
-    (globalThis as unknown as { IntersectionObserver?: unknown }).IntersectionObserver = original;
+    vi.stubGlobal('IntersectionObserver', undefined);
+    makeContainer();
+    initWardMap(document);
+    await vi.waitFor(() => expect(MapMock).toHaveBeenCalled());
   });
 
-  it('defers mounting until the container intersects, when IntersectionObserver is available', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ type: 'FeatureCollection', features: [] }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    let capturedCallback: ((entries: Array<{ isIntersecting: boolean; target: Element }>) => void) | null = null;
-    const unobserve = vi.fn();
+  it('defers the mount until the container intersects', async () => {
     const observe = vi.fn();
-    class FakeIntersectionObserver {
-      constructor(cb: (entries: Array<{ isIntersecting: boolean; target: Element }>) => void) {
-        capturedCallback = cb;
-      }
-      observe = observe;
-      unobserve = unobserve;
-    }
-    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+    const unobserve = vi.fn();
+    let trigger: ((entries: unknown[]) => void) | undefined;
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: (entries: unknown[]) => void) {
+          trigger = cb;
+        }
+        observe = observe;
+        unobserve = unobserve;
+      },
+    );
 
-    document.body.innerHTML = '<div data-ward-map data-boundary-url="/data/gba.geojson#x"></div>';
-    const container = document.querySelector('[data-ward-map]')!;
-
-    initWardMap();
+    const container = makeContainer();
+    initWardMap(document);
     expect(observe).toHaveBeenCalledWith(container);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(MapMock).not.toHaveBeenCalled();
 
-    capturedCallback!([{ isIntersecting: true, target: container }]);
-    await Promise.resolve();
-    await Promise.resolve();
-
+    trigger!([{ isIntersecting: true, target: container }]);
+    await vi.waitFor(() => expect(MapMock).toHaveBeenCalled());
     expect(unobserve).toHaveBeenCalledWith(container);
-    expect(fetchMock).toHaveBeenCalledWith('/data/gba.geojson');
   });
 });
