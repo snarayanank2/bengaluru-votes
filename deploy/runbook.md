@@ -81,10 +81,10 @@ staging-bengaluruvotes.opencity.in.  300  IN  A  76.13.244.198
 Let's Encrypt *prefers* `AAAA` when one exists and fails issuance outright
 if it cannot reach it — publishing an unverified `AAAA` is the easiest way
 to make certbot fail in a way that reads as a DNS problem. Add `AAAA` after
-step 5 succeeds and IPv6 is confirmed working from outside.
+step 5 below succeeds and IPv6 is confirmed working from outside.
 
 TTL 300 during cutover; raise to 3600 once stable. Verify propagation before
-step 5 (certbot's HTTP-01 challenge fails otherwise):
+step 5 below (certbot's HTTP-01 challenge fails otherwise):
 
 ```sh
 dig +short bengaluruvotes.opencity.in
@@ -103,7 +103,7 @@ docker compose version
 Deploys run as `root` (`docs/architecture.md` §14.4). The prior design's
 dedicated `deploy` user is dropped: it had to be in the `docker` group,
 which is root-equivalent on the host, so it read as privilege separation
-while providing none. §13 records that trade.
+while providing none. Architecture §13 records that trade.
 
 ---
 
@@ -208,8 +208,12 @@ docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml up -d
 
 **Port contention with the interim stack.** The old `/root/vps-deploy` stack
 also binds 80. Stop it immediately before 5c (`cd /root/vps-deploy && docker
-compose down`) and do not remove its volumes until step 7's verification
-passes — that is the rollback if this cutover goes wrong.
+compose down`) and do not remove its volumes until **both**
+`https://bengaluruvotes.opencity.in` **and**
+`https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
+and a non-`403` on `POST /api/ward-lookup` — the same checks
+`deploy/deploy.sh` runs (see "Deploying" below) — that stack is the rollback
+if this cutover goes wrong.
 
 Verify both hostnames serve real certs:
 
@@ -320,9 +324,9 @@ here in the same PR.
 | `RETENTION_PERIOD_DAYS` | only if `RETENTION_ENABLED=true` | Days after results-declared before erasure. |
 | `RETENTION_ACTOR_USER_ID` | only if `RETENTION_ENABLED=true` | The admin user id attributed as actor on the erasure job's audit-log rows. |
 | `RESTIC_REPOSITORY` | **blocked** | No target chosen — dependency register §6.9. Leave unset; scripts/backup.sh fails loudly nightly until it exists. |
-| `RESTIC_PASSWORD` (or `RESTIC_PASSWORD_FILE`) | yes (jobs) | restic repository encryption password. Unset until §6.9 resolves. Custody: dependency register §6.10. |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | Credentials for whatever S3-compatible backup storage §6.9 settles on (restic's s3 backend reads the standard AWS_* vars). Unset today. |
-| `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch. Only meaningful once backups exist (§6.9). |
+| `RESTIC_PASSWORD` (or `RESTIC_PASSWORD_FILE`) | yes (jobs) | restic repository encryption password. Unset until dependency register §6.9 resolves. Custody: dependency register §6.10. |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | Credentials for whatever S3-compatible backup storage dependency register §6.9 settles on (restic's s3 backend reads the standard AWS_* vars). Unset today. |
+| `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch. Only meaningful once backups exist (dependency register §6.9). |
 | `SENTRY_DSN` | recommended | Server-side error reporting (`src/lib/logger.ts`) — **unset means Sentry is a clean no-op**, not a broken deploy; set it once the free-tier project exists. |
 | `IMAGE_TAG` | optional, not stored in the `.env` file | Selects which **local** image tag the stack runs (`deploy/compose.production.yml`'s `${IMAGE_TAG:-latest}`). Left unset for a normal deploy; it exists so a rollback can point the stack at `:previous` without rebuilding. |
 
@@ -350,12 +354,12 @@ Postgres is disposable — no restic vars needed for it.
 
 Deploys are **manual** (`docs/architecture.md` §14.4). There is no CI, no
 registry, and nothing that fires on push, merge or release. Images are built
-on the box from the per-environment checkouts (§14.3).
+on the box from the per-environment checkouts (architecture §14.3).
 
 **Run the checks first — nothing else will.** On your machine, not the box:
 
 ```sh
-npm run translate -- --check   # bilingual completeness (§9)
+npm run translate -- --check   # bilingual completeness (architecture §9)
 npm run typecheck
 npm test
 ```
@@ -384,7 +388,7 @@ deploy/deploy.sh production v2026.08.14
 
 **Deploy staging first, always.** No pipeline enforces the order any more,
 and staging-before-production is the only thing that exercises a migration
-before it touches real citizen data (§14.7).
+before it touches real citizen data (architecture §14.7).
 
 ### What the script does, and why each step is there
 
@@ -465,9 +469,10 @@ immediately after — it should return `'sent'` again rather than
 **Why this exists:** one k6 run is the acceptance test for the whole
 single-VM sizing decision (architecture §14.1: 4 vCPU / 16 GB) — it proves
 the nginx micro-cache holds election-day read volume with p95 < 500 ms,
-that legitimate traffic through the CGNAT-sized rate-limit zones (§7) never
-sees a 429, and that the app origin renders each unique URL at most once
-per cache TTL rather than once per request. The script itself lives at
+that legitimate traffic through the CGNAT-sized rate-limit zones
+(architecture §7) never sees a 429, and that the app origin renders each
+unique URL at most once per cache TTL rather than once per request. The
+script itself lives at
 `tests/load/k6-election-day.js`; read its file-header comment for the full
 design rationale (peak-RPS assumption, ward-id space, page mix, the
 `X-Cache-Status` dependency).
@@ -551,7 +556,7 @@ four must show ✓:**
 |---|---|
 | `http_req_duration{scenario:cached}`: `p(95)<500` | Cached public pages stay fast at election-day volume. |
 | `http_req_failed`: `rate<0.01` | No broad breakage under load. |
-| `rate_limited_429`: `count==0` | Legitimate ward-lookup/browsing traffic never trips the CGNAT-sized `api` zone (§7). |
+| `rate_limited_429`: `count==0` | Legitimate ward-lookup/browsing traffic never trips the CGNAT-sized `api` zone (architecture §7). |
 | `cache_hit_rate`: `rate>0.9` | The micro-cache — not the app origin — is absorbing the load (requires the staging prerequisite above to be addressed first). |
 
 A ✗ on any threshold fails the acceptance test for the current VPS
@@ -563,8 +568,8 @@ same k6 command. This is explicitly NOT meant to trigger a
 re-architecture — the whole point of the single-VM design's k6 gate is
 "resize if short, don't redesign." If the `rate_limited_429` threshold
 specifically fails (not the RPS/latency ones), that's a rate-limits.conf
-zone-sizing question instead (§7) — revisit the zone rate/burst, not the
-box size.
+zone-sizing question instead (architecture §7) — revisit the zone
+rate/burst, not the box size.
 
 ---
 
@@ -583,8 +588,8 @@ box size.
   trending upward daily, and that the healthchecks.io check for this job
   hasn't gone red (a missed ping = an ops alert by design, architecture
   §10). Rehearse a full restore (step 6 above) periodically, not just once
-  at provisioning time. **None of this applies until §6's backup target is
-  chosen** — right now there is no restic repository to check.
+  at provisioning time. **None of this applies until step 6 above's backup
+  target is chosen** — right now there is no restic repository to check.
 - **Rollback:** retag the previous image and restart — **no migration step
   runs on this path** (architecture §14.4/§14.7: migrations are
   forward-only/backward-compatible, so rollback is never a schema
@@ -600,5 +605,5 @@ box size.
   restart, re-run `static-init`) and then re-verifies with a real POST —
   prefer it over the by-hand commands above. Either path depends on
   `:previous` still existing **on the box** — there is no registry to fall
-  back on (§14.3). Tag it before every deploy, and don't `docker image
+  back on (architecture §14.3). Tag it before every deploy, and don't `docker image
   prune` without checking what you're about to delete.
