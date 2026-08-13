@@ -131,6 +131,28 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     expect(enHtml).toContain('A joint project by');
   });
 
+  it('renders the three social links with accessible names and safe rel (§7.2)', () => {
+    const accounts: Array<[string, string]> = [
+      ['https://x.com/opencity_in', 'X'],
+      ['https://www.linkedin.com/company/74925255', 'LinkedIn'],
+      ['https://instagram.com/opencity.in', 'Instagram'],
+    ];
+    for (const html of [enHtml, knHtml]) {
+      for (const [href, label] of accounts) {
+        // Icon-only links: the platform name is the accessible name, so it
+        // must never be dropped from the anchor.
+        expect(html).toContain(`href="${href}" aria-label="${label}"`);
+      }
+      // …and every one of them opens out of the app safely. Scoped to the
+      // social list: other components have their own external links.
+      const social = html.slice(html.indexOf('class="social-links"'));
+      const list = social.slice(0, social.indexOf('</ul>'));
+      expect(list.match(/target="_blank" rel="noopener noreferrer"/g)).toHaveLength(
+        accounts.length,
+      );
+    }
+  });
+
   it('renders the Sign in control anonymously with the MeSlot hook', () => {
     expect(enHtml).toMatch(/data-me-slot[^>]*>Sign in</);
     expect(enHtml).toContain(`href="${localePath('en', '/login')}"`);

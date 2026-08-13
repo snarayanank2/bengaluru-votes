@@ -382,9 +382,10 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       expect(html).toContain('Fill Form 8 online');
       // Every page also carries Base.astro's global Register/Login modal
       // (Task 27), whose step-3 consent sentence links to /terms and
-      // /privacy with the SAME rel — so the page-wide count is these two
-      // guided link-out buttons PLUS those two, not just 2.
-      expect((html.match(/rel="noopener noreferrer"/g) ?? []).length).toBe(4);
+      // /privacy with the SAME rel, and the footer's three social links
+      // (design-system §7.2) — so the page-wide count is these two guided
+      // link-out buttons PLUS those five, not just 2.
+      expect((html.match(/rel="noopener noreferrer"/g) ?? []).length).toBe(7);
     });
 
     it('renders DeadlineBanner when roll_deadline is set in the future', async () => {

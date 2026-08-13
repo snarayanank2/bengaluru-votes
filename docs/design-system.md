@@ -203,9 +203,11 @@ White, 56px, sticky, `--shadow-sticky` on scroll. Left: Open City-family logo lo
 Black (`#000000`) background, lime (`#c8e537`) text — the one dark surface in the system, and the same treatment Open City uses for its own footer. Two columns in a 2:1 split at `md` and up, stacked below it:
 
 - **Left (2fr):** the trust links (About, Voting guide, Data, Partner with us, Press, Terms, Privacy), as a list — two sub-columns from `sm` up. Nav links carry no underline until hover/focus (§7.4).
-- **Right (1fr):** "A joint project by" over the Janaagraha and Oorvani Foundation logos.
+- **Right (1fr):** "A joint project by" over the Janaagraha and Oorvani Foundation logos, then Open City's X, LinkedIn and Instagram links as icons.
 
-Both partner logos are dark-on-transparent, so each sits on a white `--radius-sm` chip rather than being recolored — a partner's mark is theirs to set, and inverting it would drop Oorvani's red dot.
+Both partner logos are dark-on-transparent, so each sits on a white `--radius-sm` chip rather than being recolored — a partner's mark is theirs to set, and inverting it would drop Oorvani's red dot. The logos sit side by side wherever they fit and stack in the narrower `md` column; they're never scaled below their legible size to avoid it.
+
+Social icons are 24px marks in 44×44 targets (§7.3), drawn in the footer's own lime rather than Open City's sun-yellow — here yellow is reserved for statutory deadlines and the AI-extracted badge (§7.6). They're icon-only links, so each carries the platform name as its accessible name instead of §7.4's external-link glyph.
 
 ### 7.3 Buttons
 
