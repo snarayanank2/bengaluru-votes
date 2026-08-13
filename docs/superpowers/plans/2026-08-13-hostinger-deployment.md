@@ -1482,12 +1482,20 @@ curl -sI https://staging-bengaluruvotes.opencity.in/ | head -1          # expect
 curl -sI -u <u>:<p> https://staging-bengaluruvotes.opencity.in/ | grep -i x-robots-tag   # expect noindex
 
 # The isolation guarantee, proven rather than assumed: no route from a
-# staging container to production Postgres.
+# staging container to production Postgres. `nc` is NOT in the runtime image
+# (Dockerfile installs ca-certificates, curl, gnupg, postgresql-client-16,
+# restic, jq — no netcat), so `nc: not found` exits 127 and `|| echo
+# "unreachable (correct)"` would print that string regardless of whether
+# isolation actually holds. `pg_isready` IS in the image and distinguishes a
+# name-resolution failure (no such host — the real isolation case, no route
+# to a `postgres` service on staging's network) from a live connection.
 docker exec $(docker ps -qf name=bengaluru-votes-staging-app-staging) \
-  sh -c 'nc -z -w2 postgres 5432 && echo REACHABLE || echo "unreachable (correct)"'
+  sh -c 'pg_isready -h postgres -p 5432 -t 2 && echo REACHABLE || echo "unreachable (correct)"'
 ```
 
-Expected: `401`, `X-Robots-Tag: noindex`, and `unreachable (correct)`.
+Expected: `401`, `X-Robots-Tag: noindex`, and `unreachable (correct)` (from a
+name-resolution failure — `pg_isready` cannot even find a `postgres` host on
+staging's network, since staging never joins `back_prod`).
 
 - [ ] **Step 4: Verify the unmatched-host rejection**
 

@@ -18,6 +18,24 @@ commands, not prose — copy-paste, adjusting the bracketed placeholders.
   the box is `srv1408795.hstgr.cloud` until DNS is cut over.
 - Ownership/delegation of the `opencity.in` DNS zone (Oorvani's domain) —
   you need to create two `A` records under it.
+- **A GitHub credential ON THE BOX, before step 4 below.** §4's
+  `git clone git@github.com:…` runs from a fresh hardened root shell that
+  has never talked to GitHub — with nothing set up it fails on `Permission
+  denied (publickey)`, or hangs/aborts on GitHub's unaccepted host key.
+  Before step 4:
+
+  ```sh
+  ssh-keygen -t ed25519 -C "bengaluru-votes-vps" -f ~/.ssh/id_ed25519 -N ''
+  cat ~/.ssh/id_ed25519.pub   # register this as a GitHub deploy key
+  ssh-keyscan github.com >> ~/.ssh/known_hosts
+  ```
+
+  Register the public key as a **read-only deploy key** on the
+  `snarayanank2/bengaluru-votes` repo (repo Settings → Deploy keys → Add
+  deploy key — do not add write access, nothing here pushes). This same key
+  is what `deploy/deploy.sh`'s `git fetch` needs on every future deploy, so
+  it must persist on the box, not just exist long enough for step 4's
+  `clone`.
 - **Off-box backup storage: UNRESOLVED** (dependency register §6.9;
   `docs/architecture.md` §10). There is no restic target, so step 6 below
   cannot be completed and the platform runs with no off-box backup. This is
@@ -59,10 +77,37 @@ sed -i \
   -e 's/^#\?PermitRootLogin .*/PermitRootLogin prohibit-password/' \
   -e 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' \
   /etc/ssh/sshd_config
+```
+
+**Check the drop-in directory too — the `sed` above alone is likely not
+enough.** Ubuntu cloud images ship
+`/etc/ssh/sshd_config.d/50-cloud-init.conf` containing
+`PasswordAuthentication yes`, and the `Include` directive that pulls in
+`sshd_config.d/*.conf` sits near the top of `sshd_config`, where sshd's
+first-obtained-value-wins parsing means that drop-in overrides the setting
+you just changed in the main file. Check it and fix it there too:
+
+```sh
+grep -ri passwordauthentication /etc/ssh/sshd_config.d/*.conf 2>/dev/null
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' \
+  /etc/ssh/sshd_config.d/50-cloud-init.conf 2>/dev/null || true
 systemctl restart ssh
 ```
 
-Confirm you can still open a **second** session before closing the first.
+Verify what sshd will actually enforce — not just what you edited — with
+its own effective-config dump, since that's the only thing immune to both
+files disagreeing:
+
+```sh
+sshd -T | grep -E '^(permitrootlogin|passwordauthentication)'
+# expect: permitrootlogin prohibit-password
+#         passwordauthentication no
+```
+
+Still confirm you can open a **second** session before closing the first —
+`sshd -T` proves the setting took effect, not that your key-based access
+survives it; that guards against lockout, which the config check alone does
+not.
 
 ---
 
@@ -114,13 +159,19 @@ a source of Compose files — since images are built on the box, each tree is
 what its stack builds *from*, so the ref it sits on is the version that
 ships.
 
+At first provisioning there is no release tag yet — leave the production
+tree on `main` too, same as staging. `deploy/deploy.sh production
+<vYYYY.MM.DD>` checks out the real tag (detached) at the first actual
+production deploy (see "Deploying" below and the plan's Task 7 step 3); this
+step just needs a working tree to build from for §5's first boot.
+
 ```sh
 mkdir -p /root/src
 git clone git@github.com:snarayanank2/bengaluru-votes.git /root/src/bengaluru-votes-staging
 git clone git@github.com:snarayanank2/bengaluru-votes.git /root/src/bengaluru-votes-production
 
 cd /root/src/bengaluru-votes-staging    && git checkout main
-cd /root/src/bengaluru-votes-production && git fetch --tags && git checkout <vYYYY.MM.DD>
+cd /root/src/bengaluru-votes-production && git checkout main
 ```
 
 Env files go **outside both trees**, mode 600 (`docs/architecture.md` §13),
@@ -189,13 +240,45 @@ $COMPOSE run --rm --entrypoint sh certbot -c '
 docker run --rm httpd:2-alpine htpasswd -Bbn <tester-username> '<tester-password>' \
   > /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
 
+# --- Port contention with the interim stack, MUST run before 5c --------
+# The old /root/vps-deploy stack also binds 80. `up -d` below fails to bind
+# it — or silently steals it — if that stack is still running, so stop it
+# now, immediately before 5c. (Run in a subshell so this doesn't change your
+# cwd out of the production checkout.) Do NOT remove its volumes yet — do
+# not run anything with `-v` here — that stack stays available as the
+# rollback until §5's verification below and §8 both hold; §8 retires it.
+( cd /root/vps-deploy && docker compose down )
+
 # --- 5c. Production up (owns the shared nginx + gba_front) --------------
 $COMPOSE up -d
 
-# --- 5d. Real certs, one certbot run per hostname ----------------------
-$COMPOSE run --rm certbot certbot certonly --webroot -w /var/www/certbot \
+# --- 5d(i). Remove the 5a bootstrap stubs before issuing real certs ----
+# certbot refuses to create a lineage when live/<host> already exists and is
+# non-empty (CertStorageError: live directory exists) — or worse, silently
+# creates a `<host>-0001` lineage that nginx never reads, so the site keeps
+# serving the self-signed stub forever with no error anywhere. nginx keeps
+# serving the already-loaded (self-signed) cert out of the `certs` volume
+# until the next `nginx -s reload`, so removing these files mid-flight is
+# safe — nginx has nothing to lose access to in between.
+$COMPOSE run --rm --entrypoint sh certbot -c '
+  set -e
+  for h in bengaluruvotes.opencity.in staging-bengaluruvotes.opencity.in; do
+    rm -rf /etc/letsencrypt/live/$h /etc/letsencrypt/archive/$h /etc/letsencrypt/renewal/$h.conf
+  done
+'
+
+# --- 5d(ii). Real certs, one certbot run per hostname -------------------
+# `--entrypoint certbot` is REQUIRED here, not cosmetic: the `certbot`
+# service's own entrypoint is `['/bin/sh', '-c']` (see compose.production.yml
+# — it's how the renewal loop's `command:` runs), and `docker compose run
+# SERVICE CMD…` replaces `command` but never `entrypoint`. Without this flag
+# the invocation actually run is `/bin/sh -c certbot`, with `certonly`,
+# `--webroot`, `-d <host>` and everything else silently bound to `$0`, `$1`…
+# — i.e. bare `certbot` with none of the arguments below, and no error. §5a
+# already gets this right with `--entrypoint sh`; match that pattern.
+$COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
   -d bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
-$COMPOSE run --rm certbot certbot certonly --webroot -w /var/www/certbot \
+$COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
   -d staging-bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
 
 $COMPOSE exec nginx nginx -s reload
@@ -206,20 +289,18 @@ export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
 docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml up -d
 ```
 
-**Port contention with the interim stack.** The old `/root/vps-deploy` stack
-also binds 80. Stop it immediately before 5c (`cd /root/vps-deploy && docker
-compose down`) and do not remove its volumes until **both**
+The interim stack's volumes stay in place until **both**
 `https://bengaluruvotes.opencity.in` **and**
 `https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
 and a non-`403` on `POST /api/ward-lookup` — the same checks
-`deploy/deploy.sh` runs (see "Deploying" below) — that stack is the rollback
-if this cutover goes wrong. Step 8 below retires it once that gate holds.
+`deploy/deploy.sh` runs (see "Deploying" below). Step 8 below retires it once
+that gate holds.
 
 Verify both hostnames serve real certs:
 
 ```sh
-curl -sI https://bengaluruvotes.opencity.in/healthz
-curl -sI -u <tester-username>:<tester-password> https://staging-bengaluruvotes.opencity.in/healthz
+curl -fsSI https://bengaluruvotes.opencity.in/healthz
+curl -fsSI -u <tester-username>:<tester-password> https://staging-bengaluruvotes.opencity.in/healthz
 ```
 
 ---
@@ -259,7 +340,27 @@ table entries. Record the rehearsal date where ops can find it.
 
 ---
 
-## 7. Seed
+## 7. Migrate, then seed
+
+**Required — do not skip.** Neither compose file has a `migrate` service and
+the image's CMD does not migrate on startup (that only happens as an
+explicit deploy step, §14.7), so after §5's `up -d` both databases have no
+schema at all. Skipping this step means `seed:wards` below fails immediately
+on a missing relation.
+
+```sh
+# Production
+cd /root/src/bengaluru-votes-production
+export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
+COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
+$COMPOSE run --rm app npm run migrate
+
+# Staging
+cd /root/src/bengaluru-votes-staging
+export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
+COMPOSE_S="docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml"
+$COMPOSE_S run --rm app-staging npm run migrate
+```
 
 Wards first — everything else depends on them.
 
@@ -297,11 +398,30 @@ anywhere else in this app.
 and a non-`403` on `POST /api/ward-lookup` — the same condition step 5
 above holds you to before touching the interim stack's volumes, and what
 `deploy/deploy.sh` verifies on every deploy. This closes out architecture
-§14.6 step 7 ("Verify both hostnames … then retire the interim preview
+§14.6 step 8 ("Verify both hostnames … then retire the interim preview
 stack").
+
+**Guard first — `-v` is exactly the command that must never resolve to the
+production project.** Before running it, confirm you are actually in
+`/root/vps-deploy` and not, say, a production checkout you `cd`'d into
+earlier in the session:
 
 ```sh
 cd /root/vps-deploy
+docker compose config --format json | jq -r .name
+docker volume ls | grep bengaluru
+```
+
+**If the project name printed is `bengaluru-votes-production` (or you see
+`bengaluru-votes-production_pg_data_prod` in the volume list), STOP.** Do
+not run the command below. `-v` against the production project would
+destroy the production Postgres volume, and per §6 there is currently no
+off-box backup to restore it from — this would be unrecoverable data loss
+on a live election platform. The name printed here must be the interim
+stack's own project (whatever `/root/vps-deploy`'s compose file calls
+itself), never `bengaluru-votes-production` or `bengaluru-votes-staging`.
+
+```sh
 docker compose down -v
 ```
 
@@ -368,6 +488,7 @@ here in the same PR.
 | `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | yes (`/partner-with-us`) | reCAPTCHA v3 on the one anonymous write, `POST /api/eoi`. |
 | `GA_MEASUREMENT_ID` | optional | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). |
 | `OTP_DAILY_SEND_BUDGET` | recommended (default `5000`) | Global daily OTP-send budget across all destinations (architecture §13). |
+| `OTP_TEST_SINK` | **must NOT be set** | `src/lib/otp.ts` — when exactly `'true'`, writes every plaintext OTP code to a `otp_test_codes` table so the Playwright e2e suite can read codes without in-process access. The source comment is explicit: this must NEVER be set in production or staging. Leave unset in both `.env` files. |
 | `RETENTION_ENABLED` | yes — **must be `false`** | DPDP retention enforcement (`jobs/retention.ts`) ships disabled pending PRD §17 legal sign-off on the retention period. Do not flip to `true` without that sign-off. |
 | `RETENTION_PERIOD_DAYS` | only if `RETENTION_ENABLED=true` | Days after results-declared before erasure. |
 | `RETENTION_ACTOR_USER_ID` | only if `RETENTION_ENABLED=true` | The admin user id attributed as actor on the erasure job's audit-log rows. |
@@ -497,10 +618,15 @@ unconsumed code keeps working exactly as it did before (its expiry was
 computed from `now + 10 minutes` at creation time, independent of
 `created_at`):
 
+`$POSTGRES_USER`/`$POSTGRES_DB` must expand **inside the container**, where
+the postgres image's own env actually holds them — not in your local shell,
+where they're unset and would silently mangle the command into `psql -U ""
+-d ""`. Wrap the psql call in `sh -c '...'` so expansion happens on the
+container side:
+
 ```sh
 docker compose -p bengaluru-votes-production -f deploy/compose.production.yml exec postgres \
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-  "UPDATE otp_codes SET created_at = created_at - INTERVAL '25 hours' WHERE destination = '<normalized-destination>';"
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "UPDATE otp_codes SET created_at = created_at - INTERVAL '\''25 hours'\'' WHERE destination = '\''<normalized-destination>'\'';"'
 ```
 
 Use the **normalized** destination exactly as `src/lib/otp.ts#normalizeDestination`

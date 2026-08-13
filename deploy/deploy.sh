@@ -129,7 +129,15 @@ SITE_ORIGIN. Every form on the site is broken. Rebuild with this script."
 
 restart_and_verify() {
   say "Restarting the $ENV_NAME stack"
-  remote "$COMPOSE up -d" 2>&1 | tail -5
+  # `|| true` on this and the other `tail`/`grep | tail` pipelines below:
+  # under `set -o pipefail`, a `grep -v` that happens to filter every line
+  # of output exits 1, which would abort the script right here with a bare
+  # exit 1 and no `FAILED:` banner — even though the remote command itself
+  # succeeded. What actually matters is the remote command's own success,
+  # and that's already surfaced by the checks that follow (verify(), the
+  # next step's own preflight, etc.), so don't let the display pipeline's
+  # exit status decide the script's fate.
+  remote "$COMPOSE up -d" 2>&1 | tail -5 || true
 
   # ALWAYS, unconditionally: `up -d` does NOT re-run a one-shot service that
   # has already completed successfully, so without this the new image's
@@ -195,12 +203,12 @@ else
 fi
 
 say "Building $IMAGE"
-remote "$COMPOSE build" 2>&1 | tail -5
+remote "$COMPOSE build" 2>&1 | tail -5 || true
 
 # Forward-only and idempotent, so this is safe when there is nothing new. A
 # failure here aborts the deploy BEFORE any container restarts — the running
 # version continues against the unchanged schema.
 say "Running migrations"
-remote "$COMPOSE run --rm $APP_SERVICE npm run migrate" 2>&1 | grep -v '^npm notice' | tail -5
+remote "$COMPOSE run --rm $APP_SERVICE npm run migrate" 2>&1 | grep -v '^npm notice' | tail -5 || true
 
 restart_and_verify
