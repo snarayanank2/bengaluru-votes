@@ -237,8 +237,18 @@ $COMPOSE run --rm --entrypoint sh certbot -c '
 # bind-mounts ./nginx/staging.htpasswd read-only, and Docker turns a
 # bind-mount of a non-existent host path into an empty DIRECTORY, which then
 # fails nginx's auth_basic_user_file load. Gitignored, never committed.
+#
+# It must also be WORLD-READABLE (644). nginx's master process starts as root
+# but its WORKERS drop to the unprivileged `nginx` user (nginx.conf's `user`
+# directive), and the worker is what opens this file per request. Mode 600
+# gives every staging request a 500, with `open() ".../staging.htpasswd"
+# failed (13: Permission denied)` in the nginx error log and nothing wrong
+# anywhere else — app-staging stays healthy, so it reads as an app fault.
+# Hit for real during the 2026-08-13 cutover. 644 is correct and not a leak:
+# the file holds a bcrypt hash, not a password, and is mounted read-only.
 docker run --rm httpd:2-alpine htpasswd -Bbn <tester-username> '<tester-password>' \
   > /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
+chmod 644 /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
 
 # --- Port contention with the interim stack, MUST run before 5c --------
 # The old /root/vps-deploy stack also binds 80. `up -d` below fails to bind
@@ -781,3 +791,43 @@ rate/burst, not the box size.
   `:previous` still existing **on the box** — there is no registry to fall
   back on (architecture §14.3). Tag it before every deploy, and don't `docker image
   prune` without checking what you're about to delete.
+
+---
+
+## Provisioning record
+
+**Provisioned 2026-08-13** on the Hostinger VPS (`76.13.244.198`, Mumbai,
+4 vCPU / 16 GB / 193 GB).
+
+| | |
+|---|---|
+| Production | `bengaluruvotes.opencity.in`, on tag `v2026.08.13` |
+| Staging | `staging-bengaluruvotes.opencity.in`, tracking `main` |
+| Certificates | Let's Encrypt, one per hostname, issued 2026-08-13, expiring 2026-11-11 |
+| First admin | `tarball@gmail.com` (seeded via `seed:admin`) |
+| Production data | 369 wards, 1 admin, 0 candidates |
+| Staging data | 369 wards, 6 fictional candidates (`seed:dev`) |
+| Interim stack | `/root/vps-deploy` and `bengaluru-votes:vps` removed after verification |
+
+Verified at cutover: both hostnames 200 on `GET /`, `GET /kn/` and a hashed
+`/_astro/` asset, and **non-403 on `POST /api/ward-lookup`**; staging 401s
+anonymously and sets `X-Robots-Tag: noindex`; production sets no such header;
+a staging container cannot reach production Postgres (proven with
+`pg_isready` against both hosts, so the check is falsifiable in both
+directions); `scripts/backup.sh` fails loudly on its missing
+`RESTIC_REPOSITORY`.
+
+### Outstanding, both recorded as unresolved dependencies
+
+1. **No off-box backup** (dependency register §6.9). The nightly job fails by
+   design at 02:00. Production now holds real citizen-facing data, so this is
+   the first thing to close.
+2. **No external uptime or SSL-expiry monitoring** (§6.14). Certificates
+   expire **2026-11-11**; certbot renews automatically and nginx reloads
+   daily, but nothing alerts if renewal fails silently. Let's Encrypt's own
+   expiry notices go to `tarball@gmail.com` and are currently the only
+   warning mechanism.
+
+Also deferred: no `AAAA` records. The box has a global IPv6 address, but its
+public reachability was never confirmed, so publishing one risks breaking
+v6 clients and the next renewal. Add only after testing from a v6 network.
