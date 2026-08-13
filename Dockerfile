@@ -60,7 +60,7 @@ RUN npm ci --omit=dev
 # Stage 3: runtime
 ########################################################################
 FROM node:22-slim AS runtime
-LABEL org.opencontainers.image.source="https://github.com/snarayanank2/bangalore-votes"
+LABEL org.opencontainers.image.source="https://github.com/snarayanank2/bengaluru-votes"
 
 WORKDIR /app
 

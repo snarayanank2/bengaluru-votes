@@ -34,7 +34,7 @@ import { sendToUser, type SendToUserUser } from './send/send';
 import { createSession } from './session';
 import { getKnownSetting } from './settings';
 
-const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
 /** Human-readable language name for the W1 confirmation's `{{2}}` var (docs/messages.md §4: "language (English/Kannada)"). Same mapping src/lib/translate-runtime.ts uses. */
 const LANGUAGE_DISPLAY_NAME: Record<Lang, string> = { en: 'English', kn: 'Kannada' };

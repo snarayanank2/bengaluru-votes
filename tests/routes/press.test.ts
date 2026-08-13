@@ -41,7 +41,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 function normalize(html: string): string {
   return html

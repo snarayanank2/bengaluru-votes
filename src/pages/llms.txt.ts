@@ -23,7 +23,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { wards } from '../db/schema';
 
-const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
 const SAMPLE_SIZE = 5;
 
@@ -43,7 +43,7 @@ export const GET: APIRoute = async () => {
   const sampleWardLines = sampleWards.map((ward) => `- ${abs(`/ward/${ward.id}`)} — ${ward.nameEn}`).join('\n');
 
   const lines = [
-    '# Bangalore Votes',
+    '# Bengaluru Votes',
     '',
     'A ward-level information platform for Bengaluru\'s GBA (corporator) ward elections: find your ward, read neutral sourced candidate report cards, compare candidates, vote on the top local issues, and access voting logistics. Bilingual — English at the root, Kannada under /kn/.',
     '',

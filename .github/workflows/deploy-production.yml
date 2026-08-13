@@ -14,7 +14,7 @@
 #      (architecture §14.7) and down-migrations aren't supported, so a
 #      rollback must never touch the schema.
 #
-# DEPLOY DIR: /opt/bangalore-votes on the Droplet, checked out once by the
+# DEPLOY DIR: /opt/bengaluru-votes on the Droplet, checked out once by the
 # Task 63 provisioning runbook (architecture §14.6 step 4) — same
 # convention as deploy-staging.yml.
 #
@@ -73,8 +73,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/snarayanank2/bangalore-votes:latest
-            ghcr.io/snarayanank2/bangalore-votes:${{ github.event.release.tag_name }}
+            ghcr.io/snarayanank2/bengaluru-votes:latest
+            ghcr.io/snarayanank2/bengaluru-votes:${{ github.event.release.tag_name }}
 
   deploy:
     needs: build-and-push
@@ -138,7 +138,7 @@ jobs:
           envs: IMAGE_TAG
           script: |
             set -euo pipefail
-            cd /opt/bangalore-votes
+            cd /opt/bengaluru-votes
             IMAGE_TAG="$IMAGE_TAG" docker compose -f deploy/compose.production.yml pull
 
       # Step 2: migrate. `if:` restricts this to the `release` event only
@@ -156,7 +156,7 @@ jobs:
           envs: IMAGE_TAG
           script: |
             set -euo pipefail
-            cd /opt/bangalore-votes
+            cd /opt/bengaluru-votes
             IMAGE_TAG="$IMAGE_TAG" docker compose -f deploy/compose.production.yml run --rm app npm run migrate
 
       # Step 3: restart + prune. Runs on both paths. On a real release
@@ -175,6 +175,6 @@ jobs:
           envs: IMAGE_TAG
           script: |
             set -euo pipefail
-            cd /opt/bangalore-votes
+            cd /opt/bengaluru-votes
             IMAGE_TAG="$IMAGE_TAG" docker compose -f deploy/compose.production.yml up -d
             docker image prune -f

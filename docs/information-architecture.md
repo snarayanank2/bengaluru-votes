@@ -1,6 +1,6 @@
 # GBA Elections Citizen Platform — Information Architecture
 
-**Status:** Draft v3 · **Frame:** Mobile-first · **Domain:** `bangalore-votes.opencity.in` · **Date:** July 2026
+**Status:** Draft v3 · **Frame:** Mobile-first · **Domain:** `bengaluruvotes.opencity.in` · **Date:** July 2026
 
 This document defines every page and modal in the pre-election MVP. Each URL is a distinct page (one URL → one screen). Modals overlay the current page and do not have their own URL. Priority tags have been removed — the full scope is in build.
 
@@ -8,7 +8,7 @@ This document defines every page and modal in the pre-election MVP. Each URL is 
 
 ## 1. Conventions
 
-- **Base domain:** all paths below are under `https://bangalore-votes.opencity.in`.
+- **Base domain:** all paths below are under `https://bengaluruvotes.opencity.in`.
 - **Language in the URL:** every public path exists in both languages — English at the path shown, Kannada under a `/kn/` prefix (`/ward/57` ↔ `/kn/ward/57`), cross-linked with `hreflang`. The app-bar toggle navigates to the other language's URL. Each language variant is its own URL and its own screen, so "one URL → one screen" holds per language. (PRD §8; `docs/architecture.md` §4.)
 - **Global elements (present on every page):** app bar with logo, **language toggle (EN | ಕನ್ನಡ)**, and a **Sign in / Account** control; footer with links to About, the voting guide, Data, Partner with us, Press, Terms, and Privacy. The footer is the only route to the trust and legal pages — none of them earn app-bar space, but all of them must be one click from anywhere, because the moment a citizen doubts the platform is the moment they need them.
 - **Pages vs modals:** a *page* has its own URL and can be deep-linked and shared. A *modal* is a popup that overlays whatever page the user is on, so the user never loses context and the URL does not change.
@@ -20,7 +20,7 @@ This document defines every page and modal in the pre-election MVP. Each URL is 
 ## 2. Site map
 
 ```
-bangalore-votes.opencity.in
+bengaluruvotes.opencity.in
 │
 ├─ PUBLIC (anonymous, read-only)
 │   ├─ /                                 Home / Landing

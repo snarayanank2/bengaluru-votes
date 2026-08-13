@@ -157,7 +157,7 @@ At the Phase 1 target of 25,000 citizens × 7 sends ≈ **175,000 messages**, bi
 | 6.5 | **Geocoding budget + quota alerts** — outside the app's own spend cap | A surprise invoice | unassigned |
 | 6.6 | **Anthropic API key + billing** | Kannada auto-translation (fully automatic — PRD §8); affidavit field extraction (PRD §5.2) | unassigned |
 | 6.7 | **CDN account** — added in front of the VM post-launch for extra headroom; launch itself runs on the nginx micro-cache on the VM (`docs/architecture.md` §5) | Nothing at launch; election-day headroom | unassigned |
-| 6.8 | **DNS for `bangalore-votes.opencity.in`** — delegated under Oorvani's `opencity.in` | Everything public | unassigned |
+| 6.8 | **DNS for `bengaluruvotes.opencity.in`** — delegated under Oorvani's `opencity.in` | Everything public | unassigned |
 | 6.9 | **Off-box backup storage** — decided: a DO Spaces bucket in BLR1 (India-resident; same-region trade recorded in `docs/architecture.md` §13), encrypted at rest via restic (the dump holds DPDP-regulated personal data; §10) + a rehearsed restore | Launch readiness | unassigned |
 | 6.10 | **Secrets custody** — who holds the API keys, session signing key, Twilio credentials | Deployment; continuity | unassigned |
 | 6.11 | **Total running budget** — 6.1–6.7 plus messaging (§3.9) | Whether any of this is affordable | unassigned |

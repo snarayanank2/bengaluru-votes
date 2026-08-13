@@ -19,7 +19,7 @@ import { logEvent } from '../log';
 const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
 
 /** Overridable for deploys that want a different verified sender; a safe placeholder otherwise. */
-const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? 'no-reply@bangalore-votes.opencity.in';
+const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? 'no-reply@bengaluruvotes.opencity.in';
 
 /**
  * Sends one HTML email via SendGrid. Returns `{ok:false}` on any non-2xx

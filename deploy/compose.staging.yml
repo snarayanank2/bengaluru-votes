@@ -15,7 +15,7 @@
 #
 # IMAGE: staging tracks `:edge` (every `main` build — architecture §14.3),
 # same `${IMAGE_TAG:-...}` indirection as production. Local verification:
-#   docker build -t ghcr.io/snarayanank2/bangalore-votes:local .
+#   docker build -t ghcr.io/snarayanank2/bengaluru-votes:local .
 #   IMAGE_TAG=local docker compose -f deploy/compose.staging.yml up -d
 #
 # ENV: `./.env.staging` (deploy/.env.staging), gitignored, never committed.
@@ -27,7 +27,7 @@
 
 services:
   app-staging:
-    image: ghcr.io/snarayanank2/bangalore-votes:${IMAGE_TAG:-edge}
+    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-edge}
     restart: unless-stopped
     env_file: ${STAGING_ENV_FILE:-./.env.staging}
     networks:
@@ -47,7 +47,7 @@ services:
       options: { max-size: 10m, max-file: '5' }
 
   jobs-staging:
-    image: ghcr.io/snarayanank2/bangalore-votes:${IMAGE_TAG:-edge}
+    image: ghcr.io/snarayanank2/bengaluru-votes:${IMAGE_TAG:-edge}
     restart: unless-stopped
     command: ['supercronic', '/app/deploy/crontab']
     env_file: ${STAGING_ENV_FILE:-./.env.staging}

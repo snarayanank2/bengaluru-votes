@@ -197,7 +197,7 @@ describe('POST /api/webhooks/sendgrid', () => {
 // Twilio
 // ---------------------------------------------------------------------------
 
-const TWILIO_URL = 'https://bangalore-votes.opencity.in/api/webhooks/twilio';
+const TWILIO_URL = 'https://bengaluruvotes.opencity.in/api/webhooks/twilio';
 
 function computeTwilioSignature(authToken: string, url: string, params: URLSearchParams): string {
   const sortedNames = [...params.keys()].sort();
@@ -211,7 +211,7 @@ function computeTwilioSignature(authToken: string, url: string, params: URLSearc
 function twilioRequest(params: URLSearchParams, signature?: string): Request {
   const headers: Record<string, string> = {
     'content-type': 'application/x-www-form-urlencoded',
-    host: 'bangalore-votes.opencity.in',
+    host: 'bengaluruvotes.opencity.in',
     'x-forwarded-proto': 'https',
   };
   if (signature !== undefined) headers['x-twilio-signature'] = signature;
@@ -310,7 +310,7 @@ describe('POST /api/webhooks/twilio', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          host: 'bangalore-votes.opencity.in',
+          host: 'bengaluruvotes.opencity.in',
           'x-forwarded-proto': 'https',
           'x-twilio-signature': 'anything-truthy',
         },

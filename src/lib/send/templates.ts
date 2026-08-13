@@ -66,15 +66,15 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
       whatsapp: {
         templateName: 'bv_otp_login_en',
         bodyTemplate:
-          '{{1}} is your verification code for Bangalore Votes. This code expires in 10 minutes.',
+          '{{1}} is your verification code for Bengaluru Votes. This code expires in 10 minutes.',
         vars: ['code'],
       },
       email: {
-        subjectTemplate: 'Your Bangalore Votes verification code: `{{1}}`',
+        subjectTemplate: 'Your Bengaluru Votes verification code: `{{1}}`',
         bodyTemplate:
           'Your verification code is **`{{1}}`**.\n\n' +
           "This code expires in 10 minutes. If you didn't request this, you can safely ignore this email — nobody can access your account without it.\n\n" +
-          '— Bangalore Votes, an Oorvani Foundation initiative',
+          '— Bengaluru Votes, an Oorvani Foundation initiative',
         vars: ['code'],
       },
     },
@@ -82,15 +82,15 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
       whatsapp: {
         templateName: 'bv_otp_login_kn',
         bodyTemplate:
-          '{{1}} ಇದು Bangalore Votes ಗಾಗಿ ನಿಮ್ಮ ಪರಿಶೀಲನಾ ಸಂಕೇತ. ಈ ಸಂಕೇತ 10 ನಿಮಿಷಗಳಲ್ಲಿ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ.',
+          '{{1}} ಇದು Bengaluru Votes ಗಾಗಿ ನಿಮ್ಮ ಪರಿಶೀಲನಾ ಸಂಕೇತ. ಈ ಸಂಕೇತ 10 ನಿಮಿಷಗಳಲ್ಲಿ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ.',
         vars: ['code'],
       },
       email: {
-        subjectTemplate: 'ನಿಮ್ಮ Bangalore Votes ಪರಿಶೀಲನಾ ಸಂಕೇತ: `{{1}}`',
+        subjectTemplate: 'ನಿಮ್ಮ Bengaluru Votes ಪರಿಶೀಲನಾ ಸಂಕೇತ: `{{1}}`',
         bodyTemplate:
           'ನಿಮ್ಮ ಪರಿಶೀಲನಾ ಸಂಕೇತ **`{{1}}`**.\n\n' +
           'ಈ ಸಂಕೇತ 10 ನಿಮಿಷಗಳಲ್ಲಿ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ. ನೀವು ಇದನ್ನು ಕೋರದಿದ್ದರೆ, ಈ ಇಮೇಲ್ ಅನ್ನು ನಿರ್ಲಕ್ಷಿಸಬಹುದು — ಈ ಸಂಕೇತವಿಲ್ಲದೆ ಯಾರೂ ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಪ್ರವೇಶಿಸಲಾಗುವುದಿಲ್ಲ.\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
         vars: ['code'],
       },
     },
@@ -101,19 +101,19 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
       whatsapp: {
         templateName: 'bv_w1_welcome_en',
         bodyTemplate:
-          "Welcome to Bangalore Votes! You're registered for **{{1}} ward**, updates in {{2}}. " +
+          "Welcome to Bengaluru Votes! You're registered for **{{1}} ward**, updates in {{2}}. " +
           "We'll only message you about: the electoral roll deadline, when candidates file, voting on ward issues, and your polling booth — nothing else. Manage anytime: {{3}}",
         vars: ['ward', 'language', 'notificationsLink'],
       },
       email: {
         subjectTemplate: "You're set up for {{1}} ward updates",
         bodyTemplate:
-          'Thanks for registering with Bangalore Votes.\n\n' +
+          'Thanks for registering with Bengaluru Votes.\n\n' +
           '- **Ward:** {{1}}\n' +
           '- **Language:** {{2}}\n\n' +
           "Here's exactly what we'll send you, and nothing more: the electoral roll deadline, when candidates file nominations in your ward, a chance to vote on your ward's top local issues, and your polling booth details closer to election day.\n\n" +
           'You can change your ward, language, or channels anytime at {{3}}.\n\n' +
-          '— Bangalore Votes, an Oorvani Foundation initiative',
+          '— Bengaluru Votes, an Oorvani Foundation initiative',
         vars: ['ward', 'language', 'notificationsLink'],
       },
     },
@@ -121,19 +121,19 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
       whatsapp: {
         templateName: 'bv_w1_welcome_kn',
         bodyTemplate:
-          'Bangalore Votes ಗೆ ಸ್ವಾಗತ! ನೀವು **{{1}} ವಾರ್ಡ್**ಗೆ ನೋಂದಣಿಯಾಗಿದ್ದೀರಿ, ಅಪ್ಡೇಟ್‌ಗಳು {{2}} ಭಾಷೆಯಲ್ಲಿ. ' +
+          'Bengaluru Votes ಗೆ ಸ್ವಾಗತ! ನೀವು **{{1}} ವಾರ್ಡ್**ಗೆ ನೋಂದಣಿಯಾಗಿದ್ದೀರಿ, ಅಪ್ಡೇಟ್‌ಗಳು {{2}} ಭಾಷೆಯಲ್ಲಿ. ' +
           'ನಾವು ನಿಮಗೆ ಇವುಗಳ ಬಗ್ಗೆ ಮಾತ್ರ ಸಂದೇಶ ಕಳುಹಿಸುತ್ತೇವೆ: ಮತದಾರರ ಪಟ್ಟಿ ಗಡುವು, ಅಭ್ಯರ್ಥಿಗಳ ನಾಮಪತ್ರ ಸಲ್ಲಿಕೆ, ವಾರ್ಡ್ ಸಮಸ್ಯೆಗಳ ಮತದಾನ, ಮತ್ತು ನಿಮ್ಮ ಮತಗಟ್ಟೆ ವಿವರ — ಇವಿಷ್ಟೇ. ಯಾವಾಗ ಬೇಕಾದರೂ ಬದಲಿಸಿ: {{3}}',
         vars: ['ward', 'language', 'notificationsLink'],
       },
       email: {
         subjectTemplate: '{{1}} ವಾರ್ಡ್ ಅಪ್ಡೇಟ್‌ಗಳಿಗಾಗಿ ನೀವು ಸಿದ್ಧರಾಗಿದ್ದೀರಿ',
         bodyTemplate:
-          'Bangalore Votes ನಲ್ಲಿ ನೋಂದಾಯಿಸಿಕೊಂಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು.\n\n' +
+          'Bengaluru Votes ನಲ್ಲಿ ನೋಂದಾಯಿಸಿಕೊಂಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು.\n\n' +
           '- **ವಾರ್ಡ್:** {{1}}\n' +
           '- **ಭಾಷೆ:** {{2}}\n\n' +
           'ನಾವು ನಿಮಗೆ ಕಳುಹಿಸುವುದು ಇಷ್ಟೇ, ಇನ್ನೇನೂ ಅಲ್ಲ: ಮತದಾರರ ಪಟ್ಟಿ ಗಡುವು, ನಿಮ್ಮ ವಾರ್ಡ್‌ನಲ್ಲಿ ಅಭ್ಯರ್ಥಿಗಳ ನಾಮಪತ್ರ ಸಲ್ಲಿಕೆ, ನಿಮ್ಮ ವಾರ್ಡ್‌ನ ಪ್ರಮುಖ ಸ್ಥಳೀಯ ಸಮಸ್ಯೆಗಳ ಮೇಲೆ ಮತ ಚಲಾಯಿಸುವ ಅವಕಾಶ, ಮತ್ತು ಚುನಾವಣೆ ಸಮೀಪಿಸುತ್ತಿದ್ದಂತೆ ನಿಮ್ಮ ಮತಗಟ್ಟೆ ವಿವರಗಳು.\n\n' +
           'ನಿಮ್ಮ ವಾರ್ಡ್, ಭಾಷೆ ಅಥವಾ ಚಾನೆಲ್‌ಗಳನ್ನು ಯಾವಾಗ ಬೇಕಾದರೂ {{3}} ನಲ್ಲಿ ಬದಲಾಯಿಸಬಹುದು.\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
         vars: ['ward', 'language', 'notificationsLink'],
       },
     },
@@ -154,7 +154,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           "If you're not on the roll by then, no amount of candidate information helps — you simply can't vote. It takes two minutes to check.\n\n" +
           '**[Check your registration]({{2}})**\n\n' +
           "If you're not yet enrolled, or you've moved since you last voted, see our step-by-step guide: {{3}}\n\n" +
-          '— Bangalore Votes, an Oorvani Foundation initiative',
+          '— Bengaluru Votes, an Oorvani Foundation initiative',
         vars: ['deadline', 'checkRegistrationLink', 'guideLink'],
       },
     },
@@ -172,7 +172,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           'ಅಷ್ಟರೊಳಗೆ ನೀವು ಪಟ್ಟಿಯಲ್ಲಿ ಇಲ್ಲದಿದ್ದರೆ, ಎಷ್ಟೇ ಅಭ್ಯರ್ಥಿ ಮಾಹಿತಿ ಇದ್ದರೂ ಪ್ರಯೋಜನವಿಲ್ಲ — ನೀವು ಮತ ಚಲಾಯಿಸಲು ಸಾಧ್ಯವಾಗುವುದಿಲ್ಲ. ಪರಿಶೀಲಿಸಲು ಎರಡು ನಿಮಿಷ ಸಾಕು.\n\n' +
           '**[ನಿಮ್ಮ ನೋಂದಣಿ ಪರಿಶೀಲಿಸಿ]({{2}})**\n\n' +
           'ನೀವು ಇನ್ನೂ ನೋಂದಾಯಿಸಿಲ್ಲದಿದ್ದರೆ, ಅಥವಾ ಕೊನೆಯ ಬಾರಿ ಮತ ಚಲಾಯಿಸಿದಾಗಿನಿಂದ ಸ್ಥಳಾಂತರಗೊಂಡಿದ್ದರೆ, ನಮ್ಮ ಹಂತ-ಹಂತದ ಮಾರ್ಗದರ್ಶಿ ನೋಡಿ: {{3}}\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
         vars: ['deadline', 'checkRegistrationLink', 'guideLink'],
       },
     },
@@ -192,7 +192,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
         bodyTemplate:
           'Nominations closed in **{{1}} ward** with **{{2}} candidates** filing so far. This list is provisional — some candidates may still withdraw before the final list is confirmed.\n\n' +
           "**[See who's standing]({{3}})**\n\n" +
-          '— Bangalore Votes, an Oorvani Foundation initiative\n\n' +
+          '— Bengaluru Votes, an Oorvani Foundation initiative\n\n' +
           '*[Manage your notification preferences]({{4}}) · [Unsubscribe]({{5}})*',
         vars: ['ward', 'candidateCount', 'candidatesLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -210,7 +210,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
         bodyTemplate:
           '**{{1}} ವಾರ್ಡ್**ನಲ್ಲಿ ನಾಮಪತ್ರ ಸಲ್ಲಿಕೆ ಮುಗಿದಿದ್ದು, ಇಲ್ಲಿಯವರೆಗೆ **{{2}} ಅಭ್ಯರ್ಥಿಗಳು** ಸಲ್ಲಿಸಿದ್ದಾರೆ. ಈ ಪಟ್ಟಿ ತಾತ್ಕಾಲಿಕವಾಗಿದ್ದು, ಅಂತಿಮ ಪಟ್ಟಿ ಖಚಿತಗೊಳ್ಳುವ ಮೊದಲು ಕೆಲವು ಅಭ್ಯರ್ಥಿಗಳು ಹಿಂಪಡೆಯಬಹುದು.\n\n' +
           '**[ಯಾರು ಸ್ಪರ್ಧಿಸುತ್ತಿದ್ದಾರೆ ನೋಡಿ]({{3}})**\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
           '*[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{4}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{5}})*',
         vars: ['ward', 'candidateCount', 'candidatesLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -232,7 +232,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           'Roads, water, waste, safety — what should your corporator prioritise? ' +
           "Your ward's curator has put together the local issues that matter, and your top-3 vote adds to a public, ward-by-ward signal.\n\n" +
           '**[Vote now]({{2}})**\n\n' +
-          '— Bangalore Votes, an Oorvani Foundation initiative\n\n' +
+          '— Bengaluru Votes, an Oorvani Foundation initiative\n\n' +
           '*[Manage your notification preferences]({{3}}) · [Unsubscribe]({{4}})*',
         vars: ['ward', 'issuesLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -251,7 +251,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           'ರಸ್ತೆಗಳು, ನೀರು, ತ್ಯಾಜ್ಯ, ಸುರಕ್ಷತೆ — ನಿಮ್ಮ ಕಾರ್ಪೊರೇಟರ್ ಯಾವುದಕ್ಕೆ ಆದ್ಯತೆ ನೀಡಬೇಕು? ' +
           'ನಿಮ್ಮ ವಾರ್ಡ್‌ನ ಕ್ಯುರೇಟರ್ ಮುಖ್ಯವಾದ ಸ್ಥಳೀಯ ಸಮಸ್ಯೆಗಳ ಪಟ್ಟಿ ಸಿದ್ಧಪಡಿಸಿದ್ದಾರೆ, ಮತ್ತು ನಿಮ್ಮ ಟಾಪ್-3 ಮತ ಸಾರ್ವಜನಿಕ, ವಾರ್ಡ್‌ವಾರು ಸಂಕೇತಕ್ಕೆ ಸೇರುತ್ತದೆ.\n\n' +
           '**[ಈಗಲೇ ಮತ ಹಾಕಿ]({{2}})**\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
           '*[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{3}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{4}})*',
         vars: ['ward', 'issuesLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -272,7 +272,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
         bodyTemplate:
           'The candidate list for **{{1}} ward** is now final, and every report card is complete — name and party, track record, criminal cases, declared assets, education, and news coverage, each with its source shown.\n\n' +
           '**[Read the report cards]({{2}})** · **[Compare candidates side by side]({{3}})**\n\n' +
-          '— Bangalore Votes, an Oorvani Foundation initiative\n\n' +
+          '— Bengaluru Votes, an Oorvani Foundation initiative\n\n' +
           '*[Manage your notification preferences]({{4}}) · [Unsubscribe]({{5}})*',
         vars: ['ward', 'reportCardsLink', 'compareLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -290,7 +290,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
         bodyTemplate:
           '**{{1}} ವಾರ್ಡ್**ನ ಅಭ್ಯರ್ಥಿಗಳ ಪಟ್ಟಿ ಈಗ ಅಂತಿಮಗೊಂಡಿದ್ದು, ಪ್ರತಿ ರಿಪೋರ್ಟ್ ಕಾರ್ಡ್ ಪೂರ್ಣಗೊಂಡಿದೆ — ಹೆಸರು ಮತ್ತು ಪಕ್ಷ, ಹಿಂದಿನ ಕಾರ್ಯಸಾಧನೆ, ಕ್ರಿಮಿನಲ್ ಪ್ರಕರಣಗಳು, ಘೋಷಿತ ಆಸ್ತಿ, ವಿದ್ಯಾರ್ಹತೆ, ಮತ್ತು ಸುದ್ದಿ ವರದಿಗಳು, ಪ್ರತಿಯೊಂದಕ್ಕೂ ಮೂಲ ಸಹಿತ.\n\n' +
           '**[ರಿಪೋರ್ಟ್ ಕಾರ್ಡ್‌ಗಳನ್ನು ಓದಿ]({{2}})** · **[ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಹೋಲಿಸಿ]({{3}})**\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
           '*[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{4}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{5}})*',
         vars: ['ward', 'reportCardsLink', 'compareLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -313,7 +313,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           '**[Compare all candidates side by side]({{3}})**\n\n' +
           '**[Find your polling booth]({{4}})**\n\n' +
           "This is the last candidate update you'll get from us — the next message, closer to election day, will be logistics only.\n\n" +
-          '— Bangalore Votes, an Oorvani Foundation initiative\n\n' +
+          '— Bengaluru Votes, an Oorvani Foundation initiative\n\n' +
           '*[Manage your notification preferences]({{5}}) · [Unsubscribe]({{6}})*',
         vars: ['ward', 'issuesLink', 'compareLink', 'boothLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -333,7 +333,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           '**[ಎಲ್ಲಾ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಹೋಲಿಸಿ]({{3}})**\n\n' +
           '**[ನಿಮ್ಮ ಮತಗಟ್ಟೆ ಪತ್ತೆಹಚ್ಚಿ]({{4}})**\n\n' +
           'ಇದು ನಮ್ಮಿಂದ ನೀವು ಪಡೆಯುವ ಕೊನೆಯ ಅಭ್ಯರ್ಥಿ ಅಪ್ಡೇಟ್ — ಚುನಾವಣೆ ಸಮೀಪಿಸುತ್ತಿದ್ದಂತೆ ಬರುವ ಮುಂದಿನ ಸಂದೇಶ ಕೇವಲ ಲಾಜಿಸ್ಟಿಕ್ಸ್ ಬಗ್ಗೆ ಮಾತ್ರ ಇರುತ್ತದೆ.\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ\n\n' +
           '*[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{5}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{6}})*',
         vars: ['ward', 'issuesLink', 'compareLink', 'boothLink', 'notificationsLink', 'unsubscribeLink'],
       },
@@ -355,7 +355,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           '**Polling hours:** {{2}} – {{3}}\n' +
           "**Carry:** your voter ID (EPIC), or an accepted alternative photo ID if it hasn't arrived — see the full list here: {{4}}\n\n" +
           "This is our last message before election day — we won't send anything further, though the site stays fully available if you need it.\n\n" +
-          '— Bangalore Votes, an Oorvani Foundation initiative',
+          '— Bengaluru Votes, an Oorvani Foundation initiative',
         vars: ['booth', 'openTime', 'closeTime', 'boothGuideLink'],
       },
     },
@@ -373,7 +373,7 @@ export const templates: Record<TemplateCode, Record<Lang, TemplateEntry>> = {
           '**ಮತದಾನ ಸಮಯ:** {{2}} – {{3}}\n' +
           '**ತನ್ನಿ:** ನಿಮ್ಮ ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ (EPIC), ಅಥವಾ ಅದು ಬಂದಿಲ್ಲದಿದ್ದರೆ ಅಂಗೀಕೃತ ಪರ್ಯಾಯ ಫೋಟೋ ಗುರುತಿನ ಚೀಟಿ — ಪೂರ್ಣ ಪಟ್ಟಿಯನ್ನು ಇಲ್ಲಿ ನೋಡಿ: {{4}}\n\n' +
           'ಚುನಾವಣೆ ದಿನದ ಮೊದಲು ಇದು ನಮ್ಮ ಕೊನೆಯ ಸಂದೇಶ — ನಾವು ಇನ್ನೇನೂ ಕಳುಹಿಸುವುದಿಲ್ಲ, ಆದರೆ ನಿಮಗೆ ಅಗತ್ಯವಿದ್ದರೆ ಸೈಟ್ ಸಂಪೂರ್ಣವಾಗಿ ಲಭ್ಯವಿರುತ್ತದೆ.\n\n' +
-          '— Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
+          '— Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ',
         vars: ['booth', 'openTime', 'closeTime', 'boothGuideLink'],
       },
     },

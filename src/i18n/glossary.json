@@ -1,4 +1,5 @@
 {
+  "Bengaluru Votes": { "kn": "ಬೆಂಗಳೂರು ವೋಟ್ಸ್", "note": "The product name. 'Votes' is transliterated, never translated to 'ಮತಗಳು' — that reads as the common noun 'votes' rather than a brand." },
   "ward": { "kn": "ವಾರ್ಡ್" },
   "corporator": { "kn": "ಕಾರ್ಪೊರೇಟರ್", "review": true, "note": "Common transliteration in Kannada media; alternative 'ಪಾಲಿಕೆ ಸದಸ್ಯ' (corporation member) is more literal but less used colloquially — confirm with a native-speaker reviewer." },
   "affidavit": { "kn": "ಅಫಿಡವಿಟ್" },

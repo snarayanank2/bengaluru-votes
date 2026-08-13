@@ -23,7 +23,7 @@ const KN_COURTESY_NOTE = t('kn', 'legal.courtesyNote');
  * unlike guides.test.ts, no migration/DB fixture setup is needed here.
  */
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 /**
  * Strips the container API's dev-mode debug attributes and collapses
@@ -96,7 +96,7 @@ describe('Trust & legal pages (Task 22) — IA §3.13/§3.17/§3.18, PRD §5.11/
       const payload = match![1];
 
       expect(payload).toContain('"@type":"Organization"');
-      expect(payload).toContain('Bangalore Votes');
+      expect(payload).toContain('Bengaluru Votes');
       expect(payload).toContain('Oorvani Foundation');
       expect(payload).toContain(SITE_ORIGIN);
 
@@ -106,7 +106,7 @@ describe('Trust & legal pages (Task 22) — IA §3.13/§3.17/§3.18, PRD §5.11/
 
       const parsed = JSON.parse(payload);
       expect(parsed['@type']).toBe('Organization');
-      expect(parsed.name).toBe('Bangalore Votes');
+      expect(parsed.name).toBe('Bengaluru Votes');
       expect(parsed.url).toBe(SITE_ORIGIN);
       expect(parsed.parentOrganization.name).toBe('Oorvani Foundation');
       expect(parsed.publisher.name).toBe('Oorvani Foundation');

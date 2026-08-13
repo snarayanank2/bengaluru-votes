@@ -89,7 +89,7 @@ const [row] = await db
 // production origin when SITE_ORIGIN is unset) — same convention as
 // Base.astro/Candidate.astro; the local fallback here only satisfies
 // strict typing and is never reached against the request's Host.
-const siteOrigin = Astro.site ?? new URL('https://bangalore-votes.opencity.in');
+const siteOrigin = Astro.site ?? new URL('https://bengaluruvotes.opencity.in');
 
 const taggedLink = new URL(`/?src=${encodeURIComponent(slug)}`, siteOrigin).href;
 const votingGuideLink = {

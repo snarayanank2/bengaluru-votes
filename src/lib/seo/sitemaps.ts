@@ -74,7 +74,7 @@ export const STATIC_ROUTES: string[] = [
 ];
 
 /** Same fallback convention as astro.config.mjs / src/lib/send/calendar.ts. */
-const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
 /** A single sitemap entry: an EN-canonical root-relative path plus an optional ISO 8601 `lastmod`. */
 interface RouteEntry {

@@ -43,7 +43,7 @@
 
 ### WhatsApp — English (`bv_otp_login_en`)
 
-> Body: `{{1}} is your verification code for Bangalore Votes.`
+> Body: `{{1}} is your verification code for Bengaluru Votes.`
 > Footer (expiry add-on): `This code expires in 10 minutes.`
 > Button: **Copy Code** (Meta-managed autofill button, not free text)
 
@@ -51,29 +51,29 @@ Variables: `{{1}}` = 6-digit OTP.
 
 ### WhatsApp — Kannada (`bv_otp_login_kn`)
 
-> Body: `{{1}} ಇದು Bangalore Votes ಗಾಗಿ ನಿಮ್ಮ ಪರಿಶೀಲನಾ ಸಂಕೇತ.`
+> Body: `{{1}} ಇದು Bengaluru Votes ಗಾಗಿ ನಿಮ್ಮ ಪರಿಶೀಲನಾ ಸಂಕೇತ.`
 > Footer: `ಈ ಸಂಕೇತ 10 ನಿಮಿಷಗಳಲ್ಲಿ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ.`
 > Button: **Copy Code**
 
 ### Email — English
 
-**Subject:** Your Bangalore Votes verification code: `{{1}}`
+**Subject:** Your Bengaluru Votes verification code: `{{1}}`
 **Body:**
 > Your verification code is **`{{1}}`**.
 >
 > This code expires in 10 minutes. If you didn't request this, you can safely ignore this email — nobody can access your account without it.
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 
 ### Email — Kannada
 
-**Subject:** ನಿಮ್ಮ Bangalore Votes ಪರಿಶೀಲನಾ ಸಂಕೇತ: `{{1}}`
+**Subject:** ನಿಮ್ಮ Bengaluru Votes ಪರಿಶೀಲನಾ ಸಂಕೇತ: `{{1}}`
 **Body:**
 > ನಿಮ್ಮ ಪರಿಶೀಲನಾ ಸಂಕೇತ **`{{1}}`**.
 >
 > ಈ ಸಂಕೇತ 10 ನಿಮಿಷಗಳಲ್ಲಿ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ. ನೀವು ಇದನ್ನು ಕೋರದಿದ್ದರೆ, ಈ ಇಮೇಲ್ ಅನ್ನು ನಿರ್ಲಕ್ಷಿಸಬಹುದು — ಈ ಸಂಕೇತವಿಲ್ಲದೆ ಯಾರೂ ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಪ್ರವೇಶಿಸಲಾಗುವುದಿಲ್ಲ.
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 
 ---
 
@@ -84,19 +84,19 @@ Variables: `{{1}}` = 6-digit OTP.
 
 ### WhatsApp — English (`bv_w1_welcome_en`)
 
-> Welcome to Bangalore Votes! You're registered for **{{1}} ward**, updates in {{2}}. We'll only message you about: the electoral roll deadline, when candidates file, voting on ward issues, and your polling booth — nothing else. Manage anytime: {{3}}
+> Welcome to Bengaluru Votes! You're registered for **{{1}} ward**, updates in {{2}}. We'll only message you about: the electoral roll deadline, when candidates file, voting on ward issues, and your polling booth — nothing else. Manage anytime: {{3}}
 
 Variables: `{{1}}` = ward name + number, `{{2}}` = language (English/Kannada), `{{3}}` = link to `/account/notifications`.
 
 ### WhatsApp — Kannada (`bv_w1_welcome_kn`)
 
-> Bangalore Votes ಗೆ ಸ್ವಾಗತ! ನೀವು **{{1}} ವಾರ್ಡ್**ಗೆ ನೋಂದಣಿಯಾಗಿದ್ದೀರಿ, ಅಪ್ಡೇಟ್‌ಗಳು {{2}} ಭಾಷೆಯಲ್ಲಿ. ನಾವು ನಿಮಗೆ ಇವುಗಳ ಬಗ್ಗೆ ಮಾತ್ರ ಸಂದೇಶ ಕಳುಹಿಸುತ್ತೇವೆ: ಮತದಾರರ ಪಟ್ಟಿ ಗಡುವು, ಅಭ್ಯರ್ಥಿಗಳ ನಾಮಪತ್ರ ಸಲ್ಲಿಕೆ, ವಾರ್ಡ್ ಸಮಸ್ಯೆಗಳ ಮತದಾನ, ಮತ್ತು ನಿಮ್ಮ ಮತಗಟ್ಟೆ ವಿವರ — ಇವಿಷ್ಟೇ. ಯಾವಾಗ ಬೇಕಾದರೂ ಬದಲಿಸಿ: {{3}}
+> Bengaluru Votes ಗೆ ಸ್ವಾಗತ! ನೀವು **{{1}} ವಾರ್ಡ್**ಗೆ ನೋಂದಣಿಯಾಗಿದ್ದೀರಿ, ಅಪ್ಡೇಟ್‌ಗಳು {{2}} ಭಾಷೆಯಲ್ಲಿ. ನಾವು ನಿಮಗೆ ಇವುಗಳ ಬಗ್ಗೆ ಮಾತ್ರ ಸಂದೇಶ ಕಳುಹಿಸುತ್ತೇವೆ: ಮತದಾರರ ಪಟ್ಟಿ ಗಡುವು, ಅಭ್ಯರ್ಥಿಗಳ ನಾಮಪತ್ರ ಸಲ್ಲಿಕೆ, ವಾರ್ಡ್ ಸಮಸ್ಯೆಗಳ ಮತದಾನ, ಮತ್ತು ನಿಮ್ಮ ಮತಗಟ್ಟೆ ವಿವರ — ಇವಿಷ್ಟೇ. ಯಾವಾಗ ಬೇಕಾದರೂ ಬದಲಿಸಿ: {{3}}
 
 ### Email — English
 
 **Subject:** You're set up for {{1}} ward updates
 **Body:**
-> Thanks for registering with Bangalore Votes.
+> Thanks for registering with Bengaluru Votes.
 >
 > - **Ward:** {{1}}
 > - **Language:** {{2}}
@@ -105,13 +105,13 @@ Variables: `{{1}}` = ward name + number, `{{2}}` = language (English/Kannada), `
 >
 > You can change your ward, language, or channels anytime at {{3}}.
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 
 ### Email — Kannada
 
 **Subject:** {{1}} ವಾರ್ಡ್ ಅಪ್ಡೇಟ್‌ಗಳಿಗಾಗಿ ನೀವು ಸಿದ್ಧರಾಗಿದ್ದೀರಿ
 **Body:**
-> Bangalore Votes ನಲ್ಲಿ ನೋಂದಾಯಿಸಿಕೊಂಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು.
+> Bengaluru Votes ನಲ್ಲಿ ನೋಂದಾಯಿಸಿಕೊಂಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು.
 >
 > - **ವಾರ್ಡ್:** {{1}}
 > - **ಭಾಷೆ:** {{2}}
@@ -120,7 +120,7 @@ Variables: `{{1}}` = ward name + number, `{{2}}` = language (English/Kannada), `
 >
 > ನಿಮ್ಮ ವಾರ್ಡ್, ಭಾಷೆ ಅಥವಾ ಚಾನೆಲ್‌ಗಳನ್ನು ಯಾವಾಗ ಬೇಕಾದರೂ {{3}} ನಲ್ಲಿ ಬದಲಾಯಿಸಬಹುದು.
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 
 ---
 
@@ -151,7 +151,7 @@ Variables: `{{1}}` = roll deadline date, `{{2}}` = link to `/check-registration`
 >
 > If you're not yet enrolled, or you've moved since you last voted, see our step-by-step guide: {{3}}
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 
 ### Email — Kannada
 
@@ -165,7 +165,7 @@ Variables: `{{1}}` = roll deadline date, `{{2}}` = link to `/check-registration`
 >
 > ನೀವು ಇನ್ನೂ ನೋಂದಾಯಿಸಿಲ್ಲದಿದ್ದರೆ, ಅಥವಾ ಕೊನೆಯ ಬಾರಿ ಮತ ಚಲಾಯಿಸಿದಾಗಿನಿಂದ ಸ್ಥಳಾಂತರಗೊಂಡಿದ್ದರೆ, ನಮ್ಮ ಹಂತ-ಹಂತದ ಮಾರ್ಗದರ್ಶಿ ನೋಡಿ: {{3}}
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 
 ---
 
@@ -196,7 +196,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = candidate count, `{{3}}` = link to `/w
 >
 > **[See who's standing]({{3}})**
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 >
 > *[Manage your notification preferences]({{4}}) · [Unsubscribe]({{5}})*
 
@@ -208,7 +208,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = candidate count, `{{3}}` = link to `/w
 >
 > **[ಯಾರು ಸ್ಪರ್ಧಿಸುತ್ತಿದ್ದಾರೆ ನೋಡಿ]({{3}})**
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 >
 > *[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{4}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{5}})*
 
@@ -241,7 +241,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/issues`.
 >
 > **[Vote now]({{2}})**
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 >
 > *[Manage your notification preferences]({{3}}) · [Unsubscribe]({{4}})*
 
@@ -253,7 +253,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/issues`.
 >
 > **[ಈಗಲೇ ಮತ ಹಾಕಿ]({{2}})**
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 >
 > *[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{3}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{4}})*
 
@@ -286,7 +286,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/candidates`.
 >
 > **[Read the report cards]({{2}})** · **[Compare candidates side by side]({{3}})**
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 >
 > *[Manage your notification preferences]({{4}}) · [Unsubscribe]({{5}})*
 
@@ -298,7 +298,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/candidates`.
 >
 > **[ರಿಪೋರ್ಟ್ ಕಾರ್ಡ್‌ಗಳನ್ನು ಓದಿ]({{2}})** · **[ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಹೋಲಿಸಿ]({{3}})**
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 >
 > *[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{4}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{5}})*
 
@@ -335,7 +335,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/compare` (issues a
 >
 > This is the last candidate update you'll get from us — the next message, closer to election day, will be logistics only.
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 >
 > *[Manage your notification preferences]({{5}}) · [Unsubscribe]({{6}})*
 
@@ -351,7 +351,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/compare` (issues a
 >
 > ಇದು ನಮ್ಮಿಂದ ನೀವು ಪಡೆಯುವ ಕೊನೆಯ ಅಭ್ಯರ್ಥಿ ಅಪ್ಡೇಟ್ — ಚುನಾವಣೆ ಸಮೀಪಿಸುತ್ತಿದ್ದಂತೆ ಬರುವ ಮುಂದಿನ ಸಂದೇಶ ಕೇವಲ ಲಾಜಿಸ್ಟಿಕ್ಸ್ ಬಗ್ಗೆ ಮಾತ್ರ ಇರುತ್ತದೆ.
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 >
 > *[ನಿಮ್ಮ ಅಧಿಸೂಚನೆ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ]({{5}}) · [ಚಂದಾ ರದ್ದುಗೊಳಿಸಿ]({{6}})*
 
@@ -382,7 +382,7 @@ Variables: `{{1}}` = booth name/address, `{{2}}`/`{{3}}` = poll open/close times
 >
 > This is our last message before election day — we won't send anything further, though the site stays fully available if you need it.
 >
-> — Bangalore Votes, an Oorvani Foundation initiative
+> — Bengaluru Votes, an Oorvani Foundation initiative
 
 ### Email — Kannada
 
@@ -394,7 +394,7 @@ Variables: `{{1}}` = booth name/address, `{{2}}`/`{{3}}` = poll open/close times
 >
 > ಚುನಾವಣೆ ದಿನದ ಮೊದಲು ಇದು ನಮ್ಮ ಕೊನೆಯ ಸಂದೇಶ — ನಾವು ಇನ್ನೇನೂ ಕಳುಹಿಸುವುದಿಲ್ಲ, ಆದರೆ ನಿಮಗೆ ಅಗತ್ಯವಿದ್ದರೆ ಸೈಟ್ ಸಂಪೂರ್ಣವಾಗಿ ಲಭ್ಯವಿರುತ್ತದೆ.
 >
-> — Bangalore Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
+> — Bengaluru Votes, ಒಂದು Oorvani Foundation ಉಪಕ್ರಮ
 
 ---
 

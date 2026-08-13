@@ -17,7 +17,7 @@ import ServerError from '../../src/pages/500.astro';
  * migration/DB fixture setup needed here, unlike ward.test.ts/home.test.ts.
  */
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 function normalize(html: string): string {
   return html

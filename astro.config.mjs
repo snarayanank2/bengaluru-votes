@@ -19,7 +19,7 @@ function extraAllowedDomain(origin) {
 export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'standalone' }),
-  site: process.env.SITE_ORIGIN ?? 'https://bangalore-votes.opencity.in',
+  site: process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in',
   i18n: { locales: ['en', 'kn'], defaultLocale: 'en', routing: { prefixDefaultLocale: false } },
   vite: {
     build: {
@@ -56,8 +56,8 @@ export default defineConfig({
     // platform's two locked-in hostnames (architecture.md §14: production +
     // staging on one Droplet, both behind the shared nginx).
     allowedDomains: [
-      { hostname: 'bangalore-votes.opencity.in', protocol: 'https' },
-      { hostname: 'staging.bangalore-votes.opencity.in', protocol: 'https' },
+      { hostname: 'bengaluruvotes.opencity.in', protocol: 'https' },
+      { hostname: 'staging.bengaluruvotes.opencity.in', protocol: 'https' },
       // Task 64's Playwright smoke suite hits the SAME Node standalone
       // adapter directly (no nginx in front) at http://127.0.0.1:4321 —
       // without its own allowedDomains entry, EVERY form-urlencoded POST

@@ -31,7 +31,7 @@ import { verifyRecaptcha } from '../../src/lib/recaptcha';
 import { POST as eoiPOST } from '../../src/pages/api/eoi';
 import { onRequest } from '../../src/middleware';
 
-const SITE_ORIGIN = 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
 
 function req(body: unknown): Request {
   return new Request('http://localhost/api/eoi', {

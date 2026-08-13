@@ -1,6 +1,6 @@
 # GBA Elections Citizen Platform — Design System
 
-**Status:** Draft v1 · **Applies to:** `bangalore-votes.opencity.in` · **Date:** July 2026
+**Status:** Draft v1 · **Applies to:** `bengaluruvotes.opencity.in` · **Date:** July 2026
 
 This document defines the visual language for the platform: tokens, typography, components, and the rules that keep the interface trustworthy and neutral. It is the reference for anyone building a page from `docs/information-architecture.md`.
 

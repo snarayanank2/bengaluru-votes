@@ -22,7 +22,7 @@
  */
 
 /** Same fallback convention as astro.config.mjs / src/lib/seo/sitemaps.ts / src/lib/send/calendar.ts. */
-const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bangalore-votes.opencity.in';
+const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
 /**
  * Resolves a root-relative path to an absolute URL against `SITE_ORIGIN` —
@@ -86,7 +86,7 @@ export function orgLd(): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Bangalore Votes',
+    name: 'Bengaluru Votes',
     url: SITE_ORIGIN,
     parentOrganization: {
       '@type': 'Organization',
