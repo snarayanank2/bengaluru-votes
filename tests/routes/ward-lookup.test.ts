@@ -4,9 +4,12 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
 
-vi.mock('../../src/lib/geocode', () => ({ lookupWardByAddress: vi.fn() }));
+vi.mock('../../src/lib/geocode', () => ({
+  lookupWardByAddress: vi.fn(),
+  lookupWardByPoint: vi.fn(),
+}));
 
-import { lookupWardByAddress } from '../../src/lib/geocode';
+import { lookupWardByAddress, lookupWardByPoint } from '../../src/lib/geocode';
 import { POST } from '../../src/pages/api/ward-lookup';
 
 if (!process.env.DATABASE_URL) {
@@ -69,6 +72,7 @@ describe('POST /api/ward-lookup', () => {
 
   beforeEach(() => {
     vi.mocked(lookupWardByAddress).mockReset();
+    vi.mocked(lookupWardByPoint).mockReset();
   });
 
   describe('address branch', () => {
@@ -129,6 +133,64 @@ describe('POST /api/ward-lookup', () => {
     });
   });
 
+  // The second input mode, added for "use my current location": the browser
+  // already has the position, so this branch resolves it by point-in-polygon
+  // and never reaches Google. See src/lib/geocode.ts's lookupWardByPoint.
+  describe('coordinate branch', () => {
+    const POINT = { lat: 12.963397819598583, lng: 77.51397756422665 };
+
+    it('a resolved ward returns the ward payload, no-store, no cookie', async () => {
+      vi.mocked(lookupWardByPoint).mockResolvedValueOnce({ kind: 'ward', wardId: WARD_B.id });
+
+      const res = await POST({ request: req(POINT) } as any);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(res.headers.get('set-cookie')).toBeNull();
+      expect(await res.json()).toEqual({ result: 'ward', ward: wardPayload(WARD_B) });
+    });
+
+    it('passes the position straight through to lookupWardByPoint', async () => {
+      vi.mocked(lookupWardByPoint).mockResolvedValueOnce({ kind: 'out_of_coverage' });
+
+      await POST({ request: req(POINT) } as any);
+
+      expect(lookupWardByPoint).toHaveBeenCalledWith(POINT.lat, POINT.lng);
+    });
+
+    it('out_of_coverage passes straight through', async () => {
+      vi.mocked(lookupWardByPoint).mockResolvedValueOnce({ kind: 'out_of_coverage' });
+      const res = await POST({ request: req({ lat: 0, lng: 0 }) } as any);
+      expect(await res.json()).toEqual({ result: 'out_of_coverage' });
+    });
+
+    // The whole point of this branch: it costs nothing and depends on
+    // nothing external, so it must never be routed through the geocoder.
+    it('never calls the address geocoder', async () => {
+      vi.mocked(lookupWardByPoint).mockResolvedValueOnce({ kind: 'ward', wardId: WARD_B.id });
+      await POST({ request: req(POINT) } as any);
+      expect(lookupWardByAddress).not.toHaveBeenCalled();
+    });
+
+    it('a ward id not present in the DB is unavailable/failed, never a 500', async () => {
+      vi.mocked(lookupWardByPoint).mockResolvedValueOnce({ kind: 'ward', wardId: 999999 });
+      const res = await POST({ request: req(POINT) } as any);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ result: 'unavailable', reason: 'failed' });
+    });
+
+    // A body carrying both is not something any client sends; pinning the
+    // precedence keeps it from being an accident if one ever does.
+    it('a body carrying both an address and a position takes the address branch', async () => {
+      vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'out_of_coverage' });
+
+      await POST({ request: req({ address: 'MG Road', ...POINT }) } as any);
+
+      expect(lookupWardByAddress).toHaveBeenCalledWith('MG Road');
+      expect(lookupWardByPoint).not.toHaveBeenCalled();
+    });
+  });
+
   describe('validation', () => {
     const badBodies: unknown[] = [
       {},
@@ -138,6 +200,18 @@ describe('POST /api/ward-lookup', () => {
       // `pincode` is no longer an input mode — a body carrying only one is
       // missing the required `address` and must be rejected, not routed.
       { pincode: '560001' },
+      // Half a position is not a position.
+      { lat: 12.97 },
+      { lng: 77.59 },
+      // Not numbers.
+      { lat: '12.97', lng: '77.59' },
+      { lat: null, lng: null },
+      // Off the globe. A merely distant point is a normal out_of_coverage
+      // answer; an impossible one is a bad request.
+      { lat: 91, lng: 77.59 },
+      { lat: -91, lng: 77.59 },
+      { lat: 12.97, lng: 181 },
+      { lat: 12.97, lng: -181 },
     ];
 
     for (const body of badBodies) {
@@ -181,6 +255,29 @@ describe('POST /api/ward-lookup', () => {
 
       const logged = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
       expect(logged).not.toContain(secretAddress);
+      logSpy.mockRestore();
+    });
+  });
+
+  // A position is more sensitive than an address, not less: it is where the
+  // citizen physically is. It is used to pick a ward and then dropped —
+  // never logged, and (see tests/unit/geocode-point.test.ts) never stored.
+  describe('privacy: the citizen’s position is never logged', () => {
+    it('neither coordinate appears in any console.log call, for either result kind', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const lat = 12.963397819598583;
+      const lng = 77.51397756422665;
+
+      for (const kind of [{ kind: 'ward', wardId: WARD_A.id }, { kind: 'out_of_coverage' }] as const) {
+        vi.mocked(lookupWardByPoint).mockResolvedValueOnce(kind as any);
+        await POST({ request: req({ lat, lng }) } as any);
+      }
+
+      const logged = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logged).not.toContain(String(lat));
+      expect(logged).not.toContain(String(lng));
+      expect(logged).not.toContain('12.96');
+      expect(logged).not.toContain('77.51');
       logSpy.mockRestore();
     });
   });

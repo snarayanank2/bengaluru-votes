@@ -89,7 +89,12 @@ function buildForm(lang: 'en' | 'kn' = 'en'): {
     <form data-ward-lookup data-lang="${lang}"
       data-msg-ambiguous="${t(lang, 'home.result.ambiguous')}"
       data-msg-out-of-coverage="${t(lang, 'home.result.outOfCoverage')}"
-      data-msg-unavailable="${t(lang, 'home.result.unavailable')}">
+      data-msg-unavailable="${t(lang, 'home.result.unavailable')}"
+      data-msg-use-location="${t(lang, 'home.form.useLocation')}"
+      data-msg-locating="${t(lang, 'home.form.locating')}"
+      data-msg-location-approximate="${t(lang, 'home.result.locationApproximate')}"
+      data-msg-location-denied="${t(lang, 'home.result.locationDenied')}"
+      data-msg-location-unavailable="${t(lang, 'home.result.locationUnavailable')}">
       <input name="query" required />
       <button type="submit">Search</button>
       <div data-ward-result aria-live="polite"></div>
@@ -303,6 +308,211 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
 
       expect(result.hasAttribute('aria-busy')).toBe(false);
       expect(button.disabled).toBe(false);
+    });
+  });
+
+  /**
+   * "Use my current location" — the second input mode (src/lib/geocode.ts's
+   * lookupWardByPoint behind it). The control is injected by this island and
+   * exists only when the browser offers the Geolocation API, so a no-JS or
+   * unsupported visitor is never shown a dead button.
+   */
+  describe('current-location control', () => {
+    /** Installs a fake navigator.geolocation; returns its getCurrentPosition mock. */
+    function stubGeolocation(): ReturnType<typeof vi.fn> {
+      const getCurrentPosition = vi.fn();
+      Object.defineProperty(navigator, 'geolocation', {
+        value: { getCurrentPosition },
+        configurable: true,
+      });
+      return getCurrentPosition;
+    }
+
+    function removeGeolocation(): void {
+      Reflect.deleteProperty(navigator, 'geolocation');
+    }
+
+    /** The success callback shape the browser passes to getCurrentPosition. */
+    function position(lat: number, lng: number, accuracy: number) {
+      return { coords: { latitude: lat, longitude: lng, accuracy } };
+    }
+
+    const locateButton = () => document.querySelector<HTMLButtonElement>('[data-ward-locate]');
+
+    afterEach(() => {
+      removeGeolocation();
+    });
+
+    it('renders no control at all when the browser has no Geolocation API', () => {
+      removeGeolocation();
+      buildForm('en');
+      initWardLookup();
+
+      expect(locateButton()).toBeNull();
+    });
+
+    it('injects a non-submitting button labelled from the server-rendered string', () => {
+      stubGeolocation();
+      buildForm('kn');
+      initWardLookup();
+
+      const button = locateButton();
+      expect(button).not.toBeNull();
+      // type=button, or clicking it would submit the empty address form.
+      expect(button!.type).toBe('button');
+      expect(button!.textContent).toBe(t('kn', 'home.form.useLocation'));
+    });
+
+    it('posts the position as {lat, lng} and renders the resolved ward', async () => {
+      const getCurrentPosition = stubGeolocation();
+      const { result } = buildForm('en');
+      initWardLookup();
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'ward', ward: WARD_B }),
+      });
+
+      locateButton()!.click();
+      getCurrentPosition.mock.calls[0][0](position(12.9634, 77.514, 20));
+      await flush();
+
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe('/api/ward-lookup');
+      expect(JSON.parse(init.body)).toEqual({ lat: 12.9634, lng: 77.514 });
+      expect(result.querySelector('a')!.getAttribute('href')).toBe('/ward/5026');
+    });
+
+    // Accuracy is used by the island and never sent: the server has no use
+    // for it, so the request stays the minimum the lookup needs.
+    it('never sends the accuracy radius to the server', async () => {
+      const getCurrentPosition = stubGeolocation();
+      buildForm('en');
+      initWardLookup();
+      fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ result: 'out_of_coverage' }) });
+
+      locateButton()!.click();
+      getCurrentPosition.mock.calls[0][0](position(12.9634, 77.514, 3500));
+      await flush();
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).not.toHaveProperty('accuracy');
+    });
+
+    it('adds the approximate-location caveat under the ward when the fix is coarse', async () => {
+      const getCurrentPosition = stubGeolocation();
+      const { result } = buildForm('en');
+      initWardLookup();
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'ward', ward: WARD_A }),
+      });
+
+      locateButton()!.click();
+      getCurrentPosition.mock.calls[0][0](position(12.9634, 77.514, 3500));
+      await flush();
+
+      // The ward is still shown — a coarse fix is usually still the right
+      // ward; the caveat invites a check rather than withholding the answer.
+      expect(result.querySelector('a')).not.toBeNull();
+      expect(result.querySelector('[data-ward-note]')!.textContent).toBe(
+        t('en', 'home.result.locationApproximate'),
+      );
+    });
+
+    it('adds no caveat when the fix is precise', async () => {
+      const getCurrentPosition = stubGeolocation();
+      const { result } = buildForm('en');
+      initWardLookup();
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'ward', ward: WARD_A }),
+      });
+
+      locateButton()!.click();
+      getCurrentPosition.mock.calls[0][0](position(12.9634, 77.514, 25));
+      await flush();
+
+      expect(result.querySelector('a')).not.toBeNull();
+      expect(result.querySelector('[data-ward-note]')).toBeNull();
+    });
+
+    it('renders the permission-denied message and never calls the API', async () => {
+      const getCurrentPosition = stubGeolocation();
+      const { result } = buildForm('en');
+      initWardLookup();
+
+      locateButton()!.click();
+      getCurrentPosition.mock.calls[0][1]({ code: 1, message: 'User denied Geolocation' });
+      await flush();
+
+      expect(result.textContent).toBe(t('en', 'home.result.locationDenied'));
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each([[2, 'POSITION_UNAVAILABLE'], [3, 'TIMEOUT']])(
+      'renders the device-location-unavailable message for error code %i (%s)',
+      async (code) => {
+        const getCurrentPosition = stubGeolocation();
+        const { result } = buildForm('en');
+        initWardLookup();
+
+        locateButton()!.click();
+        getCurrentPosition.mock.calls[0][1]({ code, message: 'no fix' });
+        await flush();
+
+        expect(result.textContent).toBe(t('en', 'home.result.locationUnavailable'));
+        expect(fetchMock).not.toHaveBeenCalled();
+      },
+    );
+
+    // The address form's fetch-failure path submits the real <form>. This one
+    // cannot: the no-JS server path has no coordinate mode, so a native submit
+    // would post an empty address. It shows our outage copy instead.
+    it('a failed request shows the outage message rather than submitting the form', async () => {
+      const getCurrentPosition = stubGeolocation();
+      const { form, result } = buildForm('en');
+      initWardLookup();
+      const submitSpy = vi.spyOn(form, 'submit').mockImplementation(() => {});
+      fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+      locateButton()!.click();
+      getCurrentPosition.mock.calls[0][0](position(12.9634, 77.514, 20));
+      await flush();
+
+      expect(submitSpy).not.toHaveBeenCalled();
+      expect(result.textContent).toBe(t('en', 'home.result.unavailable'));
+      expect(result.hasAttribute('aria-busy')).toBe(false);
+    });
+
+    it('shows a locating status and disables the control until an answer arrives', async () => {
+      const getCurrentPosition = stubGeolocation();
+      const { result } = buildForm('en');
+      initWardLookup();
+      fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ result: 'out_of_coverage' }) });
+
+      locateButton()!.click();
+
+      expect(locateButton()!.disabled).toBe(true);
+      expect(result.getAttribute('aria-busy')).toBe('true');
+      expect(result.textContent).toBe(t('en', 'home.form.locating'));
+
+      getCurrentPosition.mock.calls[0][0](position(12.9634, 77.514, 20));
+      await flush();
+
+      expect(locateButton()!.disabled).toBe(false);
+      expect(result.hasAttribute('aria-busy')).toBe(false);
+      expect(result.textContent).toBe(t('en', 'home.result.outOfCoverage'));
+    });
+
+    it('re-enables the control after a denied permission, so a second try is possible', async () => {
+      const getCurrentPosition = stubGeolocation();
+      buildForm('en');
+      initWardLookup();
+
+      locateButton()!.click();
+      getCurrentPosition.mock.calls[0][1]({ code: 1, message: 'denied' });
+      await flush();
+
+      expect(locateButton()!.disabled).toBe(false);
     });
   });
 

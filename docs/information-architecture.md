@@ -77,7 +77,7 @@ bengaluruvotes.opencity.in
 - **URL:** `/`
 - **Access:** Anonymous
 - **Purpose:** Entry point; get the citizen to their ward and orient them to the election.
-- **Key elements:** ward search (**address only**, with Google Places Autocomplete on the input — pincode lookup was removed 2026-08-14; an out-of-GBA address gets an explicit "not in the GBA area" answer, PRD §5.1, an over-broad one gets "be more specific", and an outage gets "try again shortly"); election status + date countdown (the same element reads "notification awaited" before N — one Home page, no distinct pre-notification variant); the **roll deadline** until the roll closes (PRD §5.7); shortcuts to Check registration and the voting guide; **Sign in** in app bar.
+- **Key elements:** ward search (**address, with Google Places Autocomplete on the input, plus an optional "use my current location" control that JS injects where the browser supports geolocation** — pincode lookup was removed 2026-08-14; an out-of-GBA address gets an explicit "not in the GBA area" answer, PRD §5.1, an over-broad one gets "be more specific", and an outage gets "try again shortly"); election status + date countdown (the same element reads "notification awaited" before N — one Home page, no distinct pre-notification variant); the **roll deadline** until the roll closes (PRD §5.7); shortcuts to Check registration and the voting guide; **Sign in** in app bar.
 - **Links to:** Ward result, Check registration, Voting guide, About-election; Register/Login modal.
 
 ### 3.2 Ward result

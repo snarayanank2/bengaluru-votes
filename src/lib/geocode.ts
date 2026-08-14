@@ -25,6 +25,13 @@
  * variable, fed straight into `wardForPoint`, and discarded. A future
  * change that "helpfully" returns the point, or logs the raw Google
  * response, breaks this compliance line — don't.
+ *
+ * `lookupWardByPoint` (added 2026-08-14 for "use my current location") is
+ * held to the same rule from the other direction: a position is ALLOWED IN
+ * as an argument and must not go anywhere else — not into geocode_cache,
+ * not into a log line, not back out in the result. It is the citizen's own
+ * position rather than Google's content, which makes it more sensitive
+ * here, not less.
  * ============================================================================
  *
  * A daily geocode budget (architecture.md §13; dependency register §6.5)
@@ -33,10 +40,13 @@
  *
  * WHAT EXHAUSTING IT NOW COSTS. Until 2026-08-14 `budget_exhausted`
  * degraded the caller to pincode lookup. That path was removed (see the
- * header of src/pages/api/ward-lookup.ts), so this module is now the ONLY
- * way to resolve a ward: exhausting the budget takes ward lookup down
- * rather than making it cheaper. The cap was deliberately left at 2000/day
- * anyway; if that turns out to be wrong, raise GEOCODE_DAILY_BUDGET.
+ * header of src/pages/api/ward-lookup.ts), so `lookupWardByAddress` is the
+ * only way to resolve a ward FROM AN ADDRESS: exhausting the budget takes
+ * address lookup down rather than making it cheaper. The cap was
+ * deliberately left at 2000/day anyway; if that turns out to be wrong,
+ * raise GEOCODE_DAILY_BUDGET. `lookupWardByPoint` below is unaffected — it
+ * calls nothing and counts nothing — which is why the home page's "use my
+ * current location" control keeps working through a geocoder outage.
  *
  * VIEWPORT BIAS, NOT A HARD LOCALITY FILTER — this matters for GBA coverage.
  * The GBA (Greater Bengaluru Authority) is the merged corporation: it
@@ -73,6 +83,14 @@ export type WardLookupResult =
   | { kind: 'ambiguous' }
   | { kind: 'budget_exhausted' }
   | { kind: 'failed' };
+
+/**
+ * What a coordinate lookup can answer. Deliberately a subset of
+ * `WardLookupResult`: a point is either in a ward polygon or it isn't, so
+ * there is no `ambiguous`, and since nothing is called and nothing is
+ * counted, no `budget_exhausted` or `failed` either.
+ */
+export type WardPointResult = { kind: 'ward'; wardId: number } | { kind: 'out_of_coverage' };
 
 /** Daily cap on Google Geocoding API calls (architecture.md §13 / dependency §6.5). */
 export const GEOCODE_DAILY_BUDGET = Number(process.env.GEOCODE_DAILY_BUDGET ?? 2000);
@@ -142,6 +160,36 @@ function buildGeocodeUrl(normalizedAddress: string): string {
 /** Cache a resolved lookup: normalized address -> ward id, or null for "known out of coverage". */
 async function cacheResult(normalizedAddress: string, wardId: number | null): Promise<void> {
   await db.insert(geocodeCache).values({ normalizedAddress, wardId }).onConflictDoNothing();
+}
+
+/**
+ * Resolve a device-reported position to a ward — the "use my current
+ * location" path on the home page's ward finder.
+ *
+ * Nothing about this touches Google: the browser produced the coordinates,
+ * so all that remains is point-in-polygon against the same ward geometry
+ * `lookupWardByAddress` uses. Three consequences, all deliberate:
+ *
+ *  - It spends no `GEOCODE_DAILY_BUDGET` and calls no API, so it is free.
+ *  - It therefore keeps answering when address lookup is `unavailable`
+ *    (budget exhausted or Google unreachable) — the one case the ward
+ *    finder previously had no answer for at all.
+ *  - It writes NOTHING. `geocode_cache` is keyed by normalized address and
+ *    there is no address here; more to the point, the citizen's position
+ *    must never become a stored row. The coordinates live in this call's
+ *    arguments and nowhere else — not cached, not logged, not returned.
+ *    See the compliance notice at the top of this file.
+ *
+ * Callers are responsible for validating that lat/lng are real, in-range
+ * numbers (`src/pages/api/ward-lookup.ts` does this with zod); a point that
+ * is merely far away is a normal `out_of_coverage` answer, not an error.
+ */
+export async function lookupWardByPoint(lat: number, lng: number): Promise<WardPointResult> {
+  // Same precondition guarantee as lookupWardByAddress below: no boot-time
+  // call to loadWardPolygons() exists in production, and it is idempotent.
+  await loadWardPolygons();
+  const wardId = wardForPoint(lat, lng);
+  return wardId !== null ? { kind: 'ward', wardId } : { kind: 'out_of_coverage' };
 }
 
 /**

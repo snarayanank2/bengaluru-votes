@@ -134,6 +134,11 @@ function wardName(ward: WardRow): string {
         data-msg-ambiguous={t(lang, 'home.result.ambiguous')}
         data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
         data-msg-unavailable={t(lang, 'home.result.unavailable')}
+        data-msg-use-location={t(lang, 'home.form.useLocation')}
+        data-msg-locating={t(lang, 'home.form.locating')}
+        data-msg-location-approximate={t(lang, 'home.result.locationApproximate')}
+        data-msg-location-denied={t(lang, 'home.result.locationDenied')}
+        data-msg-location-unavailable={t(lang, 'home.result.locationUnavailable')}
         data-maps-key={maps.enabled ? maps.browserKey : undefined}
       >
         <FormField
@@ -241,6 +246,42 @@ function wardName(ward: WardRow): string {
     padding: var(--space-3) var(--space-4);
     background: var(--color-surface);
     border-radius: var(--radius-md);
+  }
+
+  /* The two elements below are created by WardLookup.ts, not by this
+     template, so they never carry Astro's scope attribute — `:global()` is
+     what lets a scoped stylesheet reach them. Both mirror design-system.md
+     §7.3's tertiary button and muted body text rather than inventing a look;
+     they can't use Button.astro/its classes, since those are scoped too. */
+  .ward-form :global(.ward-locate) {
+    align-self: flex-start;
+    min-height: 44px;
+    padding: var(--space-2);
+    border: 1.5px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-primary);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: var(--text-base);
+    cursor: pointer;
+  }
+
+  .ward-form :global(.ward-locate:hover),
+  .ward-form :global(.ward-locate:focus-visible) {
+    text-decoration: underline;
+  }
+
+  .ward-form :global(.ward-locate[disabled]) {
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+  }
+
+  .ward-result :global(.ward-note) {
+    margin: var(--space-2) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .election-status {

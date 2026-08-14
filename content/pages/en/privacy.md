@@ -15,6 +15,7 @@ This platform is operated by the **Oorvani Foundation**.
 
 - **Email address and/or phone number** — to send a one-time password (OTP) for sign-in, and, if you consent, ward election updates and critical product notices.
 - **Address, converted to your ward** — so we can show you the right ward and, if you register, send you updates relevant to your ward.
+- **Your device's location, only if you ask us to use it** — the "use my current location" button on the ward finder sends your coordinates to us once, so we can work out which ward you are standing in. We use them for that answer and then discard them: they are never stored, never written to our logs, and never sent to any other company. Your browser asks your permission first, and typing your address instead works just as well.
 - **Language preference** — so we show you the site, and send notifications, in the language you chose.
 - **`src` attribution** — if you arrived via a partner's tagged link, we record which partner sent you, for measurement only. This grants no permissions and doesn't change anything you see.
 - **Standard server logs** — the ordinary technical logs any web server keeps (IP address, request timestamps, and similar), kept for security and operational purposes.
