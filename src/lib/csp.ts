@@ -69,13 +69,16 @@ function isPartnerWithUsPath(pathname: string): boolean {
  * src/layouts/Base.astro) carry `nonce={cspNonce}`, the same `nonce` value
  * passed in here.
  *
- * `style-src 'self' 'unsafe-inline'`: a deliberate, pragmatic tradeoff — NOT
- * the thing architecture §13's "no unsafe-inline" rule targets (that rule
- * is about scripts). Astro emits scoped component styles as inline
- * `<style>` tags with compiler-generated content we don't control, and some
- * components (e.g. Button.astro) use inline `style="…"` attributes;
- * nonce/hash-locking style-src would require threading a nonce through
- * every Astro-scoped-style tag, which Astro's compiler doesn't support.
+ * `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`: the
+ * `'unsafe-inline'` is a deliberate, pragmatic tradeoff — NOT the thing
+ * architecture §13's "no unsafe-inline" rule targets (that rule is about
+ * scripts). Astro emits scoped component styles as inline `<style>` tags
+ * with compiler-generated content we don't control, and some components
+ * (e.g. Button.astro) use inline `style="…"` attributes; nonce/hash-locking
+ * style-src would require threading a nonce through every
+ * Astro-scoped-style tag, which Astro's compiler doesn't support. The
+ * fonts.googleapis.com host is separate and narrower — see the Maps font
+ * hosts comment in `buildCsp` for why the Maps JS API needs it.
  *
  * `worker-src 'self' blob:`: the Google Maps JavaScript API
  * (src/islands/WardMap.ts, the ward boundary map) constructs workers from
@@ -121,6 +124,27 @@ export function buildCsp(nonce: string, pathname: string): string {
   // for inline script.
   const MAPS_HOSTS = ['https://maps.googleapis.com', 'https://maps.gstatic.com'] as const;
 
+  // The Maps JS API also pulls UI font/icon stylesheets from
+  // fonts.googleapis.com and the font files themselves from
+  // fonts.gstatic.com. Verified in a real browser on 2026-08-14: without
+  // these, every ward page load logged three `violates the following Content
+  // Security Policy directive: "style-src …"` errors and the map's controls
+  // rendered without their icon font.
+  //
+  // Worth knowing WHY this class of failure is worse than it looks: it is
+  // the one Maps failure src/islands/WardMap.ts's failure-closed contract
+  // cannot catch. Loader rejection and gm_authFailure both happen before or
+  // instead of a working map, so the fallback survives — but a blocked
+  // SUBRESOURCE fails after `container.textContent = ''`, leaving a broken
+  // map where the server-rendered fallback used to be.
+  //
+  // These are three DIFFERENT hosts that differ only by subdomain:
+  // fonts.gstatic.com (font files), maps.gstatic.com (map assets), and
+  // www.gstatic.com (reCAPTCHA, added only on /partner-with-us below). Do
+  // not collapse them.
+  const MAPS_FONT_STYLE_HOST = 'https://fonts.googleapis.com';
+  const MAPS_FONT_FILE_HOST = 'https://fonts.gstatic.com';
+
   const scriptSrcHosts = ['https://www.googletagmanager.com', ...MAPS_HOSTS];
   let frameSrc = "'none'";
 
@@ -136,9 +160,9 @@ export function buildCsp(nonce: string, pathname: string): string {
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `script-src 'self' 'nonce-${nonce}' ${scriptSrcHosts.join(' ')}`,
-    `style-src 'self' 'unsafe-inline'`,
+    `style-src 'self' 'unsafe-inline' ${MAPS_FONT_STYLE_HOST}`,
     `img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com ${MAPS_HOSTS.join(' ')}`,
-    `font-src 'self'`,
+    `font-src 'self' ${MAPS_FONT_FILE_HOST}`,
     `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${MAPS_HOSTS.join(' ')}`,
     `worker-src 'self' blob:`,
     `frame-src ${frameSrc}`,

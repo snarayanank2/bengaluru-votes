@@ -132,6 +132,38 @@ describe('src/lib/csp.ts#buildCsp', () => {
       for (const host of MAPS_HOSTS) expect(found).toContain(host);
     });
 
+    // Regression: verified in a real browser on 2026-08-14. The Maps JS API
+    // pulls its UI font and icon stylesheets from fonts.googleapis.com, which
+    // the base policy blocked — three `violates the following Content
+    // Security Policy directive: "style-src …"` errors per ward page load.
+    // This is the one Maps failure the island's fallback CANNOT catch: a
+    // blocked subresource fails AFTER `container.textContent = ''`, so the
+    // visitor gets a broken map rather than the server-rendered fallback.
+    it('allows the Google font hosts the Maps JS API loads', () => {
+      const directives = buildCsp('n0nce', '/ward/1').split('; ');
+
+      const styleSrc = directives.find((d) => d.startsWith('style-src '));
+      expect(styleSrc).toContain('https://fonts.googleapis.com');
+
+      const fontSrc = directives.find((d) => d.startsWith('font-src '));
+      expect(fontSrc).toContain('https://fonts.gstatic.com');
+    });
+
+    // fonts.gstatic.com serves the font FILES, maps.gstatic.com serves map
+    // assets, and www.gstatic.com is reCAPTCHA's — three different hosts that
+    // differ only by subdomain. Pin them so a future edit can't collapse one
+    // into another and silently widen the policy.
+    it('keeps the three gstatic hosts distinct', () => {
+      const directives = buildCsp('n0nce', '/ward/1').split('; ');
+
+      const fontSrc = directives.find((d) => d.startsWith('font-src '));
+      expect(fontSrc).not.toContain('https://maps.gstatic.com');
+      expect(fontSrc).not.toContain('https://www.gstatic.com');
+
+      const scriptSrc = directives.find((d) => d.startsWith('script-src '));
+      expect(scriptSrc).not.toContain('https://fonts.gstatic.com');
+    });
+
     it('keeps the maps hosts on every route, not just the ward page', () => {
       for (const path of ['/', '/kn/', '/voting-guide', '/partner-with-us']) {
         expect(buildCsp('n0nce', path)).toContain('https://maps.googleapis.com');
