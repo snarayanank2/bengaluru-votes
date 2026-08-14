@@ -71,7 +71,7 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
     expect(() => initBoothLookup()).not.toThrow();
   });
 
-  it('POSTs { address } (never a pincode field — booth lookup has no pincode branch)', async () => {
+  it('POSTs { address } — the only input mode booth lookup has', async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ result: 'out_of_coverage' }) });
     const { form, input } = buildForm();
     initBoothLookup();

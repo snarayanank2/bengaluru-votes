@@ -18,9 +18,9 @@
  * Google's own geocoded coordinates (see the notice atop geocode.ts); only
  * the geocoder's own output must never carry a coordinate.
  *
- * Booth lookup has no pincode fallback, so a degradation kind that isn't
- * `out_of_coverage` maps to `{result:'unavailable', reason}` rather than
- * `use_pincode`.
+ * A degradation kind that isn't `out_of_coverage` maps to
+ * `{result:'unavailable', reason}`. Ward lookup uses the same vocabulary
+ * since pincode was removed 2026-08-14 (src/pages/api/ward-lookup.ts).
  *
  * Always `cache-control: no-store`, never sets a cookie. PRIVACY: the raw
  * address is never passed to logEvent.

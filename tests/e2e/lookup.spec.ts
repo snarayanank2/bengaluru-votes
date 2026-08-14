@@ -1,21 +1,32 @@
 /**
- * Smoke spec 1/4 (Task 64, architecture.md §12): address/ward lookup ->
- * ward page.
+ * Smoke spec 1/4 (Task 64, architecture.md §12): ward lookup + ward page.
  *
- * Uses the PINCODE path deliberately, not the address/geocode path — the
- * geocode path (src/lib/geocode.ts) needs a Google API key this environment
- * doesn't have, and the ward-lookup UI/API always degrades a geocode
- * failure to `{result:'use_pincode'}` anyway (PRD §5.1's own documented
- * hedge). The pincode used (999001) is a SYNTHETIC key from
- * data/pincode-wards.json (see that file's own "__note" — real Indian PIN
- * codes never start with 9) that maps to 3 REAL seeded wards, read here via
- * tests/e2e/support/fixtures.ts rather than hardcoded, so this spec can
- * never drift from that table.
+ * WHAT THIS CAN AND CANNOT COVER, AND WHY. Until 2026-08-14 this spec drove
+ * the PINCODE path, deliberately: the geocode path needs a Google API key
+ * this environment does not have, and pincode lookup answered without one.
+ * Pincode lookup was removed (see the header of
+ * src/pages/api/ward-lookup.ts), so address geocoding is now the only way to
+ * resolve a ward — and with no key, it cannot succeed here.
+ *
+ * So the happy path (typed address -> resolved ward) is NOT covered by E2E
+ * any more. That is a real coverage loss, not an oversight: it is asserted
+ * at the route level instead, against a mocked geocoder
+ * (tests/routes/ward-lookup.test.ts, tests/routes/home.test.ts).
+ *
+ * What IS still worth asserting end to end, and is asserted below:
+ *  1. The lookup round-trips. The island loads, intercepts the submit, POSTs
+ *     to the real API, and paints a real answer back into the aria-live
+ *     container without a page navigation. With no key the answer is the
+ *     `unavailable` outage message — which is exactly the state a citizen
+ *     would see if the geocode budget were exhausted in production, so the
+ *     assertion has its own value beyond wiring.
+ *  2. Ward pages render. Reached directly by seeded id, since lookup can no
+ *     longer navigate there in this environment.
  */
 import { test, expect } from '@playwright/test';
-import { lookupFixture } from './support/fixtures';
+import { seedFixtures } from './support/fixtures';
 
-test('pincode lookup on Home resolves to a ward shortlist, and navigating reaches that ward page', async ({ page }) => {
+test('ward lookup round-trips through the island and paints an answer without navigating', async ({ page }) => {
   await page.goto('/');
   // WardLookup.ts (the island that intercepts this form's submit and calls
   // the API instead of a full page POST) ships as an external module
@@ -24,33 +35,30 @@ test('pincode lookup on Home resolves to a ward shortlist, and navigating reache
   // attaching and fall through to a real cross-site-checked form POST.
   await page.waitForLoadState('networkidle');
 
-  await page.locator('[data-ward-lookup] input[name="query"]').fill(lookupFixture.pincode);
+  const urlBefore = page.url();
+
+  await page.locator('[data-ward-lookup] input[name="query"]').fill('MG Road, Bengaluru');
   await page.locator('[data-ward-lookup] button[type="submit"]').click();
 
   const result = page.locator('[data-ward-result]');
-  await expect(result.locator('a')).toHaveCount(lookupFixture.wardIds.length);
-
-  const hrefs = await result.locator('a').evaluateAll((links) => links.map((l) => (l as HTMLAnchorElement).pathname));
-  for (const wardId of lookupFixture.wardIds) {
-    expect(hrefs).toContain(`/ward/${wardId}`);
-  }
-
-  // Follow the first shortlisted ward and land on its real page.
-  const firstWardId = lookupFixture.wardIds[0];
-  await result.locator(`a[href="/ward/${firstWardId}"]`).click();
-  await expect(page).toHaveURL(new RegExp(`/ward/${firstWardId}$`));
-  await expect(page.locator('h1')).toBeVisible();
+  await expect(result).not.toBeEmpty();
+  // No key in this environment, so the geocoder fails and the endpoint
+  // answers `unavailable` — the citizen gets a message, never a ward link.
+  await expect(result.locator('a')).toHaveCount(0);
+  // The island handled it: no full-page POST navigation happened.
+  expect(page.url()).toBe(urlBefore);
 });
 
-test('an out-of-coverage pincode resolves to the out-of-coverage message, not a ward', async ({ page }) => {
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
+test('a seeded ward page renders', async ({ page }) => {
+  const wardId = seedFixtures.primaryWardId;
 
-  // A real-shaped (non-9xxxxx) pincode with no entry in data/pincode-wards.json.
-  await page.locator('[data-ward-lookup] input[name="query"]').fill('560001');
-  await page.locator('[data-ward-lookup] button[type="submit"]').click();
+  await page.goto(`/ward/${wardId}`);
 
-  const result = page.locator('[data-ward-result]');
-  await expect(result.locator('a')).toHaveCount(0);
-  await expect(result).not.toBeEmpty();
+  await expect(page).toHaveURL(new RegExp(`/ward/${wardId}$`));
+  await expect(page.locator('h1')).toBeVisible();
+  // The map container is server-rendered either way — with maps disabled it
+  // carries only the no-JS fallback text, which is the state this
+  // environment runs in. Asserting the container (not a canvas) keeps this
+  // deterministic whether or not a browser key is configured.
+  await expect(page.locator('.map-container')).toBeVisible();
 });

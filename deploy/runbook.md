@@ -500,7 +500,7 @@ here in the same PR.
 | `TWILIO_WHATSAPP_FROM` | yes (WhatsApp) | The approved WhatsApp sending number. |
 | `TWILIO_OTP_TEMPLATE_SID` | yes (WhatsApp OTP) | Approved WhatsApp OTP Content API template SID (`src/lib/otp.ts`) — unset until WhatsApp onboarding completes (PRD §10); until then WhatsApp OTP requests degrade to `send_failed` by design. |
 | `GOOGLE_GEOCODING_API_KEY` | yes (address ward-lookup) | Google Geocoding API. |
-| `GEOCODE_DAILY_BUDGET` | recommended | Daily geocode call cap (architecture §13 cost-amplification guard); degrades to pincode lookup when exhausted. |
+| `GEOCODE_DAILY_BUDGET` | recommended | Daily geocode call cap (architecture §13 cost-amplification guard). **Exhausting it now takes ward lookup DOWN** — pincode lookup was removed 2026-08-14 and there is no fallback left. Default 2000/day. |
 | `GOOGLE_MAPS_BROWSER_KEY` | yes (ward map) | Referrer-restricted browser key for the ward boundary map (`src/lib/maps-config.ts`). Unset means the map is absent; the ward page renders its no-JS fallback. `docs/gcp.md` §3. |
 | `GOOGLE_MAPS_MAP_ID` | yes (ward map) | Cloud map style (`docs/gcp.md` §4) — required, not just recommended: it's the only place in code that enforces the neutrality rule (no party-affiliated look, no red markers). Unset means the map is treated as disabled (`src/lib/maps-config.ts`); the ward page renders its no-JS fallback rather than an unstyled stock basemap. |
 | `MAPS_ENABLED` | yes to show maps | Kill switch (`src/lib/maps-config.ts`) — must be exactly `true`, and both `GOOGLE_MAPS_BROWSER_KEY` and `GOOGLE_MAPS_MAP_ID` must also be non-empty, for the map to render. Sheds client-side map spend without a rebuild when a budget alert fires. |
@@ -661,7 +661,7 @@ tells you nothing about your actual change.
 curl -sS -o /dev/null -w '%{http_code}\n' https://<host>/healthz
 curl -sS -X POST https://<host>/api/ward-lookup \
   -H 'content-type: application/json' -H 'Origin: https://<host>' \
-  -d '{"pincode":"560102"}'      # 403 here means rebuild
+  -d '{"address":"MG Road, Bengaluru"}'   # 403 here means rebuild
 ```
 
 ### Cold boot ordering

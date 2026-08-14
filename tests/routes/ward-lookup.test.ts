@@ -5,10 +5,8 @@ import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
 
 vi.mock('../../src/lib/geocode', () => ({ lookupWardByAddress: vi.fn() }));
-vi.mock('../../src/lib/pincode', () => ({ wardsForPincode: vi.fn() }));
 
 import { lookupWardByAddress } from '../../src/lib/geocode';
-import { wardsForPincode } from '../../src/lib/pincode';
 import { POST } from '../../src/pages/api/ward-lookup';
 
 if (!process.env.DATABASE_URL) {
@@ -71,7 +69,6 @@ describe('POST /api/ward-lookup', () => {
 
   beforeEach(() => {
     vi.mocked(lookupWardByAddress).mockReset();
-    vi.mocked(wardsForPincode).mockReset();
   });
 
   describe('address branch', () => {
@@ -92,64 +89,55 @@ describe('POST /api/ward-lookup', () => {
       expect(await res.json()).toEqual({ result: 'out_of_coverage' });
     });
 
-    it('ambiguous degrades to use_pincode/ambiguous', async () => {
+    // The one failure the citizen can act on: a more specific address helps.
+    it('ambiguous is its own answer, not an outage', async () => {
       vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'ambiguous' });
       const res = await POST({ request: req({ address: 'Main Road' }) } as any);
-      expect(await res.json()).toEqual({ result: 'use_pincode', reason: 'ambiguous' });
+      expect(await res.json()).toEqual({ result: 'ambiguous' });
     });
 
-    it('budget_exhausted degrades to use_pincode/budget', async () => {
+    // These three are OUR outage. Pincode lookup used to absorb them; it was
+    // removed 2026-08-14, so they now surface as `unavailable` and the copy
+    // must never blame the citizen's address (see the endpoint's header).
+    it('budget_exhausted is unavailable/budget', async () => {
       vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'budget_exhausted' });
       const res = await POST({ request: req({ address: 'Main Road' }) } as any);
-      expect(await res.json()).toEqual({ result: 'use_pincode', reason: 'budget' });
+      expect(await res.json()).toEqual({ result: 'unavailable', reason: 'budget' });
     });
 
-    it('failed degrades to use_pincode/failed', async () => {
+    it('failed is unavailable/failed', async () => {
       vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'failed' });
       const res = await POST({ request: req({ address: 'Main Road' }) } as any);
-      expect(await res.json()).toEqual({ result: 'use_pincode', reason: 'failed' });
+      expect(await res.json()).toEqual({ result: 'unavailable', reason: 'failed' });
     });
 
-    it('a ward id not present in the DB degrades to use_pincode/failed', async () => {
+    it('a ward id not present in the DB is unavailable/failed, never a 500', async () => {
       vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'ward', wardId: 999999 });
       const res = await POST({ request: req({ address: 'Ghost Ward Address' }) } as any);
-      expect(await res.json()).toEqual({ result: 'use_pincode', reason: 'failed' });
-    });
-  });
-
-  describe('pincode branch', () => {
-    it('a non-empty shortlist returns matching ward rows ordered by id, without touching the geocoder', async () => {
-      vi.mocked(wardsForPincode).mockReturnValueOnce([WARD_B.id, WARD_A.id]);
-
-      const res = await POST({ request: req({ pincode: '560001' }) } as any);
-
       expect(res.status).toBe(200);
-      expect(res.headers.get('cache-control')).toBe('no-store');
-      expect(res.headers.get('set-cookie')).toBeNull();
-      expect(await res.json()).toEqual({
-        result: 'shortlist',
-        wards: [wardPayload(WARD_A), wardPayload(WARD_B)],
-      });
-      expect(lookupWardByAddress).not.toHaveBeenCalled();
+      expect(await res.json()).toEqual({ result: 'unavailable', reason: 'failed' });
     });
 
-    it('an empty shortlist is out_of_coverage', async () => {
-      vi.mocked(wardsForPincode).mockReturnValueOnce([]);
-      const res = await POST({ request: req({ pincode: '999999' }) } as any);
+    // Regression guard for the removal: a pincode is now just an address
+    // like any other. It must reach the geocoder rather than being routed
+    // down a branch that no longer exists.
+    it('a bare 6-digit query is treated as an address, not a pincode', async () => {
+      vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'out_of_coverage' });
+      const res = await POST({ request: req({ address: '560001' }) } as any);
+      expect(lookupWardByAddress).toHaveBeenCalledWith('560001');
       expect(await res.json()).toEqual({ result: 'out_of_coverage' });
-      expect(lookupWardByAddress).not.toHaveBeenCalled();
     });
   });
 
   describe('validation', () => {
     const badBodies: unknown[] = [
       {},
-      { address: '', pincode: undefined },
+      { address: '' },
       { address: '   ' },
-      { pincode: '' },
-      { address: 'X', pincode: '560001' },
       { address: 123 },
-      { pincode: 560001 },
+      // `pincode` is no longer an input mode — a body carrying only one is
+      // missing the required `address` and must be rejected, not routed.
+      { pincode: '560001' },
     ];
 
     for (const body of badBodies) {

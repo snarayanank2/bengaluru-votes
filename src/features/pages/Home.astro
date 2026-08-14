@@ -5,11 +5,11 @@
  * Renders through Base with the ward-search form as the centerpiece. The
  * form is a REAL `<form method="post">` — with JS disabled it POSTs back to
  * this same page and this file's `Astro.request.method === 'POST'` branch
- * below server-renders the result using the SAME resolution functions the
- * `/api/ward-lookup` endpoint uses (`lookupWardByAddress` / `wardsForPincode`
- * — imported directly, never fetched). With JS enabled, `src/islands/
- * WardLookup.ts` intercepts the submit and calls the API instead, painting
- * the result inline without a page reload.
+ * below server-renders the result using the SAME resolution function the
+ * `/api/ward-lookup` endpoint uses (`lookupWardByAddress` — imported
+ * directly, never fetched). With JS enabled, `src/islands/WardLookup.ts`
+ * intercepts the submit and calls the API instead, painting the result
+ * inline without a page reload.
  *
  * CACHE-SAFETY: the GET render below never reads cookies/session and reads
  * app_settings only (src/lib/settings.ts — safe under the anonymous-page
@@ -17,7 +17,7 @@
  * geocode lookup and is explicitly marked `cache-control: no-store`; it
  * never touches the GET response.
  */
-import { asc, eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import Base from '../../layouts/Base.astro';
 import Banner from '../../components/Banner.astro';
 import DeadlineBanner from '../../components/DeadlineBanner.astro';
@@ -27,7 +27,6 @@ import Button from '../../components/Button.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { getSettings } from '../../lib/settings';
 import { lookupWardByAddress } from '../../lib/geocode';
-import { wardsForPincode } from '../../lib/pincode';
 import { mapsConfig } from '../../lib/maps-config';
 import { db } from '../../db/client';
 import { wards } from '../../db/schema';
@@ -42,55 +41,51 @@ type WardRow = { id: number; nameEn: string; nameKn: string; corporation: string
 
 type LookupResult =
   | { result: 'ward'; ward: WardRow }
-  | { result: 'shortlist'; wards: WardRow[] }
   | { result: 'out_of_coverage' }
-  | { result: 'use_pincode'; reason: 'ambiguous' | 'budget' | 'failed' };
-
-const PINCODE_RE = /^\d{6}$/;
+  | { result: 'ambiguous' }
+  | { result: 'unavailable'; reason: 'budget' | 'failed' };
 
 let postResult: LookupResult | null = null;
 
 // No-JS fallback path (see file header). Only ever runs for a POST; the GET
 // render below is unaffected and stays cacheable.
+//
+// Address is the only input mode — pincode lookup was removed 2026-08-14.
+// The reasoning, and the consequence (no fallback when geocoding is
+// unavailable), is in the header of src/pages/api/ward-lookup.ts. This
+// branch must keep mirroring that endpoint's result kinds exactly, since
+// the two render the same four states.
 if (Astro.request.method === 'POST') {
   Astro.response.headers.set('cache-control', 'no-store');
 
   const form = await Astro.request.formData();
   const query = String(form.get('query') ?? '').trim();
 
-  if (PINCODE_RE.test(query)) {
-    const wardIds = wardsForPincode(query);
-    if (wardIds.length === 0) {
-      postResult = { result: 'out_of_coverage' };
-    } else {
-      const rows = await db.select().from(wards).where(inArray(wards.id, wardIds)).orderBy(asc(wards.id));
-      postResult = { result: 'shortlist', wards: rows };
-    }
-  } else if (query.length > 0) {
+  if (query.length > 0) {
     const lookup = await lookupWardByAddress(query);
     switch (lookup.kind) {
       case 'ward': {
         const [row] = await db.select().from(wards).where(eq(wards.id, lookup.wardId));
-        postResult = row ? { result: 'ward', ward: row } : { result: 'use_pincode', reason: 'failed' };
+        postResult = row ? { result: 'ward', ward: row } : { result: 'unavailable', reason: 'failed' };
         break;
       }
       case 'out_of_coverage':
         postResult = { result: 'out_of_coverage' };
         break;
       case 'ambiguous':
-        postResult = { result: 'use_pincode', reason: 'ambiguous' };
+        postResult = { result: 'ambiguous' };
         break;
       case 'budget_exhausted':
-        postResult = { result: 'use_pincode', reason: 'budget' };
+        postResult = { result: 'unavailable', reason: 'budget' };
         break;
       case 'failed':
-        postResult = { result: 'use_pincode', reason: 'failed' };
+        postResult = { result: 'unavailable', reason: 'failed' };
         break;
     }
   } else {
     // Defensive only — the input carries `required`, so an empty query
     // should never reach here from a real browser submit.
-    postResult = { result: 'use_pincode', reason: 'failed' };
+    postResult = { result: 'unavailable', reason: 'failed' };
   }
 }
 
@@ -136,9 +131,9 @@ function wardName(ward: WardRow): string {
         class="ward-form"
         data-ward-lookup
         data-lang={lang}
-        data-msg-shortlist-heading={t(lang, 'home.result.shortlistHeading')}
+        data-msg-ambiguous={t(lang, 'home.result.ambiguous')}
         data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
-        data-msg-use-pincode={t(lang, 'home.result.usePincode')}
+        data-msg-unavailable={t(lang, 'home.result.unavailable')}
         data-maps-key={maps.enabled ? maps.browserKey : undefined}
       >
         <FormField
@@ -159,20 +154,9 @@ function wardName(ward: WardRow): string {
               <a href={wardHref(postResult.ward.id)}>{wardName(postResult.ward)}</a>
             </p>
           )}
-          {postResult?.result === 'shortlist' && (
-            <>
-              <p>{t(lang, 'home.result.shortlistHeading')}</p>
-              <ul>
-                {postResult.wards.map((ward) => (
-                  <li>
-                    <a href={wardHref(ward.id)}>{wardName(ward)}</a>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
           {postResult?.result === 'out_of_coverage' && <p>{t(lang, 'home.result.outOfCoverage')}</p>}
-          {postResult?.result === 'use_pincode' && <p>{t(lang, 'home.result.usePincode')}</p>}
+          {postResult?.result === 'ambiguous' && <p>{t(lang, 'home.result.ambiguous')}</p>}
+          {postResult?.result === 'unavailable' && <p>{t(lang, 'home.result.unavailable')}</p>}
         </div>
       </form>
     </section>

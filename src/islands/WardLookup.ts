@@ -7,9 +7,15 @@
  * (see that file's `Astro.request.method === 'POST'` branch). This module
  * intercepts the submit, calls `POST /api/ward-lookup` instead, and paints
  * the same four result states inline so a JS-capable visitor never leaves
- * the page. `/api/ward-lookup` itself decides address vs pincode the same
- * way this module does (a bare 6-digit string is a pincode, anything else
- * is an address — see src/pages/api/ward-lookup.ts).
+ * the page.
+ *
+ * ADDRESS IS THE ONLY INPUT MODE. Pincode lookup was removed 2026-08-14 —
+ * see the header of src/pages/api/ward-lookup.ts for why, and for the
+ * consequence (geocoding is now the only path to a ward, with no fallback
+ * when it is unavailable). The four states are `ward`, `out_of_coverage`,
+ * `ambiguous` (the citizen can act — be more specific) and `unavailable`
+ * (our outage; rewording will not help, so never phrase it as a bad
+ * address).
  *
  * On any failure to fetch/parse — network error, non-2xx, bad JSON — this
  * lets the native form submission proceed rather than trap the visitor
@@ -33,11 +39,9 @@ interface WardRow {
 
 type LookupResponse =
   | { result: 'ward'; ward: WardRow }
-  | { result: 'shortlist'; wards: WardRow[] }
   | { result: 'out_of_coverage' }
-  | { result: 'use_pincode'; reason?: string };
-
-const PINCODE_RE = /^\d{6}$/;
+  | { result: 'ambiguous' }
+  | { result: 'unavailable'; reason?: string };
 
 function wardHref(lang: string, id: number): string {
   return lang === 'kn' ? `/kn/ward/${id}` : `/ward/${id}`;
@@ -54,23 +58,6 @@ function renderWard(container: HTMLElement, lang: string, ward: WardRow): void {
   container.replaceChildren(link);
 }
 
-function renderShortlist(container: HTMLElement, lang: string, heading: string, wards: WardRow[]): void {
-  const headingEl = document.createElement('p');
-  headingEl.textContent = heading;
-
-  const list = document.createElement('ul');
-  for (const ward of wards) {
-    const item = document.createElement('li');
-    const link = document.createElement('a');
-    link.href = wardHref(lang, ward.id);
-    link.textContent = wardName(lang, ward);
-    item.appendChild(link);
-    list.appendChild(item);
-  }
-
-  container.replaceChildren(headingEl, list);
-}
-
 function renderMessage(container: HTMLElement, message: string): void {
   const p = document.createElement('p');
   p.textContent = message;
@@ -82,14 +69,16 @@ function renderResult(container: HTMLElement, lang: string, msgs: Record<string,
     case 'ward':
       renderWard(container, lang, data.ward);
       return;
-    case 'shortlist':
-      renderShortlist(container, lang, msgs.shortlistHeading ?? '', data.wards);
-      return;
     case 'out_of_coverage':
       renderMessage(container, msgs.outOfCoverage ?? '');
       return;
-    case 'use_pincode':
-      renderMessage(container, msgs.usePincode ?? '');
+    case 'ambiguous':
+      renderMessage(container, msgs.ambiguous ?? '');
+      return;
+    case 'unavailable':
+      // Deliberately the same copy for `budget` and `failed`: both are our
+      // outage, neither is fixable by the citizen rewording anything.
+      renderMessage(container, msgs.unavailable ?? '');
       return;
   }
 }
@@ -113,8 +102,8 @@ const GBA_BOUNDS = { south: 12.7834, west: 77.4098, north: 13.1927, east: 77.834
  * drop-in for `<input>` in general, but it exposes the two things this
  * island actually depends on: a read/write `value`, and a form-associated
  * `name` ("the name that will be used when a form is submitted", per
- * @types/google.maps). So the pincode branch still reads typed text, and a
- * fallback native POST still submits `query`.
+ * @types/google.maps). So the submit handler still reads whatever the
+ * visitor typed, and a fallback native POST still submits `query`.
  *
  * WHAT IS DELIBERATELY NOT DONE. On `gmp-select` this writes the
  * prediction's `text` into the element and stops. It does NOT call
@@ -189,9 +178,9 @@ export function initWardLookup(root: ParentNode = document): void {
 
   const lang = form.dataset.lang ?? 'en';
   const msgs = {
-    shortlistHeading: form.dataset.msgShortlistHeading ?? '',
     outOfCoverage: form.dataset.msgOutOfCoverage ?? '',
-    usePincode: form.dataset.msgUsePincode ?? '',
+    ambiguous: form.dataset.msgAmbiguous ?? '',
+    unavailable: form.dataset.msgUnavailable ?? '',
   };
 
   // Whatever currently holds the visitor's query. Starts as the
@@ -211,7 +200,7 @@ export function initWardLookup(root: ParentNode = document): void {
     if (submitButton) submitButton.disabled = true;
     result.setAttribute('aria-busy', 'true');
 
-    const body = PINCODE_RE.test(value) ? { pincode: value } : { address: value };
+    const body = { address: value };
 
     fetch('/api/ward-lookup', {
       method: 'POST',

@@ -198,7 +198,7 @@ Do this **before** the keys reach production.
 
 **A quota cap is not the same guard as `GEOCODE_DAILY_BUDGET`.**
 `src/lib/budgets.ts` degrades: exhausting the geocode budget returns
-`use_pincode` and the citizen still gets an answer. A GCP quota simply starts
+`use_pincode` and the citizen still got an answer. (That fallback was removed 2026-08-14, so exhausting the geocode budget now takes ward lookup down too.) A GCP quota simply starts
 erroring, and the map breaks for every visitor at once. So set the quota high
 — a circuit breaker against runaway spend, not a traffic control — and treat
 the budget alert as the signal that actually matters.

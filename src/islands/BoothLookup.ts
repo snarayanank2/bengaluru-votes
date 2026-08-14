@@ -10,9 +10,8 @@
  * intercepts the submit, calls `POST /api/booth-lookup` instead, and paints
  * the result inline so a JS-capable visitor never leaves the page.
  *
- * Unlike WardLookup there is no pincode/address branching here — booth
- * lookup only accepts a free-text address (see src/pages/api/booth-lookup.ts)
- * — and there is no pincode-shortlist result kind. `no_booth_data` and an
+ * Booth lookup accepts a free-text address only (see
+ * src/pages/api/booth-lookup.ts). `no_booth_data` and an
  * empty `booths: []` array are treated identically (both are the "we don't
  * have data for you yet" guided-link-out state — see that endpoint's
  * header), and `out_of_coverage`/`unavailable` both render their own

@@ -18,7 +18,6 @@
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:dev": "tsx scripts/seed-dev.ts",
     "seed:e2e": "tsx scripts/seed-e2e.ts",
-    "build-pincode": "tsx scripts/build-pincode-table.ts",
     "translate": "tsx scripts/translate.ts",
     "build-fonts": "tsx scripts/build-fonts.ts",
     "build:e2e": "E2E_ALLOWED_HOST=127.0.0.1 E2E_ALLOWED_PORT=4321 astro build",

@@ -4,15 +4,13 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
-import { localePath, type Lang } from '../../src/i18n';
+import { localePath, t, type Lang } from '../../src/i18n';
 
 vi.mock('../../src/lib/settings', () => ({ getSettings: vi.fn() }));
 vi.mock('../../src/lib/geocode', () => ({ lookupWardByAddress: vi.fn() }));
-vi.mock('../../src/lib/pincode', () => ({ wardsForPincode: vi.fn() }));
 
 import { getSettings } from '../../src/lib/settings';
 import { lookupWardByAddress } from '../../src/lib/geocode';
-import { wardsForPincode } from '../../src/lib/pincode';
 import Home from '../../src/features/pages/Home.astro';
 
 if (!process.env.DATABASE_URL) {
@@ -52,6 +50,25 @@ function normalize(html: string): string {
     .replace(/\s+/g, ' ');
 }
 
+/**
+ * Pulls just the `[data-ward-result]` aria-live container out of a rendered
+ * page. Necessary because the form ALSO carries every result message as a
+ * `data-msg-*` attribute for the island to read — so asserting a message is
+ * absent from the whole document is always false, whatever the outcome.
+ */
+function resultBlock(html: string): string {
+  const m = html.match(/<div class="ward-result"[^>]*>(.*?)<\/div>/);
+  if (!m) return '';
+  // Astro escapes the copy on the way out (an apostrophe becomes &#39;), so
+  // decode before comparing against the raw i18n string.
+  return m[1]
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 async function makeContainer() {
   return AstroContainer.create({
     astroConfig: {
@@ -86,7 +103,6 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
   beforeEach(() => {
     vi.mocked(getSettings).mockReset().mockResolvedValue(NO_SETTINGS);
     vi.mocked(lookupWardByAddress).mockReset();
-    vi.mocked(wardsForPincode).mockReset();
   });
 
   describe('page structure', () => {
@@ -239,8 +255,11 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       expect(html).toContain("doesn't appear to be in the GBA area");
     });
 
-    it('a pincode shortlist server-renders every candidate ward link', async () => {
-      vi.mocked(wardsForPincode).mockReturnValueOnce([WARD.id]);
+    // Regression guard for the 2026-08-14 pincode removal: a bare 6-digit
+    // query must now go through the geocoder like any other address, not
+    // down a branch that no longer exists.
+    it('sends a bare 6-digit query to the geocoder as an address', async () => {
+      vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'ward', wardId: WARD.id });
 
       const container = await makeContainer();
       const request = new Request(`${SITE_ORIGIN}/`, {
@@ -255,9 +274,54 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       });
       const html = normalize(await response.text());
 
+      expect(lookupWardByAddress).toHaveBeenCalledWith('560001');
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(html).toContain(`href="/ward/${WARD.id}"`);
-      expect(lookupWardByAddress).not.toHaveBeenCalled();
+    });
+
+    // Budget exhausted / Google down. With pincode gone this message is the
+    // whole answer, so it must read as our outage rather than a bad address.
+    it.each([['budget_exhausted'], ['failed']] as const)(
+      'server-renders the outage message for %s',
+      async (kind) => {
+        vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind } as never);
+
+        const container = await makeContainer();
+        const request = new Request(`${SITE_ORIGIN}/`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: `query=${encodeURIComponent('MG Road')}`,
+        });
+        const response = await container.renderToResponse(Home, {
+          partial: false,
+          props: { lang: 'en' },
+          request,
+        });
+        const html = normalize(await response.text());
+
+        expect(resultBlock(html)).toContain(t('en', 'home.result.unavailable'));
+        expect(resultBlock(html)).not.toContain(t('en', 'home.result.ambiguous'));
+      },
+    );
+
+    it('server-renders the be-more-specific message for an ambiguous address', async () => {
+      vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'ambiguous' });
+
+      const container = await makeContainer();
+      const request = new Request(`${SITE_ORIGIN}/`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `query=${encodeURIComponent('Main Road')}`,
+      });
+      const response = await container.renderToResponse(Home, {
+        partial: false,
+        props: { lang: 'en' },
+        request,
+      });
+      const html = normalize(await response.text());
+
+      expect(resultBlock(html)).toContain(t('en', 'home.result.ambiguous'));
+      expect(resultBlock(html)).not.toContain(t('en', 'home.result.unavailable'));
     });
 
     it('GET is unaffected — no cache-control: no-store on a plain GET render', async () => {
