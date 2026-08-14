@@ -501,6 +501,9 @@ here in the same PR.
 | `TWILIO_OTP_TEMPLATE_SID` | yes (WhatsApp OTP) | Approved WhatsApp OTP Content API template SID (`src/lib/otp.ts`) — unset until WhatsApp onboarding completes (PRD §10); until then WhatsApp OTP requests degrade to `send_failed` by design. |
 | `GOOGLE_GEOCODING_API_KEY` | yes (address ward-lookup) | Google Geocoding API. |
 | `GEOCODE_DAILY_BUDGET` | recommended | Daily geocode call cap (architecture §13 cost-amplification guard); degrades to pincode lookup when exhausted. |
+| `GOOGLE_MAPS_BROWSER_KEY` | yes (ward map) | Referrer-restricted browser key for the ward boundary map (`src/lib/maps-config.ts`). Unset means the map is absent; the ward page renders its no-JS fallback. `docs/gcp.md` §3. |
+| `GOOGLE_MAPS_MAP_ID` | recommended | Cloud map style (`docs/gcp.md` §4). Unset renders an unstyled basemap. |
+| `MAPS_ENABLED` | yes to show maps | Kill switch (`src/lib/maps-config.ts`) — must be exactly `true`, and `GOOGLE_MAPS_BROWSER_KEY` must also be non-empty, for the map to render. Sheds client-side map spend without a rebuild when a budget alert fires. |
 | `GOOGLE_SEARCH_API_KEY` / `GOOGLE_SEARCH_CX` | optional | Programmable Search for news-link suggestions (`jobs/news-suggest.ts`); job no-ops (logs + exits 0) until both are set. |
 | `NEWS_QUERY_DAILY_BUDGET` | recommended | Daily query cap for the above. |
 | `ANTHROPIC_API_KEY` | yes (Kannada MT/extraction) | Curator-publish-triggered translation/extraction calls; unset means those calls no-op to `'pending'` and `jobs/translate-retry.ts` keeps retrying. |
@@ -551,6 +554,18 @@ npm run translate -- --check   # bilingual completeness (architecture §9)
 npm run typecheck
 npm test
 ```
+
+**Known pre-deploy step for `google-maps-migration`:** `npm run translate -- --check`
+fails on this branch as committed, listing `findBooth.result.directions` and
+`findBooth.result.directionsAriaLabel`. Both Kannada strings (for the booth
+directions link added by commits `e30cd3e`/`cf5e792`) were hand-written in
+`src/i18n/kn.json` with no `__hashes` entry, because `ANTHROPIC_API_KEY` was
+unavailable in the environment that implemented them — hand-writing the hash
+would forge translation provenance and freeze the strings past regeneration,
+so that was deliberately not done. **Before deploying this branch:** run
+`npm run translate` with a real `ANTHROPIC_API_KEY` set, review the
+regenerated `src/i18n/kn.json`, and commit it so `--check` passes clean like
+every other deploy.
 
 ### Staging
 

@@ -17,6 +17,7 @@ This serves a real election. Demo/fixture data is deliberately unmistakable as f
 - `docs/architecture.md` — the technical design. Section numbers referenced throughout the source (`architecture §5`, `§9`, `§13`) are load-bearing; code comments point at them.
 - `docs/information-architecture.md` — canonical URL/route map: every page and modal with its exact URL and access level.
 - `docs/design-system.md`, `docs/gtm-plan.md` (campaign calendar the `jobs` container runs), `docs/project-plan.md`, `docs/project-dependencies.md`.
+- `docs/gcp.md` — Google Cloud credential provisioning (Geocoding, Maps JS, Custom Search, reCAPTCHA, GA4): what to create in which console and which env var it becomes. `deploy/runbook.md`'s env var table is the authority on what each variable does at runtime; `gcp.md` is how the values are obtained.
 
 Source comments cite "Task NN" throughout — historical task briefs, mostly no longer in the repo. Treat them as provenance, not as files to find.
 

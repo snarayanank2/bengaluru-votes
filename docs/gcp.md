@@ -18,6 +18,19 @@ Console labels drift. Treat navigation paths as approximate and **API names
 as exact** — several Google APIs differ only by a suffix and bill under
 separate SKUs.
 
+**Status update, 2026-08-14:** the `google-maps-migration` branch shipped the
+Maps JavaScript API ward-boundary map and the booth directions link-outs.
+Places Autocomplete on the ward lookup did **not** ship — it was deferred,
+not merely postponed. The legacy `google.maps.places.Autocomplete` widget has
+been unavailable to new customers since 2025-03-01 and legacy Places services
+are unavailable in a new Cloud project, which §1 below creates; only
+`PlaceAutocompleteElement` is viable, and adopting it is an unresolved design
+decision. §2's choice of **Places API (New)** (not the legacy Places API) was
+already correct in anticipation of this — nothing in the provisioning steps
+below needs to change when autocomplete eventually lands. Until then, the
+Places API restriction on Key B/C in §3 provisions for a feature the app does
+not yet call.
+
 ---
 
 ## 0. What you end up with

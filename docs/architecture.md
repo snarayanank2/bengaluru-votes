@@ -10,7 +10,7 @@ This document records the production architecture for the platform defined in `d
 - **Traffic shape:** overwhelmingly anonymous, read-only, spiking near election day. Content changes only when a curator publishes — not per request. Anonymous reads must stay fast with no login wall (PRD §12).
 - **Team:** TypeScript/Node.
 - **SEO/AEO is a requirement:** ward, candidate, and guide pages must be indexable by search engines and quotable by answer engines, in both English and Kannada.
-- **Decided vendors** (dependency register §3, §6): Twilio/SendGrid for messaging, Google Geocoding server-side, MapLibre rendering, Anthropic API for Kannada machine translation and affidavit field extraction (PRD §5.2), Google Programmable Search (Custom Search JSON API) for candidate news-link suggestions (PRD §5.2; pipeline in §7), Google Analytics for visitor/event measurement (client-side snippet on public pages; static markup, so it does not break the one-cached-variant-per-URL invariant in §5).
+- **Decided vendors** (dependency register §3, §6): Twilio/SendGrid for messaging, Google Geocoding server-side, Google Maps JavaScript API for ward-boundary rendering (migrated from MapLibre 2026-08-13; dependency register §6.4, closed), Anthropic API for Kannada machine translation and affidavit field extraction (PRD §5.2), Google Programmable Search (Custom Search JSON API) for candidate news-link suggestions (PRD §5.2; pipeline in §7), Google Analytics for visitor/event measurement (client-side snippet on public pages; static markup, so it does not break the one-cached-variant-per-URL invariant in §5). Places Autocomplete on the ward lookup was scoped for the same migration but did not ship — deferred, see §6 below.
 
 ## 2. Decision summary
 
@@ -22,7 +22,7 @@ This document records the production architecture for the platform defined in `d
 | Jobs | A **cron container** sharing the app codebase: send calendar, translation retries, backups |
 | Language URLs | English at root, **Kannada under `/kn/`**, hreflang-linked; the toggle navigates between them |
 | Spike strategy | nginx micro-cache (~60 s TTL on pages) — no purge machinery; CDN slots in front later unchanged |
-| Geo | Ward polygons as static GeoJSON (MapLibre reads them directly) + in-memory point-in-polygon (Turf.js); **no PostGIS** |
+| Geo | Ward polygons as static GeoJSON; the Google Maps JS island fetches one ward's Feature from `GET /ward/<id>/boundary.json` (`src/pages/ward/[id]/boundary.json.ts`, `src/lib/geo.ts`'s `wardBoundaryFeature()`) — deliberately not under `/api/`, so it lands in nginx's cached, cookie-stripped public route rather than the uncached, rate-limited `/api/` one — plus in-memory point-in-polygon (Turf.js) for the address/pincode lookup; **no PostGIS** |
 | Client JS | Zero by default; islands only for modals, maps, and lookup forms |
 | Deployment | **Hostinger VPS (Mumbai)**; staging + production on one box; images built on the box from a checkout; deploys run by hand (§14) |
 | Migrations | **Drizzle SQL migrations**, forward-only and backward-compatible; run as an explicit deploy step before restart (§14.7) |
@@ -47,7 +47,7 @@ No Redis, no queue, no separate API service. Deploys build the image on the VM f
 
 ## 4. Routing & rendering
 
-- Public pages are server-rendered to complete HTML with **zero client JavaScript by default**. Hydrated islands only for: the Register/Login, Flag, and Cast-vote modals; MapLibre maps; the address/pincode lookup; the booth lookup.
+- Public pages are server-rendered to complete HTML with **zero client JavaScript by default**. Hydrated islands only for: the Register/Login, Flag, and Cast-vote modals; the Google Maps ward-boundary map (`src/islands/WardMap.ts`, rendered only when `mapsConfig().enabled` — `src/lib/maps-config.ts`); the address/pincode lookup; the booth lookup.
 - **Language:** every public path exists twice — `/ward/57` (EN) and `/kn/ward/57` (KN) — via Astro i18n routing. The app-bar toggle links to the same page in the other language. Every page emits `hreflang` alternates and `x-default`. A cookie remembers the last choice so `/` can offer Kannada on entry — read **client-side** by a small script, like the `?src` writer (§5), because nginx strips cookies on public routes and the cached HTML is identical for everyone; the offer is a client-rendered banner, never a server-side variant. A registered user's saved preference governs notification language only (PRD §8).
 - Curator, admin, and account screens are server-rendered forms with standard POSTs in the same app — no SPA.
 - Modals are progressive enhancements over real routes, so the `/login` no-JS fallback comes free.

@@ -22,7 +22,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
       },
     );
 
-    it('worker-src allows blob: (maplibre-gl web worker)', () => {
+    it('worker-src allows blob: (Google Maps JS API web worker)', () => {
       const csp = buildCsp(NONCE, '/ward/57');
       expect(csp).toContain("worker-src 'self' blob:");
     });
