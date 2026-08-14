@@ -73,7 +73,10 @@ export interface GlossaryEntry {
 
 export type Glossary = Record<string, GlossaryEntry>;
 
-type Backend = (prompt: string) => Promise<string>;
+// `label` is the target being generated (e.g. "content/pages/kn/privacy.md").
+// It carries only into error messages — a failure has to name which target it
+// was for, since the run continues past it and reports the survivors at the end.
+type Backend = (prompt: string, label: string) => Promise<string>;
 
 // ---------------------------------------------------------------------------
 // Pure helpers (exported for tests/unit/translate.test.ts — no API calls)
@@ -193,22 +196,63 @@ function parseJsonResponse(text: string): Record<string, string> {
 // Backend resolution — controller-decided per the task brief
 // ---------------------------------------------------------------------------
 
-async function callAnthropic(prompt: string): Promise<string> {
+/**
+ * Output budget for one generation.
+ *
+ * WHY THIS IS NOT 8192 ANY MORE. claude-sonnet-5 runs adaptive thinking
+ * whenever the request omits `thinking`, and `max_tokens` bounds thinking AND
+ * response text *together*. At 8192 the longest content file
+ * (content/pages/kn/privacy.md) spent the whole budget thinking and returned a
+ * response whose only block was a thinking block — which surfaced as the
+ * misleading "contained no text block" error on 2026-08-14. Kannada also
+ * tokenizes far less densely than English, so a KN target is several times its
+ * EN source in tokens; the budget has to cover that plus the thinking.
+ *
+ * Streaming is required at this size: a non-streaming request much above
+ * ~16k risks an SDK HTTP timeout well before the model is finished.
+ */
+const MAX_OUTPUT_TOKENS = 32_000;
+
+type AnthropicResponse = {
+  stop_reason?: string | null;
+  content: Array<{ type: string; text?: string }>;
+};
+
+/**
+ * Pull the translated text out of a response, or throw an error that names the
+ * actual fault. Exported for tests — the two failure modes below look identical
+ * from the outside (no usable text) but need opposite responses from whoever
+ * is running the script, so they must not share a message.
+ */
+export function extractText(response: AnthropicResponse, label: string): string {
+  const textBlock = response.content.find((block) => block.type === 'text');
+
+  if (textBlock && typeof textBlock.text === 'string') {
+    return textBlock.text.trim();
+  }
+
+  // Budget exhausted before any text was emitted. Retrying is pointless and
+  // the model is not at fault — MAX_OUTPUT_TOKENS is what has to change.
+  if (response.stop_reason === 'max_tokens') {
+    throw new Error(
+      `translate: ${label} hit the ${MAX_OUTPUT_TOKENS}-token output limit (stop_reason=max_tokens) ` +
+        'before producing any text. On a thinking model max_tokens covers thinking and output ' +
+        'together — raise MAX_OUTPUT_TOKENS in scripts/translate.ts.',
+    );
+  }
+
+  throw new Error(`translate: ${label} — Anthropic response contained no text block`);
+}
+
+async function callAnthropic(prompt: string, label: string): Promise<string> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
   const client = new Anthropic();
-  const response = await client.messages.create({
+  const stream = client.messages.stream({
     model: 'claude-sonnet-5',
-    max_tokens: 8192,
+    max_tokens: MAX_OUTPUT_TOKENS,
     messages: [{ role: 'user', content: prompt }],
   });
-  const textBlock = response.content.find(
-    (block): block is Extract<(typeof response.content)[number], { type: 'text' }> =>
-      block.type === 'text',
-  );
-  if (!textBlock) {
-    throw new Error('translate: Anthropic response contained no text block');
-  }
-  return textBlock.text.trim();
+  return extractText(await stream.finalMessage(), label);
 }
 
 async function callClaudeCli(prompt: string): Promise<string> {
@@ -263,7 +307,7 @@ async function resolveBackend(): Promise<Backend> {
 async function generateWithRetry(prompt: string, backend: Backend, label: string): Promise<string | null> {
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const result = await backend(prompt);
+      const result = await backend(prompt, label);
       if (result.trim().length > 0) return result;
       console.error(`translate: empty output for ${label} (attempt ${attempt}/2)`);
     } catch (err) {

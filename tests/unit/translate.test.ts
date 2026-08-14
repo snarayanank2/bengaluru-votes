@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import matter from 'gray-matter';
-import { staleKeys, staleContentFiles, buildPrompt, sha256 } from '../../scripts/translate';
+import {
+  staleKeys,
+  staleContentFiles,
+  buildPrompt,
+  sha256,
+  extractText,
+} from '../../scripts/translate';
 
 // Independent hash computation (doesn't reuse the module's own sha256) so the
 // staleKeys/staleContentFiles tests aren't trivially self-confirming.
@@ -149,5 +155,57 @@ describe('buildPrompt()', () => {
     const prompt = buildPrompt('some source', [], {});
     expect(prompt.toLowerCase()).toContain('html comment');
     expect(prompt.toLowerCase()).toContain('markdown');
+  });
+});
+
+/**
+ * Regression coverage for the 2026-08-14 failure: `content/pages/kn/privacy.md`
+ * (the longest content file) failed twice with "response contained no text
+ * block" while every shorter target succeeded.
+ *
+ * The cause was not an empty response. claude-sonnet-5 runs adaptive thinking
+ * whenever the request omits `thinking`, and `max_tokens` bounds thinking AND
+ * response text together — so a budget that fits a short target can be spent
+ * entirely on thinking for a long one, leaving a response whose only block is
+ * a thinking block (empty text by default). The old message pointed at the
+ * model; the real fix was the token budget.
+ */
+describe('extractText()', () => {
+  const textResponse = (text: string) => ({
+    stop_reason: 'end_turn',
+    content: [{ type: 'text', text }],
+  });
+
+  it('returns the trimmed text of a normal response', () => {
+    expect(extractText(textResponse('  ಅನುವಾದ  '), 'kn.json')).toBe('ಅನುವಾದ');
+  });
+
+  it('skips a leading thinking block to find the text', () => {
+    const response = {
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'thinking', thinking: '' },
+        { type: 'text', text: 'ಅನುವಾದ' },
+      ],
+    };
+    expect(extractText(response, 'kn.json')).toBe('ಅನುವಾದ');
+  });
+
+  // The actual failure. The error must name the output budget, because that is
+  // what the operator has to change — retrying or blaming the model does not
+  // help, and the old wording sent us looking in the wrong place.
+  it('blames the output budget when the response stopped at max_tokens', () => {
+    const response = { stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '' }] };
+
+    expect(() => extractText(response, 'content/pages/kn/privacy.md')).toThrow(/max_tokens/);
+    expect(() => extractText(response, 'content/pages/kn/privacy.md')).toThrow(
+      /content\/pages\/kn\/privacy\.md/,
+    );
+  });
+
+  // A genuinely empty response is a different fault and keeps its own message.
+  it('reports a missing text block when the response ended normally', () => {
+    const response = { stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }] };
+    expect(() => extractText(response, 'kn.json')).toThrow(/no text block/);
   });
 });
