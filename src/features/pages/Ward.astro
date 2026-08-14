@@ -28,8 +28,8 @@
  * (src/pages/ward/[id]/boundary.json.ts), which serves one GeoJSON Feature
  * looked up by `wards.boundaryRef` server-side — NOT the 3.5MB
  * `/data/gba.geojson` collection the MapLibre-era island fetched and
- * filtered client-side. This page no longer needs `wardBoundaryUrl`/
- * `loadWardPolygons()` (geo.ts) at all for that reason.
+ * filtered client-side. This page needs no geo.ts entry point at all for
+ * that reason — it formats the URL from the `wards` row it already has.
  *
  * The container itself, and its `data-maps-key`/`data-maps-map-id`
  * attributes carrying the Google Maps Platform browser key and Map ID

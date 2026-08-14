@@ -11,25 +11,32 @@ there is the authority on what each variable does at runtime; this document
 is how the values in it are obtained.
 
 This covers **credential procurement only**. Wiring the browser key into the
-app, replacing the MapLibre island, and widening the CSP are separate work;
-§10 below lists what changes and why.
+app, replacing the MapLibre island, and widening the CSP were separate work,
+now shipped; §10 below records what changed and why.
 
 Console labels drift. Treat navigation paths as approximate and **API names
 as exact** — several Google APIs differ only by a suffix and bill under
 separate SKUs.
 
 **Status update, 2026-08-14:** the `google-maps-migration` branch shipped the
-Maps JavaScript API ward-boundary map and the booth directions link-outs.
-Places Autocomplete on the ward lookup did **not** ship — it was deferred,
-not merely postponed. The legacy `google.maps.places.Autocomplete` widget has
-been unavailable to new customers since 2025-03-01 and legacy Places services
-are unavailable in a new Cloud project, which §1 below creates; only
-`PlaceAutocompleteElement` is viable, and adopting it is an unresolved design
-decision. §2's choice of **Places API (New)** (not the legacy Places API) was
-already correct in anticipation of this — nothing in the provisioning steps
-below needs to change when autocomplete eventually lands. Until then, the
-Places API restriction on Key B/C in §3 provisions for a feature the app does
-not yet call.
+Maps JavaScript API ward-boundary map, the booth directions link-outs, **and**
+Places Autocomplete on the ward lookup — all three, not two of three.
+
+The legacy `google.maps.places.Autocomplete` widget genuinely could not be
+used: it has been unavailable to new customers since 2025-03-01, and legacy
+Places services are unavailable in a new Cloud project, which §1 below
+creates. That part of the original assessment was right. What changed is the
+resolution: `google.maps.places.PlaceAutocompleteElement`
+(`src/islands/WardLookup.ts`) was adopted and is live — it replaces the
+server-rendered `<input>` when the server renders a browser key, predictions
+return biased to the GBA bbox and restricted to India, and it reads
+`placePrediction.text` on selection without a second `fetchFields()` call (the
+server still does the geocoding; the island never learns a position).
+
+§2's choice of **Places API (New)** (not the legacy Places API) was correct
+all along, and is no longer provisioning ahead of an uncalled feature: the
+Places API restriction on Key B/C in §3 now backs a feature the app actually
+calls, and Places metering is actually incurred, not merely anticipated.
 
 ---
 
@@ -176,12 +183,13 @@ without hardcoding color, and `mapId` is required for a style to apply.
 Create a second Map ID for staging if you want to iterate on the style
 without changing production mid-campaign.
 
-**Trade-off worth recording.** The current `buildBaseStyle()`
-(`src/islands/WardMap.ts`) is style-as-code: versioned, reviewed, and
-covered by `tests/unit/ward-map-island.test.ts` and the hex-literal ban in
-`tests/unit/tokens.test.ts`. A Map ID moves that styling into console state
-nothing in this repo can see or test. Whoever changes the style should note
-it in a commit message even though no file changes.
+**Trade-off worth recording.** `buildBaseStyle()` — the MapLibre-era
+function that drew the basemap's flat background layer in code, versioned,
+reviewed, and covered by tests — is gone; it was removed with the MapLibre
+island during the migration, and its test with it. A Map ID moves that
+styling into console state nothing in this repo can see or test. Whoever
+changes the style should note it in a commit message even though no file
+changes.
 
 ## 5. Quota caps and budget alerts (§6.5, §6.11)
 
@@ -197,11 +205,16 @@ Do this **before** the keys reach production.
    unresolved; do not route this to an address that only exists in a doc.
 
 **A quota cap is not the same guard as `GEOCODE_DAILY_BUDGET`.**
-`src/lib/budgets.ts` degrades: exhausting the geocode budget returns
-`use_pincode` and the citizen still got an answer. (That fallback was removed 2026-08-14, so exhausting the geocode budget now takes ward lookup down too.) A GCP quota simply starts
-erroring, and the map breaks for every visitor at once. So set the quota high
-— a circuit breaker against runaway spend, not a traffic control — and treat
-the budget alert as the signal that actually matters.
+`src/lib/budgets.ts` enforces the daily cap; exhausting it returns
+`unavailable` (`reason: 'budget'`) to every citizen who tries a ward lookup.
+Pincode lookup was removed 2026-08-14, so there is no fallback left —
+exhausting this budget doesn't degrade ward lookup, it takes the platform's
+primary user journey down entirely, city-wide, until the next day's budget
+resets. A GCP quota simply starts erroring, and the map breaks for every
+visitor at once. So set the quota high — a circuit breaker against runaway
+spend, not a traffic control — and treat the budget alert as the signal that
+actually matters: it's the only guard standing between normal operation and
+ward lookup going dark.
 
 Add an application-level kill switch alongside it: an env var that suppresses
 the map island entirely, so cost can be shed with a container restart instead
@@ -260,46 +273,56 @@ what §6.10 asks for, and it is still unassigned.
 
 ---
 
-## 10. What changes in the app after this
+## 10. What changed in the app because of this
 
-Not part of provisioning, but the things that will fail first if they are
-missed.
+Written ahead of the migration as a preview of what would fail first if
+missed. All of it shipped 2026-08-14; kept here as a record of what to check
+if any of this regresses, not as a to-do list.
 
-**The browser key must not be a `PUBLIC_*` variable.** Astro inlines
-`PUBLIC_*` at build time, which is the same footgun `CLAUDE.md` documents for
-`SITE_ORIGIN`: an image built without the value serves every GET a healthy
-200 and a broken map, with nothing in `docker compose ps`, the healthcheck,
-or the logs to say so. Pass the key and Map ID from server frontmatter onto
-the map container as data attributes instead — `src/features/pages/Ward.astro`
-already does this with `data-boundary-url`, the island already reads
-`container.dataset`, and both values stay runtime config that a container
-restart can change.
+**The browser key is not a `PUBLIC_*` variable.** Astro inlines `PUBLIC_*` at
+build time, which is the same footgun `CLAUDE.md` documents for
+`SITE_ORIGIN`: an image built without the value would serve every GET a
+healthy 200 and a broken map, with nothing in `docker compose ps`, the
+healthcheck, or the logs to say so. The key and Map ID reach the browser as
+`data-*` attributes from server frontmatter instead —
+`src/features/pages/Ward.astro` and `Home.astro` render them,
+`src/lib/maps-config.ts` gates them behind `mapsConfig().enabled`, and the
+islands read them off `container.dataset` / `form.dataset`. Both values stay
+runtime config a container restart can change.
 
-**CSP widening** (`src/lib/csp.ts`, `tests/unit/csp.test.ts`). Maps JS needs
-`https://maps.googleapis.com` and `https://maps.gstatic.com` across
-`script-src`, `connect-src` and `img-src`. `worker-src 'self' blob:` is
-already present for MapLibre and Maps JS needs it too, so that line stays as
-is — but its comment, which currently explains the directive as
-MapLibre-specific, will be wrong.
+**CSP widening** (`src/lib/csp.ts`, `tests/unit/csp.test.ts`). Shipped, and
+wider than originally scoped — the base policy now carries, all verified in a
+real browser: `https://maps.googleapis.com` and `https://maps.gstatic.com`
+across `script-src`, `connect-src` and `img-src`; `https://fonts.googleapis.com`
+in `style-src` and `https://fonts.gstatic.com` in `font-src` for the fonts the
+Maps JS UI loads; and — the non-obvious one — `https://places.googleapis.com`
+in `connect-src`. Places API (New) posts its autocomplete RPCs to that host,
+**not** `maps.googleapis.com`; without it every keystroke in the autocomplete
+box was silently blocked and suggestions never appeared, with no console
+error pointing at CSP as the cause. `worker-src 'self' blob:` predates the
+migration (it was MapLibre's) and Maps JS needs it too, so that line stayed
+as-is; its comment was updated to stop describing it as MapLibre-specific.
 
-**The island's failure-closed contract is worth keeping.** `mountWardMap()`
-returns without touching the container on any failure, leaving the
-server-rendered no-JS fallback text in place. Google's loader fails
-differently (async script load, `gm_authFailure`), so preserving that
-behaviour takes deliberate handling rather than the current try/catch.
+**The island's failure-closed contract held.** `mountWardMap()` returns
+without touching the container on any failure, leaving the server-rendered
+fallback text in place. Google's loader fails differently from MapLibre's did
+— async script load, `window.gm_authFailure` firing after a successful load —
+and both are handled: a rejected loader promise is caught before the
+container is cleared, and `gm_authFailure` restores the fallback afterward if
+Google rejects the key post-load. See `docs/superpowers/plans/2026-08-14-google-maps-followups.md`
+for the follow-ups still open against this contract (handler installation
+order, a re-entrancy guard, a coordinate shape guard).
 
-**`geocode.ts`'s no-coordinates rule is no longer legally required, and
-should stay anyway.** §6.4's restriction — Google Maps content may not be
-used in an app displaying a non-Google map — is what the file's header block
-is defending against, and an all-Google stack dissolves it. But the rule is
-also a privacy property: `geocode_cache` stores normalized address → ward ID
-and has never held a citizen's location. Removing it is a separate decision
-with its own DPDP argument, not a cleanup that falls out of this migration.
-If it is ever revisited, rewrite that header block rather than deleting it.
+**`geocode.ts`'s no-coordinates rule stayed, on privacy grounds.** §6.4's
+restriction — Google Maps content may not be used in an app displaying a
+non-Google map — is what the file's header block originally defended
+against, and rendering IS Google now, so that argument no longer applies. The
+rule was kept anyway because it is also a privacy property: `geocode_cache`
+stores normalized address → ward ID and has never held a citizen's location.
+The file's header now says so explicitly. Removing it remains a separate
+decision with its own DPDP argument, not a cleanup this migration made.
 
-**§6.4 can be closed.** Once rendering is Google, the register's open
-question — "whether the geocoding architecture is licensed at all" — no
-longer has a case to answer. Update `docs/project-dependencies.md` §6.4
-rather than leaving it open and stale, and note there that adding Places
-autocomplete brings its own metering (the register already anticipates this
-at §6.4's last paragraph).
+**§6.4 is closed.** Once rendering is Google, the register's open question —
+"whether the geocoding architecture is licensed at all" — no longer has a
+case to answer. `docs/project-dependencies.md` §6.4 records this; that file
+is out of scope for this document to edit further.

@@ -755,7 +755,7 @@
     "ward.corporation.west": "Display label for the 'west' corporation enum value — see ward.corporation.north.",
     "ward.corporation.central": "Display label for the 'central' corporation enum value — see ward.corporation.north.",
     "ward.map.label": "aria-label on the ward result page's boundary-map section.",
-    "ward.map.fallback": "Static text inside the WardMap island's container, shown until (or unless) MapLibre replaces it — the no-JS/JS-failure fallback for design-system.md §8's boundary map.",
+    "ward.map.fallback": "Static text inside the WardMap island's container, shown until (or unless) the Google Maps island replaces it — the no-JS/JS-failure fallback for design-system.md §8's boundary map. Also what renders permanently when MAPS_ENABLED is off.",
     "ward.links.label": "aria-label on the ward result page's nav of links to the candidates/issues/voting-guide subpages.",
     "ward.links.candidates": "Link label on the ward result page to /ward/{id}/candidates (IA §3.3).",
     "ward.links.issues": "Link label on the ward result page to /ward/{id}/issues (IA §3.6).",

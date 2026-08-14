@@ -2,10 +2,13 @@
  * In-memory ward point-in-polygon over the static ward boundary GeoJSON.
  *
  * Per architecture.md §6 ("no PostGIS"), ward geometry lookups do NOT go
- * through the database. `data/gba.geojson` (369 features — the same file
- * nginx serves statically for MapLibre, see `wardBoundaryUrl` below) is
- * parsed once at boot into an in-process index, and this module answers
- * "which ward contains this lat/lng" purely in memory.
+ * through the database. `data/gba.geojson` (369 features) is parsed once,
+ * lazily, into an in-process index, and this module answers "which ward
+ * contains this lat/lng" purely in memory.
+ *
+ * Two consumers: `lookupWardByAddress` (src/lib/geocode.ts) for
+ * point-in-polygon, and `GET /ward/<id>/boundary.json`
+ * (src/pages/ward/[id]/boundary.json.ts) for `wardBoundaryFeature` below.
  *
  * The id scheme here MUST match scripts/seed-wards.ts exactly, since the
  * number this module returns is used directly as `wards.id` (a foreign key
@@ -41,7 +44,7 @@ type WardFeatureIndex = {
 };
 
 // Module-level state. Populated once by loadWardPolygons(); read by
-// wardForPoint / wardBoundaryUrl. Not exported — callers only interact
+// wardForPoint / wardBoundaryFeature. Not exported — callers only interact
 // through the three functions below.
 let wardFeatures: WardFeatureIndex[] | null = null;
 let wardIdToFeature: Map<number, WardFeatureIndex> | null = null;
@@ -135,7 +138,7 @@ export async function loadWardPolygons(): Promise<void> {
 function requireLoaded(): { features: WardFeatureIndex[]; byId: Map<number, WardFeatureIndex> } {
   if (wardFeatures === null || wardIdToFeature === null) {
     throw new Error(
-      'geo: loadWardPolygons() has not been called yet — call it once at app boot before wardForPoint/wardBoundaryUrl',
+      'geo: loadWardPolygons() has not been called yet — call it before wardForPoint/wardBoundaryFeature',
     );
   }
   return { features: wardFeatures, byId: wardIdToFeature };
@@ -177,33 +180,13 @@ export function wardForPoint(lat: number, lng: number): number | null {
   return null;
 }
 
-/**
- * Static URL (+ feature ref) the client / MapLibre can use to fetch and
- * highlight this ward's polygon. nginx serves data/gba.geojson statically
- * (architecture.md §6/§14); the fragment after `#` is the feature's
- * boundaryRef (properties.id), which the client-side map code matches
- * against each feature's `properties.id` after fetching the file.
- *
- * Throws if loadWardPolygons() has not been called, or if wardId is not a
- * known wards.id.
- */
-export function wardBoundaryUrl(wardId: number): string {
-  const { byId } = requireLoaded();
-
-  const feature = byId.get(wardId);
-  if (!feature) {
-    throw new Error(`geo: unknown wards.id ${wardId} — no matching feature in data/gba.geojson`);
-  }
-
-  return `/data/gba.geojson#${feature.boundaryRef}`;
-}
 
 /**
  * One ward's boundary as a standalone GeoJSON Feature, for
  * `/ward/<id>/boundary.json` (src/pages/ward/[id]/boundary.json.ts) and the
  * map island that fetches it. Returns null for an id with no matching
  * feature — the route turns that into a 404 rather than throwing, unlike
- * `wardBoundaryUrl` above, whose callers already hold a real wards row.
+ * `wardForPoint` above, which answers a different question entirely.
  *
  * `properties` deliberately carries only what the client needs; the raw
  * source properties (corporation_id, ward_id, …) are not forwarded.
