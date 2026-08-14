@@ -10,9 +10,8 @@
  * intercepts the submit, calls `POST /api/booth-lookup` instead, and paints
  * the result inline so a JS-capable visitor never leaves the page.
  *
- * Unlike WardLookup there is no pincode/address branching here — booth
- * lookup only accepts a free-text address (see src/pages/api/booth-lookup.ts)
- * — and there is no pincode-shortlist result kind. `no_booth_data` and an
+ * Booth lookup accepts a free-text address only (see
+ * src/pages/api/booth-lookup.ts). `no_booth_data` and an
  * empty `booths: []` array are treated identically (both are the "we don't
  * have data for you yet" guided-link-out state — see that endpoint's
  * header), and `out_of_coverage`/`unavailable` both render their own
@@ -23,7 +22,14 @@
  * On any failure to fetch/parse — network error, non-2xx, bad JSON — this
  * lets the native form submission proceed (the no-JS server path), same
  * fallback discipline as WardLookup.
+ *
+ * Each rendered booth also gets a Google Maps directions link, built by the
+ * shared src/lib/maps-links.ts helper (spec §7) from the lat/lng the API
+ * already returns — no separate API call. FindBooth.astro's server-rendered
+ * POST branch renders the identical link from the same helper; keep both in
+ * sync (see that file's header) rather than letting one drift.
  */
+import { directionsUrl } from '../lib/maps-links';
 
 interface BoothRow {
   id: number;
@@ -45,7 +51,14 @@ function boothName(lang: string, booth: BoothRow): string {
   return lang === 'kn' && booth.nameKn ? booth.nameKn : booth.nameEn;
 }
 
-function renderBooths(container: HTMLElement, lang: string, label: string, booths: BoothRow[]): void {
+function renderBooths(
+  container: HTMLElement,
+  lang: string,
+  label: string,
+  directionsLabel: string,
+  directionsAriaTemplate: string,
+  booths: BoothRow[],
+): void {
   const list = document.createElement('ul');
   list.setAttribute('aria-label', label);
   for (const booth of booths) {
@@ -54,7 +67,23 @@ function renderBooths(container: HTMLElement, lang: string, label: string, booth
     name.textContent = boothName(lang, booth);
     const address = document.createElement('p');
     address.textContent = booth.address;
-    item.append(name, address);
+    const directions = document.createElement('a');
+    directions.href = directionsUrl(booth.lat, booth.lng);
+    directions.target = '_blank';
+    directions.rel = 'noopener noreferrer';
+    directions.textContent = directionsLabel;
+    // The visible text is the same word on every row, so without a
+    // per-booth accessible name a ward with several booths (one school
+    // often hosts several) renders a list of links that all announce
+    // identically — see the `__hints` entry for this key. `t()` lives on
+    // the server; this island imports no i18n table by design (file
+    // header), so the server hands over the TEMPLATE and the one
+    // substitution happens here.
+    directions.setAttribute(
+      'aria-label',
+      directionsAriaTemplate.replace(/\{boothName\}/g, () => boothName(lang, booth)),
+    );
+    item.append(name, address, directions);
     list.appendChild(item);
   }
   container.replaceChildren(list);
@@ -80,7 +109,14 @@ function renderResult(
         renderMessage(container, msgs.noBoothData ?? '');
         return;
       }
-      renderBooths(container, lang, msgs.boothLabel ?? '', data.booths);
+      renderBooths(
+        container,
+        lang,
+        msgs.boothLabel ?? '',
+        msgs.directions ?? '',
+        msgs.directionsAria ?? '',
+        data.booths,
+      );
       return;
     case 'no_booth_data':
       renderMessage(container, msgs.noBoothData ?? '');
@@ -114,6 +150,8 @@ export function initBoothLookup(root: ParentNode = document): void {
     noBoothData: form.dataset.msgNoBoothData ?? '',
     outOfCoverage: form.dataset.msgOutOfCoverage ?? '',
     unavailable: form.dataset.msgUnavailable ?? '',
+    directions: form.dataset.msgDirections ?? '',
+    directionsAria: form.dataset.msgDirectionsAria ?? '',
   };
 
   form.addEventListener('submit', (event) => {

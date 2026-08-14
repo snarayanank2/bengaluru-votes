@@ -28,7 +28,9 @@ function buildForm(lang: 'en' | 'kn' = 'en'): {
       data-msg-booth-label="${t(lang, 'findBooth.result.boothLabel')}"
       data-msg-no-booth-data="${t(lang, 'findBooth.result.noBoothData')}"
       data-msg-out-of-coverage="${t(lang, 'home.result.outOfCoverage')}"
-      data-msg-unavailable="${t(lang, 'findBooth.result.unavailable')}">
+      data-msg-unavailable="${t(lang, 'findBooth.result.unavailable')}"
+      data-msg-directions="${t(lang, 'findBooth.result.directions')}"
+      data-msg-directions-aria="${t(lang, 'findBooth.result.directionsAriaLabel')}">
       <input name="address" required />
       <button type="submit">Search</button>
       <div data-booth-result aria-live="polite"></div>
@@ -69,7 +71,7 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
     expect(() => initBoothLookup()).not.toThrow();
   });
 
-  it('POSTs { address } (never a pincode field — booth lookup has no pincode branch)', async () => {
+  it('POSTs { address } — the only input mode booth lookup has', async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ result: 'out_of_coverage' }) });
     const { form, input } = buildForm();
     initBoothLookup();
@@ -113,6 +115,78 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
       expect(result.getAttribute('aria-live')).toBe('polite');
       expect(result.textContent).toContain(BOOTH_A.nameEn);
       expect(result.textContent).toContain(BOOTH_A.address);
+    });
+
+    it('renders a directions link for each booth (spec §7)', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'booth', booths: [BOOTH_A] }),
+      });
+      const { form, input, result } = buildForm('en');
+      initBoothLookup();
+      input.value = '1 Test Street';
+
+      submit(form);
+      await flush();
+
+      const link = result.querySelector<HTMLAnchorElement>('a[href*="google.com/maps/dir"]');
+      expect(link).not.toBeNull();
+      expect(link!.href).toContain('destination=12.97%2C77.59');
+      expect(link!.rel).toContain('noopener');
+      expect(link!.target).toBe('_blank');
+      expect(link!.textContent).toBe(t('en', 'findBooth.result.directions'));
+      expect(link!.getAttribute('aria-label')).toBe(
+        t('en', 'findBooth.result.directionsAriaLabel', { boothName: BOOTH_A.nameEn }),
+      );
+    });
+
+    // A ward can return several booths — one school often hosts several — and
+    // the visible link text is the same word on every row. Without a per-booth
+    // accessible name they all announce identically and a screen-reader user
+    // navigating by link list cannot tell them apart. This is the case that
+    // was missing when the gap first shipped.
+    it('gives each booth of a multi-booth result its own accessible name', async () => {
+      const BOOTH_B = {
+        id: 2,
+        nameEn: 'Govt School B',
+        nameKn: 'ಸರ್ಕಾರಿ ಶಾಲೆ ಬಿ',
+        address: '2 Test Street',
+        lat: '12.98',
+        lng: '77.60',
+        wardId: 5025,
+      };
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'booth', booths: [BOOTH_A, BOOTH_B] }),
+      });
+      const { form, input, result } = buildForm('en');
+      initBoothLookup();
+      input.value = '1 Test Street';
+
+      submit(form);
+      await flush();
+
+      const links = Array.from(
+        result.querySelectorAll<HTMLAnchorElement>('a[href*="google.com/maps/dir"]'),
+      );
+      expect(links).toHaveLength(2);
+
+      const labels = links.map((a) => a.getAttribute('aria-label'));
+      expect(labels).toEqual([
+        t('en', 'findBooth.result.directionsAriaLabel', { boothName: BOOTH_A.nameEn }),
+        t('en', 'findBooth.result.directionsAriaLabel', { boothName: BOOTH_B.nameEn }),
+      ]);
+      // The whole point: the two names must differ.
+      expect(labels[0]).not.toBe(labels[1]);
+      // Visible text stays identical on both — only the accessible name differs.
+      expect(links.map((a) => a.textContent)).toEqual([
+        t('en', 'findBooth.result.directions'),
+        t('en', 'findBooth.result.directions'),
+      ]);
+      // And each still points at its own booth.
+      expect(links[0].href).toContain('destination=12.97%2C77.59');
+      expect(links[1].href).toContain('destination=12.98%2C77.60');
     });
 
     it('booth result in kn: renders the Kannada booth name', async () => {

@@ -122,7 +122,7 @@ describe('POST /api/booth-lookup', () => {
       [{ kind: 'ambiguous' }, 'ambiguous'],
       [{ kind: 'budget_exhausted' }, 'budget'],
       [{ kind: 'failed' }, 'failed'],
-    ] as const)('%o degrades to unavailable/%s (no pincode fallback for booths)', async (kind, reason) => {
+    ] as const)('%o degrades to unavailable/%s, handing off to the official EC finder', async (kind, reason) => {
       vi.mocked(lookupWardByAddress).mockResolvedValueOnce(kind as any);
       const res = await POST({ request: req({ address: 'Main Road' }) } as any);
       expect(await res.json()).toEqual({ result: 'unavailable', reason });

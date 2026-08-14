@@ -15,4 +15,4 @@ You don't need to enter any voter ID or personal registration details to use thi
 
 ## What if my address doesn't match a booth?
 
-If the lookup can't place your address, or booth-level data hasn't been loaded yet for your area, it points you to the official EC booth lookup instead of guessing — so you're never left without an answer. Unlike the ward finder, this lookup has no pincode-level fallback: it works from your address, or it hands you off to the official tool. If you're outside the GBA area, you'll get an explicit "not in the GBA area" message rather than an incorrect result.
+If the lookup can't place your address, or booth-level data hasn't been loaded yet for your area, it points you to the official EC booth lookup instead of guessing — so you're never left without an answer. Like the ward finder, this lookup works from your address, or it hands you off to the official tool. If you're outside the GBA area, you'll get an explicit "not in the GBA area" message rather than an incorrect result.

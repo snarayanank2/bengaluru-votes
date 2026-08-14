@@ -3,6 +3,13 @@ import { buildCsp } from '../../src/lib/csp';
 
 const NONCE = 'test-nonce-abc123==';
 
+// Every script-src exact-match assertion below includes these — the Google
+// Maps hosts (spec §8) live in the BASE script-src, so they appear on every
+// path, partner-with-us included, ahead of the reCAPTCHA hosts that only
+// that one path adds. See the "Google Maps hosts" describe block for the
+// substring-based coverage of this same fact.
+const MAPS_SCRIPT_SRC = 'https://maps.googleapis.com https://maps.gstatic.com';
+
 describe('src/lib/csp.ts#buildCsp', () => {
   describe('base policy (non-partner paths)', () => {
     it.each(['/', '/ward/57', '/candidate/some-slug', '/account', '/api/me', '/kn/ward/57'])(
@@ -10,12 +17,12 @@ describe('src/lib/csp.ts#buildCsp', () => {
       (pathname) => {
         const csp = buildCsp(NONCE, pathname);
         const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
-        expect(scriptSrc).toBe(`script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com`);
+        expect(scriptSrc).toBe(`script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC}`);
         expect(scriptSrc).not.toContain("'unsafe-inline'");
       },
     );
 
-    it('worker-src allows blob: (maplibre-gl web worker)', () => {
+    it('worker-src allows blob: (Google Maps JS API web worker)', () => {
       const csp = buildCsp(NONCE, '/ward/57');
       expect(csp).toContain("worker-src 'self' blob:");
     });
@@ -68,7 +75,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
         const csp = buildCsp(NONCE, pathname);
         const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
         expect(scriptSrc).toBe(
-          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com`,
+          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC} https://www.google.com https://www.gstatic.com`,
         );
       },
     );
@@ -85,7 +92,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
         const csp = buildCsp(NONCE, pathname);
         const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
         expect(scriptSrc).toBe(
-          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com`,
+          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC} https://www.google.com https://www.gstatic.com`,
         );
         expect(csp).toContain('frame-src https://www.google.com');
       },
@@ -113,5 +120,100 @@ describe('src/lib/csp.ts#buildCsp', () => {
   it('is a pure function: same inputs always produce the same output', () => {
     expect(buildCsp(NONCE, '/ward/57')).toBe(buildCsp(NONCE, '/ward/57'));
     expect(buildCsp('other-nonce', '/partner-with-us')).toBe(buildCsp('other-nonce', '/partner-with-us'));
+  });
+
+  describe('Google Maps hosts (spec §8)', () => {
+    const MAPS_HOSTS = ['https://maps.googleapis.com', 'https://maps.gstatic.com'];
+
+    it.each(['script-src', 'connect-src', 'img-src'])('allows the maps hosts in %s', (directive) => {
+      const csp = buildCsp('n0nce', '/ward/1');
+      const found = csp.split('; ').find((d) => d.startsWith(`${directive} `));
+      expect(found).toBeDefined();
+      for (const host of MAPS_HOSTS) expect(found).toContain(host);
+    });
+
+    // Regression: verified in a real browser on 2026-08-14. The Maps JS API
+    // pulls its UI font and icon stylesheets from fonts.googleapis.com, which
+    // the base policy blocked — three `violates the following Content
+    // Security Policy directive: "style-src …"` errors per ward page load.
+    // This is the one Maps failure the island's fallback CANNOT catch: a
+    // blocked subresource fails AFTER `container.textContent = ''`, so the
+    // visitor gets a broken map rather than the server-rendered fallback.
+    it('allows the Google font hosts the Maps JS API loads', () => {
+      const directives = buildCsp('n0nce', '/ward/1').split('; ');
+
+      const styleSrc = directives.find((d) => d.startsWith('style-src '));
+      expect(styleSrc).toContain('https://fonts.googleapis.com');
+
+      const fontSrc = directives.find((d) => d.startsWith('font-src '));
+      expect(fontSrc).toContain('https://fonts.gstatic.com');
+    });
+
+    // Regression: caught in a real browser on 2026-08-14, after the mocked
+    // island tests were already green. Places API (NEW) does not talk to
+    // maps.googleapis.com — it posts RPCs to places.googleapis.com. Without
+    // this, every keystroke in the ward-lookup autocomplete logged
+    // `violates ... connect-src` and the visitor saw an input that silently
+    // never suggested anything.
+    it('allows the Places API (New) RPC host in connect-src', () => {
+      const connectSrc = buildCsp('n0nce', '/')
+        .split('; ')
+        .find((d) => d.startsWith('connect-src '));
+
+      expect(connectSrc).toContain('https://places.googleapis.com');
+    });
+
+    // It is an RPC endpoint, not a script or image source — keep it out of
+    // the directives that don't need it rather than folding it into the
+    // shared maps host list.
+    it('does not add the Places RPC host to script-src or img-src', () => {
+      const directives = buildCsp('n0nce', '/').split('; ');
+
+      expect(directives.find((d) => d.startsWith('script-src '))).not.toContain(
+        'https://places.googleapis.com',
+      );
+      expect(directives.find((d) => d.startsWith('img-src '))).not.toContain(
+        'https://places.googleapis.com',
+      );
+    });
+
+    // fonts.gstatic.com serves the font FILES, maps.gstatic.com serves map
+    // assets, and www.gstatic.com is reCAPTCHA's — three different hosts that
+    // differ only by subdomain. Pin them so a future edit can't collapse one
+    // into another and silently widen the policy.
+    it('keeps the three gstatic hosts distinct', () => {
+      const directives = buildCsp('n0nce', '/ward/1').split('; ');
+
+      const fontSrc = directives.find((d) => d.startsWith('font-src '));
+      expect(fontSrc).not.toContain('https://maps.gstatic.com');
+      expect(fontSrc).not.toContain('https://www.gstatic.com');
+
+      const scriptSrc = directives.find((d) => d.startsWith('script-src '));
+      expect(scriptSrc).not.toContain('https://fonts.gstatic.com');
+    });
+
+    it('keeps the maps hosts on every route, not just the ward page', () => {
+      for (const path of ['/', '/kn/', '/voting-guide', '/partner-with-us']) {
+        expect(buildCsp('n0nce', path)).toContain('https://maps.googleapis.com');
+      }
+    });
+
+    it('still adds the reCAPTCHA hosts on /partner-with-us only', () => {
+      expect(buildCsp('n0nce', '/partner-with-us')).toContain('https://www.gstatic.com');
+      expect(buildCsp('n0nce', '/ward/1')).not.toContain('https://www.gstatic.com');
+    });
+
+    it('still forbids unsafe-inline in script-src', () => {
+      const csp = buildCsp('n0nce', '/ward/1');
+      const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src '));
+      expect(scriptSrc).toBeDefined();
+      // Strengthened from a whole-policy substring check (which passed only
+      // incidentally — style-src's 'unsafe-inline' happens to be followed by
+      // `;` rather than a space, so `not.toContain("'unsafe-inline' ")`
+      // against the full CSP would silently stop testing anything if
+      // directive order ever changed) to asserting against the script-src
+      // directive specifically, where the nonce-only posture actually lives.
+      expect(scriptSrc).not.toContain("'unsafe-inline'");
+    });
   });
 });

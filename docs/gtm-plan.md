@@ -192,7 +192,7 @@ The public-facing subset of these figures is what `/data` publishes (§7).
 - **WhatsApp Business API.** Template approval has weeks of lead time; 16 templates across EN/KN (seven sends plus OTP). Belongs in Phase 0.
 - **Electoral roll deadline date.** R1's anchor. Must be tracked independently of N and E.
 - **Booth-level data.** Required for C3 and F1 to be worth sending.
-- **Ward + delimitation data. ✓ In hand** (`data/gba.geojson`, 369 wards with boundaries + metadata). This gated Phase 1 entirely — the teaser *is* the ward finder — and is now resolved: `data/gba.geojson` is the authoritative final delimitation. The pincode-hedge postal data is the only small remainder.
+- **Ward + delimitation data. ✓ In hand** (`data/gba.geojson`, 369 wards with boundaries + metadata). This gated Phase 1 entirely — the teaser *is* the ward finder — and is now resolved: `data/gba.geojson` is the authoritative final delimitation. The pincode-hedge postal data is no longer a remainder to track: pincode lookup was removed outright, 2026-08-14 (PRD §5.1) — the boundary data it hedged against arrived, and Places Autocomplete now covers ambiguous addresses instead.
 - **Press assets.** Logos, screenshots, and named spokespeople with quotes, for `/press` in Phase 1.
 - **Google Analytics property.** Backs the visitor target and funnel/attribution measurement; must be live (and disclosed in `/privacy`) from the Phase 1 teaser, or the unique-visitor baseline is lost.
 

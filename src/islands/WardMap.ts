@@ -1,89 +1,72 @@
 /**
- * WardMap — MapLibre GL JS island rendering a single ward's boundary
- * polygon (IA §3.2, design-system.md §8: "Maps (ward boundary, booth
- * locator) use a desaturated gray basemap with the boundary in
- * `--oc-forest` at 2px and `--forest-tint` fill at 30% — no red pins, no
- * party-colored anything on maps").
+ * WardMap — the ward boundary map (IA §3.2), on the Google Maps JavaScript
+ * API. Migrated from MapLibre 2026-08-13; design
+ * docs/superpowers/specs/2026-08-13-google-maps-migration-design.md §5.
  *
- * BASEMAP NOTE: design-system.md §8 asks for a "desaturated gray basemap".
- * We have no tile-provider key/vendor wired up yet (architecture.md §3/§6
- * lists MapLibre as the decided renderer but doesn't provision a tile
- * source) — provisioning one is a deploy-time concern for a later task.
- * Until then this renders a plain neutral background layer (no raster
- * tiles) plus the ward polygon, which satisfies the boundary-styling rules
- * above without inventing a tile dependency this task wasn't scoped to add.
+ * The basemap is styled by a cloud Map ID (docs/gcp.md §4), NOT in code —
+ * that is what satisfies design-system.md §8's "desaturated gray basemap",
+ * and it is why `buildBaseStyle()` (MapLibre's flat background layer, the
+ * closest thing this page had to a basemap) is gone. The ward polygon
+ * itself is still drawn here, and its colors are still read off the page's
+ * CSS custom properties at init time (`readMapColors`) rather than
+ * hardcoded: tests/unit/tokens.test.ts bans hex literals anywhere under
+ * src/ except tokens.css. Per design-system.md §8 the boundary is
+ * `--oc-forest` at 2px over a 30% `--forest-tint` fill; no marker or pin is
+ * ever created, and nothing here is keyed to party/candidate data.
  *
- * Colors are read off the page's own CSS custom properties at init time
- * (`readMapColors`) rather than hardcoded — tests/unit/tokens.test.ts bans
- * hex color literals anywhere under src/ except tokens.css, and this keeps
- * the map in sync with the design system's single source of truth for
- * color. No markers/pins are ever added, and nothing here is keyed to
- * party/candidate data — this island only ever draws one neutral polygon.
+ * FAILING CLOSED IS THE CONTRACT. The container carries a server-rendered
+ * fallback (`ward.map.fallback` — Ward.astro). Every failure path below
+ * leaves it in place, and the container is cleared ONLY once a real map
+ * object exists — after which any further failure puts the fallback back.
+ * A working map is a bonus; the ward page never depends on one. Two
+ * Google-specific failures the pre-migration MapLibre code did not have to
+ * handle:
  *
- * Lazy + progressive enhancement:
- *   - `initWardMap` wires every `[data-ward-map]` container but only
- *     constructs the actual MapLibre map once the container scrolls into
- *     view (IntersectionObserver), falling back to an immediate mount if
- *     IntersectionObserver isn't available.
- *   - The container's markup already carries a static fallback text ("Map
- *     of ward boundary" — Ward.astro) for no-JS visitors. If maplibre-gl,
- *     the geojson fetch, or the feature lookup fails for any reason, this
- *     module simply returns without touching the container — the fallback
- *     text is left exactly as the server rendered it. A working map is a
- *     bonus, never a requirement for the rest of the ward page to work.
+ *   - the loader promise rejecting (script blocked, offline, CSP), and
+ *   - `window.gm_authFailure`, which fires AFTER a successful script load
+ *     when the key is rejected (bad referrer, billing off). It arrives
+ *     asynchronously, long after `mountWardMap` has returned, so it has to
+ *     put the fallback BACK.
  *
- * `maplibre-gl` (and its CSS) is imported only here — Ward.astro is the
- * only page that imports this module, so pages with no map never pull
- * MapLibre into their bundle.
+ * `gm_authFailure` is a GLOBAL, SINGLE-SLOT window callback — not per-map.
+ * Exactly one handler is created here, and every mounted container
+ * registers itself with it (`mounted`). A second map island added later
+ * must reuse this registry rather than assigning `window.gm_authFailure`
+ * again, or it will silently clobber this one and its containers will keep
+ * a blank map forever.
+ *
+ * Configuring the Maps API is process-global in the same way, so it lives
+ * in src/lib/maps-loader.ts and is shared with the ward-lookup autocomplete
+ * island — see that module's header. Do not call `setOptions` directly here.
+ *
+ * The key and Map ID arrive as data attributes from server frontmatter
+ * (Ward.astro -> src/lib/maps-config.ts), never as build-time PUBLIC_*
+ * variables — see that module's header for why.
  */
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import { configureMapsApi, importLibrary } from '../lib/maps-loader';
 
 // ---------------------------------------------------------------------------
-// Minimal GeoJSON shapes (we only ever read `properties.id` and
-// `geometry.coordinates` — no need for the full @types/geojson surface).
+// Minimal GeoJSON shapes — mirrors `WardBoundaryFeature` in src/lib/geo.ts,
+// which is what /ward/<id>/boundary.json returns. Declared structurally here
+// rather than imported so this client bundle never pulls in the server's geo
+// module (and, through it, node:fs).
 // ---------------------------------------------------------------------------
 
-export interface GeoJSONFeatureLike {
+type Position = [number, number, ...number[]];
+
+export interface WardBoundaryFeatureLike {
   type: 'Feature';
-  properties: Record<string, unknown> | null;
+  properties: { id: string; wardId: number };
   geometry: { type: string; coordinates: unknown };
 }
 
-export interface GeoJSONCollectionLike {
-  type: 'FeatureCollection';
-  features: GeoJSONFeatureLike[];
-}
-
-type Position = [number, number, ...number[]];
 type LngLatBounds = [[number, number], [number, number]];
 
 // ---------------------------------------------------------------------------
-// Pure helpers — exported for direct unit testing (no MapLibre/WebGL/fetch
-// involved). See tests/unit/ward-map-island.test.ts.
+// Pure helpers — exported for direct unit testing (no Google API, no network).
 // ---------------------------------------------------------------------------
 
-/**
- * Splits a `wardBoundaryUrl()`-shaped URL (`/data/gba.geojson#<ref>` — see
- * src/lib/geo.ts) into its fetchable path and the feature ref to look up
- * once fetched. A URL with no `#` is returned as-is with an empty ref.
- */
-export function parseBoundaryUrl(url: string): { path: string; ref: string } {
-  const hashIndex = url.indexOf('#');
-  if (hashIndex === -1) return { path: url, ref: '' };
-  return { path: url.slice(0, hashIndex), ref: url.slice(hashIndex + 1) };
-}
-
-/**
- * Finds the feature in `collection` whose `properties.id` matches `ref`
- * (the same composite feature-ref string data/gba.geojson uses, and that
- * `wards.boundaryRef` stores per row — see src/lib/geo.ts / src/db/schema.ts).
- */
-export function findWardFeature(collection: GeoJSONCollectionLike, ref: string): GeoJSONFeatureLike | undefined {
-  return collection.features.find((feature) => String(feature.properties?.id ?? '') === ref);
-}
-
-/** Recursively visits every [lng, lat, ...] position nested in a Polygon/MultiPolygon coordinates tree. */
+/** Recursively visits every [lng, lat, ...] position in a Polygon/MultiPolygon tree. */
 function visitPositions(coords: unknown, visit: (pos: Position) => void): void {
   if (!Array.isArray(coords) || coords.length === 0) return;
   if (typeof coords[0] === 'number') {
@@ -93,11 +76,8 @@ function visitPositions(coords: unknown, visit: (pos: Position) => void): void {
   for (const child of coords as unknown[]) visitPositions(child, visit);
 }
 
-/**
- * Bounding box `[[minLng, minLat], [maxLng, maxLat]]` for a Polygon or
- * MultiPolygon feature — the shape MapLibre's `fitBounds()` expects.
- */
-export function computeFeatureBounds(feature: GeoJSONFeatureLike): LngLatBounds {
+/** Bounding box `[[minLng, minLat], [maxLng, maxLat]]` for a Polygon or MultiPolygon. */
+export function computeFeatureBounds(feature: WardBoundaryFeatureLike): LngLatBounds {
   let minLng = Infinity;
   let minLat = Infinity;
   let maxLng = -Infinity;
@@ -117,120 +97,148 @@ export function computeFeatureBounds(feature: GeoJSONFeatureLike): LngLatBounds 
 }
 
 export interface WardMapColors {
-  background: string;
   fill: string;
   line: string;
 }
 
 /**
- * Reads the three colors this map needs off `root`'s computed CSS custom
- * properties (design-system.md §8: `--gray-100` neutral background,
- * `--forest-tint` fill, `--oc-forest` boundary line). Never hardcodes a hex
- * value (tests/unit/tokens.test.ts bans hex literals outside tokens.css) —
- * the named-color fallbacks below are only reached if tokens.css somehow
- * failed to load, and are deliberately neutral (no red, no party hue).
+ * Reads the two polygon colors off `root`'s computed CSS custom properties
+ * (design-system.md §8: `--forest-tint` fill, `--oc-forest` boundary line).
+ * Never hardcodes a hex value; the named-color fallbacks are reached only if
+ * tokens.css failed to load and are deliberately neutral — no red, no party
+ * hue. The basemap background is no longer read here: the cloud Map ID owns
+ * it now, where `buildBaseStyle`'s empty background layer used to.
  */
 export function readMapColors(root: HTMLElement = document.documentElement): WardMapColors {
   const style = getComputedStyle(root);
   const read = (name: string, fallback: string): string => style.getPropertyValue(name).trim() || fallback;
 
   return {
-    background: read('--gray-100', 'gainsboro'),
     fill: read('--forest-tint', 'gray'),
     line: read('--oc-forest', 'darkslategray'),
   };
 }
 
+// ---------------------------------------------------------------------------
+// Process-global Google state: one API configuration, one auth-failure
+// handler, many containers. See the file header.
+// ---------------------------------------------------------------------------
+
+/** Containers whose fallback must be restored if Google rejects the key. */
+const mounted = new Map<HTMLElement, string>();
+
+function restoreFallback(container: HTMLElement, fallbackHtml: string): void {
+  container.innerHTML = fallbackHtml;
+}
+
 /**
- * The minimal MapLibre style spec for the "no tile basemap yet" case (see
- * file header): just a flat background layer, no sources/raster tiles.
+ * The one `gm_authFailure` handler. Created once at module scope so its
+ * identity is stable for the lifetime of the page — `installAuthFailureHandler`
+ * below compares against it rather than tracking a boolean, so that the slot
+ * being emptied (or never populated) still results in exactly one handler
+ * rather than none.
  */
-export function buildBaseStyle(colors: WardMapColors): maplibregl.StyleSpecification {
-  return {
-    version: 8,
-    sources: {},
-    layers: [
-      {
-        id: 'background',
-        type: 'background',
-        paint: { 'background-color': colors.background },
-      },
-    ],
-  };
+function handleAuthFailure(): void {
+  for (const [container, fallbackHtml] of mounted) restoreFallback(container, fallbackHtml);
+  mounted.clear();
+}
+
+function installAuthFailureHandler(): void {
+  const win = window as unknown as { gm_authFailure?: () => void };
+  if (win.gm_authFailure === handleAuthFailure) return;
+  win.gm_authFailure = handleAuthFailure;
 }
 
 // ---------------------------------------------------------------------------
-// DOM/MapLibre wiring
+// Mounting
 // ---------------------------------------------------------------------------
-
-function addWardBoundaryLayers(map: maplibregl.Map, feature: GeoJSONFeatureLike, colors: WardMapColors): void {
-  map.addSource('ward-boundary', { type: 'geojson', data: feature as GeoJSON.Feature });
-  map.addLayer({
-    id: 'ward-boundary-fill',
-    type: 'fill',
-    source: 'ward-boundary',
-    paint: { 'fill-color': colors.fill, 'fill-opacity': 0.3 },
-  });
-  map.addLayer({
-    id: 'ward-boundary-line',
-    type: 'line',
-    source: 'ward-boundary',
-    paint: { 'line-color': colors.line, 'line-width': 2 },
-  });
-}
 
 /**
- * Fetches the ward's boundary geojson, finds its feature, and mounts a
- * MapLibre map into `container`. Any failure along the way (missing
- * `data-boundary-url`, network error, non-2xx, bad JSON, feature not found)
- * simply returns without touching `container` — its server-rendered no-JS
- * fallback text stays in place. Exported for direct testing.
+ * Fetches this ward's boundary, loads the Maps JS API, and mounts a map into
+ * `container`. Any failure — missing attribute, network error, non-2xx, a
+ * body that is not a Feature, loader rejection — returns without touching
+ * `container`, leaving its server-rendered fallback exactly as the server
+ * sent it. Failures after the container has been taken over put the fallback
+ * back: a ward page showing a bare basemap with no boundary on it is worse
+ * than one showing the fallback text. Exported for direct testing.
  */
 export async function mountWardMap(container: HTMLElement): Promise<void> {
   const boundaryUrl = container.dataset.boundaryUrl;
-  if (!boundaryUrl) return;
+  const apiKey = container.dataset.mapsKey;
+  const mapId = container.dataset.mapsMapId;
+  if (!boundaryUrl || !apiKey) return;
 
-  const { path, ref } = parseBoundaryUrl(boundaryUrl);
-  if (!path || !ref) return;
-
-  let collection: GeoJSONCollectionLike;
+  let feature: WardBoundaryFeatureLike;
   try {
-    const res = await fetch(path);
+    const res = await fetch(boundaryUrl);
     if (!res.ok) return;
-    collection = (await res.json()) as GeoJSONCollectionLike;
+    feature = (await res.json()) as WardBoundaryFeatureLike;
   } catch {
     return;
   }
 
-  const feature = findWardFeature(collection, ref);
-  if (!feature) return;
+  if (feature?.type !== 'Feature' || !feature.geometry) return;
+
+  // `Map` lives in the `maps` library and `LatLngBounds` in `core`. Both are
+  // taken off the objects `importLibrary` resolves with, never off the
+  // `google.maps` global: that global only exists as a side effect of the
+  // loader script, so depending on it would couple this island to script
+  // load order and make it untestable.
+  let maps: google.maps.MapsLibrary;
+  let core: google.maps.CoreLibrary;
+  try {
+    configureMapsApi(apiKey);
+    [maps, core] = await Promise.all([importLibrary('maps'), importLibrary('core')]);
+  } catch {
+    // Script blocked, offline, or refused by CSP. Fallback stays.
+    return;
+  }
 
   const colors = readMapColors();
-  container.textContent = ''; // clear the static no-JS fallback now that the map is taking over
+  const [[minLng, minLat], [maxLng, maxLat]] = computeFeatureBounds(feature);
 
-  const map = new maplibregl.Map({
-    container,
-    style: buildBaseStyle(colors),
-    attributionControl: false,
-  });
+  // Everything that can fail before a map exists has now succeeded, so it is
+  // safe to take the container over. Keep the fallback markup: gm_authFailure
+  // (and the catch below) must be able to put it back.
+  const fallbackHtml = container.innerHTML;
+  container.textContent = '';
 
-  map.on('load', () => {
-    addWardBoundaryLayers(map, feature, colors);
-    map.fitBounds(computeFeatureBounds(feature), { padding: 24, animate: false });
-  });
+  try {
+    const map = new maps.Map(container, {
+      mapId: mapId || undefined,
+      disableDefaultUI: true,
+      clickableIcons: false,
+    });
+
+    mounted.set(container, fallbackHtml);
+    installAuthFailureHandler();
+
+    map.data.addGeoJson(feature);
+    map.data.setStyle({
+      fillColor: colors.fill,
+      fillOpacity: 0.3,
+      strokeColor: colors.line,
+      strokeWeight: 2,
+      clickable: false,
+    });
+
+    map.fitBounds(new core.LatLngBounds({ lat: minLat, lng: minLng }, { lat: maxLat, lng: maxLng }), 24);
+  } catch {
+    mounted.delete(container);
+    restoreFallback(container, fallbackHtml);
+  }
 }
 
 /**
- * Wires every `[data-ward-map]` container under `root` (defaults to the
- * whole document — there is exactly one on the Ward page, but scoping to a
- * root keeps this testable against a fragment, matching WardLookup.ts's
- * pattern). Safe to call when no container is present (does nothing).
+ * Wires every `[data-ward-map]` container under `root`. Safe to call when
+ * none is present (does nothing) — which is exactly what happens when
+ * MAPS_ENABLED is off, since Ward.astro then renders the fallback without
+ * the `data-ward-map` hook.
  *
- * Lazy: the real MapLibre map for a given container is only constructed
- * once that container scrolls into view, via IntersectionObserver — a ward
- * page whose map sits below the fold never pays MapLibre's init cost until
- * it's actually seen. Falls back to mounting immediately if
- * IntersectionObserver isn't available in this environment.
+ * Lazy: the map is constructed only once its container scrolls into view, so
+ * a ward page whose map sits below the fold never spends a (billed) map load
+ * on a visitor who never sees it — spec §2. Falls back to mounting
+ * immediately where IntersectionObserver is absent.
  */
 export function initWardMap(root: ParentNode = document): void {
   const containers = Array.from(root.querySelectorAll<HTMLElement>('[data-ward-map]'));

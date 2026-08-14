@@ -33,7 +33,7 @@
  * `dist/content` -> `../content` after every fresh `npm run build`. This
  * mirrors a step the Dockerfile ALREADY does deliberately (see its own
  * "Runtime file dependencies read straight off disk" comment) — because
- * src/lib/geo.ts / src/lib/pincode.ts / src/i18n/content.ts resolve their
+ * src/lib/geo.ts / src/i18n/content.ts resolve their
  * data files as `path.join(__dirname, '..', '..', 'data'|'content', ...)`
  * from wherever esbuild places their compiled chunk (`dist/server/chunks/`),
  * which is `dist/data`/`dist/content`, NOT the repo-root `data`/`content`

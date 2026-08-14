@@ -17,6 +17,7 @@ This serves a real election. Demo/fixture data is deliberately unmistakable as f
 - `docs/architecture.md` — the technical design. Section numbers referenced throughout the source (`architecture §5`, `§9`, `§13`) are load-bearing; code comments point at them.
 - `docs/information-architecture.md` — canonical URL/route map: every page and modal with its exact URL and access level.
 - `docs/design-system.md`, `docs/gtm-plan.md` (campaign calendar the `jobs` container runs), `docs/project-plan.md`, `docs/project-dependencies.md`.
+- `docs/gcp.md` — Google Cloud credential provisioning (Geocoding, Maps JS, Places, Custom Search, reCAPTCHA, GA4): what to create in which console and which env var it becomes. `deploy/runbook.md`'s env var table is the authority on what each variable does at runtime; `gcp.md` is how the values are obtained.
 
 Source comments cite "Task NN" throughout — historical task briefs, mostly no longer in the repo. Treat them as provenance, not as files to find.
 
@@ -45,7 +46,6 @@ Seeds (order matters — `seed:dev` depends on wards existing):
 npm run seed:wards          # the real 369 wards, from data/gba.geojson
 npm run seed:dev            # fictional demo content; REFUSES under NODE_ENV=production
 npm run seed:admin -- <email>   # idempotent; the ONLY place a user becomes 'admin'
-npm run build-pincode       # regenerates data/pincode-wards.json (still a placeholder)
 ```
 
 ### Running the app locally
@@ -155,7 +155,8 @@ Anonymous citizen (no account, most traffic, read-only) · Registered citizen ·
 ## Gotchas that bite silently
 
 - **`SITE_ORIGIN` / `EXTRA_ALLOWED_ORIGIN` are build-time.** `astro.config.mjs` resolves `site` and `security.allowedDomains` once, at build, against two hard-coded `*.opencity.in` hostnames. An image built without them for any other host serves every GET with a healthy 200 and **403s every POST** — nothing in `docker compose ps`, the healthcheck, or the logs indicates it. Any deploy verification must include a real POST.
-- **`data/pincode-wards.json` is a 12-row placeholder.** Real Bengaluru pincodes report "out of coverage" until `npm run build-pincode` is run and the result committed. Not a bug in the lookup code.
+- **Ward lookup has no fallback.** Pincode lookup was removed 2026-08-14 (`src/pages/api/ward-lookup.ts` header): the table behind it never advanced past a 12-row placeholder, so it told citizens to try something that could not work. The consequence is that Google geocoding is now the *only* path to a ward — exhausting `GEOCODE_DAILY_BUDGET` (default 2000/day, deliberately unchanged) or a Google outage takes ward lookup down, and the citizen sees an explicit "try again shortly" message. There is no browsable ward list to fall back to.
+- **The ward map (Google Maps JS API, `src/islands/WardMap.ts`) needs three env vars to render at all**, not one: `MAPS_ENABLED` exactly `'true'` *and* a non-empty `GOOGLE_MAPS_BROWSER_KEY` *and* a non-empty `GOOGLE_MAPS_MAP_ID` (`src/lib/maps-config.ts`'s `mapsConfig().enabled`). Miss any one of the three and the map silently doesn't mount — `Ward.astro` renders the server-side fallback text instead, with no error anywhere. The same key also gates Places Autocomplete on the home-page ward-lookup form.
 - **`/data/gba.geojson` is not in `public/`.** Production serves it from the nginx static volume, populated by the `static-init` one-shot, which **does not re-run** on `up -d` once it has succeeded — stale CSS/JS after a deploy usually means it needs `docker compose run --rm static-init`.
 - Unset vendor keys (`SENDGRID_*`, `TWILIO_*`, `GOOGLE_*`, `ANTHROPIC_API_KEY`, `RECAPTCHA_*`, `SENTRY_DSN`) each degrade to a documented no-op rather than an error. `deploy/runbook.md` has the exhaustive table with what each one's absence costs.
 - **No off-box backup exists.** The nightly `scripts/backup.sh` cron fails every night by design until a restic target is chosen (`architecture.md` §10, dependency register §6.9). Losing the box's disk loses everything. Don't read the working backup *mechanism* as a working backup.

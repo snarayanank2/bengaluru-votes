@@ -1,0 +1,19 @@
+# Local override that feeds vendor keys into the local stack.
+#
+# compose.local.yml deliberately leaves every vendor key unset and says so in
+# its own comment ("Add them to a local override file if you need to exercise
+# those paths"). This is that file. It carries NO secrets itself — those live
+# in deploy/.env.local, which .gitignore's `.env.*` rule keeps out of the repo.
+#
+# Usage:
+#   docker compose -f deploy/compose.local.yml \
+#                  -f deploy/compose.local.override.yml up --build -d
+#
+# `environment:` entries in compose.local.yml take precedence over `env_file`,
+# so nothing here can override the local stack's safety settings
+# (SENDS_DISABLED, SESSION_SECRET, DATABASE_URL) even by accident.
+
+services:
+  app:
+    env_file:
+      - ./.env.local

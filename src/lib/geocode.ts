@@ -4,11 +4,15 @@
  * ============================================================================
  * GOOGLE MAPS PLATFORM TERMS CONSTRAINT — READ BEFORE CHANGING THIS FILE
  * ============================================================================
- * Dependency register §6.4: Google Maps Platform's terms restrict using
- * Google Maps content — geocoding results included — in an application
- * that displays a NON-GOOGLE map. This platform's map is MapLibre (see
- * src/lib/geo.ts), which is exactly the pattern that restriction targets.
- * The way this stays compliant is that geocoding runs SERVER-SIDE and
+ * Dependency register §6.4 USED to bite here: Google Maps Platform's terms
+ * restrict using Google Maps content — geocoding results included — in an
+ * application that displays a NON-GOOGLE map, and this platform's map was
+ * MapLibre. That is no longer true; rendering moved to the Google Maps JS
+ * API on 2026-08-14 and §6.4 is closed.
+ *
+ * THE RULE BELOW STAYS ANYWAY, ON PRIVACY GROUNDS. It is no longer a
+ * licensing requirement, but it is still how this platform avoids holding
+ * citizens' locations: geocoding runs SERVER-SIDE and
  * returns A WARD, NEVER COORDINATES — the cache (`geocode_cache`, see
  * src/db/schema.ts) stores normalized-address → ward-ID ONLY, the
  * platform's own derived conclusion, never Google's coordinates or any
@@ -24,9 +28,15 @@
  * ============================================================================
  *
  * A daily geocode budget (architecture.md §13; dependency register §6.5)
- * degrades the caller's endpoint to pincode lookup (src/lib/pincode.ts)
- * once exhausted — see the `budget_exhausted` result below, backed by
- * src/lib/budgets.ts's shared counter.
+ * stops calls once exhausted — see the `budget_exhausted` result below,
+ * backed by src/lib/budgets.ts's shared counter.
+ *
+ * WHAT EXHAUSTING IT NOW COSTS. Until 2026-08-14 `budget_exhausted`
+ * degraded the caller to pincode lookup. That path was removed (see the
+ * header of src/pages/api/ward-lookup.ts), so this module is now the ONLY
+ * way to resolve a ward: exhausting the budget takes ward lookup down
+ * rather than making it cheaper. The cap was deliberately left at 2000/day
+ * anyway; if that turns out to be wrong, raise GEOCODE_DAILY_BUDGET.
  *
  * VIEWPORT BIAS, NOT A HARD LOCALITY FILTER — this matters for GBA coverage.
  * The GBA (Greater Bengaluru Authority) is the merged corporation: it
@@ -143,8 +153,8 @@ async function cacheResult(normalizedAddress: string, wardId: number | null): Pr
  *  1. Normalize (cache key).
  *  2. Cache hit -> return immediately. No API call, no budget spend.
  *  3. Cache miss -> consume one unit of today's geocode budget. Exhausted
- *     -> `budget_exhausted` WITHOUT calling Google (caller degrades to
- *     pincode lookup).
+ *     -> `budget_exhausted` WITHOUT calling Google (the caller surfaces
+ *     this as an outage — there is no cheaper fallback any more).
  *  4. Call Google Geocoding, server-side only. ZERO_RESULTS is cached as
  *     "out of coverage" (null). Multiple results, or a single result Google
  *     itself flags as a `partial_match`, are `ambiguous` and NOT cached

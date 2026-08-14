@@ -499,8 +499,11 @@ here in the same PR.
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | yes (WhatsApp) | WhatsApp OTP/campaign sends (`src/lib/send/twilio.ts`). |
 | `TWILIO_WHATSAPP_FROM` | yes (WhatsApp) | The approved WhatsApp sending number. |
 | `TWILIO_OTP_TEMPLATE_SID` | yes (WhatsApp OTP) | Approved WhatsApp OTP Content API template SID (`src/lib/otp.ts`) — unset until WhatsApp onboarding completes (PRD §10); until then WhatsApp OTP requests degrade to `send_failed` by design. |
-| `GOOGLE_GEOCODING_API_KEY` | yes (address ward-lookup) | Google Geocoding API. |
-| `GEOCODE_DAILY_BUDGET` | recommended | Daily geocode call cap (architecture §13 cost-amplification guard); degrades to pincode lookup when exhausted. |
+| `GOOGLE_GEOCODING_API_KEY` | yes — the ONLY path to a ward | Google Geocoding API. Pincode lookup was removed 2026-08-14, so this is the sole path from an address to a ward, with no fallback. Unset (or Google unreachable) means every lookup returns `unavailable`. |
+| `GEOCODE_DAILY_BUDGET` | recommended | Daily geocode call cap (architecture §13 cost-amplification guard). **Exhausting it now takes ward lookup DOWN** — pincode lookup was removed 2026-08-14 and there is no fallback left. Default 2000/day. |
+| `GOOGLE_MAPS_BROWSER_KEY` | yes (ward map + address autocomplete) | Referrer-restricted browser key, shared by the ward boundary map (`src/islands/WardMap.ts`) and Places Autocomplete on the ward-lookup form (`src/islands/WardLookup.ts`), both gated through `src/lib/maps-config.ts`'s `mapsConfig().enabled`. Unset means both are absent; the ward page and the ward-lookup input render their server-rendered fallback markup, which is identical whether or not JS runs. `docs/gcp.md` §3. |
+| `GOOGLE_MAPS_MAP_ID` | yes (ward map — required by the `enabled` gate) | Cloud map style (`docs/gcp.md` §4) — required, not just recommended: it's the only place in code that enforces the neutrality rule (no party-affiliated look, no red markers). Unset means `mapsConfig().enabled` is false, so the map does not render at all; the ward page renders its server-rendered fallback markup instead of an unstyled stock basemap. |
+| `MAPS_ENABLED` | yes to show maps | Kill switch (`src/lib/maps-config.ts`) — must be exactly `true`, and both `GOOGLE_MAPS_BROWSER_KEY` and `GOOGLE_MAPS_MAP_ID` must also be non-empty, for the map to render. Sheds client-side map spend without a rebuild when a budget alert fires. |
 | `GOOGLE_SEARCH_API_KEY` / `GOOGLE_SEARCH_CX` | optional | Programmable Search for news-link suggestions (`jobs/news-suggest.ts`); job no-ops (logs + exits 0) until both are set. |
 | `NEWS_QUERY_DAILY_BUDGET` | recommended | Daily query cap for the above. |
 | `ANTHROPIC_API_KEY` | yes (Kannada MT/extraction) | Curator-publish-triggered translation/extraction calls; unset means those calls no-op to `'pending'` and `jobs/translate-retry.ts` keeps retrying. |
@@ -551,6 +554,28 @@ npm run translate -- --check   # bilingual completeness (architecture §9)
 npm run typecheck
 npm test
 ```
+
+**Known pre-deploy step for `google-maps-migration`:** `npm run translate -- --check`
+fails on this branch as committed, listing:
+
+- `findBooth.result.directions`
+- `findBooth.result.directionsAriaLabel`
+- `home.form.helper`
+- `home.result.ambiguous`
+- `home.result.unavailable`
+- `content/pages/kn/find-booth.md`
+
+These Kannada strings (for the booth directions links, and for the
+address-only ward lookup that replaced pincode search) were hand-written in
+`src/i18n/kn.json` / `content/pages/kn/find-booth.md` with no `__hashes`
+entry, because `ANTHROPIC_API_KEY` was unavailable in the environment that
+implemented them — hand-writing the hash would forge translation provenance
+and freeze the strings past regeneration, so that was deliberately not done.
+**Before deploying this branch:** run `npm run translate` with a real
+`ANTHROPIC_API_KEY` set, review the regenerated Kannada, and commit it so
+`--check` passes clean like every other deploy. This has not been done yet —
+`ANTHROPIC_API_KEY` remains unavailable in the environment that built this
+branch.
 
 ### Staging
 
@@ -646,7 +671,7 @@ tells you nothing about your actual change.
 curl -sS -o /dev/null -w '%{http_code}\n' https://<host>/healthz
 curl -sS -X POST https://<host>/api/ward-lookup \
   -H 'content-type: application/json' -H 'Origin: https://<host>' \
-  -d '{"pincode":"560102"}'      # 403 here means rebuild
+  -d '{"address":"MG Road, Bengaluru"}'   # 403 here means rebuild
 ```
 
 ### Cold boot ordering
@@ -735,11 +760,19 @@ nothing to hit. Before the real run, do ONE of:
    fork of staging's behavior.
 2. Run this specific k6 test against the **production** hostname during a
    pre-announcement or off-peak window (before public traffic exists, or
-   late night), accepting the small residual risk. This script's traffic is
-   low-risk even there: `/api/ward-lookup` is only ever called in **pincode
-   mode**, which never spends the Google geocode budget (`src/lib/pincode.ts`
-   — a pure in-memory lookup), and the script never touches OTP, votes,
-   flags, or media endpoints at all.
+   late night), accepting the small residual risk. The script never touches
+   OTP, votes, flags, or media endpoints, which keeps most of its traffic
+   low-risk — but its `/api/ward-lookup` traffic is **not** low-risk any
+   more. `tests/load/k6-election-day.js` was written when the endpoint was
+   only ever called in pincode mode (`src/lib/pincode.ts` — a pure in-memory
+   lookup, never touching the geocode budget). Pincode lookup was removed
+   2026-08-14: a `{pincode: ...}` body is now a 400, not a lookup, so as
+   committed the script's ward-lookup requests all fail rather than
+   exercising anything. The script needs updating to send `{address: ...}`
+   bodies before its `http_req_failed` threshold means what it claims to —
+   and once it does, every one of those requests will spend real
+   `GOOGLE_GEOCODING_API_KEY` quota and count against `GEOCODE_DAILY_BUDGET`,
+   which is a real cost/spend consideration this option didn't carry before.
 
 Either way, `X-Cache-Status` itself is now emitted everywhere the cache
 invariant matters — see `deploy/nginx/snippets/security-headers.conf`'s own

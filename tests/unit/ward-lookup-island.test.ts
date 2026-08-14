@@ -3,8 +3,9 @@
  * Direct coverage for the JS-enhanced ward finder (src/islands/WardLookup.ts)
  * — the island most real users exercise on Home, previously verified only by
  * code reading (Task 18 review finding). Exercises:
- *  - the 6-digit-pincode-else-address classification, observed via the JSON
- *    body the island POSTs to /api/ward-lookup (mocked `fetch`);
+ *  - the address body the island POSTs to /api/ward-lookup (mocked `fetch`),
+ *    including that a bare 6-digit string is now just an address like any
+ *    other (pincode lookup was removed 2026-08-14);
  *  - all four `LookupResponse` render branches painted into the
  *    `[data-ward-result]` aria-live container;
  *  - the fetch-failure (network error / non-2xx) fallback to the real,
@@ -17,8 +18,58 @@
  * and drives it via jsdom.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { initWardLookup } from '../../src/islands/WardLookup';
 import { t } from '../../src/i18n';
+
+// Places Autocomplete is optional enhancement on top of this island, so the
+// loader is mocked for every test in this file — the majority, which render
+// no `data-maps-key`, must never reach it at all.
+const { importLibraryMock, configureMapsApiMock, PlaceAutocompleteElementMock, constructedElements } =
+  vi.hoisted(() => {
+    const constructedElements: FakeAutocompleteElement[] = [];
+
+    /**
+     * Stands in for google.maps.places.PlaceAutocompleteElement. Mirrors only
+     * the surface the island uses, per @types/google.maps 3.65.5: a
+     * read/write `value`, a form-associated `name`, and a `gmp-select` event
+     * carrying `placePrediction.text`.
+     */
+    class FakeAutocompleteElement extends HTMLElement {
+      value = '';
+      name: string | null = null;
+      placeholder: string | null = null;
+      locationBias: unknown = null;
+      includedRegionCodes: string[] | null = null;
+      requestedLanguage: string | null = null;
+      requestedRegion: string | null = null;
+      // The real class is `implements PlaceAutocompleteElementOptions` and
+      // applies its constructor options to the matching properties, so the
+      // fake must too — otherwise every option the island passes silently
+      // vanishes and the tests assert nothing.
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options ?? {});
+        constructedElements.push(this);
+      }
+      /** Simulate the visitor picking a prediction. */
+      selectPrediction(text: string): void {
+        this.dispatchEvent(
+          Object.assign(new Event('gmp-select'), { placePrediction: { text } }),
+        );
+      }
+    }
+
+    const PlaceAutocompleteElementMock = FakeAutocompleteElement;
+    const importLibraryMock = vi.fn();
+    const configureMapsApiMock = vi.fn();
+    return { importLibraryMock, configureMapsApiMock, PlaceAutocompleteElementMock, constructedElements };
+  });
+
+vi.mock('../../src/lib/maps-loader', () => ({
+  configureMapsApi: configureMapsApiMock,
+  importLibrary: importLibraryMock,
+}));
+
+import { initWardLookup } from '../../src/islands/WardLookup';
 
 const WARD_A = { id: 5025, nameEn: 'X', nameKn: 'ಎಕ್ಸ್', corporation: 'south' };
 const WARD_B = { id: 5026, nameEn: 'Y', nameKn: 'ವೈ', corporation: 'south' };
@@ -36,9 +87,9 @@ function buildForm(lang: 'en' | 'kn' = 'en'): {
 } {
   document.body.innerHTML = `
     <form data-ward-lookup data-lang="${lang}"
-      data-msg-shortlist-heading="${t(lang, 'home.result.shortlistHeading')}"
+      data-msg-ambiguous="${t(lang, 'home.result.ambiguous')}"
       data-msg-out-of-coverage="${t(lang, 'home.result.outOfCoverage')}"
-      data-msg-use-pincode="${t(lang, 'home.result.usePincode')}">
+      data-msg-unavailable="${t(lang, 'home.result.unavailable')}">
       <input name="query" required />
       <button type="submit">Search</button>
       <div data-ward-result aria-live="polite"></div>
@@ -85,17 +136,16 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
     expect(() => initWardLookup()).not.toThrow();
   });
 
-  describe('query classification (6-digit pincode vs. address)', () => {
-    // The island has no separately-exported classifier — the heuristic
-    // (a bare 6-digit string is a pincode, everything else is an address;
-    // same rule as Home.astro's server-side POST branch and
-    // src/pages/api/ward-lookup.ts) is only observable via the JSON body
-    // posted to /api/ward-lookup, so these assert on `fetchMock`'s call.
+  describe('POST body', () => {
+    // There is one input mode now. Pincode lookup was removed 2026-08-14
+    // (see src/pages/api/ward-lookup.ts), so a bare 6-digit string is an
+    // address like any other — the first two cases are the regression guard
+    // for that, since they used to route down a separate branch.
     it.each([
-      ['560001', { pincode: '560001' }],
-      ['  560001  ', { pincode: '560001' }], // trimmed before classifying
-      ['12345', { address: '12345' }], // 5 digits — not a pincode
-      ['1234567', { address: '1234567' }], // 7 digits — not a pincode
+      ['560001', { address: '560001' }],
+      ['  560001  ', { address: '560001' }], // still trimmed
+      ['12345', { address: '12345' }],
+      ['1234567', { address: '1234567' }],
       ['abc', { address: 'abc' }],
       ['MG Road', { address: 'MG Road' }],
     ])('query %j -> POST body %j', async (query, expectedBody) => {
@@ -149,25 +199,6 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
       }
     });
 
-    it('shortlist result: renders a link for every candidate ward', async () => {
-      fetchMock.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ result: 'shortlist', wards: [WARD_A, WARD_B] }),
-      });
-      const { form, input, result } = buildForm('en');
-      initWardLookup();
-      input.value = '560001';
-
-      submit(form);
-      await flush();
-
-      expect(result.textContent).toContain(t('en', 'home.result.shortlistHeading'));
-      const links = [...result.querySelectorAll('a')];
-      expect(links).toHaveLength(2);
-      expect(links.map((a) => a.getAttribute('href'))).toEqual(['/ward/5025', '/ward/5026']);
-      expect(links.map((a) => a.textContent)).toEqual([WARD_A.nameEn, WARD_B.nameEn]);
-    });
-
     it('out_of_coverage result: renders the explicit not-in-GBA message (home.result.outOfCoverage)', async () => {
       fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ result: 'out_of_coverage' }) });
       const { form, input, result } = buildForm('en');
@@ -181,10 +212,10 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
       expect(result.querySelector('a')).toBeNull();
     });
 
-    it('use_pincode result: renders the try-pincode prompt (home.result.usePincode)', async () => {
+    it('ambiguous result: asks for a more specific address (home.result.ambiguous)', async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ result: 'use_pincode', reason: 'ambiguous' }),
+        json: async () => ({ result: 'ambiguous' }),
       });
       const { form, input, result } = buildForm('en');
       initWardLookup();
@@ -193,9 +224,31 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
       submit(form);
       await flush();
 
-      expect(result.textContent).toBe(t('en', 'home.result.usePincode'));
+      expect(result.textContent).toBe(t('en', 'home.result.ambiguous'));
       expect(result.querySelector('a')).toBeNull();
     });
+
+    // Budget exhausted or Google down. Since pincode was removed there is no
+    // fallback left, so this copy is the whole answer — and it must read as
+    // our outage, not as the citizen mistyping their address.
+    it.each([['budget'], ['failed']])(
+      'unavailable/%s result: renders the outage message (home.result.unavailable)',
+      async (reason) => {
+        fetchMock.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ result: 'unavailable', reason }),
+        });
+        const { form, input, result } = buildForm('en');
+        initWardLookup();
+        input.value = 'MG Road';
+
+        submit(form);
+        await flush();
+
+        expect(result.textContent).toBe(t('en', 'home.result.unavailable'));
+        expect(result.querySelector('a')).toBeNull();
+      },
+    );
   });
 
   describe('fetch-failure -> native submit fallback (visitor never trapped)', () => {
@@ -250,6 +303,161 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
 
       expect(result.hasAttribute('aria-busy')).toBe(false);
       expect(button.disabled).toBe(false);
+    });
+  });
+
+  describe('Places Autocomplete', () => {
+    /** Same fragment as buildForm, plus the data-maps-key Home.astro renders when maps are on. */
+    function buildFormWithKey(lang: 'en' | 'kn' = 'en'): {
+      form: HTMLFormElement;
+      input: HTMLInputElement;
+      result: HTMLElement;
+    } {
+      const built = buildForm(lang);
+      built.form.dataset.mapsKey = 'test-browser-key';
+      return built;
+    }
+
+    /** Let the island's dynamic import + importLibrary promise chain settle. */
+    async function settle(): Promise<void> {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+
+    beforeEach(() => {
+      constructedElements.length = 0;
+      importLibraryMock.mockReset();
+      configureMapsApiMock.mockReset();
+      importLibraryMock.mockResolvedValue({
+        PlaceAutocompleteElement: PlaceAutocompleteElementMock,
+      });
+      if (!customElements.get('fake-place-autocomplete')) {
+        customElements.define('fake-place-autocomplete', PlaceAutocompleteElementMock);
+      }
+    });
+
+    it('does nothing at all when the form carries no maps key', async () => {
+      const { input } = buildForm('en');
+      initWardLookup();
+      await settle();
+
+      expect(configureMapsApiMock).not.toHaveBeenCalled();
+      expect(importLibraryMock).not.toHaveBeenCalled();
+      expect(constructedElements).toHaveLength(0);
+      // The server-rendered input is untouched — this is today's behaviour.
+      expect(document.querySelector('input[name="query"]')).toBe(input);
+    });
+
+    it('replaces the input with the autocomplete element when a key is present', async () => {
+      buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      expect(configureMapsApiMock).toHaveBeenCalledWith('test-browser-key');
+      expect(importLibraryMock).toHaveBeenCalledWith('places');
+      expect(constructedElements).toHaveLength(1);
+
+      // Form-associated: the element carries the name the server input had,
+      // so a fallback native POST still submits `query`.
+      expect(constructedElements[0].name).toBe('query');
+      expect(document.querySelector('input[name="query"]')).toBeNull();
+    });
+
+    it('biases to the GBA area and restricts to India', async () => {
+      buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      const el = constructedElements[0];
+      expect(el.includedRegionCodes).toEqual(['in']);
+      // Same padded GBA bbox as src/lib/geocode.ts's GBA_BOUNDS_*.
+      expect(el.locationBias).toEqual({
+        south: 12.7834,
+        west: 77.4098,
+        north: 13.1927,
+        east: 77.8341,
+      });
+    });
+
+    it('asks for predictions in the visitor’s language', async () => {
+      buildFormWithKey('kn');
+      initWardLookup();
+      await settle();
+
+      expect(constructedElements[0].requestedLanguage).toBe('kn');
+      expect(constructedElements[0].requestedRegion).toBe('in');
+    });
+
+    it('posts the selected prediction as an address, never coordinates', async () => {
+      const { form } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'ward', ward: WARD_A }),
+      });
+
+      constructedElements[0].selectPrediction('MG Road, Bengaluru, Karnataka, India');
+      submit(form);
+      await flush();
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body).toEqual({ address: 'MG Road, Bengaluru, Karnataka, India' });
+      // The whole compliance line in src/lib/geocode.ts's header: the client
+      // never sends a position, so geocode_cache never stores one.
+      expect(body).not.toHaveProperty('lat');
+      expect(body).not.toHaveProperty('lng');
+    });
+
+    it('treats a bare 6-digit query as an address, spending no autocomplete session', async () => {
+      const { form } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'out_of_coverage' }),
+      });
+
+      // Typed, not selected — the element's own value, read back the way the
+      // island reads it. Pincode lookup is gone, so this is now just an
+      // address — but it still must not have cost an autocomplete session,
+      // since nothing was selected from the dropdown.
+      constructedElements[0].value = '560001';
+      submit(form);
+      await flush();
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ address: '560001' });
+    });
+
+    it('leaves the plain input in place when the places library fails to load', async () => {
+      importLibraryMock.mockRejectedValue(new Error('blocked by CSP'));
+      const { input } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      expect(constructedElements).toHaveLength(0);
+      expect(document.querySelector('input[name="query"]')).toBe(input);
+    });
+
+    it('a typed address still submits when the element never loaded', async () => {
+      importLibraryMock.mockRejectedValue(new Error('offline'));
+      const { form, input } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'ward', ward: WARD_A }),
+      });
+
+      input.value = 'MG Road';
+      submit(form);
+      await flush();
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ address: 'MG Road' });
     });
   });
 });

@@ -61,27 +61,31 @@ function isPartnerWithUsPath(pathname: string): boolean {
  * Builds the full CSP header value for one response.
  *
  * `script-src` is STRICT everywhere: `'self'` + this request's nonce + the
- * GA loader host (`www.googletagmanager.com`) — NO `'unsafe-inline'` on
+ * GA loader host (`www.googletagmanager.com`) + the Google Maps Platform
+ * hosts (`maps.googleapis.com`, `maps.gstatic.com`, spec §8 — see the
+ * `MAPS_HOSTS` comment inside the function body) — NO `'unsafe-inline'` on
  * scripts (architecture §13). The two inline scripts this codebase ever
  * renders (the `?src` attribution writer and the GA config snippet, both in
  * src/layouts/Base.astro) carry `nonce={cspNonce}`, the same `nonce` value
  * passed in here.
  *
- * `style-src 'self' 'unsafe-inline'`: a deliberate, pragmatic tradeoff — NOT
- * the thing architecture §13's "no unsafe-inline" rule targets (that rule
- * is about scripts). Astro emits scoped component styles as inline
- * `<style>` tags with compiler-generated content we don't control, and some
- * components (e.g. Button.astro) use inline `style="…"` attributes;
- * nonce/hash-locking style-src would require threading a nonce through
- * every Astro-scoped-style tag, which Astro's compiler doesn't support.
+ * `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`: the
+ * `'unsafe-inline'` is a deliberate, pragmatic tradeoff — NOT the thing
+ * architecture §13's "no unsafe-inline" rule targets (that rule is about
+ * scripts). Astro emits scoped component styles as inline `<style>` tags
+ * with compiler-generated content we don't control, and some components
+ * (e.g. Button.astro) use inline `style="…"` attributes; nonce/hash-locking
+ * style-src would require threading a nonce through every
+ * Astro-scoped-style tag, which Astro's compiler doesn't support. The
+ * fonts.googleapis.com host is separate and narrower — see the Maps font
+ * hosts comment in `buildCsp` for why the Maps JS API needs it.
  *
- * `worker-src 'self' blob:`: maplibre-gl (src/islands/WardMap.ts, the ward
- * boundary map) constructs its own web worker from a `blob:` URL
- * internally — without this the map silently fails (falls back to the
- * static no-JS fallback text, per that module's own fail-silent design).
- * WardMap.ts's base style (`buildBaseStyle`, WardMap.ts:146-160) has NO
- * external tile source — a flat background layer only — so this policy
- * deliberately does NOT add any map-tile host.
+ * `worker-src 'self' blob:`: the Google Maps JavaScript API
+ * (src/islands/WardMap.ts, the ward boundary map) constructs workers from
+ * `blob:` URLs internally — without this the map silently fails and the
+ * container keeps its server-rendered fallback text. This directive
+ * predates the Google migration (MapLibre needed it for the same reason)
+ * and is unchanged by it.
  *
  * GA hosts (`www.googletagmanager.com` / `*.google-analytics.com` /
  * `*.analytics.google.com`) are always present in the base policy —
@@ -103,7 +107,55 @@ function isPartnerWithUsPath(pathname: string): boolean {
  * still does not match after trailing-slash stripping.
  */
 export function buildCsp(nonce: string, pathname: string): string {
-  const scriptSrcHosts = ['https://www.googletagmanager.com'];
+  // Google Maps Platform (spec §8): the ward-boundary map
+  // (src/islands/WardMap.ts), the only consumer today, on /ward/* and
+  // /kn/ward/*. (Places Autocomplete for ward lookup was scoped for
+  // src/islands/WardLookup.ts but did not ship — see the deferral note in
+  // that area of the codebase — so there is currently exactly one consumer
+  // on one route family.) These hosts live in the BASE policy rather than a
+  // path-scoped extension like the reCAPTCHA one below; scoping them to
+  // /ward/* (and /kn/ward/*) the way PARTNER EXTENSION scopes reCAPTCHA is
+  // a viable follow-up now that a second consumer on a different route
+  // didn't materialize — it just hasn't been done.
+  //
+  // `script-src`: @googlemaps/js-api-loader injects a <script src=…> at
+  // runtime. A script element whose src matches an allowlisted host does
+  // not additionally need the nonce, so the nonce-only policy still holds
+  // for inline script.
+  const MAPS_HOSTS = ['https://maps.googleapis.com', 'https://maps.gstatic.com'] as const;
+
+  // The Maps JS API also pulls UI font/icon stylesheets from
+  // fonts.googleapis.com and the font files themselves from
+  // fonts.gstatic.com. Verified in a real browser on 2026-08-14: without
+  // these, every ward page load logged three `violates the following Content
+  // Security Policy directive: "style-src …"` errors and the map's controls
+  // rendered without their icon font.
+  //
+  // Worth knowing WHY this class of failure is worse than it looks: it is
+  // the one Maps failure src/islands/WardMap.ts's failure-closed contract
+  // cannot catch. Loader rejection and gm_authFailure both happen before or
+  // instead of a working map, so the fallback survives — but a blocked
+  // SUBRESOURCE fails after `container.textContent = ''`, leaving a broken
+  // map where the server-rendered fallback used to be.
+  //
+  // These are three DIFFERENT hosts that differ only by subdomain:
+  // fonts.gstatic.com (font files), maps.gstatic.com (map assets), and
+  // www.gstatic.com (reCAPTCHA, added only on /partner-with-us below). Do
+  // not collapse them.
+  const MAPS_FONT_STYLE_HOST = 'https://fonts.googleapis.com';
+  const MAPS_FONT_FILE_HOST = 'https://fonts.gstatic.com';
+
+  // Places API (NEW) — used by the ward-lookup autocomplete
+  // (src/islands/WardLookup.ts). It does NOT go through maps.googleapis.com:
+  // predictions are RPCs posted to places.googleapis.com. Verified in a real
+  // browser on 2026-08-14, where every keystroke logged `violates …
+  // connect-src` and the field silently never suggested anything.
+  //
+  // connect-src ONLY. It is an RPC endpoint, not a script or image source,
+  // so it is deliberately not folded into MAPS_HOSTS above.
+  const PLACES_RPC_HOST = 'https://places.googleapis.com';
+
+  const scriptSrcHosts = ['https://www.googletagmanager.com', ...MAPS_HOSTS];
   let frameSrc = "'none'";
 
   if (isPartnerWithUsPath(pathname)) {
@@ -118,10 +170,10 @@ export function buildCsp(nonce: string, pathname: string): string {
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `script-src 'self' 'nonce-${nonce}' ${scriptSrcHosts.join(' ')}`,
-    `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com`,
-    `font-src 'self'`,
-    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com`,
+    `style-src 'self' 'unsafe-inline' ${MAPS_FONT_STYLE_HOST}`,
+    `img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com ${MAPS_HOSTS.join(' ')}`,
+    `font-src 'self' ${MAPS_FONT_FILE_HOST}`,
+    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${MAPS_HOSTS.join(' ')} ${PLACES_RPC_HOST}`,
     `worker-src 'self' blob:`,
     `frame-src ${frameSrc}`,
   ];

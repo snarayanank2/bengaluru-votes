@@ -36,6 +36,7 @@ import { getPageContent } from '../../i18n/content';
 import { renderContentHtml, splitMarkdownSections } from '../../lib/render-content';
 import { getSettings } from '../../lib/settings';
 import { lookupWardByAddress } from '../../lib/geocode';
+import { directionsUrl } from '../../lib/maps-links';
 import { db } from '../../db/client';
 import { booths } from '../../db/schema';
 
@@ -55,7 +56,15 @@ const sections = splitMarkdownSections(content.body);
 const introSection = sections[0] ?? '';
 const fallbackSection = sections.slice(1).join('');
 
-type BoothRow = { id: number; nameEn: string; nameKn: string | null; address: string; wardId: number };
+type BoothRow = {
+  id: number;
+  nameEn: string;
+  nameKn: string | null;
+  address: string;
+  lat: string;
+  lng: string;
+  wardId: number;
+};
 
 type LookupResult =
   | { result: 'booth'; booths: BoothRow[] }
@@ -112,6 +121,13 @@ const settings = await getSettings(['booth_lookup_url']);
 function boothName(b: BoothRow): string {
   return lang === 'kn' && b.nameKn ? b.nameKn : b.nameEn;
 }
+
+// Handed to the island as an UN-SUBSTITUTED template: `t()` with no vars
+// returns the raw string with `{boothName}` intact (src/i18n/index.ts:36).
+// src/islands/BoothLookup.ts imports no i18n table by design (see its file
+// header), so the server ships the localized template and the island does
+// the one substitution per booth.
+const directionsAriaTemplate = t(lang, 'findBooth.result.directionsAriaLabel');
 ---
 
 <Prose lang={lang} title={content.title} description={content.description} path="/voting-guide/find-booth">
@@ -127,6 +143,8 @@ function boothName(b: BoothRow): string {
     data-msg-no-booth-data={t(lang, 'findBooth.result.noBoothData')}
     data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
     data-msg-unavailable={t(lang, 'findBooth.result.unavailable')}
+    data-msg-directions={t(lang, 'findBooth.result.directions')}
+    data-msg-directions-aria={directionsAriaTemplate}
   >
     <FormField
       label={t(lang, 'findBooth.form.label')}
@@ -146,6 +164,15 @@ function boothName(b: BoothRow): string {
             <li>
               <p class="booth-name">{boothName(b)}</p>
               <p class="booth-address">{b.address}</p>
+              <a
+                class="booth-directions"
+                href={directionsUrl(b.lat, b.lng)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t(lang, 'findBooth.result.directionsAriaLabel', { boothName: boothName(b) })}
+              >
+                {t(lang, 'findBooth.result.directions')}
+              </a>
             </li>
           ))}
         </ul>
@@ -201,5 +228,17 @@ function boothName(b: BoothRow): string {
   .booth-address {
     margin: 0;
     color: var(--color-text-muted);
+  }
+
+  .booth-directions {
+    display: inline-block;
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .booth-directions:hover,
+  .booth-directions:focus-visible {
+    text-decoration: underline;
   }
 </style>

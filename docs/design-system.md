@@ -290,6 +290,26 @@ Not dismissible. Per-visitor dismissal needs per-visitor state, and the only ser
 
 Line icons, 1.5px stroke, 20/24px grid, `currentColor` — a single consistent set (e.g. Lucide, self-hosted SVG sprite). Icons never appear without a text label except the close ✕ and external-link glyph, both `aria-label`ed. Maps (ward boundary, booth locator) use a desaturated gray basemap with the boundary in `--oc-forest` at 2px and `--forest-tint` fill at 30% — no red pins, no party-colored anything on maps.
 
+### 8.1 Basemap styling — partially unimplemented, decided 2026-08-14
+
+**What actually ships today is a stock Google basemap: full colour, business POIs, and Google's own red place markers.** The paragraph above describes the intended treatment; only the boundary half of it is implemented.
+
+What *is* implemented, and stays enforced:
+
+- The ward boundary is drawn by us, in `--oc-forest` at 2px with `--forest-tint` fill at 30%, read from CSS custom properties at runtime (`readMapColors`, `src/islands/WardMap.ts`). `tests/unit/tokens.test.ts` bans hex literals outside `tokens.css`, so this cannot drift into a hardcoded colour.
+- The platform adds **no markers of its own**, and nothing on the map is keyed to party or candidate data. The island only ever draws one neutral polygon.
+
+What is not:
+
+- The desaturated gray basemap. That requires a cloud map style bound to `GOOGLE_MAPS_MAP_ID` (`docs/gcp.md` §4). A Map ID exists and is required for the map to render at all (`src/lib/maps-config.ts`), but no style is associated with it, so Google serves its defaults.
+- Consequently "no red pins" does not hold. The red markers on a ward map are Google's POI pins — hospitals, businesses — not anything this platform places.
+
+**Why it was left this way:** creating and maintaining a cloud map style is console work outside this repo, unversioned and unreviewable, and it was judged not worth the cost before launch. The decision was made deliberately with the visual consequence on screen, not by oversight.
+
+**If this is revisited,** the fix is entirely console-side and needs no deploy: create a style (start from Silver, drop POI density, disable business POIs, mute road and transit colour) and associate it with the existing Map ID. Cloud styles apply on the next page load.
+
+Treat the paragraph above as the target, not as a description of production. Anyone reading a red pin on a ward map as a bug should read this section first.
+
 ---
 
 ## 9. Motion
@@ -319,4 +339,4 @@ Motion is functional only: modal/toast enter-exit (150–200ms ease-out), accord
 
 - ~~The exact Open City logo lockup for subdomains (wordmark? "An Open City project" byline?) needs an asset from Oorvani — not inventable here.~~ **Settled 2026-08-13:** the wordmark asset, no byline. The AppBar (§7.1) renders "Bengaluru Votes" then a hairline rule then the Open City wordmark (`public/img/opencity-logo.png`). Both marks show at every width: 768px and up gets the full wordmark with the logo at 20px; below 768px the wordmark abbreviates to "BV" and the logo drops to 18px, which is what makes room for both on a phone. Below 360px the hairline rule goes too. The abbreviation is presentational only — the home link's `aria-label` is "Bengaluru Votes" at every width.
 - Whether Anek Kannada (a display-grade Kannada family) should replace Noto Sans Kannada in headings for more personality. Noto is the safe default; revisit after real Kannada pages exist.
-- Ward boundary map styling depends on the mapping library chosen (tracked in `docs/prd.md` §17).
+- ~~Ward boundary map styling depends on the mapping library chosen (tracked in `docs/prd.md` §17).~~ **Settled 2026-08-14:** Google Maps JavaScript API, with the basemap styled via a console-managed cloud Map ID (`docs/gcp.md` §4) rather than in code — style changes are no longer visible to code review, so whoever edits the console style should note it in a commit message even though no file changes. The boundary line and fill stay token-driven regardless: `--oc-forest` at 2px, `--forest-tint` at 30%, drawn by the app (§8), not the Map ID.

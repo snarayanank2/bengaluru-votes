@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadWardPolygons, wardForPoint, wardBoundaryUrl } from '../../src/lib/geo';
+import { loadWardPolygons, wardForPoint, wardBoundaryFeature } from '../../src/lib/geo';
 
 // Reference points below were derived directly from data/gba.geojson: for each
 // feature, average all vertex [lng, lat] pairs of its outer ring to get an
@@ -44,9 +44,6 @@ describe('geo', () => {
     expect(() => wardForPoint(WEST_WARD.lat, WEST_WARD.lng)).toThrow();
   });
 
-  it('throws when wardBoundaryUrl is called before loadWardPolygons', () => {
-    expect(() => wardBoundaryUrl(WEST_WARD.id)).toThrow();
-  });
 
   describe('after loadWardPolygons', () => {
     it('loads without throwing, and is idempotent on a second call', async () => {
@@ -90,15 +87,10 @@ describe('geo', () => {
       expect(wardForPoint(WEST_WARD.lng, WEST_WARD.lat)).toBeNull();
     });
 
-    it('wardBoundaryUrl(id) returns a string containing the feature boundaryRef', async () => {
-      await loadWardPolygons();
-      expect(wardBoundaryUrl(WEST_WARD.id)).toContain(WEST_WARD.boundaryRef);
-      expect(wardBoundaryUrl(EAST_WARD.id)).toContain(EAST_WARD.boundaryRef);
-    });
 
-    it('throws for an unknown wards.id', async () => {
+    it('returns null for an unknown wards.id', async () => {
       await loadWardPolygons();
-      expect(() => wardBoundaryUrl(999999)).toThrow();
+      expect(wardBoundaryFeature(999999)).toBeNull();
     });
 
     it('loads 369 features and performs 100 lookups quickly without hanging', async () => {
@@ -107,5 +99,25 @@ describe('geo', () => {
         wardForPoint(WEST_WARD.lat, WEST_WARD.lng);
       }
     });
+  });
+});
+
+describe('wardBoundaryFeature', () => {
+  it('returns a GeoJSON Feature for a known ward id', async () => {
+    await loadWardPolygons();
+    const known = wardForPoint(12.9716, 77.5946); // central Bengaluru
+    expect(known).not.toBeNull();
+
+    const feature = wardBoundaryFeature(known!);
+    expect(feature).not.toBeNull();
+    expect(feature!.type).toBe('Feature');
+    expect(feature!.properties.wardId).toBe(known);
+    expect(typeof feature!.properties.id).toBe('string');
+    expect(['Polygon', 'MultiPolygon']).toContain(feature!.geometry.type);
+  });
+
+  it('returns null for an unknown ward id', async () => {
+    await loadWardPolygons();
+    expect(wardBoundaryFeature(999999)).toBeNull();
   });
 });

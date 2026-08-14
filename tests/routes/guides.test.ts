@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
-import { localePath, type Lang } from '../../src/i18n';
+import { localePath, t, type Lang } from '../../src/i18n';
 
 /**
  * Task 21 — the six guide/explainer pages (IA §3.7-§3.12, PRD
@@ -522,6 +522,57 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(html).toContain(BOOTH.nameEn);
       expect(html).toContain(BOOTH.address);
+    });
+
+    it('renders a directions link for each booth (spec §7) — both the label attribute and the href', async () => {
+      await db.insert(schema.booths).values(BOOTH);
+      vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'ward', wardId: WARD.id });
+
+      const request = new Request(`${SITE_ORIGIN}/voting-guide/find-booth`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `address=${encodeURIComponent('42 Guides Test Street')}`,
+      });
+      const { html } = await renderPage(FindBooth, 'en', '/voting-guide/find-booth', request);
+
+      expect(html).toContain('https://www.google.com/maps/dir/');
+      expect(html).toContain(`destination=${encodeURIComponent(`${BOOTH.lat},${BOOTH.lng}`)}`);
+      const anchor = findAnchorTag(html, 'google.com/maps/dir');
+      expect(anchor).toContain('rel="noopener noreferrer"');
+      expect(anchor).toContain('target="_blank"');
+      // Also carried as a data-msg-* attribute for the JS island (BoothLookup.ts) to read.
+      expect(html).toContain(`data-msg-directions="${t('en', 'findBooth.result.directions')}"`);
+      expect(anchor).toContain(
+        `aria-label="${t('en', 'findBooth.result.directionsAriaLabel', { boothName: BOOTH.nameEn })}"`,
+      );
+    });
+
+    // A ward can return several booths — one school often hosts several — and
+    // the visible link text is the same word on every row. Without a per-booth
+    // accessible name they all announce identically and a screen-reader user
+    // navigating by link list cannot tell them apart. This is the case that
+    // was missing when the gap first shipped.
+    it('gives each booth of a multi-booth result its own accessible name', async () => {
+      const BOOTH_TWO = { ...BOOTH, nameEn: 'Guides Test Second School', address: '43 Guides Test Street', lat: '12.98', lng: '77.60' };
+      await db.insert(schema.booths).values([BOOTH, BOOTH_TWO]);
+      vi.mocked(lookupWardByAddress).mockResolvedValueOnce({ kind: 'ward', wardId: WARD.id });
+
+      const request = new Request(`${SITE_ORIGIN}/voting-guide/find-booth`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `address=${encodeURIComponent('42 Guides Test Street')}`,
+      });
+      const { html } = await renderPage(FindBooth, 'en', '/voting-guide/find-booth', request);
+
+      const labelOne = t('en', 'findBooth.result.directionsAriaLabel', { boothName: BOOTH.nameEn });
+      const labelTwo = t('en', 'findBooth.result.directionsAriaLabel', { boothName: BOOTH_TWO.nameEn });
+
+      expect(labelOne).not.toBe(labelTwo);
+      expect(html).toContain(`aria-label="${labelOne}"`);
+      expect(html).toContain(`aria-label="${labelTwo}"`);
+      // Each link still points at its own booth.
+      expect(html).toContain(`destination=${encodeURIComponent(`${BOOTH.lat},${BOOTH.lng}`)}`);
+      expect(html).toContain(`destination=${encodeURIComponent(`${BOOTH_TWO.lat},${BOOTH_TWO.lng}`)}`);
     });
 
     it('no-JS POST, out_of_coverage: server-renders the explicit not-in-GBA message', async () => {

@@ -41,7 +41,7 @@ verified. This holds for both environments.
 | Staging deploy fails on `X-Robots-Tag` | The header was dropped from the staging server block — likely a new `location` with its own `add_header` (nginx's `add_header` is all-or-nothing per location) | Restore it in `deploy/nginx/conf.d/site.conf`. It is the only thing keeping staging's fictional candidates out of search results |
 | `git pull`/checkout refuses | The checkout has local modifications | Reconcile by hand — never `--force` blindly, someone edited that box for a reason |
 | Staging stack will not come up | Production stack is down, so `gba_front` does not exist | Bring production up first; staging joins that network as external |
-| Real Bengaluru pincodes say "out of coverage" | `data/pincode-wards.json` is still a 12-row placeholder | Not a deploy bug — run `npm run build-pincode` and commit the result |
+| Ward lookup says "try again shortly" for every address | Geocoding is unavailable: `GOOGLE_GEOCODING_API_KEY` unset/rejected, or `GEOCODE_DAILY_BUDGET` exhausted | Not a deploy bug in itself. Pincode lookup was removed 2026-08-14, so there is no fallback — check the key and the budget counter |
 
 ## Not automated, deliberately
 
