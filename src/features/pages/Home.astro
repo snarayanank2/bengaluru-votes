@@ -28,6 +28,7 @@ import { t, localePath, type Lang } from '../../i18n';
 import { getSettings } from '../../lib/settings';
 import { lookupWardByAddress } from '../../lib/geocode';
 import { wardsForPincode } from '../../lib/pincode';
+import { mapsConfig } from '../../lib/maps-config';
 import { db } from '../../db/client';
 import { wards } from '../../db/schema';
 
@@ -94,6 +95,13 @@ if (Astro.request.method === 'POST') {
 }
 
 const settings = await getSettings(['notification_date', 'election_date', 'roll_deadline']);
+
+// Places Autocomplete on the lookup input (src/islands/WardLookup.ts). Same
+// runtime-config discipline as the ward map: read here, handed over as a data
+// attribute, never a build-time PUBLIC_* var — see src/lib/maps-config.ts.
+// When maps are off the attribute is `undefined`, which Astro omits entirely,
+// so the key never reaches the HTML and the island does nothing.
+const maps = mapsConfig();
 const notificationDate = settings.notification_date;
 const electionDate = settings.election_date;
 const rollDeadline = settings.roll_deadline;
@@ -131,6 +139,7 @@ function wardName(ward: WardRow): string {
         data-msg-shortlist-heading={t(lang, 'home.result.shortlistHeading')}
         data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
         data-msg-use-pincode={t(lang, 'home.result.usePincode')}
+        data-maps-key={maps.enabled ? maps.browserKey : undefined}
       >
         <FormField
           label={t(lang, 'home.form.label')}

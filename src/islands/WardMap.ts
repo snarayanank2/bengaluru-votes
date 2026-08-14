@@ -35,16 +35,15 @@
  * again, or it will silently clobber this one and its containers will keep
  * a blank map forever.
  *
- * `setOptions()` from the loader is process-global in the same way: it may
- * be called once, before any `importLibrary()`, and later calls are ignored
- * (with a console warning in dev). Hence `configureMapsApi`'s guard — the
- * first container's key wins for the whole page.
+ * Configuring the Maps API is process-global in the same way, so it lives
+ * in src/lib/maps-loader.ts and is shared with the ward-lookup autocomplete
+ * island — see that module's header. Do not call `setOptions` directly here.
  *
  * The key and Map ID arrive as data attributes from server frontmatter
  * (Ward.astro -> src/lib/maps-config.ts), never as build-time PUBLIC_*
  * variables — see that module's header for why.
  */
-import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
+import { configureMapsApi, importLibrary } from '../lib/maps-loader';
 
 // ---------------------------------------------------------------------------
 // Minimal GeoJSON shapes — mirrors `WardBoundaryFeature` in src/lib/geo.ts,
@@ -127,14 +126,6 @@ export function readMapColors(root: HTMLElement = document.documentElement): War
 
 /** Containers whose fallback must be restored if Google rejects the key. */
 const mounted = new Map<HTMLElement, string>();
-
-let mapsApiConfigured = false;
-
-function configureMapsApi(apiKey: string): void {
-  if (mapsApiConfigured) return;
-  mapsApiConfigured = true;
-  setOptions({ key: apiKey, v: 'weekly' });
-}
 
 function restoreFallback(container: HTMLElement, fallbackHtml: string): void {
   container.innerHTML = fallbackHtml;

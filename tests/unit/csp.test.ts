@@ -149,6 +149,34 @@ describe('src/lib/csp.ts#buildCsp', () => {
       expect(fontSrc).toContain('https://fonts.gstatic.com');
     });
 
+    // Regression: caught in a real browser on 2026-08-14, after the mocked
+    // island tests were already green. Places API (NEW) does not talk to
+    // maps.googleapis.com — it posts RPCs to places.googleapis.com. Without
+    // this, every keystroke in the ward-lookup autocomplete logged
+    // `violates ... connect-src` and the visitor saw an input that silently
+    // never suggested anything.
+    it('allows the Places API (New) RPC host in connect-src', () => {
+      const connectSrc = buildCsp('n0nce', '/')
+        .split('; ')
+        .find((d) => d.startsWith('connect-src '));
+
+      expect(connectSrc).toContain('https://places.googleapis.com');
+    });
+
+    // It is an RPC endpoint, not a script or image source — keep it out of
+    // the directives that don't need it rather than folding it into the
+    // shared maps host list.
+    it('does not add the Places RPC host to script-src or img-src', () => {
+      const directives = buildCsp('n0nce', '/').split('; ');
+
+      expect(directives.find((d) => d.startsWith('script-src '))).not.toContain(
+        'https://places.googleapis.com',
+      );
+      expect(directives.find((d) => d.startsWith('img-src '))).not.toContain(
+        'https://places.googleapis.com',
+      );
+    });
+
     // fonts.gstatic.com serves the font FILES, maps.gstatic.com serves map
     // assets, and www.gstatic.com is reCAPTCHA's — three different hosts that
     // differ only by subdomain. Pin them so a future edit can't collapse one

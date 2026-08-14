@@ -17,8 +17,58 @@
  * and drives it via jsdom.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { initWardLookup } from '../../src/islands/WardLookup';
 import { t } from '../../src/i18n';
+
+// Places Autocomplete is optional enhancement on top of this island, so the
+// loader is mocked for every test in this file — the majority, which render
+// no `data-maps-key`, must never reach it at all.
+const { importLibraryMock, configureMapsApiMock, PlaceAutocompleteElementMock, constructedElements } =
+  vi.hoisted(() => {
+    const constructedElements: FakeAutocompleteElement[] = [];
+
+    /**
+     * Stands in for google.maps.places.PlaceAutocompleteElement. Mirrors only
+     * the surface the island uses, per @types/google.maps 3.65.5: a
+     * read/write `value`, a form-associated `name`, and a `gmp-select` event
+     * carrying `placePrediction.text`.
+     */
+    class FakeAutocompleteElement extends HTMLElement {
+      value = '';
+      name: string | null = null;
+      placeholder: string | null = null;
+      locationBias: unknown = null;
+      includedRegionCodes: string[] | null = null;
+      requestedLanguage: string | null = null;
+      requestedRegion: string | null = null;
+      // The real class is `implements PlaceAutocompleteElementOptions` and
+      // applies its constructor options to the matching properties, so the
+      // fake must too — otherwise every option the island passes silently
+      // vanishes and the tests assert nothing.
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options ?? {});
+        constructedElements.push(this);
+      }
+      /** Simulate the visitor picking a prediction. */
+      selectPrediction(text: string): void {
+        this.dispatchEvent(
+          Object.assign(new Event('gmp-select'), { placePrediction: { text } }),
+        );
+      }
+    }
+
+    const PlaceAutocompleteElementMock = FakeAutocompleteElement;
+    const importLibraryMock = vi.fn();
+    const configureMapsApiMock = vi.fn();
+    return { importLibraryMock, configureMapsApiMock, PlaceAutocompleteElementMock, constructedElements };
+  });
+
+vi.mock('../../src/lib/maps-loader', () => ({
+  configureMapsApi: configureMapsApiMock,
+  importLibrary: importLibraryMock,
+}));
+
+import { initWardLookup } from '../../src/islands/WardLookup';
 
 const WARD_A = { id: 5025, nameEn: 'X', nameKn: 'ಎಕ್ಸ್', corporation: 'south' };
 const WARD_B = { id: 5026, nameEn: 'Y', nameKn: 'ವೈ', corporation: 'south' };
@@ -250,6 +300,159 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
 
       expect(result.hasAttribute('aria-busy')).toBe(false);
       expect(button.disabled).toBe(false);
+    });
+  });
+
+  describe('Places Autocomplete', () => {
+    /** Same fragment as buildForm, plus the data-maps-key Home.astro renders when maps are on. */
+    function buildFormWithKey(lang: 'en' | 'kn' = 'en'): {
+      form: HTMLFormElement;
+      input: HTMLInputElement;
+      result: HTMLElement;
+    } {
+      const built = buildForm(lang);
+      built.form.dataset.mapsKey = 'test-browser-key';
+      return built;
+    }
+
+    /** Let the island's dynamic import + importLibrary promise chain settle. */
+    async function settle(): Promise<void> {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+
+    beforeEach(() => {
+      constructedElements.length = 0;
+      importLibraryMock.mockReset();
+      configureMapsApiMock.mockReset();
+      importLibraryMock.mockResolvedValue({
+        PlaceAutocompleteElement: PlaceAutocompleteElementMock,
+      });
+      if (!customElements.get('fake-place-autocomplete')) {
+        customElements.define('fake-place-autocomplete', PlaceAutocompleteElementMock);
+      }
+    });
+
+    it('does nothing at all when the form carries no maps key', async () => {
+      const { input } = buildForm('en');
+      initWardLookup();
+      await settle();
+
+      expect(configureMapsApiMock).not.toHaveBeenCalled();
+      expect(importLibraryMock).not.toHaveBeenCalled();
+      expect(constructedElements).toHaveLength(0);
+      // The server-rendered input is untouched — this is today's behaviour.
+      expect(document.querySelector('input[name="query"]')).toBe(input);
+    });
+
+    it('replaces the input with the autocomplete element when a key is present', async () => {
+      buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      expect(configureMapsApiMock).toHaveBeenCalledWith('test-browser-key');
+      expect(importLibraryMock).toHaveBeenCalledWith('places');
+      expect(constructedElements).toHaveLength(1);
+
+      // Form-associated: the element carries the name the server input had,
+      // so a fallback native POST still submits `query`.
+      expect(constructedElements[0].name).toBe('query');
+      expect(document.querySelector('input[name="query"]')).toBeNull();
+    });
+
+    it('biases to the GBA area and restricts to India', async () => {
+      buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      const el = constructedElements[0];
+      expect(el.includedRegionCodes).toEqual(['in']);
+      // Same padded GBA bbox as src/lib/geocode.ts's GBA_BOUNDS_*.
+      expect(el.locationBias).toEqual({
+        south: 12.7834,
+        west: 77.4098,
+        north: 13.1927,
+        east: 77.8341,
+      });
+    });
+
+    it('asks for predictions in the visitor’s language', async () => {
+      buildFormWithKey('kn');
+      initWardLookup();
+      await settle();
+
+      expect(constructedElements[0].requestedLanguage).toBe('kn');
+      expect(constructedElements[0].requestedRegion).toBe('in');
+    });
+
+    it('posts the selected prediction as an address, never coordinates', async () => {
+      const { form } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'ward', ward: WARD_A }),
+      });
+
+      constructedElements[0].selectPrediction('MG Road, Bengaluru, Karnataka, India');
+      submit(form);
+      await flush();
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body).toEqual({ address: 'MG Road, Bengaluru, Karnataka, India' });
+      // The whole compliance line in src/lib/geocode.ts's header: the client
+      // never sends a position, so geocode_cache never stores one.
+      expect(body).not.toHaveProperty('lat');
+      expect(body).not.toHaveProperty('lng');
+    });
+
+    it('still routes a bare 6-digit query down the pincode path', async () => {
+      const { form } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'shortlist', wards: [WARD_A, WARD_B] }),
+      });
+
+      // Typed, not selected — the element's own value, read back the way the
+      // island reads it. A pincode must never spend an autocomplete session.
+      constructedElements[0].value = '560001';
+      submit(form);
+      await flush();
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ pincode: '560001' });
+    });
+
+    it('leaves the plain input in place when the places library fails to load', async () => {
+      importLibraryMock.mockRejectedValue(new Error('blocked by CSP'));
+      const { input } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      expect(constructedElements).toHaveLength(0);
+      expect(document.querySelector('input[name="query"]')).toBe(input);
+    });
+
+    it('a typed address still submits when the element never loaded', async () => {
+      importLibraryMock.mockRejectedValue(new Error('offline'));
+      const { form, input } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 'ward', ward: WARD_A }),
+      });
+
+      input.value = 'MG Road';
+      submit(form);
+      await flush();
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ address: 'MG Road' });
     });
   });
 });

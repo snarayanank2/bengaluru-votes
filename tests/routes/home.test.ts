@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
@@ -268,6 +268,44 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
         request: new Request(`${SITE_ORIGIN}/`),
       });
       expect(response.headers.get('cache-control')).not.toBe('no-store');
+    });
+  });
+
+  describe('Places Autocomplete key on the lookup form', () => {
+    const MAPS_KEYS = ['MAPS_ENABLED', 'GOOGLE_MAPS_BROWSER_KEY', 'GOOGLE_MAPS_MAP_ID'] as const;
+    let saved: Record<string, string | undefined>;
+
+    beforeEach(() => {
+      saved = Object.fromEntries(MAPS_KEYS.map((k) => [k, process.env[k]]));
+    });
+
+    afterEach(() => {
+      for (const k of MAPS_KEYS) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k]!;
+      }
+    });
+
+    it('renders data-maps-key on the lookup form when maps are enabled', async () => {
+      process.env.MAPS_ENABLED = 'true';
+      process.env.GOOGLE_MAPS_BROWSER_KEY = 'test-browser-key';
+      process.env.GOOGLE_MAPS_MAP_ID = 'test-map-id';
+
+      expect(normalize(await renderHome('en'))).toContain('data-maps-key="test-browser-key"');
+    });
+
+    it('omits the attribute entirely when maps are disabled', async () => {
+      delete process.env.MAPS_ENABLED;
+      delete process.env.GOOGLE_MAPS_BROWSER_KEY;
+
+      expect(normalize(await renderHome('en'))).not.toContain('data-maps-key');
+    });
+
+    it('never leaks the browser key when maps are disabled', async () => {
+      delete process.env.MAPS_ENABLED;
+      process.env.GOOGLE_MAPS_BROWSER_KEY = 'secret-key';
+
+      expect(normalize(await renderHome('en'))).not.toContain('secret-key');
     });
   });
 });

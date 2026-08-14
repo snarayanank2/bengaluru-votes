@@ -145,6 +145,16 @@ export function buildCsp(nonce: string, pathname: string): string {
   const MAPS_FONT_STYLE_HOST = 'https://fonts.googleapis.com';
   const MAPS_FONT_FILE_HOST = 'https://fonts.gstatic.com';
 
+  // Places API (NEW) — used by the ward-lookup autocomplete
+  // (src/islands/WardLookup.ts). It does NOT go through maps.googleapis.com:
+  // predictions are RPCs posted to places.googleapis.com. Verified in a real
+  // browser on 2026-08-14, where every keystroke logged `violates …
+  // connect-src` and the field silently never suggested anything.
+  //
+  // connect-src ONLY. It is an RPC endpoint, not a script or image source,
+  // so it is deliberately not folded into MAPS_HOSTS above.
+  const PLACES_RPC_HOST = 'https://places.googleapis.com';
+
   const scriptSrcHosts = ['https://www.googletagmanager.com', ...MAPS_HOSTS];
   let frameSrc = "'none'";
 
@@ -163,7 +173,7 @@ export function buildCsp(nonce: string, pathname: string): string {
     `style-src 'self' 'unsafe-inline' ${MAPS_FONT_STYLE_HOST}`,
     `img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com ${MAPS_HOSTS.join(' ')}`,
     `font-src 'self' ${MAPS_FONT_FILE_HOST}`,
-    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${MAPS_HOSTS.join(' ')}`,
+    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${MAPS_HOSTS.join(' ')} ${PLACES_RPC_HOST}`,
     `worker-src 'self' blob:`,
     `frame-src ${frameSrc}`,
   ];
