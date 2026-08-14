@@ -130,14 +130,21 @@ missing. On production that is the pre-launch notice every visitor should see."
   [ "$code" = 200 ] || fail "asset $asset returned $code — static-init did not re-run"
   echo "  $asset  200"
 
-  # The load-bearing check. Status only, never the body: an out-of-coverage
-  # pincode is still a valid 200, so this keeps working once
-  # data/pincode-wards.json holds real pincodes.
+  # The load-bearing check. Status only, never the body — what is being
+  # tested is 403-vs-not (SITE_ORIGIN baked into the image), not whether the
+  # lookup succeeds. Every non-403 outcome is a 200: `ward`,
+  # `out_of_coverage`, `ambiguous`, and `unavailable` all are, so this keeps
+  # working even with no geocoding key or an exhausted budget.
+  #
+  # Must be an ADDRESS. Pincode lookup was removed 2026-08-14 and a
+  # `{"pincode":...}` body is now a 400 — which broke this very check on the
+  # first deploy after that change. Cost is at most one geocode per unique
+  # address; `geocode_cache` absorbs every deploy after the first.
   code=$(curl -fsS -o /dev/null -w '%{http_code}' \
     -X POST "$ORIGIN/api/ward-lookup" \
     -H 'content-type: application/json' \
     -H "Origin: $ORIGIN" \
-    -d '{"pincode":"560001"}' || true)
+    -d '{"address":"MG Road, Bengaluru"}' || true)
   if [ "$code" = 403 ]; then
     fail "POST /api/ward-lookup returned 403 — image built WITHOUT the right
 SITE_ORIGIN. Every form on the site is broken. Rebuild with this script."

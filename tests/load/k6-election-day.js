@@ -185,17 +185,27 @@ const WARD_IDS = WARD_ID_RANGES.flatMap(({ base, count }) =>
   Array.from({ length: count }, (_, i) => base + i + 1),
 );
 
-// A handful of syntactically-valid Bengaluru pincodes for the
-// /api/ward-lookup pincode path. wardsForPincode() (src/lib/pincode.ts)
-// returns [] for a well-formed-but-unmapped pincode — a normal 200
-// "out_of_coverage"-shaped answer, not an error — so these don't need to
-// be exhaustively verified against data/pincode-wards.json for this test
-// to be legitimate traffic; they only need to be 6-digit and Bengaluru-ish.
-const SAMPLE_PINCODES = [
-  '560001', '560002', '560004', '560008', '560010',
-  '560017', '560025', '560034', '560038', '560040',
-  '560043', '560050', '560066', '560068', '560078',
-  '560085', '560091', '560095', '560100', '560103',
+// Addresses for the /api/ward-lookup path.
+//
+// READ THIS BEFORE RUNNING AT SCALE. Until 2026-08-14 this pool held
+// pincodes, and lookup answered them from a committed table — free, and
+// safe to fire at production. Pincode lookup was removed; every request
+// here now goes to the Google Geocoding API.
+//
+// `geocode_cache` (normalized address -> ward id) absorbs repeats, so this
+// fixed pool costs at most ~20 real geocodes for a whole run no matter how
+// many VUs — that is the entire reason it is a fixed pool and not generated
+// addresses. Do NOT randomize these into unique strings: that would spend
+// one unit of GEOCODE_DAILY_BUDGET per request, and exhausting the budget
+// now takes ward lookup DOWN for real citizens (there is no fallback since
+// pincode was removed). A load test must not be able to cause the outage it
+// is meant to measure.
+const SAMPLE_ADDRESSES = [
+  'MG Road, Bengaluru', 'Jayanagar 4th Block, Bengaluru',
+  'Indiranagar 100 Feet Road, Bengaluru', 'Koramangala 5th Block, Bengaluru',
+  'Malleshwaram 8th Cross, Bengaluru', 'Whitefield Main Road, Bengaluru',
+  'Yelahanka New Town, Bengaluru', 'Basavanagudi Bull Temple Road, Bengaluru',
+  'HSR Layout Sector 2, Bengaluru', 'Rajajinagar 1st Block, Bengaluru',
 ];
 
 function randomFrom(arr) {
@@ -357,7 +367,7 @@ export function cachedReads() {
 export function wardLookup() {
   const res = http.post(
     `${BASE_URL}/api/ward-lookup`,
-    JSON.stringify({ pincode: randomFrom(SAMPLE_PINCODES) }),
+    JSON.stringify({ address: randomFrom(SAMPLE_ADDRESSES) }),
     {
       // A real browser same-origin POST always carries an `Origin` header
       // (and, in modern browsers, `Sec-Fetch-Site: same-origin`). The k6 Go
