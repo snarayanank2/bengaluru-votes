@@ -290,6 +290,26 @@ Not dismissible. Per-visitor dismissal needs per-visitor state, and the only ser
 
 Line icons, 1.5px stroke, 20/24px grid, `currentColor` — a single consistent set (e.g. Lucide, self-hosted SVG sprite). Icons never appear without a text label except the close ✕ and external-link glyph, both `aria-label`ed. Maps (ward boundary, booth locator) use a desaturated gray basemap with the boundary in `--oc-forest` at 2px and `--forest-tint` fill at 30% — no red pins, no party-colored anything on maps.
 
+### 8.1 Basemap styling — partially unimplemented, decided 2026-08-14
+
+**What actually ships today is a stock Google basemap: full colour, business POIs, and Google's own red place markers.** The paragraph above describes the intended treatment; only the boundary half of it is implemented.
+
+What *is* implemented, and stays enforced:
+
+- The ward boundary is drawn by us, in `--oc-forest` at 2px with `--forest-tint` fill at 30%, read from CSS custom properties at runtime (`readMapColors`, `src/islands/WardMap.ts`). `tests/unit/tokens.test.ts` bans hex literals outside `tokens.css`, so this cannot drift into a hardcoded colour.
+- The platform adds **no markers of its own**, and nothing on the map is keyed to party or candidate data. The island only ever draws one neutral polygon.
+
+What is not:
+
+- The desaturated gray basemap. That requires a cloud map style bound to `GOOGLE_MAPS_MAP_ID` (`docs/gcp.md` §4). A Map ID exists and is required for the map to render at all (`src/lib/maps-config.ts`), but no style is associated with it, so Google serves its defaults.
+- Consequently "no red pins" does not hold. The red markers on a ward map are Google's POI pins — hospitals, businesses — not anything this platform places.
+
+**Why it was left this way:** creating and maintaining a cloud map style is console work outside this repo, unversioned and unreviewable, and it was judged not worth the cost before launch. The decision was made deliberately with the visual consequence on screen, not by oversight.
+
+**If this is revisited,** the fix is entirely console-side and needs no deploy: create a style (start from Silver, drop POI density, disable business POIs, mute road and transit colour) and associate it with the existing Map ID. Cloud styles apply on the next page load.
+
+Treat the paragraph above as the target, not as a description of production. Anyone reading a red pin on a ward map as a bug should read this section first.
+
 ---
 
 ## 9. Motion

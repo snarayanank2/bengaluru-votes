@@ -148,16 +148,26 @@ after editing usually just needs the wait.
 
 ## 4. Map ID and map style
 
+> **Step 1 was deliberately skipped, 2026-08-14.** A Map ID exists and is
+> required for the map to render, but **no style is bound to it**, so
+> production serves a stock full-colour Google basemap with business POIs and
+> Google's own red place markers. That was a decision, not an oversight —
+> maintaining a cloud style is unversioned console work — and it is recorded
+> in `docs/design-system.md` §8.1. The steps below remain correct if it is
+> ever revisited; the change is console-side and needs no deploy.
+
 Cloud-based styling is how `docs/design-system.md` §8 ("desaturated gray
-basemap … no red pins, no party-colored anything on maps") is satisfied
-without hardcoding color, and `mapId` is required for the style to apply.
+basemap … no red pins, no party-colored anything on maps") would be satisfied
+without hardcoding color, and `mapId` is required for a style to apply.
 
 1. **Google Maps Platform → Map Styles → Create style.** Start from
    **Silver**. Reduce POI density, disable business POIs, mute road and
    transit color.
 
-   The constraint is a rule, not a preference: nothing on a ward map may
-   read as party-affiliated, and no marker may be red.
+   The intent was that nothing on a ward map should read as
+   party-affiliated and no marker should be red. Only the half the platform
+   controls is currently enforced — see the note above and
+   `design-system.md` §8.1.
 2. **Map Management → Create Map ID** → type **JavaScript** → associate the
    style from step 1.
 3. Record the Map ID → `GOOGLE_MAPS_MAP_ID`. It is not a secret; it ships to

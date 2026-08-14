@@ -13,14 +13,19 @@
  * degrades to a documented no-op rather than an error (CLAUDE.md), and
  * MAPS_ENABLED lets client-side map spend be shed without a rebuild when a
  * budget alert fires (docs/gcp.md §5 — a GCP quota cap breaks rather than
- * degrades). The Map ID is required, not merely recommended: it carries the
- * cloud map *style*, and docs/gcp.md §4 states the styling constraint as a
- * rule, not a preference — nothing on a ward map may read as
- * party-affiliated, and no marker may be red (design-system §8). This
- * `enabled` check is the only place in code that rule can be enforced: with
- * a key set and the Map ID missing, the ward page would otherwise render a
- * stock full-colour Google basemap with business POIs on a real election
- * site.
+ * degrades). The Map ID is required, not merely recommended: it is what
+ * carries the cloud map *style*, so requiring it here is what keeps the
+ * styling question answerable in code at all.
+ *
+ * BUT NOTE WHAT THIS DOES AND DOESN'T GUARANTEE. This check can only verify
+ * that a Map ID EXISTS — it cannot verify that a style is bound to it. As of
+ * 2026-08-14 no style is bound (a deliberate decision, recorded in
+ * design-system §8.1), so production renders a stock full-colour Google
+ * basemap with business POIs and Google's own red place markers. Do not read
+ * this gate as enforcing design-system §8's "desaturated gray basemap … no
+ * red pins" — that half is currently unimplemented, and the only enforceable
+ * part lives in src/islands/WardMap.ts, which draws the boundary from CSS
+ * custom properties and adds no markers of its own.
  *
  * `=== 'true'` exactly, matching the OTP_TEST_SINK convention in
  * src/lib/otp.ts.
