@@ -105,11 +105,15 @@ function isPartnerWithUsPath(pathname: string): boolean {
  */
 export function buildCsp(nonce: string, pathname: string): string {
   // Google Maps Platform (spec §8): the ward-boundary map
-  // (src/islands/WardMap.ts) and the ward-lookup Places Autocomplete
-  // (src/islands/WardLookup.ts). These live in the BASE policy rather than
-  // a path-scoped extension like the reCAPTCHA one below, because the two
-  // consumers sit on different routes (/ward/* and /) and maintaining two
-  // more path matchers costs more than it protects.
+  // (src/islands/WardMap.ts), the only consumer today, on /ward/* and
+  // /kn/ward/*. (Places Autocomplete for ward lookup was scoped for
+  // src/islands/WardLookup.ts but did not ship — see the deferral note in
+  // that area of the codebase — so there is currently exactly one consumer
+  // on one route family.) These hosts live in the BASE policy rather than a
+  // path-scoped extension like the reCAPTCHA one below; scoping them to
+  // /ward/* (and /kn/ward/*) the way PARTNER EXTENSION scopes reCAPTCHA is
+  // a viable follow-up now that a second consumer on a different route
+  // didn't materialize — it just hasn't been done.
   //
   // `script-src`: @googlemaps/js-api-loader injects a <script src=…> at
   // runtime. A script element whose src matches an allowlisted host does

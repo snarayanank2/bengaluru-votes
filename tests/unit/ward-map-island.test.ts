@@ -334,6 +334,8 @@ describe('mountWardMap — failure closed (spec §5)', () => {
     const second = makeContainer();
     await mountWardMap(first);
     await mountWardMap(second);
+    expect(first.textContent).not.toContain(FALLBACK);
+    expect(second.textContent).not.toContain(FALLBACK);
 
     (window as unknown as { gm_authFailure: () => void }).gm_authFailure();
 

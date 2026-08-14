@@ -35,6 +35,12 @@ describe('mapsConfig', () => {
     expect(mapsConfig().enabled).toBe(false);
   });
 
+  it('is disabled when MAPS_ENABLED is true and a key is present but the Map ID is missing', () => {
+    process.env.MAPS_ENABLED = 'true';
+    process.env.GOOGLE_MAPS_BROWSER_KEY = 'k';
+    expect(mapsConfig().enabled).toBe(false);
+  });
+
   it('is enabled only when MAPS_ENABLED is exactly "true" and a key is present', () => {
     process.env.MAPS_ENABLED = 'true';
     process.env.GOOGLE_MAPS_BROWSER_KEY = 'k';

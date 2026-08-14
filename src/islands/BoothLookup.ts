@@ -82,7 +82,7 @@ function renderBooths(
     // substitution happens here.
     directions.setAttribute(
       'aria-label',
-      directionsAriaTemplate.replace('{boothName}', boothName(lang, booth)),
+      directionsAriaTemplate.replace(/\{boothName\}/g, () => boothName(lang, booth)),
     );
     item.append(name, address, directions);
     list.appendChild(item);

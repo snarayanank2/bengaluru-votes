@@ -502,8 +502,8 @@ here in the same PR.
 | `GOOGLE_GEOCODING_API_KEY` | yes (address ward-lookup) | Google Geocoding API. |
 | `GEOCODE_DAILY_BUDGET` | recommended | Daily geocode call cap (architecture §13 cost-amplification guard); degrades to pincode lookup when exhausted. |
 | `GOOGLE_MAPS_BROWSER_KEY` | yes (ward map) | Referrer-restricted browser key for the ward boundary map (`src/lib/maps-config.ts`). Unset means the map is absent; the ward page renders its no-JS fallback. `docs/gcp.md` §3. |
-| `GOOGLE_MAPS_MAP_ID` | recommended | Cloud map style (`docs/gcp.md` §4). Unset renders an unstyled basemap. |
-| `MAPS_ENABLED` | yes to show maps | Kill switch (`src/lib/maps-config.ts`) — must be exactly `true`, and `GOOGLE_MAPS_BROWSER_KEY` must also be non-empty, for the map to render. Sheds client-side map spend without a rebuild when a budget alert fires. |
+| `GOOGLE_MAPS_MAP_ID` | yes (ward map) | Cloud map style (`docs/gcp.md` §4) — required, not just recommended: it's the only place in code that enforces the neutrality rule (no party-affiliated look, no red markers). Unset means the map is treated as disabled (`src/lib/maps-config.ts`); the ward page renders its no-JS fallback rather than an unstyled stock basemap. |
+| `MAPS_ENABLED` | yes to show maps | Kill switch (`src/lib/maps-config.ts`) — must be exactly `true`, and both `GOOGLE_MAPS_BROWSER_KEY` and `GOOGLE_MAPS_MAP_ID` must also be non-empty, for the map to render. Sheds client-side map spend without a rebuild when a budget alert fires. |
 | `GOOGLE_SEARCH_API_KEY` / `GOOGLE_SEARCH_CX` | optional | Programmable Search for news-link suggestions (`jobs/news-suggest.ts`); job no-ops (logs + exits 0) until both are set. |
 | `NEWS_QUERY_DAILY_BUDGET` | recommended | Daily query cap for the above. |
 | `ANTHROPIC_API_KEY` | yes (Kannada MT/extraction) | Curator-publish-triggered translation/extraction calls; unset means those calls no-op to `'pending'` and `jobs/translate-retry.ts` keeps retrying. |
