@@ -57,6 +57,7 @@ function renderBooths(
   lang: string,
   label: string,
   directionsLabel: string,
+  directionsAriaTemplate: string,
   booths: BoothRow[],
 ): void {
   const list = document.createElement('ul');
@@ -72,6 +73,17 @@ function renderBooths(
     directions.target = '_blank';
     directions.rel = 'noopener noreferrer';
     directions.textContent = directionsLabel;
+    // The visible text is the same word on every row, so without a
+    // per-booth accessible name a ward with several booths (one school
+    // often hosts several) renders a list of links that all announce
+    // identically — see the `__hints` entry for this key. `t()` lives on
+    // the server; this island imports no i18n table by design (file
+    // header), so the server hands over the TEMPLATE and the one
+    // substitution happens here.
+    directions.setAttribute(
+      'aria-label',
+      directionsAriaTemplate.replace('{boothName}', boothName(lang, booth)),
+    );
     item.append(name, address, directions);
     list.appendChild(item);
   }
@@ -98,7 +110,14 @@ function renderResult(
         renderMessage(container, msgs.noBoothData ?? '');
         return;
       }
-      renderBooths(container, lang, msgs.boothLabel ?? '', msgs.directions ?? '', data.booths);
+      renderBooths(
+        container,
+        lang,
+        msgs.boothLabel ?? '',
+        msgs.directions ?? '',
+        msgs.directionsAria ?? '',
+        data.booths,
+      );
       return;
     case 'no_booth_data':
       renderMessage(container, msgs.noBoothData ?? '');
@@ -133,6 +152,7 @@ export function initBoothLookup(root: ParentNode = document): void {
     outOfCoverage: form.dataset.msgOutOfCoverage ?? '',
     unavailable: form.dataset.msgUnavailable ?? '',
     directions: form.dataset.msgDirections ?? '',
+    directionsAria: form.dataset.msgDirectionsAria ?? '',
   };
 
   form.addEventListener('submit', (event) => {

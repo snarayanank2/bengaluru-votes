@@ -121,6 +121,13 @@ const settings = await getSettings(['booth_lookup_url']);
 function boothName(b: BoothRow): string {
   return lang === 'kn' && b.nameKn ? b.nameKn : b.nameEn;
 }
+
+// Handed to the island as an UN-SUBSTITUTED template: `t()` with no vars
+// returns the raw string with `{boothName}` intact (src/i18n/index.ts:36).
+// src/islands/BoothLookup.ts imports no i18n table by design (see its file
+// header), so the server ships the localized template and the island does
+// the one substitution per booth.
+const directionsAriaTemplate = t(lang, 'findBooth.result.directionsAriaLabel');
 ---
 
 <Prose lang={lang} title={content.title} description={content.description} path="/voting-guide/find-booth">
@@ -137,6 +144,7 @@ function boothName(b: BoothRow): string {
     data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
     data-msg-unavailable={t(lang, 'findBooth.result.unavailable')}
     data-msg-directions={t(lang, 'findBooth.result.directions')}
+    data-msg-directions-aria={directionsAriaTemplate}
   >
     <FormField
       label={t(lang, 'findBooth.form.label')}
@@ -162,6 +170,7 @@ function boothName(b: BoothRow): string {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-external-link
+                aria-label={t(lang, 'findBooth.result.directionsAriaLabel', { boothName: boothName(b) })}
               >
                 {t(lang, 'findBooth.result.directions')}
               </a>
