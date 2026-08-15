@@ -12,7 +12,7 @@ This document defines every page and modal in the pre-election MVP. Each URL is 
 - **Language in the URL:** every public path exists in both languages — English at the path shown, Kannada under a `/kn/` prefix (`/ward/57` ↔ `/kn/ward/57`), cross-linked with `hreflang`. The app-bar toggle navigates to the other language's URL. Each language variant is its own URL and its own screen, so "one URL → one screen" holds per language. (PRD §8; `docs/architecture.md` §4.)
 - **Global elements (present on every page):** an **environment banner** above the app bar on deployed environments only (staging and production say which they are — design-system §7.14; nothing renders locally); app bar with logo, **language toggle (EN | ಕನ್ನಡ)**, and a **Sign in / Account** control; footer with links to About, the voting guide, Data, Partner with us, Press, Terms, and Privacy. The footer is the only route to the trust and legal pages — none of them earn app-bar space, but all of them must be one click from anywhere, because the moment a citizen doubts the platform is the moment they need them.
 - **Pages vs modals:** a *page* has its own URL and can be deep-linked and shared. A *modal* is a popup that overlays whatever page the user is on, so the user never loses context and the URL does not change.
-- **Access levels:** Anonymous (no account) · Registered (OTP account) · Curator (OTP, scoped to assigned wards — PRD §10) · Admin (OTP). Curators and admins use the **same OTP login** as citizens — no separate password or 2FA.
+- **Access levels:** Anonymous (no account) · Registered (OTP account) · **Transcriber (OTP, no ward scope — bounded by the affidavit currently assigned to them, PRD §7)** · Curator (OTP, scoped to assigned wards — PRD §10) · Admin (OTP). Every privileged role uses the **same OTP login** as citizens — no separate password or 2FA. An admin can also generate a sign-in link and deliver it by hand, so staff access does not depend on any messaging vendor (PRD §10).
 - **Contribution rule:** flag and issue-vote actions are visible to everyone but gated at submit — an anonymous user is shown the Register/Login popup first, then the action resumes.
 
 ---
@@ -37,7 +37,8 @@ bengaluruvotes.opencity.in
 │   ├─ /voting-guide/find-booth          Find polling booth
 │   ├─ /about                            About us, funding & how we source data
 │   ├─ /data                             Key metrics & city-wide issue picture
-│   ├─ /partner-with-us                  Ways to help: spread awareness / curate data
+│   ├─ /donate                           Support the platform (links out)
+│   ├─ /partner-with-us                  Ways to help: awareness / curate / transcribe
 │   ├─ /press                            Press kit
 │   ├─ /terms                            Terms & conditions
 │   ├─ /privacy                          Privacy policy
@@ -48,10 +49,17 @@ bengaluruvotes.opencity.in
 │   ├─ /account/notifications            Notification settings
 │   └─ /account/submissions              My submissions (status)
 │
+├─ TRANSCRIBER (OTP, no ward scope)
+│   ├─ /transcribe                       Queue — draw the next affidavit
+│   └─ /transcribe/{assignment-id}       Read one affidavit, confirm or correct
+│
 ├─ CURATOR (OTP, scoped)
 │   ├─ /curator                          Curator dashboard
-│   ├─ /curator/queue                    Review queue
-│   ├─ /curator/queue/{submission-id}    Submission review
+│   ├─ /curator/queue                    Citizen flag queue
+│   ├─ /curator/queue/{submission-id}    Flag review
+│   ├─ /curator/disputes                 Disputed fields (transcriber disagreement)
+│   ├─ /curator/disputes/{dispute-id}    Resolve one disputed field
+│   ├─ /curator/transcribers             Transcriber performance
 │   ├─ /curator/candidate/{id}           Edit candidate
 │   ├─ /curator/ward/{id}                Edit ward
 │   └─ /curator/ward/{id}/issues         Define ward issue list
@@ -68,6 +76,28 @@ bengaluruvotes.opencity.in
     ├─ Flag misinformation
     └─ Cast issue vote (top 3)
 ```
+
+### 2.1 Which milestone opens which route
+
+Build order is `docs/milestones.md`; this table is the route view of it. A route's milestone is when it first becomes reachable, not when its content is finished.
+
+| Milestone | Routes |
+|---|---|
+| **M1** Ward discovery | `/` · `/ward/{id}` · `/ward/{id}/candidates` · `/candidate/{slug}` · `/ward/{id}/compare` · `/ward/{id}/issues` · `/check-registration` · `/about-election` · `/voting-guide/*` · `/about` |
+| **M2** Donation | `/donate` |
+| **M3** Partnerships | `/partner-with-us` · `/partner/{slug}` |
+| **M4** Launch | `/press` · `/terms` · `/privacy` |
+| **M5** Admin | `/admin` · `/admin/roles` · `/admin/users` · `/admin/partners` · `/admin/audit` |
+| **M6** Curator & transcriber | `/transcribe/*` · `/curator/*` |
+| **M7** Registered users | `/account/*` · `/login` · the Register/Login, Flag and Issue-vote modals |
+| **M8** EC affidavits available | No new routes — `/candidate/{slug}` fills, and `/data` opens |
+| **M9** Booth information available | No new routes — `/voting-guide/find-booth` starts resolving |
+
+Three things this table makes explicit:
+
+- **The candidate routes open at M1 with nothing in them.** They show the pre-nomination empty state (§3.3) rather than 404ing, because the URLs are shareable and M4 puts launch traffic on them months before a candidate exists. The empty state is an M1 deliverable, not a placeholder.
+- **The last two milestones open no routes.** M8 and M9 fill pages that already exist — the candidate report card and the booth locator — because every URL is live and shareable from launch and the data arrives into it. Neither is visible as a new link; the test is whether an existing page starts answering.
+- **The three modals and all contribution actions are M7.** Flag and issue-vote controls appear on public pages, but tapping them opens Register/Login — so on an anonymous-only platform they have nothing to open. If M7 is dropped (`docs/gtm-plan.md` §3.1), those controls come out rather than leading to a dead end.
 
 ---
 
@@ -114,7 +144,7 @@ bengaluruvotes.opencity.in
 - **Purpose:** Show the ward’s key issues, candidate stances, and citizen issue-voting results.
 - **Key elements:** curator-defined issue list; candidate stance per issue (where available); **public results — ranked order with percentage shares** (no raw counts on this page; the total-votes figure lives on `/data`, PRD §5.5); “Vote your top 3” action; **register-for-updates slot** (same as §3.2).
 - **Links to:** Candidate report card; opens Cast issue vote modal (and Register/Login modal if anonymous); opens Register/Login modal (register-for-updates slot).
-- **Notes:** voting is limited to the user’s **registered home ward**. Ships in **Phase 1** (PRD §13.1) — issues and voting precede candidate data; a ward with no curator-defined issues yet shows an empty state, and candidate-stance rows appear once candidates exist.
+- **Notes:** voting is limited to the user’s **registered home ward**. The page ships with **M1**; the **Vote your top 3** action is **M7** and contingent with it (PRD §13.1). A ward with no curator-defined issues yet shows an empty state, and candidate-stance rows appear once candidates exist.
 
 ### 3.7 Check registration / eligibility
 - **URL:** `/check-registration`
@@ -154,6 +184,7 @@ bengaluruvotes.opencity.in
 - **Access:** Anonymous
 - **Purpose:** Return the citizen’s correct, address-accurate polling booth.
 - **Key elements:** lookup by **address** (no voter-ID entry — no voter details are entered or stored on the platform, PRD §5.10); booth location + map (not just a name); until booth-level data lands, the page says so and links out to the official EC booth lookup (PRD §5.10).
+- **Notes:** *The page ships in **M1**, the data in **M9** — and the gap between them is expected to be months, so the empty state is what most visitors see for most of the campaign. Treat it as a real screen, not a placeholder: it has to say plainly that booth locations are published closer to the election, hand off to the official EC lookup, and be worth arriving at. M9 is the only milestone with **no assumed date at all** — nothing estimates when the EC publishes booth data, and nobody is tracking it (`docs/project-dependencies.md` §4.7).*
 
 ### 3.13 About us, funding & how we source data
 - **URL:** `/about`
@@ -171,7 +202,7 @@ bengaluruvotes.opencity.in
   - **Integrity:** flags raised; flags resolved; median time to resolve.
   - **Citizen signal:** city-wide issue roll-up aggregated across all wards; total issue votes cast; registered citizens.
   - An **"as of" timestamp** on every figure.
-- **Notes:** *Added by the GTM plan. Ships in **Phase 2**, not Phase 1 — during the teaser it would honestly read "14 of 369 wards", which is damaging and hands critics a number. The issue roll-up says nothing until issue voting has volume (Phase 3). No dataset downloads or API this release — this page publishes figures, not data.*
+- **Notes:** *Added by the GTM plan. **Opens with M8**, not with the early ward pages — before then it would honestly read "14 of 369 wards", which is damaging and hands critics a number. The issue roll-up says nothing until issue voting has volume, which needs M7. No dataset downloads or API this release — this page publishes figures, not data.*
 
 ### 3.15 Partner with us
 - **URL:** `/partner-with-us`
@@ -185,7 +216,7 @@ bengaluruvotes.opencity.in
 - **Access:** Anonymous
 - **Purpose:** Let a journalist file an accurate story without needing to reach anyone.
 - **Key elements:** boilerplate at three lengths (50/100/200 words); current key stats (drawn from `/data`); logos and screenshots for download; spokesperson bios and quotes; contact with a stated response time; the neutrality statement; link to sourcing methodology on `/about`.
-- **Notes:** *Added by the GTM plan. Ships in **Phase 1** even though it is a Phase 2 asset — journalists arrive at the notification, and a press kit assembled then is assembled too late. The launch press push goes out at N, with a second beat at E−2w (PRD §5.15).*
+- **Notes:** *Added by the GTM plan. Ships with **M4** even though it is really a notification-week asset — journalists arrive at the notification, and a press kit assembled then is assembled too late. The launch press push goes out at N, with a second beat at E−2w (PRD §5.15).*
 
 ### 3.17 Terms & conditions
 - **URL:** `/terms`
@@ -199,7 +230,7 @@ bengaluruvotes.opencity.in
 - **Access:** Anonymous
 - **Purpose:** Disclose what personal data is collected, why, and what rights the citizen has over it.
 - **Key elements:** the operator (**Oorvani Foundation**); what is collected (email, phone, address→ward, language, `src` attribution, standard server logs, and **Google Analytics** usage data and cookies) and why — visitor and event measurement uses Google Analytics, alongside server-side application events; the **data commitments** — no sale, sharing only with the service providers operating the platform (the processor inventory, PRD §5.16), contacts used only for ward election updates and critical product notices; WhatsApp/email consent and withdrawal; **DPDP Act 2023** notice, data-principal rights, and a named **grievance officer**; retention period; the fact that issue votes are published in aggregate.
-- **Notes:** *Added by the GTM plan. **Ships in Phase 0 — the earliest page on the critical path.** Meta requires a published privacy-policy URL to approve WhatsApp Business API onboarding, so this page gates template approval, which gates the entire comms plan. Needs legal review. "Critical product updates" must be drafted narrowly — service-affecting notices, not feature marketing — or it silently becomes the loophole the purpose limitation was meant to close. Still blocked on the retention period — see Section 9.*
+- **Notes:** *Added by the GTM plan. **Gates M4 — the earliest page on the critical path.** Google Analytics is already live on the site, so the launch cannot happen without it. It separately gates WhatsApp Business API onboarding, since Meta requires a published privacy-policy URL, and therefore template approval and the entire comms plan. Needs legal review. "Critical product updates" must be drafted narrowly — service-affecting notices, not feature marketing — or it silently becomes the loophole the purpose limitation was meant to close. Still blocked on the retention period — see Section 9.*
 
 ### 3.19 Partner kit
 - **URL:** `/partner/{partner-slug}`
@@ -208,9 +239,18 @@ bengaluruvotes.opencity.in
 - **Key elements:** the partner's tagged link (`/?src={partner-slug}`); ready-to-paste WhatsApp forward text in English and Kannada — a general message and a first-time voter variant linking the `/voting-guide` checklist (§3.9); a poster image sized for WhatsApp; a short neutrality statement.
 - **Notes:** *Added from the GTM plan (PRD §5.12). Partners are **not a role** — this is a public page, and partner records are managed at `/admin/partners`. The unit of distribution is a message pasted into an apartment WhatsApp group, so the copy blocks matter more than the page design. Distinct from `/partner-with-us` (§3.15): that page recruits partners, this one equips an existing one.*
 
+### 3.20 Donate
+- **URL:** `/donate`
+- **Access:** Anonymous. Bilingual like every public path.
+- **Purpose:** Make the case for supporting the platform, and hand the citizen to Oorvani Foundation's existing donation flow.
+- **Key elements:** what the platform costs to run and what a donation pays for; who the Oorvani Foundation is and its link to `/about`; the 80G position and what a donor receives; a single outbound **Donate** control to Oorvani's own donation page.
+- **Notes:** *Added by the milestone plan (**M2**). **No payment is taken on this domain** — no payment vendor, no processor to add to the `/privacy` inventory, no card data in this codebase. That is what makes the page two days of work rather than a project of its own; embedded payments would be a separate scoped piece. Linked from the footer, not the app bar: a donation ask competing with the ward finder for attention on a civic platform costs more trust than it raises.*
+
 ---
 
 ## 4. Registered citizen pages
+
+*All of §4 ships in **M7** and is contingent with it (`docs/gtm-plan.md` §3.1).*
 
 ### 4.1 My account (profile & language)
 - **URL:** `/account`
@@ -234,22 +274,26 @@ bengaluruvotes.opencity.in
 
 ---
 
-## 5. Curator pages
+## 5. Curator & transcriber pages
 
-*All curator pages are scoped to the curator’s assigned wards. The ward is the permission unit; “assign a zone” is an admin shortcut that expands to that zone’s wards (PRD §10).*
+*All **curator** pages are scoped to the curator’s assigned wards. The ward is the permission unit; “assign a zone” is an admin shortcut that expands to that zone’s wards (PRD §10).*
+
+***Transcriber** pages (§5.7–5.8) are the exception: they carry no ward scope at all, because the queue is randomized city-wide (PRD §5.2). A transcriber's write access is bounded by the assignment they currently hold, not by a ward.*
+
+*All of §5 ships in **M6**.*
 
 ### 5.1 Curator dashboard
 - **URL:** `/curator`
 - **Access:** Curator
 - **Purpose:** Home for a curator’s work.
-- **Key elements:** review-queue count, recent activity, quick entry to edit candidates/wards and define issues; **wards in the curator's scope awaiting readiness sign-off**, with those whose sign-off was cleared by a candidate-set change called out first.
-- **Links to:** Review queue, Edit candidate, Edit ward, Define ward issue list.
+- **Key elements:** flag-queue count, **disputed-field count**, recent activity, quick entry to edit candidates/wards and define issues; **wards in the curator's scope awaiting readiness sign-off**, with those whose sign-off was cleared by a candidate-set change called out first.
+- **Links to:** Flag queue, Disputed fields, Transcriber performance, Edit candidate, Edit ward, Define ward issue list.
 - **Notes:** *The awaiting-sign-off list added by the GTM plan. A curator who does not know a ward is held will not sign it off, and the ward simply goes silent — the failure is invisible from the curator's side unless the dashboard says so.*
 
-### 5.2 Review queue
+### 5.2 Flag queue
 - **URL:** `/curator/queue`
 - **Access:** Curator
-- **Purpose:** Work through citizen-submitted flags.
+- **Purpose:** Work through **citizen-submitted flags**. Distinct from the dispute queue (§5.9) — see PRD §6.4; the two are never merged.
 - **Key elements:** queue items (deduped, with counts) for the curator’s wards; filter/sort. Queues are per-ward: where curator scopes overlap, the same item appears to every covering curator, and whoever acts first resolves it (PRD §6.1).
 - **Links to:** Submission review.
 
@@ -280,6 +324,42 @@ bengaluruvotes.opencity.in
 - **Purpose:** Set the list of issues that citizens vote on for this ward.
 - **Key elements:** add/edit/remove issues; this list powers the public Ward issues & voting page. Renaming an issue keeps existing votes attached; deleting one removes it from every vote-set that included it (PRD §5.5).
 
+### 5.7 Transcription queue
+- **URL:** `/transcribe`
+- **Access:** **Transcriber** (also curator, admin)
+- **Purpose:** Draw the next affidavit to read. There is nothing to browse and nothing to choose.
+- **Key elements:** a single **Start the next affidavit** control; the transcriber's own counts (read today, read in total, current agreement rate); no list of candidates, wards or parties.
+- **Notes:** *The absence of a list is the design, not an unfinished screen (PRD §5.2). A transcriber who can pick their next affidavit can pick their own ward or a candidate they have views about, and two such readings are not two independent readings. Anything that would let a transcriber steer what they are given — search, filters, a ward selector, even a skip button that reveals the next item — breaks the consensus guarantee this whole surface exists to produce.*
+- **Links to:** Read affidavit.
+
+### 5.8 Read affidavit
+- **URL:** `/transcribe/{assignment-id}`
+- **Access:** **Transcriber**, and only for an assignment currently held by them
+- **Purpose:** Check the AI-extracted fields against the affidavit and confirm or correct each one.
+- **Key elements:** the stored affidavit PDF beside the extracted key/value pairs; per field, **confirm** or **edit the value**; a **not legible** option, which is a real answer and not a skip; the candidate's name and ward shown as context but not editable here; submit commits the whole reading at once.
+- **Notes:** *Keys are confirmed, not edited — the field set comes from Form 26 and a transcriber inventing a key would make two readings incomparable. Values are pre-filled with the AI's extraction, which is a known weakness: two transcribers confirming the same wrong value reach consensus on it (PRD §5.2). An assignment is held, not owned — if abandoned it returns to the queue for someone else, since a half-read affidavit that nobody can be given is a hole in the coverage.*
+
+### 5.9 Disputed fields
+- **URL:** `/curator/disputes`
+- **Access:** Curator (scoped), Admin (all)
+- **Purpose:** Work through fields where three transcribers read three different values (PRD §5.2).
+- **Key elements:** one row per disputed field — candidate, ward, field name, and the three readings side by side; sorted by ward and by how long the dispute has been open.
+- **Notes:** *A dispute has no submitter waiting for an outcome, which is exactly why it needs its own queue rather than being mixed into the flag queue (§5.2, PRD §6.4). A flag left unworked disappoints a citizen; a dispute left unworked leaves a candidate's record standing on an AI extraction nobody could confirm — quieter, and worse.*
+- **Links to:** Resolve disputed field.
+
+### 5.10 Resolve disputed field
+- **URL:** `/curator/disputes/{dispute-id}`
+- **Access:** Curator (scoped), Admin
+- **Purpose:** Settle one disputed field against the source document.
+- **Key elements:** the affidavit page in question; the three readings, each attributable; the currently published value; **accept one reading** or **enter a different value**; resolution publishes immediately and is audit-logged, and the field becomes *curator-confirmed*.
+
+### 5.11 Transcriber performance
+- **URL:** `/curator/transcribers`
+- **Access:** Curator, Admin
+- **Purpose:** Find the transcribers whose readings cannot be trusted.
+- **Key elements:** per transcriber — agreement rate against accepted values, volume, share of disputes contributed, median time per affidavit; sortable; a link to an admin to block the account (§6.3).
+- **Notes:** *Visible to curators and admins, never to other transcribers (PRD §7). In a volunteer cohort the only real sanction is removal, and removal needs evidence — an agreement rate well below the cohort's is that evidence. Read it as a screening tool, not a leaderboard: publishing a ranking to the cohort would optimise for speed, and speed is not what the second reading is for.*
+
 ---
 
 ## 6. Admin pages
@@ -293,21 +373,22 @@ bengaluruvotes.opencity.in
 ### 6.2 Roles & access
 - **URL:** `/admin/roles`
 - **Access:** Admin
-- **Purpose:** Manage the curator/admin roster and scope.
-- **Key elements:** invite/vet curators; grant/revoke roles; assign/adjust curator ward scope — per-ward, with a zone shortcut that expands to the zone’s wards (PRD §10).
+- **Purpose:** Manage the transcriber/curator/admin roster and scope.
+- **Key elements:** invite/vet curators **and transcribers**; grant/revoke roles; assign/adjust curator ward scope — per-ward, with a zone shortcut that expands to the zone’s wards (PRD §10). **Transcribers take no scope** — the field does not appear for them, because their queue is randomized city-wide (PRD §5.2).
+- **Notes:** *Transcriber invitation is deliberately here rather than self-serve. The consensus mechanism is a data-quality net, not a substitute for knowing who is reading candidates' affidavits (PRD §14).*
 
 ### 6.3 Manage users
 - **URL:** `/admin/users`
 - **Access:** Admin
-- **Purpose:** Manage citizen accounts and abuse.
-- **Key elements:** search users; deactivate/ban accounts; view submission history.
-- **Notes:** *Added from the PRD cross-check (admin deactivate/ban, §4/§7).*
+- **Purpose:** Add, block and unblock accounts across every role, and manage abuse.
+- **Key elements:** search users; **add a user with a role** (transcriber / curator / admin) and, for curators, a ward or zone scope; **generate a sign-in link** for an admin to deliver by hand; block and unblock accounts, where **blocking ends live sessions rather than only future logins**; view submission history.
+- **Notes:** *Ships in **M5**. The sign-in link is what makes staff access independent of every messaging vendor — no SendGrid, no Twilio, no Meta verification (PRD §10) — so admins, curators and transcribers can work even if M7 is abandoned outright. It is a floor rather than a plan: at a transcriber cohort's scale, issuing links by hand every day is somebody's job, so email OTP should be provisioned before the cohort arrives. `npm run seed:admin` remains the only way the first admin exists.*
 
 ### 6.4 Partners & ward coverage
 - **URL:** `/admin/partners`
 - **Access:** Admin
 - **Purpose:** Manage the distribution partner roster and watch reach across the city.
-- **Key elements:** add/edit partners and their slugs; registrations attributed per partner; **partner → ward coverage against all 369 wards**, with the uncovered set surfaced as a work queue; wards currently **held** from candidate comms for failing the data-readiness check (PRD §9.1), with an override; the **expression-of-interest queue** from `/partner-with-us`, split by path (spread awareness / curate data), with accept/decline.
+- **Key elements:** add/edit partners and their slugs; registrations attributed per partner; **partner → ward coverage against all 369 wards**, with the uncovered set surfaced as a work queue; wards currently **held** from candidate comms for failing the data-readiness check (PRD §9.1), with an override; the **expression-of-interest queue** from `/partner-with-us`, split by path (spread awareness / curate data / transcribe affidavits), with accept/decline.
 - **Notes:** *Added from the GTM plan. Coverage is the early warning for reach skewing to affluent central wards; the held-wards list is the early warning for curator gaps. Accepting an awareness applicant provisions a partner slug and kit page; accepting a curation applicant hands off to `/admin/roles`, which already owns curator vetting and ward scope — the two queues stay separate because granting a role is a different act from listing a partner.*
 
 ### 6.5 Audit log
@@ -321,6 +402,8 @@ bengaluruvotes.opencity.in
 ## 7. Modals
 
 Modals overlay the current page and never change the URL, so the citizen never loses their place.
+
+*All three modals ship in **M7** and are contingent with it. The flag and issue-vote controls that open them appear on public pages from M1, but have nothing to open until M7 exists — if M7 is dropped, the controls come out rather than leading nowhere (§2.1).*
 
 ### 7.1 Register / Login
 - **Trigger:** the **Sign in** control (available to any unregistered visitor), any gated action (flag / vote), or the **register-for-updates slot** on a ward page (§3.2/3.3/3.5/3.6).

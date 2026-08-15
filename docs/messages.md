@@ -4,6 +4,10 @@
 **Status:** Draft — for template-approval submission
 **Scope:** Every outbound message the platform sends, in both channels (WhatsApp, Email) and both languages (English, Kannada). This is the submission packet for Twilio/Meta WhatsApp template approval (`docs/project-dependencies.md` §3.7) and the copy source for SendGrid email templates.
 
+> **Contingent, as of 2026-08-14.** The seven ward-scoped sends require registered users, which is **M7 — last in the milestone order and explicitly abandonable** (`docs/milestones.md` §11). If the go/no-go in `docs/gtm-plan.md` §3.1 comes back *no*, R1 through F1 are dropped and this packet reduces to the **OTP login message alone** — 1 message × 2 channels × 2 languages = 4 templates, not 16. Nothing in the drafting below changes either way; what changes is how many of these are ever submitted.
+>
+> **The OTP templates are not contingent** and are worth submitting on their own timeline: OTP over WhatsApp is how citizens *and* staff log in, and Meta approval runs to weeks. (Staff access does not depend on it — an admin can hand-issue sign-in links, `docs/prd.md` §10 — but that is a floor, not a plan.)
+
 > **Scope check — these are the only automated outbound messages.** The comms calendar is seven ward-scoped sends (`docs/gtm-plan.md` §4) plus the OTP login message (`docs/prd.md` §10) = **8 messages × 2 channels × 2 languages = 16 WhatsApp templates**, matching the count in `docs/project-dependencies.md` §3.7/§9. **Flag outcomes and submission-review outcomes are explicitly *not* emailed or WhatsApped** (`docs/prd.md` §6.1 step 5) — those surface only as status on `/account/submissions`. Do not add a template for them without a PRD change.
 
 ---
@@ -38,7 +42,7 @@
 
 ## 3. OTP login (Authentication)
 
-**Trigger:** every login attempt, any role (citizen, curator, admin) — `docs/prd.md` §10.
+**Trigger:** every login attempt, any role (citizen, transcriber, curator, admin) — `docs/prd.md` §10.
 **Category:** Authentication (Meta's fixed-format template class; body wording is constrained to Meta's approved authentication patterns, shown below).
 
 ### WhatsApp — English (`bv_otp_login_en`)
@@ -403,7 +407,7 @@ Variables: `{{1}}` = booth name/address, `{{2}}`/`{{3}}` = poll open/close times
 - [ ] Legal review of all 16 WhatsApp bodies + 16 email bodies (consent framing, no electioneering language, RPA §126 clean)
 - [ ] Native Kannada speaker review of all 8 Kannada WhatsApp templates and 8 Kannada email templates
 - [ ] Confirm proposed category per template with Twilio before Meta submission (§3.8 cost implications — Marketing is dearer and separately blockable)
-- [ ] Submit all 16 WhatsApp templates together in Phase 0, well ahead of the teaser (`docs/gtm-plan.md` §2) — approval runs weeks
+- [ ] Submit the OTP templates as soon as `/privacy` is published — approval runs weeks. The seven send templates wait on the `docs/gtm-plan.md` §3.1 go/no-go
 - [ ] Wire SendGrid email templates with the same 8×2 content, matched to the recipient's saved language preference (`docs/prd.md` §8)
 - [ ] Verify every link variable resolves per-recipient (ward-scoped URLs), not to a generic page
 - [ ] Confirm unsubscribe links in Marketing-category emails hit the one-click mechanism (`docs/project-dependencies.md` §3.16)

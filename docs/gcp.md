@@ -242,6 +242,9 @@ Used on exactly one route: the anonymous `POST /api/eoi` behind
 for `https://bengaluruvotes.opencity.in` → copy the **Measurement ID**
 (`G-…`) → `GA_MEASUREMENT_ID`.
 
+**Done 2026-08-14** — the property exists and production runs
+`GA_MEASUREMENT_ID=G-PZQJ1ZSCN0`.
+
 Leave it unset on staging. Per the runbook table, unset means GA is simply
 absent — no error, no script tag.
 

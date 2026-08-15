@@ -508,7 +508,7 @@ here in the same PR.
 | `NEWS_QUERY_DAILY_BUDGET` | recommended | Daily query cap for the above. |
 | `ANTHROPIC_API_KEY` | yes (Kannada MT/extraction) | Curator-publish-triggered translation/extraction calls; unset means those calls no-op to `'pending'` and `jobs/translate-retry.ts` keeps retrying. |
 | `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | yes (`/partner-with-us`) | reCAPTCHA v3 on the one anonymous write, `POST /api/eoi`. |
-| `GA_MEASUREMENT_ID` | optional | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). |
+| `GA_MEASUREMENT_ID` | production only — `G-PZQJ1ZSCN0` | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). Set on production 2026-08-14; **deliberately omitted from `.env.staging`** so staging traffic never enters the property. The id is public (it ships in the HTML), so it lives here rather than in a credential store. Read at request time — changing it needs a container recreate, not a rebuild. |
 | `OTP_DAILY_SEND_BUDGET` | recommended (default `5000`) | Global daily OTP-send budget across all destinations (architecture §13). |
 | `OTP_TEST_SINK` | **must NOT be set** | `src/lib/otp.ts` — when exactly `'true'`, writes every plaintext OTP code to a `otp_test_codes` table so the Playwright e2e suite can read codes without in-process access. The source comment is explicit: this must NEVER be set in production or staging. Leave unset in both `.env` files. |
 | `RETENTION_ENABLED` | yes — **must be `false`** | DPDP retention enforcement (`jobs/retention.ts`) ships disabled pending PRD §17 legal sign-off on the retention period. Do not flip to `true` without that sign-off. |
