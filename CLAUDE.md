@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is being built
 
-**GBA Elections Citizen Platform** (`bengaluruvotes.opencity.in`) — a pre-election platform giving Bengaluru citizens ward-level information for the GBA (corporator) ward elections. Citizens find their post-delimitation ward, read sourced candidate report cards, compare candidates, vote on the top-3 local issues, and get voting logistics. Fully bilingual (English / Kannada), 369 wards.
+**GBA Elections Citizen Platform** (`bengaluruvotes.opencity.in`) — a platform giving Bengaluru citizens ward-level information for the GBA (corporator) ward elections. Citizens find their post-delimitation ward, find their polling booth, read sourced candidate report cards, compare candidates, vote on the top-3 local issues, get voting logistics, and — after the poll — see their ward's result. Fully bilingual (English / Kannada), 369 wards.
 
 This serves a real election. Demo/fixture data is deliberately unmistakable as fake (`scripts/seed-dev.ts` — "Demo Party A", "(FICTIONAL)"); never introduce plausible-looking fake candidate or party data.
 
@@ -12,14 +12,17 @@ This serves a real election. Demo/fixture data is deliberately unmistakable as f
 
 ## The docs
 
-- `docs/overview.md` — stakeholder summary. Start here for the *why*.
-- `docs/milestones.md` — **the plan of work**: seven milestones, what each ships, how it is tested, what it waits on. Replaced `docs/project-plan.md`'s phase structure on 2026-08-14. When you need to know what is being built next and in what order, this wins.
-- `docs/prd.md` — authoritative product requirements: per-feature (§5), moderation (§6), permissions matrix (§7), NFRs (§12), locked decisions (§14), open questions (§17). **When a requirement is ambiguous, this wins.**
+- `docs/overview.md` — stakeholder summary. Start here for the *why*: what the platform does, the five roles, the locked decisions, the dependencies, and §2's standing risk that the candidate data may not be obtainable at all.
+- `docs/milestones.md` — **the plan of work**: fourteen milestones, what each ships, how it is tested, what it waits on. It tracks the **Milestones** tab of the project tracker sheet, which is the source; the doc is the reading of it. Replaced a nine-milestone plan on 2026-08-15, which had replaced `docs/project-plan.md`'s phases the day before — **every milestone number changed both times**, so treat any `M<n>` written before 2026-08-15 as pointing at the wrong milestone (`milestones.md` §17 maps them). When you need to know what is being built next and in what order, this wins.
 - `docs/architecture.md` — the technical design. Section numbers referenced throughout the source (`architecture §5`, `§9`, `§13`) are load-bearing; code comments point at them.
-- `docs/information-architecture.md` — canonical URL/route map: every page and modal with its exact URL and access level.
-- `docs/roles.md` — who does what on the programme, and which milestone each vacancy stops. Staffing, not permissions (that is `prd.md` §7).
-- `docs/design-system.md`, `docs/gtm-plan.md` (campaign calendar the `jobs` container runs), `docs/project-dependencies.md`.
-- `docs/gcp.md` — Google Cloud credential provisioning (Geocoding, Maps JS, Places, Custom Search, reCAPTCHA, GA4): what to create in which console and which env var it becomes. `deploy/runbook.md`'s env var table is the authority on what each variable does at runtime; `gcp.md` is how the values are obtained.
+- `docs/election-timelines.md` — what the election calendar allows, as offsets from **N**, the announcement. Deliberately self-contained and cited rather than copied: anything date-dependent points here so one update at N propagates. No date in it is confirmed.
+- `docs/ksec-data-risk.md` — whether candidate affidavit data can be obtained at all. KSEC publishes no filled affidavits; this is the acquisition options and the risk. Read it before assuming candidate data exists.
+- `docs/messages.md` (the seven citizen sends, EN and KN), `docs/design-system.md`, `docs/project-dependencies.md`.
+- `docs/gcp.md` — Google Cloud credential provisioning (Geocoding, Maps JS, Places, reCAPTCHA, GA4; its Custom Search section is now dead — candidate news links were dropped 2026-08-15): what to create in which console and which env var it becomes. `deploy/runbook.md`'s env var table is the authority on what each variable does at runtime; `gcp.md` is how the values are obtained.
+
+**Four documents were deleted on 2026-08-15, pending regeneration:** `prd.md` (product requirements — the former tiebreaker on ambiguity), `information-architecture.md` (the canonical route map), `gtm-plan.md` (campaign calendar) and `roles.md` (staffing). They were built on the superseded milestone structure and are being rewritten rather than renumbered. `overview.md` was deleted with them and has since been rewritten against the fourteen milestones — treat it as current. The other three are recoverable from git history (`git log --diff-filter=D -- docs/prd.md`, then `git show <commit>^:docs/prd.md`); `roles.md` was never committed and is gone from the repo.
+
+**Until they return, `docs/overview.md`, `docs/milestones.md` and `docs/architecture.md` are the plan of record, and anything not stated in them or in the source is not written down.** Do not invent a requirement to fill the gap — ask. `docs/review.md` predates the deletions and refers to all five; treat it as history.
 
 Source comments cite "Task NN" throughout — historical task briefs, mostly no longer in the repo. Treat them as provenance, not as files to find.
 
@@ -79,7 +82,7 @@ npm test
 
 Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`.
 
-`vitest.config.ts` sets `fileParallelism: false` and `singleFork` on purpose: all DB-backed tests share one database, and parallel files race (a temporary DDL rule in `audit.test.ts` breaks other files' `INSERT ... RETURNING`; fixture ids collide). Don't re-enable parallelism.
+`vitest.config.ts` sets `fileParallelism: false` and `singleFork` on purpose: all DB-backed tests share one database, and parallel files race (a temporary DDL rule in `audit.test.ts` — until tracker 147 removes it — breaks other files' `INSERT ... RETURNING`; fixture ids collide). Don't re-enable parallelism.
 
 ### E2E (Playwright)
 
@@ -138,11 +141,11 @@ No layer translates at request time. Regeneration is unconditional — **hand-ed
 
 `t()` throws on a missing key unless *both* `import.meta.env.PROD` and `NODE_ENV=production` agree — so dev and tests surface missing translations loudly.
 
-### Curator publishing and audit
+### Curator publishing
 
-Curator edits **go live immediately** — no approval gate. Every field carries a visible source, distinguishing official/affidavit data from curator-compiled context. `src/lib/publish.ts` owns the publish path (including manual-override vs source-change MT regeneration); `src/lib/audit.ts` owns the append-only log.
+Curator edits **go live immediately** — no approval gate. Every field carries a visible source, distinguishing official/affidavit data from curator-compiled context. `src/lib/publish.ts` owns the publish path (including manual-override vs source-change MT regeneration).
 
-**`writeAudit` must be called with a transaction handle from an in-flight `db.transaction()`** so the audit row is atomic with the change it records. Migration `0001_audit_append_only.sql` enforces append-only at the database level.
+**The audit log was removed from the design on 2026-08-15** (`docs/architecture.md` §6, §7, §13) — no change history, no `/admin/audit`, no restore. The code has not been deleted yet: `src/lib/audit.ts`, `src/lib/audit-restore.ts`, `src/pages/admin/audit.astro`, the two test files and migration `0001_audit_append_only.sql` are all still present and still wired into the publish path. **Removing them is tracker 147** — until it lands, don't build anything new on `writeAudit`.
 
 ### Contribution flows
 
@@ -152,7 +155,9 @@ Register/Login (fallback page `/login`), Flag, and Vote are **modals** that over
 
 ### Roles
 
-Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Data curator (**scoped to assigned wards/zone**) · Admin (city-wide). Permissions matrix: `docs/prd.md` §7.
+Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Data curator (**scoped to assigned wards/zone**) · Admin (city-wide). `roleEnum` in the schema is the authority on what exists today; `src/middleware.ts` and `src/lib/authz.ts` are the authority on what each can do. There is no written permissions matrix at present.
+
+A fifth role, **transcriber**, is planned but not built: city-wide, *scopeless*, so `canEditWard` will not apply to it and authorization becomes "does an open assignment for this affidavit belong to this caller". That is a change to the enforcement model, not a new row in a table — see `docs/milestones.md` §10 before implementing it.
 
 ## Gotchas that bite silently
 
@@ -165,11 +170,11 @@ Anonymous citizen (no account, most traffic, read-only) · Registered citizen ·
 
 ## Fixed decisions (don't relitigate without asking)
 
-- **Auth:** one email / WhatsApp OTP mechanism for *all* roles. No passwords, no 2FA.
+- **Auth:** one email / WhatsApp OTP mechanism for *all* roles. No passwords, no 2FA, no sign-in links. **Staff (admin, curator, transcriber) are email-only**; only citizens get the WhatsApp channel. **Sessions: 24h for staff, 1h sliding idle for citizens.** `npm run seed:admin` bootstraps the first admin. Consequence worth holding: **SendGrid gates the entire curator/transcriber operation**, not just the campaign sends — but Meta/WhatsApp does not, so the 40-day queue is not in that path.
 - **Curator publish:** trusted; immediate, no approval gate.
 - **Bilingual:** EN at root, KN under `/kn/`, each with its own URL.
 - **Deployment:** one Hostinger VPS (Mumbai, 4 vCPU / 16 GB) running staging + production Compose stacks, from **two checkouts** under `/root/src` — staging tracks `origin/main`, production sits detached on a `vYYYY.MM.DD` tag. **There is no CI and no registry** (removed 2026-08-13): images are built on the box, and deploys are run by hand with `deploy/deploy.sh`. Nothing fires on push, merge or release. `deploy/runbook.md` ("Deploying") is the procedure; `architecture.md` §14.3/§14.4 is the design. Moved off the never-provisioned DigitalOcean Droplet on 2026-08-13.
 - **Consequence worth holding onto:** `npm test`, `npm run typecheck` and `npm run translate -- --check` no longer gate anything. Run them before deploying — nothing else will.
 - **Staging isolation:** `compose.staging.yml` must never join `back_prod`, and staging must keep `SENDS_DISABLED=true` with vendor keys omitted entirely. Those are two independent guards; keep both.
 
-Open questions live in `docs/prd.md` §17 — check there before inventing an answer.
+Open questions: `docs/milestones.md` §17 (what the plan and the tracker still disagree about), `docs/election-timelines.md` §5 (what nobody has confirmed about the calendar), `docs/ksec-data-risk.md` §6 (whether the candidate data can be got at all). The consolidated product open-questions list went with `prd.md` and has not been reconstructed — check the three above before inventing an answer, and ask if it is not there.

@@ -5,7 +5,8 @@
 Dependency register reference: `docs/project-dependencies.md` §6.2 (Cloud
 project + billing), §6.3 (Geocoding key), §6.4 (Maps Platform terms), §6.5
 (geocoding budget + quota alerts), §6.10 (secrets custody), §6.12 (GA
-property), §6.13 (reCAPTCHA keys), §6.15 (Programmable Search). Operational
+property), §6.13 (reCAPTCHA keys), §6.19 (Cloud Storage bucket for affidavit
+PDFs — added 2026-08-15, provisioning not yet written up here). Operational
 context: `deploy/runbook.md` §"Required environment variables" — the table
 there is the authority on what each variable does at runtime; this document
 is how the values in it are obtained.
@@ -251,14 +252,17 @@ absent — no error, no script tag.
 §6.12 requires the tracker disclosed in `/privacy` before it ships, alongside
 reCAPTCHA.
 
-## 8. Programmable Search engine ID (§6.15)
+## 8. Programmable Search engine ID — **dead, 2026-08-15**
 
-`programmablesearchengine.google.com` → **Add** → "Search specific sites",
-seeded from `data/news-domains.json` → copy the **Search engine ID** →
-`GOOGLE_SEARCH_CX`.
+This section provisioned a Programmable Search engine and
+`GOOGLE_SEARCH_CX` / `GOOGLE_SEARCH_API_KEY` for **candidate news-link
+suggestions**. That feature was dropped from the plan on 2026-08-15 and its
+dependency row (formerly `project-dependencies.md` §6.15) was deleted with
+it. **Do not provision these keys.** Nothing in the milestones needs them,
+and the register no longer carries a row to point at.
 
-`jobs/news-suggest.ts` no-ops (logs, exits 0) until both this and
-`GOOGLE_SEARCH_API_KEY` are set.
+Kept as a stub rather than removed so the section numbering below does not
+shift under anything citing it.
 
 ## 9. Custody and placement (§6.10)
 
