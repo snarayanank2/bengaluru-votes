@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
-import { seedWards, loadWardRows } from '../../scripts/seed-wards';
+import { seedWards, loadWardCandidateQuestionRows, loadWardRows } from '../../scripts/seed-wards';
 import { seedAdmin, isValidEmail } from '../../scripts/seed-admin';
 import { seedDev, assertNotProduction } from '../../scripts/seed-dev';
 
@@ -41,6 +41,18 @@ describe('seed-wards', () => {
     expect(ids.size).toBe(369);
   });
 
+  it('maps five bilingual candidate questions to every ward', () => {
+    const rows = loadWardCandidateQuestionRows();
+    expect(rows).toHaveLength(369 * 5);
+    expect(new Set(rows.map((row) => row.wardId)).size).toBe(369);
+    for (const row of rows) {
+      expect(row.position).toBeGreaterThanOrEqual(1);
+      expect(row.position).toBeLessThanOrEqual(5);
+      expect(row.questionEn).toBeTruthy();
+      expect(row.questionKn).toBeTruthy();
+    }
+  });
+
   it('inserts 369 wards into the db with non-empty name_kn, and is idempotent', async () => {
     const count = await seedWards(db);
     expect(count).toBe(369);
@@ -60,6 +72,12 @@ describe('seed-wards', () => {
       expect(row.nameKn).toBeTruthy();
       expect(row.nameKn.length).toBeGreaterThan(0);
     }
+
+    const questionRows = await db
+      .select()
+      .from(schema.wardCandidateQuestions)
+      .where(inArray(schema.wardCandidateQuestions.wardId, seeded.map((row) => row.id)));
+    expect(questionRows).toHaveLength(369 * 5);
   });
 });
 

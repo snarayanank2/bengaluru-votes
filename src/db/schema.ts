@@ -1,6 +1,6 @@
 import {
   pgTable, pgEnum, serial, bigserial, integer, text, boolean, timestamp,
-  jsonb, uniqueIndex, index, primaryKey, customType, date,
+  jsonb, uniqueIndex, index, primaryKey, customType, date, check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -35,6 +35,18 @@ export const wards = pgTable('wards', {
   zone: text('zone').notNull(),
   boundaryRef: text('boundary_ref').notNull(),         // feature id in data/gba.geojson
 });
+
+export const wardCandidateQuestions = pgTable('ward_candidate_questions', {
+  id: serial('id').primaryKey(),
+  wardId: integer('ward_id').notNull().references(() => wards.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  questionEn: text('question_en').notNull(),
+  questionKn: text('question_kn').notNull(),
+}, (t) => [
+  uniqueIndex('ward_candidate_questions_ward_position_uq').on(t.wardId, t.position),
+  index('ward_candidate_questions_ward_idx').on(t.wardId),
+  check('ward_candidate_questions_position_check', sql`${t.position} between 1 and 5`),
+]);
 
 export const media = pgTable('media', {
   id: serial('id').primaryKey(),

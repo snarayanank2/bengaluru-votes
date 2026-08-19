@@ -3,6 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+import { sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { localePath, t, type Lang } from '../../src/i18n';
 import WardEn from '../../src/pages/ward/[id].astro';
@@ -31,6 +32,13 @@ const WARD = {
   zone: 'Zone T',
   boundaryRef: 'ward-result-test-ward',
 };
+
+const QUESTIONS = [1, 2, 3, 4, 5].map((position) => ({
+  wardId: WARD.id,
+  position,
+  questionEn: `English candidate question ${position}`,
+  questionKn: `ಕನ್ನಡ ಅಭ್ಯರ್ಥಿ ಪ್ರಶ್ನೆ ${position}`,
+}));
 
 /**
  * Strips the container API's dev-mode debug attributes and collapses
@@ -77,6 +85,16 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
+    await db
+      .insert(schema.wardCandidateQuestions)
+      .values(QUESTIONS)
+      .onConflictDoUpdate({
+        target: [schema.wardCandidateQuestions.wardId, schema.wardCandidateQuestions.position],
+        set: {
+          questionEn: sql`excluded.question_en`,
+          questionKn: sql`excluded.question_kn`,
+        },
+      });
   });
 
   afterAll(async () => {
@@ -145,6 +163,22 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}/candidates`)}"`);
       expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}/issues`)}"`);
       expect(html).toContain(`href="${localePath(lang, '/voting-guide')}"`);
+    });
+  });
+
+  describe('questions to ask candidates', () => {
+    it.each(['en', 'kn'] as const)('%s: renders five localized question cards after the existing cards', async (lang) => {
+      const html = normalize(await (await renderWard(lang, WARD.id)).text());
+      const questionsStart = html.indexOf('class="candidate-questions"');
+
+      expect(questionsStart).toBeGreaterThan(html.indexOf('class="ward-links"'));
+      expect(html).toContain(t(lang, 'ward.questions.heading'));
+      for (const question of QUESTIONS) {
+        expect(html).toContain(lang === 'kn' ? question.questionKn : question.questionEn);
+      }
+
+      const questionsHtml = html.slice(questionsStart, html.indexOf('</section>', questionsStart));
+      expect(questionsHtml.match(/<li>/g)).toHaveLength(5);
     });
   });
 

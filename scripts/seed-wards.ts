@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Seed the `wards` table from data/gba.geojson.
+ * Seed the `wards` table from data/gba.geojson and the five bilingual
+ * candidate questions per ward from data/ward-candidate-questions.json.
  *
  * ── How this was inspected ───────────────────────────────────────────────
  *   node -e "const g=JSON.parse(require('fs').readFileSync('data/gba.geojson','utf8'));
@@ -69,11 +70,26 @@ const VALID_CORPORATIONS = new Set(['north', 'south', 'east', 'west', 'central']
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_GEOJSON_PATH = path.join(__dirname, '..', 'data', 'gba.geojson');
+const DEFAULT_QUESTIONS_PATH = path.join(__dirname, '..', 'data', 'ward-candidate-questions.json');
 
 type WardRow = typeof schema.wards.$inferInsert;
 
 type GeoJsonFeature = { properties: Record<string, unknown> };
 type GeoJsonFeatureCollection = { features: GeoJsonFeature[] };
+type QuestionSeedData = {
+  templates: Array<{ questionEn: string; questionKn: string }>;
+  wards: Array<{ wardName: string; questions: number[] }>;
+};
+
+type WardQuestionRow = typeof schema.wardCandidateQuestions.$inferInsert;
+
+function normalizedWardName(value: string): string {
+  return value
+    .replace(/^\s*\d+\s*-\s*/, '')
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
 
 /** Parse data/gba.geojson into `wards` insert rows per the mapping above. */
 export function loadWardRows(geojsonPath: string = DEFAULT_GEOJSON_PATH): WardRow[] {
@@ -119,6 +135,82 @@ export function loadWardRows(geojsonPath: string = DEFAULT_GEOJSON_PATH): WardRo
   });
 }
 
+/** Map the source's repeated per-corporation ids to our wards by unique name. */
+export function loadWardCandidateQuestionRows(
+  questionsPath: string = DEFAULT_QUESTIONS_PATH,
+  wardGeojsonPath: string = DEFAULT_GEOJSON_PATH,
+): WardQuestionRow[] {
+  const data = JSON.parse(readFileSync(questionsPath, 'utf8')) as QuestionSeedData;
+  const wardsByName = new Map<string, WardRow>();
+
+  for (const ward of loadWardRows(wardGeojsonPath)) {
+    const key = normalizedWardName(ward.nameEn);
+    if (wardsByName.has(key)) {
+      throw new Error(`seed-wards: duplicate normalized ward name ${JSON.stringify(ward.nameEn)}`);
+    }
+    wardsByName.set(key, ward);
+  }
+
+  if (data.wards.length !== wardsByName.size) {
+    throw new Error(
+      `seed-wards: question source has ${data.wards.length} wards; expected ${wardsByName.size}`,
+    );
+  }
+
+  const seenWardIds = new Set<number>();
+  const rows: WardQuestionRow[] = [];
+  for (const sourceWard of data.wards) {
+    const ward = wardsByName.get(normalizedWardName(sourceWard.wardName));
+    if (!ward) {
+      throw new Error(`seed-wards: question source ward not found: ${sourceWard.wardName}`);
+    }
+    if (seenWardIds.has(ward.id)) {
+      throw new Error(`seed-wards: duplicate question source ward: ${sourceWard.wardName}`);
+    }
+    if (sourceWard.questions.length !== 5) {
+      throw new Error(`seed-wards: ${sourceWard.wardName} has ${sourceWard.questions.length} questions; expected 5`);
+    }
+
+    seenWardIds.add(ward.id);
+    sourceWard.questions.forEach((templateIndex, index) => {
+      const template = data.templates[templateIndex];
+      if (!template?.questionEn.trim() || !template.questionKn.trim()) {
+        throw new Error(
+          `seed-wards: invalid question template ${templateIndex} for ${sourceWard.wardName}`,
+        );
+      }
+      rows.push({
+        wardId: ward.id,
+        position: index + 1,
+        questionEn: template.questionEn.trim(),
+        questionKn: template.questionKn.trim(),
+      });
+    });
+  }
+
+  return rows;
+}
+
+/** Upsert all five candidate questions for every seeded ward. */
+export async function seedWardCandidateQuestions(
+  db: Db,
+  questionsPath?: string,
+  wardGeojsonPath?: string,
+): Promise<number> {
+  const rows = loadWardCandidateQuestionRows(questionsPath, wardGeojsonPath);
+  await db
+    .insert(schema.wardCandidateQuestions)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: [schema.wardCandidateQuestions.wardId, schema.wardCandidateQuestions.position],
+      set: {
+        questionEn: sql`excluded.question_en`,
+        questionKn: sql`excluded.question_kn`,
+      },
+    });
+  return rows.length;
+}
+
 /** Upsert every ward row from data/gba.geojson. Idempotent. Returns the row count. */
 export async function seedWards(db: Db, geojsonPath?: string): Promise<number> {
   const rows = loadWardRows(geojsonPath);
@@ -144,6 +236,8 @@ export async function seedWards(db: Db, geojsonPath?: string): Promise<number> {
       },
     });
 
+  await seedWardCandidateQuestions(db, undefined, geojsonPath);
+
   return rows.length;
 }
 
@@ -162,7 +256,7 @@ async function main() {
   const db = drizzle(client, { schema });
   try {
     const count = await seedWards(db);
-    console.log(`seed-wards: upserted ${count} wards`);
+    console.log(`seed-wards: upserted ${count} wards and ${count * 5} candidate questions`);
   } finally {
     await client.end();
   }

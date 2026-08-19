@@ -1,0 +1,3738 @@
+{
+  "source": "https://bengaluruwards.opencity.in/public/data/ward_facts_questions.geojson",
+  "retrieved": "2026-08-19",
+  "templates": [
+    {
+      "questionEn": "Families here struggle to find a park or open ground to relax in or for children to play — how will you create and maintain more green, open spaces in this ward?",
+      "questionKn": "ಈ ವಾರ್ಡ್‌ನಲ್ಲಿ ಕುಟುಂಬಗಳು ವಿಶ್ರಾಂತಿ ಪಡೆಯಲು ಅಥವಾ ಮಕ್ಕಳು ಆಟವಾಡಲು ಉದ್ಯಾನವನ ಅಥವಾ ಬಯಲು ಜಾಗ ಹುಡುಕಲು ಕಷ್ಟಪಡುತ್ತಾರೆ — ಈ ವಾರ್ಡ್‌ನಲ್ಲಿ ಹೆಚ್ಚು ಹಸಿರು ಮತ್ತು ಬಯಲು ಜಾಗಗಳನ್ನು ಹೇಗೆ ನಿರ್ಮಿಸಿ ನಿರ್ವಹಿಸುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Clean, safe public toilets are hard to find in parts of this ward — what will you do to provide and maintain them?",
+      "questionKn": "ಈ ವಾರ್ಡ್‌ನ ಕೆಲವು ಭಾಗಗಳಲ್ಲಿ ಸ್ವಚ್ಛ, ಸುರಕ್ಷಿತ ಸಾರ್ವಜನಿಕ ಶೌಚಾಲಯಗಳು ಸಿಗುವುದು ಕಷ್ಟ — ಅವುಗಳನ್ನು ಒದಗಿಸಲು ಮತ್ತು ನಿರ್ವಹಿಸಲು ನೀವು ಏನು ಮಾಡುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "How will you make sure emergency services like fire response can reach every corner of this ward quickly?",
+      "questionKn": "ಅಗ್ನಿಶಾಮಕ ಸೇವೆಯಂತಹ ತುರ್ತು ಸೇವೆಗಳು ಈ ವಾರ್ಡ್‌ನ ಪ್ರತಿಯೊಂದು ಮೂಲೆಯನ್ನೂ ತ್ವರಿತವಾಗಿ ತಲುಪುವಂತೆ ನೀವು ಹೇಗೆ ಖಚಿತಪಡಿಸುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Getting across the city from this ward takes too long — how will you push for better public-transport and metro connectivity?",
+      "questionKn": "ಈ ವಾರ್ಡ್‌ನಿಂದ ನಗರದ ಇತರ ಭಾಗಗಳಿಗೆ ಹೋಗಲು ತುಂಬಾ ಸಮಯ ಹಿಡಿಯುತ್ತದೆ — ಉತ್ತಮ ಸಾರ್ವಜನಿಕ ಸಾರಿಗೆ ಮತ್ತು ಮೆಟ್ರೋ ಸಂಪರ್ಕಕ್ಕಾಗಿ ನೀವು ಹೇಗೆ ಒತ್ತಾಯಿಸುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Our lakes and ponds are neglected or polluted — how will you clean up and protect the water bodies in this ward?",
+      "questionKn": "ನಮ್ಮ ಕೆರೆಗಳು ಮತ್ತು ಕೊಳಗಳನ್ನು ನಿರ್ಲಕ್ಷಿಸಲಾಗಿದೆ ಅಥವಾ ಅವು ಕಲುಷಿತವಾಗಿವೆ — ಈ ವಾರ್ಡ್‌ನ ಜಲಮೂಲಗಳನ್ನು ಸ್ವಚ್ಛಗೊಳಿಸಿ ರಕ್ಷಿಸಲು ನೀವು ಏನು ಮಾಡುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Safety is a real worry in parts of this ward — how will you improve policing and make our streets safer, especially at night?",
+      "questionKn": "ಈ ವಾರ್ಡ್‌ನ ಕೆಲವು ಭಾಗಗಳಲ್ಲಿ ಸುರಕ್ಷತೆಯ ಬಗ್ಗೆ ನಿಜವಾದ ಆತಂಕವಿದೆ — ವಿಶೇಷವಾಗಿ ರಾತ್ರಿಯಲ್ಲಿ ಪೊಲೀಸ್ ವ್ಯವಸ್ಥೆಯನ್ನು ಸುಧಾರಿಸಿ ನಮ್ಮ ಬೀದಿಗಳನ್ನು ಹೆಚ್ಚು ಸುರಕ್ಷಿತಗೊಳಿಸಲು ನೀವು ಏನು ಮಾಡುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Do children in this ward have good government schools within easy reach — and what will you do to improve the ones we have?",
+      "questionKn": "ಈ ವಾರ್ಡ್‌ನ ಮಕ್ಕಳಿಗೆ ಸುಲಭವಾಗಿ ತಲುಪಬಹುದಾದ ಉತ್ತಮ ಸರ್ಕಾರಿ ಶಾಲೆಗಳಿವೆಯೇ — ಮತ್ತು ಈಗಿರುವ ಶಾಲೆಗಳನ್ನು ಸುಧಾರಿಸಲು ನೀವು ಏನು ಮಾಡುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Young families need childcare and anganwadi centres close to home — how will you add and support more of them in this ward?",
+      "questionKn": "ಯುವ ಕುಟುಂಬಗಳಿಗೆ ಮನೆಯ ಸಮೀಪವೇ ಶಿಶುಪಾಲನಾ ಸೌಲಭ್ಯಗಳು ಮತ್ತು ಅಂಗನವಾಡಿ ಕೇಂದ್ರಗಳು ಬೇಕು — ಈ ವಾರ್ಡ್‌ನಲ್ಲಿ ಅವುಗಳ ಸಂಖ್ಯೆಯನ್ನು ಹೆಚ್ಚಿಸಿ ಬೆಂಬಲಿಸಲು ನೀವು ಏನು ಮಾಡುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Many of us walk far or wait too long for a bus — what will you do to bring frequent, reliable bus service closer to every part of this ward?",
+      "questionKn": "ನಮ್ಮಲ್ಲಿ ಹಲವರು ಬಸ್‌ಗಾಗಿ ಬಹಳ ದೂರ ನಡೆಯಬೇಕು ಅಥವಾ ಬಹಳ ಹೊತ್ತು ಕಾಯಬೇಕು — ಈ ವಾರ್ಡ್‌ನ ಪ್ರತಿಯೊಂದು ಭಾಗಕ್ಕೂ ಹತ್ತಿರದಲ್ಲಿ ನಿಯಮಿತ ಮತ್ತು ವಿಶ್ವಾಸಾರ್ಹ ಬಸ್ ಸೇವೆ ದೊರಕುವಂತೆ ನೀವು ಏನು ಮಾಡುತ್ತೀರಿ?"
+    },
+    {
+      "questionEn": "Every monsoon, the same spots in this ward flood — what concrete steps will you take to fix the drains and stop the flooding?",
+      "questionKn": "ಪ್ರತಿ ಮಳೆಗಾಲದಲ್ಲೂ ಈ ವಾರ್ಡ್‌ನ ಅದೇ ಸ್ಥಳಗಳಲ್ಲಿ ಪ್ರವಾಹ ಉಂಟಾಗುತ್ತದೆ — ಚರಂಡಿಗಳನ್ನು ಸರಿಪಡಿಸಿ ಪ್ರವಾಹವನ್ನು ತಡೆಯಲು ನೀವು ಯಾವ ನಿರ್ದಿಷ್ಟ ಕ್ರಮಗಳನ್ನು ಕೈಗೊಳ್ಳುತ್ತೀರಿ?"
+    }
+  ],
+  "wards": [
+    {
+      "wardName": "K Narayanapura",
+      "questions": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "wardName": "Nagasandra",
+      "questions": [
+        5,
+        4,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Padmanabhanagara",
+      "questions": [
+        6,
+        1,
+        5,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Raja Kempegowda ward",
+      "questions": [
+        0,
+        4,
+        2,
+        3,
+        5
+      ]
+    },
+    {
+      "wardName": "Ramaswamy Palya",
+      "questions": [
+        7,
+        4,
+        8,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Aerocity",
+      "questions": [
+        0,
+        3,
+        6,
+        4,
+        9
+      ]
+    },
+    {
+      "wardName": "Chokkasandra",
+      "questions": [
+        0,
+        5,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Horamavu",
+      "questions": [
+        0,
+        1,
+        5,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Jayamahal",
+      "questions": [
+        4,
+        2,
+        3,
+        1,
+        9
+      ]
+    },
+    {
+      "wardName": "Kadirenahalli",
+      "questions": [
+        5,
+        6,
+        7,
+        4,
+        0
+      ]
+    },
+    {
+      "wardName": "Chellakere",
+      "questions": [
+        0,
+        1,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Chowdeshwari ward",
+      "questions": [
+        5,
+        0,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Nelagadaranahalli",
+      "questions": [
+        1,
+        5,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Vasanth Nagar",
+      "questions": [
+        7,
+        4,
+        1,
+        2,
+        5
+      ]
+    },
+    {
+      "wardName": "Yarab nagar",
+      "questions": [
+        0,
+        5,
+        8,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Babusab Palya",
+      "questions": [
+        0,
+        5,
+        6,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Banashankari Temple Ward",
+      "questions": [
+        0,
+        5,
+        4,
+        8,
+        2
+      ]
+    },
+    {
+      "wardName": "Nyayanga Badavane",
+      "questions": [
+        1,
+        2,
+        3,
+        6,
+        0
+      ]
+    },
+    {
+      "wardName": "Parvathi Nagar",
+      "questions": [
+        6,
+        7,
+        5,
+        0,
+        4
+      ]
+    },
+    {
+      "wardName": "Sampangirama Nagar",
+      "questions": [
+        4,
+        1,
+        9,
+        6,
+        7
+      ]
+    },
+    {
+      "wardName": "Hoysala Nagara East",
+      "questions": [
+        0,
+        5,
+        1,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Kane Muneshwara Ward",
+      "questions": [
+        6,
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Rajeshwarinagar",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Shivajinagar",
+      "questions": [
+        0,
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Yelahanka Satellite Town",
+      "questions": [
+        4,
+        6,
+        2,
+        3,
+        5
+      ]
+    },
+    {
+      "wardName": "Bharathi Nagar",
+      "questions": [
+        0,
+        1,
+        7,
+        8,
+        4
+      ]
+    },
+    {
+      "wardName": "Doddabettahalli",
+      "questions": [
+        5,
+        1,
+        2,
+        3,
+        8
+      ]
+    },
+    {
+      "wardName": "Gowdanapalya",
+      "questions": [
+        5,
+        1,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Kalkere",
+      "questions": [
+        5,
+        0,
+        6,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Shivapura",
+      "questions": [
+        0,
+        4,
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "wardName": "Attur",
+      "questions": [
+        0,
+        5,
+        4,
+        1,
+        6
+      ]
+    },
+    {
+      "wardName": "Byrasandra",
+      "questions": [
+        6,
+        7,
+        4,
+        2,
+        9
+      ]
+    },
+    {
+      "wardName": "K Chennasandra",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "K Kamaraj Ward",
+      "questions": [
+        7,
+        5,
+        1,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Rajagopala Nagara",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Anandapura",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        8
+      ]
+    },
+    {
+      "wardName": "Halasuru",
+      "questions": [
+        0,
+        6,
+        1,
+        8,
+        7
+      ]
+    },
+    {
+      "wardName": "Hegganahalli",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Singapura",
+      "questions": [
+        5,
+        2,
+        3,
+        6,
+        1
+      ]
+    },
+    {
+      "wardName": "Tilak Nagara",
+      "questions": [
+        4,
+        2,
+        3,
+        7,
+        5
+      ]
+    },
+    {
+      "wardName": "Bhattarahalli",
+      "questions": [
+        1,
+        5,
+        2,
+        3,
+        0
+      ]
+    },
+    {
+      "wardName": "Hoysala Nagara Central",
+      "questions": [
+        5,
+        4,
+        1,
+        2,
+        6
+      ]
+    },
+    {
+      "wardName": "Kuvempunagara",
+      "questions": [
+        0,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "N.A.L Layout",
+      "questions": [
+        8,
+        5,
+        6,
+        4,
+        1
+      ]
+    },
+    {
+      "wardName": "Srigandhanagar",
+      "questions": [
+        0,
+        6,
+        1,
+        5,
+        7
+      ]
+    },
+    {
+      "wardName": "Abdul Kalam Nagar",
+      "questions": [
+        0,
+        7,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "wardName": "Basavanapura",
+      "questions": [
+        0,
+        6,
+        1,
+        5,
+        2
+      ]
+    },
+    {
+      "wardName": "Cox Town",
+      "questions": [
+        0,
+        1,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Sunkadakatte",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Vidyaranyapura",
+      "questions": [
+        6,
+        7,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "wardName": "Dodda Bidarakallu",
+      "questions": [
+        1,
+        5,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Doddabommasandra",
+      "questions": [
+        0,
+        5,
+        6,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Jayanagar East",
+      "questions": [
+        8,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Krishnanagar",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Old Baiyappanahalli",
+      "questions": [
+        0,
+        1,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Andrahalli",
+      "questions": [
+        1,
+        5,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Devasandra",
+      "questions": [
+        0,
+        5,
+        4,
+        1,
+        8
+      ]
+    },
+    {
+      "wardName": "Kasturi Nagar",
+      "questions": [
+        1,
+        5,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Pattabhirama Nagara",
+      "questions": [
+        7,
+        5,
+        4,
+        2,
+        6
+      ]
+    },
+    {
+      "wardName": "Thindlu",
+      "questions": [
+        0,
+        4,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Kodigehalli",
+      "questions": [
+        5,
+        0,
+        6,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Krishnaiahnapalya",
+      "questions": [
+        1,
+        0,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Marenahalli South",
+      "questions": [
+        4,
+        1,
+        6,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Nada prabhu Kempegowda Nagara",
+      "questions": [
+        5,
+        7,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Rajarajeshwari Temple ward",
+      "questions": [
+        0,
+        4,
+        2,
+        7,
+        8
+      ]
+    },
+    {
+      "wardName": "Herohalli",
+      "questions": [
+        5,
+        0,
+        6,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "J.P Nagar",
+      "questions": [
+        5,
+        7,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "K.R Pura",
+      "questions": [
+        0,
+        7,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Nagavarapalya",
+      "questions": [
+        1,
+        5,
+        0,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Rajiv Gandhi Nagar",
+      "questions": [
+        5,
+        6,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "wardName": "Byadarahalli",
+      "questions": [
+        2,
+        3,
+        4,
+        5,
+        8
+      ]
+    },
+    {
+      "wardName": "Byatarayanapura",
+      "questions": [
+        4,
+        2,
+        3,
+        6,
+        7
+      ]
+    },
+    {
+      "wardName": "Indiranagar",
+      "questions": [
+        6,
+        7,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Ramamurthy Nagara",
+      "questions": [
+        0,
+        5,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Shakambarinagara",
+      "questions": [
+        5,
+        6,
+        4,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Amruthahalli",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Kotthur",
+      "questions": [
+        5,
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "New Thippasandra",
+      "questions": [
+        1,
+        5,
+        7,
+        0,
+        6
+      ]
+    },
+    {
+      "wardName": "Sarakki",
+      "questions": [
+        5,
+        6,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Ullal",
+      "questions": [
+        1,
+        5,
+        2,
+        3,
+        0
+      ]
+    },
+    {
+      "wardName": "Jakkur",
+      "questions": [
+        1,
+        5,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Kaggadasapura",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "wardName": "N.S Palya",
+      "questions": [
+        6,
+        4,
+        1,
+        8,
+        2
+      ]
+    },
+    {
+      "wardName": "Nagadevanahalli",
+      "questions": [
+        5,
+        4,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Vijinapura",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        6
+      ]
+    },
+    {
+      "wardName": "Dooravaninagar",
+      "questions": [
+        0,
+        6,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "G.M Palya",
+      "questions": [
+        0,
+        1,
+        5,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Kempapura",
+      "questions": [
+        5,
+        0,
+        9,
+        6,
+        3
+      ]
+    },
+    {
+      "wardName": "Kengal Hanumanthaiah West",
+      "questions": [
+        5,
+        6,
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "wardName": "Viswamanava Kuvempu Ward",
+      "questions": [
+        6,
+        5,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Jeevan Bhimanagar",
+      "questions": [
+        1,
+        4,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "K.S. Nissar Ahmed Ward",
+      "questions": [
+        5,
+        0,
+        4,
+        8,
+        2
+      ]
+    },
+    {
+      "wardName": "New Tavarekere",
+      "questions": [
+        5,
+        4,
+        0,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Shivanapalya",
+      "questions": [
+        5,
+        1,
+        2,
+        3,
+        0
+      ]
+    },
+    {
+      "wardName": "Thanisandra",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "A Narayanapura",
+      "questions": [
+        0,
+        5,
+        6,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Kengeri Kote ward",
+      "questions": [
+        0,
+        5,
+        2,
+        9,
+        3
+      ]
+    },
+    {
+      "wardName": "Kodihalli",
+      "questions": [
+        1,
+        5,
+        0,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Madiwala",
+      "questions": [
+        1,
+        5,
+        0,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Sampigehalli",
+      "questions": [
+        0,
+        2,
+        3,
+        5,
+        8
+      ]
+    },
+    {
+      "wardName": "Chikka Adugodi",
+      "questions": [
+        5,
+        0,
+        6,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Kengeri",
+      "questions": [
+        0,
+        2,
+        9,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Kogilu",
+      "questions": [
+        0,
+        5,
+        2,
+        3,
+        8
+      ]
+    },
+    {
+      "wardName": "Konena Agrahara",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Uday Nagar",
+      "questions": [
+        0,
+        1,
+        7,
+        5,
+        6
+      ]
+    },
+    {
+      "wardName": "Bangarappa Nagara",
+      "questions": [
+        5,
+        0,
+        6,
+        2,
+        9
+      ]
+    },
+    {
+      "wardName": "Domluru",
+      "questions": [
+        7,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Mahadevapura",
+      "questions": [
+        6,
+        5,
+        1,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Nagavara",
+      "questions": [
+        0,
+        1,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "S.G Palya",
+      "questions": [
+        1,
+        4,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Hennur",
+      "questions": [
+        0,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Jogpalya",
+      "questions": [
+        1,
+        5,
+        8,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Lakkasandra",
+      "questions": [
+        6,
+        5,
+        0,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Rajarajeshwari Nagara",
+      "questions": [
+        9,
+        2,
+        7,
+        3,
+        4
+      ]
+    },
+    {
+      "wardName": "Sangama Ward",
+      "questions": [
+        6,
+        1,
+        0,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "A Adugodi",
+      "questions": [
+        6,
+        4,
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "wardName": "Agaram",
+      "questions": [
+        4,
+        1,
+        0,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "HBR Layout",
+      "questions": [
+        1,
+        4,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Jnana Bharathi Ward",
+      "questions": [
+        6,
+        7,
+        4,
+        0,
+        5
+      ]
+    },
+    {
+      "wardName": "Vignananagara",
+      "questions": [
+        7,
+        5,
+        0,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Ashokanagar",
+      "questions": [
+        7,
+        4,
+        9,
+        1,
+        0
+      ]
+    },
+    {
+      "wardName": "Govindapura",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "L.B Shastri Nagar",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "National Games Village",
+      "questions": [
+        5,
+        0,
+        6,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Vinayaka Layout",
+      "questions": [
+        6,
+        7,
+        2,
+        3,
+        9
+      ]
+    },
+    {
+      "wardName": "Ejipura",
+      "questions": [
+        0,
+        5,
+        6,
+        4,
+        1
+      ]
+    },
+    {
+      "wardName": "Jagadish Nagar",
+      "questions": [
+        1,
+        5,
+        0,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Mallathahalli",
+      "questions": [
+        5,
+        4,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Samadhana Nagar",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        8
+      ]
+    },
+    {
+      "wardName": "Vannarpet",
+      "questions": [
+        1,
+        5,
+        0,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Ambedkarnagar",
+      "questions": [
+        1,
+        0,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "K.G.Halli",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        6
+      ]
+    },
+    {
+      "wardName": "Sri Lakshmi Devi Ward",
+      "questions": [
+        5,
+        4,
+        0,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Srigandada Kaval",
+      "questions": [
+        1,
+        5,
+        0,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Vibhootipura",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Byrathi",
+      "questions": [
+        0,
+        1,
+        5,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Kormangala East",
+      "questions": [
+        7,
+        5,
+        1,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Kottegepalya",
+      "questions": [
+        5,
+        4,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Neelasandra",
+      "questions": [
+        8,
+        0,
+        6,
+        1,
+        7
+      ]
+    },
+    {
+      "wardName": "Venkateshpuram",
+      "questions": [
+        1,
+        5,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Austin Town",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Chowdeshwari Nagar",
+      "questions": [
+        1,
+        5,
+        0,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Hoodi",
+      "questions": [
+        0,
+        6,
+        5,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Kormangala West",
+      "questions": [
+        4,
+        2,
+        3,
+        6,
+        5
+      ]
+    },
+    {
+      "wardName": "Lingarajpura",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Belathur",
+      "questions": [
+        0,
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    {
+      "wardName": "Jakkasandra",
+      "questions": [
+        1,
+        5,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Kacharakanahalli",
+      "questions": [
+        1,
+        5,
+        6,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Kempegowda Layout",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Vinayakanagar",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Freedom Fighter Ward",
+      "questions": [
+        0,
+        6,
+        1,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Kadugodi",
+      "questions": [
+        1,
+        5,
+        0,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Kalyan Nagar",
+      "questions": [
+        6,
+        1,
+        7,
+        4,
+        3
+      ]
+    },
+    {
+      "wardName": "Kasavanahalli",
+      "questions": [
+        0,
+        1,
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "wardName": "Shanthinagar",
+      "questions": [
+        1,
+        5,
+        0,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Banaswadi",
+      "questions": [
+        1,
+        5,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Channasandra",
+      "questions": [
+        0,
+        1,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "wardName": "Kudlu",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Laggere",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "SilverJubilee Park Ward",
+      "questions": [
+        0,
+        6,
+        4,
+        2,
+        8
+      ]
+    },
+    {
+      "wardName": "Dharmaraya Swamy Temple Ward",
+      "questions": [
+        6,
+        4,
+        2,
+        7,
+        3
+      ]
+    },
+    {
+      "wardName": "HRBR Layout",
+      "questions": [
+        1,
+        7,
+        5,
+        0,
+        6
+      ]
+    },
+    {
+      "wardName": "Lakshmi Devi Nagar",
+      "questions": [
+        0,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Naganathapura",
+      "questions": [
+        0,
+        1,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "S.M Krishna Ward",
+      "questions": [
+        0,
+        1,
+        3,
+        9,
+        7
+      ]
+    },
+    {
+      "wardName": "Chikkathoguru",
+      "questions": [
+        0,
+        1,
+        5,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "D.V Gundappa Ward",
+      "questions": [
+        0,
+        4,
+        2,
+        3,
+        8
+      ]
+    },
+    {
+      "wardName": "Kaveri Nagara",
+      "questions": [
+        0,
+        5,
+        1,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Peenya",
+      "questions": [
+        6,
+        4,
+        9,
+        5,
+        2
+      ]
+    },
+    {
+      "wardName": "Subbayanapalya",
+      "questions": [
+        0,
+        1,
+        5,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Garudachar Palya",
+      "questions": [
+        0,
+        5,
+        6,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Goraguntepalya",
+      "questions": [
+        0,
+        4,
+        6,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Hombegowda Nagara",
+      "questions": [
+        4,
+        0,
+        2,
+        3,
+        9
+      ]
+    },
+    {
+      "wardName": "Kammanahalli",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        6
+      ]
+    },
+    {
+      "wardName": "Vishwapriya Nagara",
+      "questions": [
+        0,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Beguru",
+      "questions": [
+        0,
+        1,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Bharath Aikya Ward",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "wardName": "Maruthi Seva Nagara",
+      "questions": [
+        6,
+        1,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Nalwadi Krishnaraja Wadiyar Ward",
+      "questions": [
+        5,
+        4,
+        0,
+        8,
+        6
+      ]
+    },
+    {
+      "wardName": "Someshwara Nagara",
+      "questions": [
+        0,
+        8,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "BHEL Ward",
+      "questions": [
+        0,
+        1,
+        5,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Dr. Puneeth Rajkumar Ward",
+      "questions": [
+        6,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Jeevanahalli",
+      "questions": [
+        1,
+        5,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Kundalahalli",
+      "questions": [
+        1,
+        5,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Yelenahalli",
+      "questions": [
+        0,
+        5,
+        2,
+        7,
+        3
+      ]
+    },
+    {
+      "wardName": "Doddakammanahalli",
+      "questions": [
+        5,
+        0,
+        6,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Kanakanapalya",
+      "questions": [
+        7,
+        5,
+        4,
+        2,
+        8
+      ]
+    },
+    {
+      "wardName": "Nandini Layout",
+      "questions": [
+        6,
+        1,
+        5,
+        0,
+        4
+      ]
+    },
+    {
+      "wardName": "Shampura",
+      "questions": [
+        1,
+        5,
+        6,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Whitefield",
+      "questions": [
+        1,
+        5,
+        0,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Gottigere",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Hagaduru",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Jai Maruthi Nagar",
+      "questions": [
+        6,
+        4,
+        9,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Kaval Byrasandra",
+      "questions": [
+        0,
+        5,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Venkat Reddy Nagara",
+      "questions": [
+        0,
+        8,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Anjanapura",
+      "questions": [
+        5,
+        3,
+        0,
+        2,
+        8
+      ]
+    },
+    {
+      "wardName": "Ashoka Pillar",
+      "questions": [
+        5,
+        0,
+        7,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Mahalakshmipuram",
+      "questions": [
+        6,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Shakthi Nagar",
+      "questions": [
+        0,
+        1,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "wardName": "Varthur",
+      "questions": [
+        0,
+        1,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Kothanur",
+      "questions": [
+        1,
+        5,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Munnenkolalu",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "wardName": "Nagapura",
+      "questions": [
+        4,
+        6,
+        2,
+        7,
+        5
+      ]
+    },
+    {
+      "wardName": "Periyar Nagar",
+      "questions": [
+        8,
+        0,
+        1,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "V.V Puram",
+      "questions": [
+        7,
+        5,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Aruna Asif Ali Ward",
+      "questions": [
+        8,
+        0,
+        1,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Priyadarshini Ward",
+      "questions": [
+        1,
+        5,
+        6,
+        7,
+        2
+      ]
+    },
+    {
+      "wardName": "RBI Layout",
+      "questions": [
+        7,
+        5,
+        6,
+        4,
+        1
+      ]
+    },
+    {
+      "wardName": "Raja Mayura Varma Ward",
+      "questions": [
+        8,
+        0,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Sunkenahalli",
+      "questions": [
+        7,
+        4,
+        2,
+        6,
+        5
+      ]
+    },
+    {
+      "wardName": "Bheereshwara Nagar",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Devaraj Urs Ward",
+      "questions": [
+        7,
+        6,
+        4,
+        2,
+        8
+      ]
+    },
+    {
+      "wardName": "Dodda Nekkundi",
+      "questions": [
+        1,
+        5,
+        6,
+        7,
+        2
+      ]
+    },
+    {
+      "wardName": "Kethamaranahalli",
+      "questions": [
+        5,
+        4,
+        2,
+        7,
+        6
+      ]
+    },
+    {
+      "wardName": "Varalakshmi Nagar",
+      "questions": [
+        5,
+        0,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Ashwath Nagar",
+      "questions": [
+        0,
+        5,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Chamarajpet",
+      "questions": [
+        0,
+        4,
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "wardName": "Doddanna Nagar",
+      "questions": [
+        0,
+        4,
+        1,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Harinagar",
+      "questions": [
+        0,
+        1,
+        5,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Shankar Mutt",
+      "questions": [
+        5,
+        4,
+        8,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "K.R Market",
+      "questions": [
+        0,
+        4,
+        1,
+        2,
+        5
+      ]
+    },
+    {
+      "wardName": "Konanakunte",
+      "questions": [
+        1,
+        0,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Kushal Nagar",
+      "questions": [
+        0,
+        6,
+        5,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Marathahalli",
+      "questions": [
+        0,
+        5,
+        6,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Shakthi Ganapathi Nagara",
+      "questions": [
+        1,
+        5,
+        6,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Cheluvadi Palya",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Kamalanagara",
+      "questions": [
+        5,
+        0,
+        6,
+        8,
+        4
+      ]
+    },
+    {
+      "wardName": "Sagayapuram",
+      "questions": [
+        5,
+        4,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Yamalur",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Yelachenahalli",
+      "questions": [
+        0,
+        1,
+        5,
+        8,
+        2
+      ]
+    },
+    {
+      "wardName": "Bellanduru",
+      "questions": [
+        0,
+        5,
+        6,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Chandranagara",
+      "questions": [
+        1,
+        5,
+        6,
+        4,
+        0
+      ]
+    },
+    {
+      "wardName": "IPD Salappa Ward",
+      "questions": [
+        1,
+        5,
+        4,
+        0,
+        3
+      ]
+    },
+    {
+      "wardName": "Pulakeshi Nagar",
+      "questions": [
+        5,
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Vrishabhavathi Nagar",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Azad Nagar",
+      "questions": [
+        1,
+        5,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Mathikere",
+      "questions": [
+        1,
+        5,
+        6,
+        8,
+        4
+      ]
+    },
+    {
+      "wardName": "Panathur",
+      "questions": [
+        0,
+        1,
+        2,
+        3,
+        9
+      ]
+    },
+    {
+      "wardName": "S.K Garden",
+      "questions": [
+        5,
+        6,
+        4,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Vasanthapura",
+      "questions": [
+        5,
+        0,
+        6,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Aramane Nagara",
+      "questions": [
+        1,
+        5,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Jaya Chamarajendra Nagara",
+      "questions": [
+        5,
+        4,
+        2,
+        3,
+        0
+      ]
+    },
+    {
+      "wardName": "Kasturbha Nagar",
+      "questions": [
+        8,
+        0,
+        1,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Shivanasamudra Ward",
+      "questions": [
+        0,
+        5,
+        6,
+        1,
+        7
+      ]
+    },
+    {
+      "wardName": "Uttarahalli",
+      "questions": [
+        0,
+        1,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Dinnur",
+      "questions": [
+        5,
+        4,
+        1,
+        8,
+        6
+      ]
+    },
+    {
+      "wardName": "Gunjur",
+      "questions": [
+        0,
+        1,
+        5,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "JJR Nagara",
+      "questions": [
+        0,
+        1,
+        4,
+        2,
+        8
+      ]
+    },
+    {
+      "wardName": "Sadashiva Nagara",
+      "questions": [
+        1,
+        7,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Sarvabhouma Nagar",
+      "questions": [
+        1,
+        5,
+        0,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Manorayanapalya",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Old Guddadahalli",
+      "questions": [
+        0,
+        6,
+        1,
+        8,
+        5
+      ]
+    },
+    {
+      "wardName": "Rajamahal",
+      "questions": [
+        4,
+        6,
+        2,
+        3,
+        5
+      ]
+    },
+    {
+      "wardName": "Subramanyapura",
+      "questions": [
+        5,
+        2,
+        3,
+        7,
+        1
+      ]
+    },
+    {
+      "wardName": "Kodandarampura",
+      "questions": [
+        6,
+        7,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Padarayanapura",
+      "questions": [
+        0,
+        6,
+        1,
+        8,
+        5
+      ]
+    },
+    {
+      "wardName": "Talagattapura",
+      "questions": [
+        0,
+        2,
+        9,
+        1,
+        6
+      ]
+    },
+    {
+      "wardName": "Vishwanatha Nagenahalli",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        8
+      ]
+    },
+    {
+      "wardName": "Jaraganahalli",
+      "questions": [
+        0,
+        5,
+        6,
+        8,
+        2
+      ]
+    },
+    {
+      "wardName": "Malleshwaram",
+      "questions": [
+        4,
+        2,
+        7,
+        3,
+        9
+      ]
+    },
+    {
+      "wardName": "R.T Nagar",
+      "questions": [
+        0,
+        4,
+        1,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Rayapuram",
+      "questions": [
+        8,
+        1,
+        5,
+        0,
+        4
+      ]
+    },
+    {
+      "wardName": "Binnypete",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        6
+      ]
+    },
+    {
+      "wardName": "Gangenahalli",
+      "questions": [
+        0,
+        5,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Kengal Hanumanthaiah South",
+      "questions": [
+        0,
+        1,
+        7,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Subedarpalya",
+      "questions": [
+        0,
+        5,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Bhuvaneshwari Nagar",
+      "questions": [
+        6,
+        1,
+        8,
+        0,
+        4
+      ]
+    },
+    {
+      "wardName": "Ganganagar",
+      "questions": [
+        6,
+        5,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Puttenahalli",
+      "questions": [
+        0,
+        6,
+        5,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Subramanyanagara",
+      "questions": [
+        6,
+        7,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Doresanipalya",
+      "questions": [
+        5,
+        7,
+        4,
+        1,
+        6
+      ]
+    },
+    {
+      "wardName": "Gayathri Nagara",
+      "questions": [
+        0,
+        1,
+        5,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Gopalpura",
+      "questions": [
+        5,
+        9,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Hebbal",
+      "questions": [
+        0,
+        4,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Bhoopasandra",
+      "questions": [
+        5,
+        4,
+        1,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Cottonpete",
+      "questions": [
+        7,
+        8,
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "wardName": "Hulimavu",
+      "questions": [
+        0,
+        4,
+        1,
+        6,
+        7
+      ]
+    },
+    {
+      "wardName": "Kuvempu Ward",
+      "questions": [
+        5,
+        0,
+        7,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Arakere",
+      "questions": [
+        1,
+        5,
+        6,
+        7,
+        2
+      ]
+    },
+    {
+      "wardName": "Chickpete",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Dayanand Nagara",
+      "questions": [
+        1,
+        0,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Nagashettyhalli",
+      "questions": [
+        0,
+        6,
+        7,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Bandi Reddy Circle Ward",
+      "questions": [
+        0,
+        5,
+        8,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Geddalahalli",
+      "questions": [
+        6,
+        4,
+        2,
+        7,
+        3
+      ]
+    },
+    {
+      "wardName": "Nehru Nagar",
+      "questions": [
+        1,
+        4,
+        2,
+        9,
+        5
+      ]
+    },
+    {
+      "wardName": "Vijaya Bank Layout",
+      "questions": [
+        5,
+        1,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Bilekahalli",
+      "questions": [
+        5,
+        0,
+        6,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Jalahalli",
+      "questions": [
+        0,
+        4,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Prakash Nagara",
+      "questions": [
+        5,
+        8,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Seshadripuram",
+      "questions": [
+        5,
+        0,
+        7,
+        8,
+        4
+      ]
+    },
+    {
+      "wardName": "Da.Ra. Bendre Ward",
+      "questions": [
+        0,
+        6,
+        5,
+        7,
+        8
+      ]
+    },
+    {
+      "wardName": "Dattatreya Ward",
+      "questions": [
+        0,
+        4,
+        2,
+        3,
+        8
+      ]
+    },
+    {
+      "wardName": "HMT Ward",
+      "questions": [
+        5,
+        6,
+        7,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Kodi Chikkanahalli",
+      "questions": [
+        0,
+        6,
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Brundavana Nagara",
+      "questions": [
+        1,
+        5,
+        6,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Devarachikkanahalli",
+      "questions": [
+        1,
+        5,
+        6,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Rama Mandira",
+      "questions": [
+        5,
+        6,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Swatantra Palya Ward",
+      "questions": [
+        5,
+        0,
+        4,
+        2,
+        8
+      ]
+    },
+    {
+      "wardName": "Bommanahalli",
+      "questions": [
+        6,
+        1,
+        5,
+        0,
+        7
+      ]
+    },
+    {
+      "wardName": "J.P PARK",
+      "questions": [
+        5,
+        1,
+        8,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Okalipuram",
+      "questions": [
+        8,
+        5,
+        0,
+        4,
+        6
+      ]
+    },
+    {
+      "wardName": "Rajajinagara",
+      "questions": [
+        7,
+        4,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Hongasandra",
+      "questions": [
+        0,
+        5,
+        6,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Shivanagara",
+      "questions": [
+        1,
+        5,
+        6,
+        4,
+        0
+      ]
+    },
+    {
+      "wardName": "Yeshwanthpura",
+      "questions": [
+        5,
+        4,
+        8,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Abbigere",
+      "questions": [
+        1,
+        5,
+        2,
+        3,
+        0
+      ]
+    },
+    {
+      "wardName": "Garvebavi Palya",
+      "questions": [
+        0,
+        1,
+        7,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Manjunath Nagara",
+      "questions": [
+        0,
+        6,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "wardName": "Kammagondanahalli",
+      "questions": [
+        6,
+        4,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Sane Guruvana Halli",
+      "questions": [
+        6,
+        5,
+        0,
+        8,
+        2
+      ]
+    },
+    {
+      "wardName": "Singasandra",
+      "questions": [
+        6,
+        5,
+        0,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Bandepalya",
+      "questions": [
+        5,
+        0,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Basaveshwara Nagara",
+      "questions": [
+        5,
+        4,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Shettihalli",
+      "questions": [
+        0,
+        5,
+        1,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Kamakshipalya",
+      "questions": [
+        6,
+        2,
+        8,
+        3,
+        0
+      ]
+    },
+    {
+      "wardName": "Mallasandra",
+      "questions": [
+        5,
+        4,
+        0,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Mangammana Palya",
+      "questions": [
+        8,
+        0,
+        6,
+        1,
+        5
+      ]
+    },
+    {
+      "wardName": "Agrahara Dasarahalli",
+      "questions": [
+        1,
+        5,
+        6,
+        4,
+        8
+      ]
+    },
+    {
+      "wardName": "Bagalagunte",
+      "questions": [
+        6,
+        2,
+        3,
+        9,
+        4
+      ]
+    },
+    {
+      "wardName": "Hosapalya",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "wardName": "Dr Rajkumar Ward",
+      "questions": [
+        1,
+        6,
+        3,
+        0,
+        4
+      ]
+    },
+    {
+      "wardName": "Iblur",
+      "questions": [
+        2,
+        7,
+        3,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Manjunatha Nagar",
+      "questions": [
+        5,
+        6,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Agara",
+      "questions": [
+        7,
+        4,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Nele Maheshwaramma Temple Ward",
+      "questions": [
+        0,
+        5,
+        8,
+        4,
+        1
+      ]
+    },
+    {
+      "wardName": "Thimmenahalli",
+      "questions": [
+        1,
+        5,
+        4,
+        2,
+        0
+      ]
+    },
+    {
+      "wardName": "Dasarahalli",
+      "questions": [
+        0,
+        5,
+        4,
+        8,
+        6
+      ]
+    },
+    {
+      "wardName": "HSR Layout",
+      "questions": [
+        5,
+        7,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Kaveripura",
+      "questions": [
+        0,
+        6,
+        1,
+        8,
+        5
+      ]
+    },
+    {
+      "wardName": "Dr. Vishnuvardhan Ward",
+      "questions": [
+        1,
+        5,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Pattegar Palya",
+      "questions": [
+        5,
+        0,
+        6,
+        1,
+        2
+      ]
+    },
+    {
+      "wardName": "Marenahalli West",
+      "questions": [
+        1,
+        6,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "Moodalapalya",
+      "questions": [
+        1,
+        5,
+        0,
+        6,
+        8
+      ]
+    },
+    {
+      "wardName": "Maruthi Mandira Ward",
+      "questions": [
+        6,
+        1,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Anubhava Nagara",
+      "questions": [
+        6,
+        5,
+        4,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Nagarbhavi",
+      "questions": [
+        1,
+        5,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Chandra Layout",
+      "questions": [
+        1,
+        5,
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Nayanda Halli",
+      "questions": [
+        1,
+        5,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Attigupe",
+      "questions": [
+        4,
+        2,
+        7,
+        3,
+        6
+      ]
+    },
+    {
+      "wardName": "Hampi Nagar",
+      "questions": [
+        6,
+        7,
+        5,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Hosahalli",
+      "questions": [
+        6,
+        8,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Adi Chunchanagiri Ward",
+      "questions": [
+        5,
+        6,
+        4,
+        2,
+        7
+      ]
+    },
+    {
+      "wardName": "Vidyaranyanagara",
+      "questions": [
+        8,
+        0,
+        6,
+        1,
+        5
+      ]
+    },
+    {
+      "wardName": "K.P Agrahara",
+      "questions": [
+        5,
+        8,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Sangolli Rayanna Ward",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        4
+      ]
+    },
+    {
+      "wardName": "Bapuji Nagara",
+      "questions": [
+        0,
+        8,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Krishnadevaraya ward",
+      "questions": [
+        8,
+        5,
+        4,
+        6,
+        2
+      ]
+    },
+    {
+      "wardName": "Gali Anjaneya Temple Ward",
+      "questions": [
+        4,
+        6,
+        2,
+        3,
+        8
+      ]
+    },
+    {
+      "wardName": "Muneshwara Block",
+      "questions": [
+        6,
+        5,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Avalahalli",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        6
+      ]
+    },
+    {
+      "wardName": "Deepanjali Nagara",
+      "questions": [
+        5,
+        0,
+        2,
+        4,
+        9
+      ]
+    },
+    {
+      "wardName": "Swamy Vivekananda Ward",
+      "questions": [
+        6,
+        4,
+        2,
+        7,
+        3
+      ]
+    },
+    {
+      "wardName": "Kathriguppe",
+      "questions": [
+        6,
+        4,
+        2,
+        7,
+        3
+      ]
+    },
+    {
+      "wardName": "Srinivasa Nagara",
+      "questions": [
+        6,
+        5,
+        0,
+        7,
+        4
+      ]
+    },
+    {
+      "wardName": "Ashoka Nagara",
+      "questions": [
+        6,
+        7,
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "wardName": "T.R Shamanna Nagar",
+      "questions": [
+        1,
+        8,
+        5,
+        0,
+        4
+      ]
+    },
+    {
+      "wardName": "Srinagar",
+      "questions": [
+        0,
+        1,
+        8,
+        5,
+        6
+      ]
+    },
+    {
+      "wardName": "Kempambudhi Ward",
+      "questions": [
+        1,
+        5,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Hanumanthanagar",
+      "questions": [
+        6,
+        7,
+        5,
+        4,
+        0
+      ]
+    },
+    {
+      "wardName": "N.R Colony",
+      "questions": [
+        5,
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Thyagarajnagar",
+      "questions": [
+        6,
+        8,
+        5,
+        0,
+        4
+      ]
+    },
+    {
+      "wardName": "Yediyuru",
+      "questions": [
+        6,
+        7,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "wardName": "Devagiri Temple Ward",
+      "questions": [
+        5,
+        7,
+        4,
+        0,
+        6
+      ]
+    },
+    {
+      "wardName": "Dharmagiri Ward",
+      "questions": [
+        0,
+        5,
+        6,
+        2,
+        3
+      ]
+    },
+    {
+      "wardName": "Ganesh Mandira Ward",
+      "questions": [
+        6,
+        4,
+        7,
+        3,
+        5
+      ]
+    },
+    {
+      "wardName": "Kamakya Layout",
+      "questions": [
+        6,
+        5,
+        7,
+        4,
+        2
+      ]
+    },
+    {
+      "wardName": "Chikkalasandra",
+      "questions": [
+        0,
+        6,
+        1,
+        5,
+        8
+      ]
+    },
+    {
+      "wardName": "Ittamadu",
+      "questions": [
+        0,
+        1,
+        5,
+        6,
+        4
+      ]
+    },
+    {
+      "wardName": "Hosakerehalli",
+      "questions": [
+        5,
+        0,
+        4,
+        1,
+        2
+      ]
+    }
+  ]
+}

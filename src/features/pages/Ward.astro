@@ -51,8 +51,8 @@ import Button from '../../components/Button.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
-import { wards } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { wardCandidateQuestions, wards } from '../../db/schema';
+import { asc, eq } from 'drizzle-orm';
 import { placeLd } from '../../lib/seo';
 import { mapsConfig } from '../../lib/maps-config';
 
@@ -64,6 +64,13 @@ interface Props {
 const { lang, wardId } = Astro.props;
 
 const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
+const questions = ward
+  ? await db
+      .select()
+      .from(wardCandidateQuestions)
+      .where(eq(wardCandidateQuestions.wardId, wardId))
+      .orderBy(asc(wardCandidateQuestions.position))
+  : [];
 
 const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 const corporationLabel = ward ? t(lang, `ward.corporation.${ward.corporation}`) : '';
@@ -150,6 +157,21 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
             <a href={localePath(lang, '/voting-guide')}>{t(lang, 'home.shortcuts.votingGuide.title')}</a>
           </Card>
         </nav>
+
+        {questions.length > 0 && (
+          <section class="candidate-questions" aria-labelledby="candidate-questions-heading">
+            <h2 id="candidate-questions-heading">{t(lang, 'ward.questions.heading')}</h2>
+            <ol>
+              {questions.map((question) => (
+                <li>
+                  <Card>
+                    <p>{lang === 'kn' ? question.questionKn : question.questionEn}</p>
+                  </Card>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
     ) : (
       <EmptyState fact={t(lang, 'ward.notFound.fact')} />
@@ -228,5 +250,24 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
   .ward-links a:hover,
   .ward-links a:focus-visible {
     text-decoration: underline;
+  }
+
+  .candidate-questions h2 {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: 0 0 var(--space-4);
+  }
+
+  .candidate-questions ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .candidate-questions p {
+    margin: 0;
   }
 </style>

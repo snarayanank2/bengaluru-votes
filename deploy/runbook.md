@@ -381,7 +381,8 @@ COMPOSE_S="docker compose -p bengaluru-votes-staging -f deploy/compose.staging.y
 $COMPOSE_S run --rm app-staging npm run migrate
 ```
 
-Wards first — everything else depends on them.
+Wards first — everything else depends on them. `seed:wards` also upserts the
+five bilingual candidate questions for every ward.
 
 ```sh
 # Production: the real 369 wards, then the first admin.
