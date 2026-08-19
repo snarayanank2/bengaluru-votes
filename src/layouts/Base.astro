@@ -34,7 +34,7 @@
  *
  * The Flag misinformation modal (Task 32, IA §7.2) is rendered ONCE here
  * too, same rationale as Register/Login: any page that shows curator-
- * maintained data (Ward.astro, WardIssues.astro today; Candidate.astro in
+ * maintained data (Ward.astro and Candidate.astro today) and
  * Task 41) renders a "Flag an error" button carrying its own
  * `data-flag-action`/`data-ward-id`/`data-flag-targets`, and
  * src/islands/FlagModal.ts's `initFlagModal()` (this component's own
@@ -44,7 +44,7 @@
  * cookies/session.
  *
  * The Cast issue vote modal (Task 33, IA §3.6/§7, PRD §5.5) is rendered
- * ONCE here too, same rationale again — WardIssues.astro's "Vote your top
+ * ONCE here too, same rationale again — Ward.astro's "Vote your top
  * 3" button carries its own `data-vote-action`/`data-ward-id`/
  * `data-vote-issues`, and src/islands/VoteModal.ts's `initVoteModal()`
  * (this component's own script) wires it to this one dialog. Same

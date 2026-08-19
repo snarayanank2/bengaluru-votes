@@ -1,92 +1,26 @@
 ---
 /**
- * Candidate report card (`/candidate/{slug}`, `/kn/candidate/{slug}`) —
- * information-architecture.md §3.4, PRD §5.2. The single most-requested
- * feature: a neutral, sourced profile for one candidate — name/photo/party,
- * the five curator-maintained report-card fields, news coverage, and the
- * Flag an error action.
- *
- * Existence check lives in the route twins (src/pages/candidate/[slug].astro,
- * src/pages/kn/candidate/[slug].astro), not here — only a page-level
- * frontmatter script can end an Astro request early with a custom HTTP
- * status, so an UNKNOWN slug never actually reaches this component in
- * production; only unknown slugs 404 (architecture §8). The `row` lookup
- * below is guarded anyway (renders a minimal not-found fallback rather than
- * throwing) purely as a defensive belt-and-braces measure.
- *
- * STATUS LIFECYCLE (PRD §5.2): an EXISTING candidate's URL is ALWAYS 200,
- * including withdrawn/rejected (a prominent, neutral NOTICE banner — not an
- * error — since the links have already been shared and must keep
- * resolving) and pre-notification/no-fields-yet candidates (the empty-state
- * fields render via FieldRow's own "Not declared" fallback — no special
- * casing needed here). PROVISIONAL marker: shown whenever
- * `app_settings.withdrawals_closed` isn't `'true'` yet (candidate lists and
- * report cards carry it until withdrawals close, matching the L1 send's
- * framing, PRD §5.2/§9.3).
- *
- * PROVENANCE (design-system §3, PRD §5.2/§11): name/photo/party come from
- * the EC nomination itself — there is no `candidate_fields` row for them,
- * so they carry a plain static "Source: EC nomination" note rather than one
- * of SourceLine's three RESERVED provenance chips (that chip set is
- * reserved for curator/affidavit/AI-extracted fields — see SourceLine's
- * docstring). The five report-card fields render via FieldRow, which
- * already encodes: Affidavit badge linking to the stored PDF (the
- * candidate_fields row's own `sourceUrl` IS that `/media/{id}/{hash}` URL —
- * `src/lib/extract.ts` writes it there directly at extraction time, so no
- * separate affidavit lookup is needed on this page), Curator-compiled badge
- * (never links), AI-extracted badge (until a curator confirms/edits the
- * field and clears it), and "Not declared" for a not-yet-populated field.
- *
- * NEUTRALITY (design-system §4, non-negotiable): party is TEXT only — never
- * a color/tint/accent. Every field (including cases/assets) renders through
- * the exact same FieldRow markup, in plain ink — no alarm styling. This
- * platform's schema carries no ECI-symbol image field yet, so the "optional
- * ECI symbol" mentioned in the IA has no data source to render from — party
- * shows as text only, same as CandidateRow's existing convention.
- *
- * NEWS LINKS (Task 38 boundary, re-asserted here): `listNewsLinks(id,
- * { approvedOnly: true })` is the PUBLIC guard — a `suggested` link
- * structurally cannot come back from this call, so this page can never
- * surface an unapproved suggestion regardless of caller discipline.
- *
- * FLAG ACTION (Task 32): the five report-card fields are this page's
- * flaggable targets (`targetType: 'candidate_field'`, `targetRef:
- * 'candidate:{id}:{fieldKey}'`) — same cache-safe, anonymous-style button
- * + `data-flag-action`/`data-ward-id`/`data-flag-targets` wiring as
- * Ward.astro/WardIssues.astro; `src/islands/FlagModal.ts`'s `initFlagModal`
- * (mounted once from Base.astro) wires it, no per-page script needed.
- *
- * PERSON JSON-LD (architecture §8/§13, Task 56): `src/lib/seo.ts#personLd`
- * builds the candidate's `Person` (name, party affiliation, report-card
- * URL — no ranking, no evaluative field), and `breadcrumbLd` builds the
- * Home -> Ward -> Candidate trail; both are passed to Base.astro's
- * `jsonLd` prop, which serializes (escaping `<`/`>`/`&` so no
- * curator/citizen-authored substring, e.g. a party name, can prematurely
- * close the `<script>` tag) and nonces them. This replaced a small ad-hoc
- * inline builder this page used to carry itself before Task 56 centralized
- * JSON-LD construction/serialization (same stopgap About.astro used to use
- * for `Organization`).
- *
- * CACHE-SAFETY (architecture §5): this component never reads cookies or
- * session — the page is identical for every visitor. Every absolute URL
- * used in the JSON-LD is derived from `src/lib/seo.ts`'s `SITE_ORIGIN`
- * (same fixed configured origin `astro.config.mjs` derives `Astro.site`
- * from), never the request Host. The Flag button renders its full
- * anonymous-safe markup regardless of auth state (design-system §7.8) —
- * the auth gate happens client-side, on tap, inside FlagModal's island.
+ * Public candidate profile (milestones.md §5). Anonymous visitors see the
+ * same nine fields in both languages. Every populated value is labelled as
+ * AI-extracted or checked by a person; the affidavit value links to the
+ * newest stored PDF. This component never reads session state, preserving
+ * the public-page caching invariant in architecture.md §5.
  */
 import Base from '../../layouts/Base.astro';
 import Banner from '../../components/Banner.astro';
 import Button from '../../components/Button.astro';
 import Card from '../../components/Card.astro';
-import FieldRow from '../../components/FieldRow.astro';
+import CandidateProfileField from '../../components/CandidateProfileField.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
-import { candidates, candidateFields, wards, media } from '../../db/schema';
-import { eq } from 'drizzle-orm';
-import { REPORT_CARD_FIELD_KEYS, type ReportCardFieldKey } from '../../lib/curator';
-import { listNewsLinks } from '../../lib/news';
+import { candidates, candidateFields, candidateAffidavits, wards, media } from '../../db/schema';
+import { desc, eq } from 'drizzle-orm';
+import {
+  CANDIDATE_PROFILE_FIELD_KEYS,
+  CANDIDATE_PROFILE_LABEL_KEYS,
+  pickCandidateValue,
+} from '../../lib/candidate-profile';
 import { getKnownSetting } from '../../lib/settings';
 import { personLd, breadcrumbLd } from '../../lib/seo';
 
@@ -95,7 +29,7 @@ interface Props {
   slug: string;
 }
 
-const { lang, slug } = Astro.props;
+const { lang, slug } = Astro.props as Props;
 
 const [row] = await db
   .select({
@@ -117,14 +51,6 @@ const [row] = await db
   .leftJoin(media, eq(media.id, candidates.photoMediaId))
   .where(eq(candidates.slug, slug));
 
-const FIELD_LABEL_KEYS: Record<ReportCardFieldKey, string> = {
-  track_record: 'candidate.field.trackRecord',
-  cases: 'candidate.field.cases',
-  assets: 'candidate.field.assets',
-  education: 'candidate.field.education',
-  approachability: 'candidate.field.approachability',
-};
-
 const candidateName = row ? (lang === 'kn' && row.nameKn ? row.nameKn : row.nameEn) : '';
 const partyName = row ? (lang === 'kn' && row.partyKn ? row.partyKn : row.partyEn) : '';
 const wardName = row ? (lang === 'kn' ? row.wardNameKn : row.wardNameEn) : '';
@@ -144,29 +70,38 @@ const initials = row
 
 const fieldRows = row ? await db.select().from(candidateFields).where(eq(candidateFields.candidateId, row.id)) : [];
 const fieldByKey = new Map(fieldRows.map((f) => [f.fieldKey, f]));
+const [affidavit] = row
+  ? await db
+      .select({ mediaId: candidateAffidavits.mediaId, sha256: media.sha256 })
+      .from(candidateAffidavits)
+      .innerJoin(media, eq(media.id, candidateAffidavits.mediaId))
+      .where(eq(candidateAffidavits.candidateId, row.id))
+      .orderBy(desc(candidateAffidavits.createdAt), desc(candidateAffidavits.id))
+      .limit(1)
+  : [];
+const affidavitUrl = affidavit ? `/media/${affidavit.mediaId}/${affidavit.sha256.slice(0, 16)}` : null;
 
-/** Caller-resolved value pick (Task 40 convention): prefer this page's own language, falling back to the other one when the preferred language hasn't been authored/translated yet. FieldRow itself only decides whether to show the pending-translation indicator, from authoredLang/translationStatus — never from this resolved string. */
-function pickValue(preferred: Lang, en: string | null | undefined, kn: string | null | undefined): string | null {
-  const value = preferred === 'kn' ? (kn ?? en) : (en ?? kn);
-  return value ?? null;
-}
-
-const reportCardFields = REPORT_CARD_FIELD_KEYS.map((key) => {
+const profileFields = CANDIDATE_PROFILE_FIELD_KEYS.map((key) => {
   const f = fieldByKey.get(key);
+  const canonicalValue =
+    key === 'full_name'
+      ? candidateName
+      : key === 'ward'
+        ? wardName
+        : key === 'party'
+          ? partyName
+          : key === 'ec_affidavit' && affidavitUrl
+            ? t(lang, 'candidate.affidavit.view')
+            : null;
   return {
     key,
-    label: t(lang, FIELD_LABEL_KEYS[key]),
-    value: pickValue(lang, f?.valueEn, f?.valueKn),
+    label: t(lang, CANDIDATE_PROFILE_LABEL_KEYS[key]),
+    value: canonicalValue ?? pickCandidateValue(lang, f?.valueEn, f?.valueKn),
+    valueUrl: key === 'ec_affidavit' ? affidavitUrl : null,
     notDeclared: f?.notDeclared ?? false,
-    sourceType: f?.sourceType ?? ('curator' as const),
-    sourceUrl: f?.sourceUrl ?? null,
     aiExtracted: f?.aiExtracted ?? false,
-    authoredLang: f?.authoredLang ?? lang,
-    translationStatus: f?.translationStatus ?? ('done' as const),
   };
 });
-
-const newsLinks = row ? await listNewsLinks(row.id, { approvedOnly: true }) : [];
 
 const withdrawalsClosedSetting = await getKnownSetting('withdrawals_closed');
 const isProvisional = withdrawalsClosedSetting !== 'true';
@@ -181,15 +116,15 @@ const description = row
   ? t(lang, 'candidate.meta.description', { name: candidateName, party: partyName, wardName })
   : t(lang, 'candidate.notFound.fact');
 
-// Flag misinformation (Task 32, IA §7.2, PRD §6.1) — this page's flaggable
-// targets are the five report-card fields. Same anonymous-safe markup for
-// every visitor (design-system §7.8); the auth gate happens client-side.
+// Flag misinformation — all nine profile fields are flaggable targets. The
+// same anonymous-safe markup renders for every visitor; the client island
+// applies the authentication gate when the action is used.
 const flagTargets = row
   ? JSON.stringify(
-      REPORT_CARD_FIELD_KEYS.map((key) => ({
+      CANDIDATE_PROFILE_FIELD_KEYS.map((key) => ({
         targetType: 'candidate_field',
         targetRef: `candidate:${row.id}:${key}`,
-        label: t(lang, FIELD_LABEL_KEYS[key]),
+        label: t(lang, CANDIDATE_PROFILE_LABEL_KEYS[key]),
       })),
     )
   : '[]';
@@ -235,7 +170,9 @@ const candidateJsonLd = row
           <div class="identity">
             <h1 class="name">{candidateName}</h1>
             <p class="party">{partyName}</p>
-            <p class="ward-line">{wardName}</p>
+            <p class="ward-line">
+              <a href={localePath(lang, `/ward/${row.wardId}`)}>{wardName}</a>
+            </p>
           </div>
         </header>
         <p class="ec-source-note">{t(lang, 'candidate.header.sourceEcNomination')}</p>
@@ -253,62 +190,22 @@ const candidateJsonLd = row
 
         <Card>
           <div class="field-rows">
-            {reportCardFields.map((field) => (
-              <FieldRow
+            {profileFields.map((field) => (
+              <CandidateProfileField
                 label={field.label}
                 value={field.value}
+                valueUrl={field.valueUrl}
                 notDeclared={field.notDeclared}
-                sourceType={field.sourceType}
-                sourceUrl={field.sourceUrl}
                 aiExtracted={field.aiExtracted}
+                showVerification={field.key !== 'ec_affidavit'}
                 lang={lang}
-                authoredLang={field.authoredLang}
-                translationStatus={field.translationStatus}
               />
             ))}
           </div>
         </Card>
 
-        <section class="news-section" aria-label={t(lang, 'candidate.news.heading')}>
-          <h2>{t(lang, 'candidate.news.heading')}</h2>
-          {newsLinks.length === 0 ? (
-            <p class="placeholder-note">{t(lang, 'candidate.news.empty')}</p>
-          ) : (
-            <ul class="news-list">
-              {newsLinks.map((link) => (
-                <li class="news-item">
-                  <a href={link.url} target="_blank" rel="noopener noreferrer">
-                    {link.title}
-                    <svg
-                      class="external-glyph"
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      role="img"
-                      aria-label={t(lang, 'common.opensInNewTab')}
-                    >
-                      <path d="M9 6h9v9" stroke-linecap="round" stroke-linejoin="round" />
-                      <path d="M18 6 8 16" stroke-linecap="round" stroke-linejoin="round" />
-                      <path
-                        d="M13 6H6.75A1.75 1.75 0 0 0 5 7.75v10.5A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V12"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </a>
-                  <span class="domain">{link.domain}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
         <nav class="candidate-links" aria-label={t(lang, 'candidate.links.label')}>
           <a href={localePath(lang, `/ward/${row.wardId}/compare`)}>{t(lang, 'candidate.links.compare')}</a>
-          <a href={localePath(lang, `/ward/${row.wardId}/issues`)}>{t(lang, 'candidate.links.issues')}</a>
         </nav>
       </div>
     ) : (
@@ -382,7 +279,17 @@ const candidateJsonLd = row
   .ward-line {
     margin: 0;
     font-size: var(--text-sm);
-    color: var(--color-text-muted);
+  }
+
+  .ward-line a {
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .ward-line a:hover,
+  .ward-line a:focus-visible {
+    text-decoration: underline;
   }
 
   .ec-source-note {
@@ -398,56 +305,6 @@ const candidateJsonLd = row
 
   .field-rows > :global(*:not(:last-child)) {
     border-bottom: 1px solid var(--color-border);
-  }
-
-  .news-section h2 {
-    font-family: var(--font-heading);
-    font-size: var(--text-xl);
-    margin: 0 0 var(--space-3);
-  }
-
-  .placeholder-note {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    font-style: italic;
-  }
-
-  .news-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .news-item {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-2);
-  }
-
-  .news-item a {
-    color: var(--color-primary);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .news-item a:hover,
-  .news-item a:focus-visible {
-    text-decoration: underline;
-  }
-
-  .external-glyph {
-    margin-inline-start: var(--space-1);
-    vertical-align: -2px;
-  }
-
-  .domain {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
   }
 
   .candidate-links {

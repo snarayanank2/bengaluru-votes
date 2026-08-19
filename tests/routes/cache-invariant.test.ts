@@ -21,9 +21,9 @@
  *   2. NO-STORE ON NON-PUBLIC ROUTES: `/api/me`, `/account`, `/curator`,
  *      `/admin` all respond with a `cache-control` header containing
  *      `no-store`.
- *   3. UNAPPROVED NEWS ABSENT: a `suggested` (unapproved) news link seeded
- *      on a real candidate never appears in that candidate's public HTML —
- *      `listNewsLinks(id, { approvedOnly: true })` holds end to end.
+ *   3. PROFILE FIELD BOUNDARY: candidate public HTML contains only the
+ *      defined nine-field profile, so neither approved nor suggested news
+ *      links leak into it.
  *   4. WEBHOOKS REJECT UNSIGNED: `/api/webhooks/sendgrid` and
  *      `/api/webhooks/twilio` 403 an invalid/missing signature and write no
  *      suppression row.
@@ -416,19 +416,18 @@ describe('§12 cache-invariant + security guard suite', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Guard 3: unapproved news absent from public HTML
+  // Guard 3: public candidate profile is limited to the nine fields
   // -------------------------------------------------------------------------
-  describe('Guard 3 — unapproved (suggested) news links never reach public HTML', () => {
-    it('the candidate page renders the approved link but never the suggested one', async () => {
+  describe('Guard 3 — news links do not extend the nine-field public profile', () => {
+    it('the candidate page renders neither approved nor suggested news links', async () => {
       const res = await renderThroughMiddleware(CandidatePage, `/candidate/${CANDIDATE_SLUG}`, {
         params: { slug: CANDIDATE_SLUG },
       });
       expect(res.status).toBe(200);
       const html = await res.text();
 
-      expect(html).toContain(APPROVED_NEWS_URL);
-      expect(html).toContain(APPROVED_NEWS_TITLE);
-
+      expect(html).not.toContain(APPROVED_NEWS_URL);
+      expect(html).not.toContain(APPROVED_NEWS_TITLE);
       expect(html).not.toContain(SUGGESTED_NEWS_URL);
       expect(html).not.toContain(SUGGESTED_NEWS_TITLE);
     });

@@ -72,7 +72,8 @@ export const candidates = pgTable('candidates', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [index('candidates_ward_idx').on(t.wardId)]);
 
-// Report-card fields: track_record | cases | assets | education | approachability
+// Candidate profile fields are intentionally free text. The public field set
+// is defined in src/lib/candidate-profile.ts; legacy curator fields may coexist.
 export const candidateFields = pgTable('candidate_fields', {
   id: serial('id').primaryKey(),
   candidateId: integer('candidate_id').notNull().references(() => candidates.id),

@@ -3,14 +3,14 @@
  * PRD §6.1/§6.3). Built on `ModalController` (src/islands/ModalShell.ts)
  * over the `<dialog>` markup `src/components/FlagModal.astro` renders once
  * per page (from Base.astro, so it's present everywhere a "Flag an error"
- * action can appear — Ward.astro, WardIssues.astro today; Candidate.astro
+ * action can appear — Ward.astro and Candidate.astro today;
  * in Task 41).
  *
  * GLOBAL OPENER + WIRING: `openFlagModal` is exported AND attached to
  * `window.bvOpenFlagModal`, and `initFlagModal` additionally wires every
  * `[data-flag-action]` element found on the page (its `data-ward-id` and
  * `data-flag-targets` — a JSON-encoded `FlagTarget[]` — carry everything
- * `openFlagModal` needs) so Ward.astro/WardIssues.astro/Candidate.astro
+ * `openFlagModal` needs) so Ward.astro/Candidate.astro
  * never need their own per-page wiring script, mirroring how
  * `initRegisterLoginModal` wires `[data-me-slot]`/`[data-register-slot]`
  * from one call in Base.astro.
@@ -400,7 +400,7 @@ function parseTargets(raw: string | undefined): FlagTarget[] {
 
 /**
  * Wires every `[data-flag-action]` element on the page (Ward.astro,
- * WardIssues.astro today — Candidate.astro in Task 41) to open this modal
+ * Ward.astro and Candidate.astro) to open this modal
  * with its own `data-ward-id`/`data-flag-targets` (JSON-encoded
  * `FlagTarget[]`), and exposes `window.bvOpenFlagModal` for anything else
  * that wants to open it directly.

@@ -18,13 +18,13 @@
  *      never imports the full i18n table, matching the convention in
  *      src/islands/WardLookup.ts).
  *   2. Register-for-updates slot `[data-register-slot][data-ward-id]`
- *      (Ward.astro / WardIssues.astro) — anonymous: left alone. Authed AND
+ *      (Ward.astro) — anonymous: left alone. Authed AND
  *      this ward === the user's `homeWardId`: swapped for a plain
  *      "Receiving updates" status (`data-msg-receiving-updates`) — no
  *      longer a control, nothing to tap. Authed on any OTHER ward: removed
  *      entirely (IA §3.2 — home-ward switching lives on `/account` only).
  *   3. Already-voted hint on `[data-vote-action][data-ward-id]`
- *      (WardIssues.astro) — authed AND this ward === `alreadyVotedWardId`:
+ *      (Ward.astro) — authed AND this ward === `alreadyVotedWardId`:
  *      marked `data-already-voted` for Task 33's Cast-issue-vote modal to
  *      read. Deliberately minimal (a hint, not a swap) per the task brief.
  *

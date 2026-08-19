@@ -1,0 +1,80 @@
+---
+import { t, type Lang } from '../i18n';
+
+interface Props {
+  aiExtracted: boolean;
+  lang: Lang;
+}
+
+const { aiExtracted, lang } = Astro.props;
+const label = t(lang, aiExtracted ? 'common.verification.aiExtracted' : 'common.verification.checked');
+---
+
+<button
+  type="button"
+  class:list={['verification-label', { 'verification-label--checked': !aiExtracted }]}
+  aria-label={label}
+  title={label}
+>
+  {
+    aiExtracted ? (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="m12 3 1.2 4.1a5 5 0 0 0 3.4 3.4l4.1 1.2-4.1 1.2a5 5 0 0 0-3.4 3.4L12 20.4l-1.2-4.1a5 5 0 0 0-3.4-3.4l-4.1-1.2 4.1-1.2a5 5 0 0 0 3.4-3.4L12 3Z" stroke-linejoin="round" />
+      </svg>
+    ) : (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m8 12 2.5 2.5L16.5 9" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    )
+  }
+  <span class="verification-tooltip" role="tooltip">{label}</span>
+</button>
+
+<style>
+  .verification-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    align-self: flex-start;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: help;
+  }
+
+  .verification-label--checked {
+    color: var(--color-primary);
+  }
+
+  .verification-label svg {
+    flex: none;
+  }
+
+  .verification-tooltip {
+    position: absolute;
+    z-index: 2;
+    inset-block-end: calc(100% + var(--space-1));
+    inset-inline-start: 0;
+    width: max-content;
+    max-width: 220px;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--color-text);
+    color: var(--color-bg);
+    font-size: var(--text-xs);
+    line-height: var(--leading-xs);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(2px);
+    transition: opacity 120ms ease, transform 120ms ease;
+  }
+
+  .verification-label:hover .verification-tooltip,
+  .verification-label:focus-visible .verification-tooltip,
+  .verification-label:focus .verification-tooltip {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>

@@ -235,7 +235,7 @@ const PAGE_MIX = [
   // weight folds into it when no candidate slugs are seeded.
   { weight: HAS_CANDIDATE_SLUGS ? 0.35 : 0.50, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}`) },
   { weight: 0.05, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}/compare`) },
-  { weight: 0.10, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}/issues`) },
+  { weight: 0.10, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}`) },
   {
     weight: HAS_CANDIDATE_SLUGS ? 0.15 : 0,
     build: () => withLang(`/candidate/${randomFrom(CANDIDATE_SLUGS)}`),

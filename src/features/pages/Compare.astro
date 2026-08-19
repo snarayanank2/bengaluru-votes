@@ -1,84 +1,26 @@
 ---
 /**
- * Candidate comparison (`/ward/{id}/compare`, `/kn/ward/{id}/compare`) —
- * information-architecture.md §3.5, PRD §5.3, design-system §5.5/§4. Every
- * FILED/CONTESTING candidate in the ward, side by side in a COLUMN layout
- * (not a scrolling feed) — same field rows as the report card so values
- * line up across candidates.
- *
- * Existence check lives in the route twins (src/pages/ward/[id]/compare.astro,
- * src/pages/kn/ward/[id]/compare.astro), not here — same pattern as
- * Ward.astro/WardCandidates.astro; see Ward.astro's header comment for the
- * full rationale. The `ward` lookup below is guarded defensively anyway.
- *
- * FILED/CONTESTING ONLY (PRD §5.3, load-bearing): withdrawn and
- * scrutiny-rejected candidates are EXCLUDED from this view entirely (unlike
- * the candidates-in-ward list, Task 42, which shows every status) — their
- * report-card URL still resolves elsewhere, but they never occupy a column
- * here. This mirrors src/lib/readiness.ts's `ACTIVE_CANDIDATE_STATUSES`
- * ('filed'/'contesting') and PRD §9.1's completeness check, kept as its own
- * small local copy here (same convention src/lib/news.ts's `isHttpUrl`
- * duplicate documents) rather than exporting a shared constant this task
- * wasn't asked to create.
- *
- * ORDERING (design-system §4.3, LOAD-BEARING): ALPHABETICAL by `nameEn` —
- * the same stable, language-independent sort key WardCandidates.astro uses
- * — NEVER ranked by any editorial measure. `id` is only a tiebreak for two
- * candidates that happen to share an identical nameEn.
- *
- * LAYOUT (design-system §5.5, PRD §5.3): a real `<table>` inside a
- * `.compare-scroll` (`overflow-x: auto`) container. The field-label column
- * is the table's own header column (`scope="row"`, class `sticky-col` ->
- * `position: sticky; left: 0`) so it stays visible while the candidate
- * columns scroll horizontally. Candidate columns default to a ~45vw width
- * (2-up on mobile, horizontal scroll for the rest — NO hard cap on
- * candidate count, PRD §5.3) and widen at `--bp-lg` (1024px, design-system
- * §2 "Desktop; compare grid widens") so more columns fit without scrolling.
- * PURE CSS — no island/JS drives the scroll or the sticky column.
- *
- * FIELD SET (PRD §5.3 "same fields as the report card so rows line up"):
- * the five REPORT_CARD_FIELD_KEYS (track_record, cases, assets, education,
- * approachability) plus a sixth `news` row — Candidate.astro's News &
- * coverage section, included here as a row so it lines up too. Each of the
- * five FieldRow-anatomy cells (value + SourceLine) is built the same way
- * Candidate.astro resolves them (`pickValue`, kept as its own local copy
- * here per the same small-duplication convention noted above) — the brief
- * explicitly allows rendering FieldRow's anatomy directly in a grid/table
- * cell rather than reusing the FieldRow component itself (whose own
- * internal label paragraph would duplicate this table's own row header).
- *
- * NEUTRALITY (design-system §4, non-negotiable): every candidate column
- * gets the exact same width/photo-size/field-order/markup regardless of
- * party or position — ordering is alphabetical only. Candidate headers
- * reuse CandidateRow verbatim (same component as ward lists — party is
- * TEXT only, no color). Cases/assets render in plain ink, same FieldRow-style
- * markup as every other field — no alarm/danger styling.
- *
- * EMPTY STATE (PRD §5.3 read alongside design-system §7.12): a ward with
- * ZERO filed/contesting candidates (e.g. only withdrawn/rejected on file,
- * or none yet) renders EmptyState at HTTP 200 — "No candidates to compare
- * yet" plus a link back to the ward and the register-for-updates slot —
- * never a broken/empty table.
- *
- * REGISTER-FOR-UPDATES SLOT (IA §3.5 "same as §3.2"): exactly ONE
- * `[data-register-slot]` element ever renders per response (empty-state
- * branch XOR table-bottom branch, mutually exclusive) — same convention as
- * WardCandidates.astro, for the same MeSlot `querySelector` reason.
- *
- * CACHE-SAFETY (architecture §5): this component never reads cookies or
- * session — the page is identical for every visitor.
+ * Public ward candidate comparison (milestones.md §5). Filed and contesting
+ * candidates are ordered alphabetically and compared across the same nine
+ * fields as their profiles. The responsive table is neutral, horizontally
+ * scrollable, and identical for anonymous and signed-in visitors.
  */
 import Base from '../../layouts/Base.astro';
 import Button from '../../components/Button.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import CandidateRow from '../../components/CandidateRow.astro';
 import type { CandidateRowCandidate } from '../../components/CandidateRow.astro';
-import SourceLine from '../../components/SourceLine.astro';
+import VerificationLabel from '../../components/VerificationLabel.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
-import { wards, candidates, candidateFields, candidateNewsLinks, media } from '../../db/schema';
-import { and, eq, inArray } from 'drizzle-orm';
-import { REPORT_CARD_FIELD_KEYS, type ReportCardFieldKey } from '../../lib/curator';
+import { wards, candidates, candidateFields, candidateAffidavits, media } from '../../db/schema';
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import {
+  CANDIDATE_PROFILE_FIELD_KEYS,
+  CANDIDATE_PROFILE_LABEL_KEYS,
+  pickCandidateValue,
+  type CandidateProfileFieldKey,
+} from '../../lib/candidate-profile';
 import { getKnownSetting } from '../../lib/settings';
 
 interface Props {
@@ -86,34 +28,19 @@ interface Props {
   wardId: number;
 }
 
-const { lang, wardId } = Astro.props;
+const { lang, wardId } = Astro.props as Props;
 
 // See module docstring: local copy of readiness.ts's ACTIVE_CANDIDATE_STATUSES.
 const COMPARABLE_STATUSES = ['filed', 'contesting'] as const;
 
 const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
-
-const FIELD_LABEL_KEYS: Record<ReportCardFieldKey, string> = {
-  track_record: 'candidate.field.trackRecord',
-  cases: 'candidate.field.cases',
-  assets: 'candidate.field.assets',
-  education: 'candidate.field.education',
-  approachability: 'candidate.field.approachability',
-};
+const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 
 interface ResolvedField {
   value: string | null;
   notDeclared: boolean;
-  sourceType: 'official' | 'curator';
-  sourceUrl: string | null;
+  valueUrl: string | null;
   aiExtracted: boolean;
-  authoredLang: Lang;
-  translationStatus: 'pending' | 'done' | 'manual';
-}
-
-interface NewsLinkLite {
-  url: string;
-  title: string;
 }
 
 interface CompareCandidate {
@@ -124,14 +51,7 @@ interface CompareCandidate {
   partyEn: string;
   partyKn: string | null;
   photoUrl: string | null;
-  fields: Record<ReportCardFieldKey, ResolvedField>;
-  newsLinks: NewsLinkLite[];
-}
-
-/** Same caller-resolved value pick Candidate.astro uses (Task 40 convention): prefer this page's own language, falling back to the other one when it hasn't been authored/translated yet. */
-function pickValue(preferred: Lang, en: string | null | undefined, kn: string | null | undefined): string | null {
-  const value = preferred === 'kn' ? (kn ?? en) : (en ?? kn);
-  return value ?? null;
+  fields: Record<CandidateProfileFieldKey, ResolvedField>;
 }
 
 const candidateRows = ward
@@ -162,39 +82,47 @@ for (const row of fieldRows) {
   fieldsByCandidate.get(row.candidateId)!.set(row.fieldKey, row);
 }
 
-// Approved-only, same public guard listNewsLinks's approvedOnly option
-// documents — batched here (rather than N calls to that helper) since this
-// page may render an unbounded number of candidates in one response.
-const newsRows =
+const affidavitRows =
   candidateIds.length > 0
     ? await db
-        .select({ candidateId: candidateNewsLinks.candidateId, url: candidateNewsLinks.url, title: candidateNewsLinks.title })
-        .from(candidateNewsLinks)
-        .where(and(inArray(candidateNewsLinks.candidateId, candidateIds), eq(candidateNewsLinks.status, 'approved')))
+        .select({ candidateId: candidateAffidavits.candidateId, mediaId: media.id, sha256: media.sha256 })
+        .from(candidateAffidavits)
+        .innerJoin(media, eq(media.id, candidateAffidavits.mediaId))
+        .where(inArray(candidateAffidavits.candidateId, candidateIds))
+        .orderBy(desc(candidateAffidavits.createdAt), desc(candidateAffidavits.id))
     : [];
-const newsByCandidate = new Map<number, NewsLinkLite[]>();
-for (const row of newsRows) {
-  if (!newsByCandidate.has(row.candidateId)) newsByCandidate.set(row.candidateId, []);
-  newsByCandidate.get(row.candidateId)!.push({ url: row.url, title: row.title });
+const affidavitByCandidate = new Map<number, string>();
+for (const affidavit of affidavitRows) {
+  if (!affidavitByCandidate.has(affidavit.candidateId)) {
+    affidavitByCandidate.set(affidavit.candidateId, `/media/${affidavit.mediaId}/${affidavit.sha256.slice(0, 16)}`);
+  }
 }
 
 const compareCandidates: CompareCandidate[] = orderedCandidates.map((c) => {
   const fieldsForCandidate = fieldsByCandidate.get(c.id);
   const fields = Object.fromEntries(
-    REPORT_CARD_FIELD_KEYS.map((key) => {
+    CANDIDATE_PROFILE_FIELD_KEYS.map((key) => {
       const f = fieldsForCandidate?.get(key);
+      const affidavitUrl = affidavitByCandidate.get(c.id) ?? null;
+      const canonicalValue =
+        key === 'full_name'
+          ? pickCandidateValue(lang, c.nameEn, c.nameKn)
+          : key === 'ward'
+            ? wardName
+            : key === 'party'
+              ? pickCandidateValue(lang, c.partyEn, c.partyKn)
+              : key === 'ec_affidavit' && affidavitUrl
+                ? t(lang, 'candidate.affidavit.view')
+                : null;
       const resolved: ResolvedField = {
-        value: pickValue(lang, f?.valueEn, f?.valueKn),
+        value: canonicalValue ?? pickCandidateValue(lang, f?.valueEn, f?.valueKn),
         notDeclared: f?.notDeclared ?? false,
-        sourceType: f?.sourceType ?? ('curator' as const),
-        sourceUrl: f?.sourceUrl ?? null,
+        valueUrl: key === 'ec_affidavit' ? affidavitUrl : null,
         aiExtracted: f?.aiExtracted ?? false,
-        authoredLang: f?.authoredLang ?? lang,
-        translationStatus: f?.translationStatus ?? ('done' as const),
       };
       return [key, resolved];
     }),
-  ) as Record<ReportCardFieldKey, ResolvedField>;
+  ) as Record<CandidateProfileFieldKey, ResolvedField>;
 
   return {
     id: c.id,
@@ -205,7 +133,6 @@ const compareCandidates: CompareCandidate[] = orderedCandidates.map((c) => {
     partyKn: c.partyKn,
     photoUrl: c.photoMediaId != null && c.photoHash ? `/media/${c.photoMediaId}/${c.photoHash.slice(0, 16)}` : null,
     fields,
-    newsLinks: newsByCandidate.get(c.id) ?? [],
   };
 });
 
@@ -227,16 +154,10 @@ const emptyFact = notificationDateSetting
   ? t(lang, 'compare.empty.fact', { date: notificationDateSetting })
   : t(lang, 'compare.empty.awaited');
 
-const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 const pagePath = `/ward/${wardId}/compare`;
 const title = ward ? t(lang, 'compare.meta.title', { wardName }) : t(lang, 'ward.notFound.fact');
 const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t(lang, 'ward.notFound.fact');
 
-/** Same pending-translation-indicator rule FieldRow.astro's own docstring encodes — kept local since this cell markup deliberately doesn't route through that component (see module docstring). */
-function showPendingIndicator(field: ResolvedField): boolean {
-  const isNotDeclared = field.notDeclared || !field.value;
-  return !isNotDeclared && field.translationStatus === 'pending' && field.authoredLang !== lang;
-}
 ---
 
 <Base lang={lang} title={title} description={description} path={pagePath}>
@@ -246,13 +167,13 @@ function showPendingIndicator(field: ResolvedField): boolean {
         <header class="page-header">
           <h1>{wardName}</h1>
           <p class="subheading">{t(lang, 'compare.pageHeading')}</p>
+          <a class="back-to-ward" href={localePath(lang, `/ward/${wardId}`)}>
+            {t(lang, 'compare.links.backToWard')}
+          </a>
         </header>
 
         {compareCandidates.length === 0 ? (
           <EmptyState fact={emptyFact}>
-            <a class="back-to-ward" href={localePath(lang, `/ward/${wardId}`)}>
-              {t(lang, 'compare.links.backToWard')}
-            </a>
             <Button
               variant="primary"
               href={localePath(lang, '/login')}
@@ -282,10 +203,10 @@ function showPendingIndicator(field: ResolvedField): boolean {
                   </tr>
                 </thead>
                 <tbody>
-                  {REPORT_CARD_FIELD_KEYS.map((key) => (
+                  {CANDIDATE_PROFILE_FIELD_KEYS.map((key) => (
                     <tr>
                       <th scope="row" class="label-col sticky-col">
-                        {t(lang, FIELD_LABEL_KEYS[key])}
+                        {t(lang, CANDIDATE_PROFILE_LABEL_KEYS[key])}
                       </th>
                       {compareCandidates.map((candidate) => {
                         const field = candidate.fields[key];
@@ -296,50 +217,23 @@ function showPendingIndicator(field: ResolvedField): boolean {
                               {isNotDeclared ? (
                                 <p class="field-value field-value--not-declared">{t(lang, 'common.notDeclared')}</p>
                               ) : (
-                                <p class="field-value">
-                                  {field.value}
-                                  {showPendingIndicator(field) && (
-                                    <span class="field-value__pending-note" aria-label={t(lang, 'common.translationPending')}>
-                                      {' '}
-                                      · {t(lang, 'common.translationPending')}
-                                    </span>
+                                <>
+                                  <p class="field-value">
+                                    {field.valueUrl ? (
+                                      <a href={field.valueUrl} target="_blank" rel="noopener noreferrer">{field.value}</a>
+                                    ) : field.value}
+                                  </p>
+                                  {key !== 'ec_affidavit' && (
+                                    <VerificationLabel aiExtracted={field.aiExtracted} lang={lang} />
                                   )}
-                                </p>
+                                </>
                               )}
-                              <SourceLine
-                                sourceType={field.sourceType}
-                                sourceUrl={field.sourceUrl}
-                                aiExtracted={field.aiExtracted}
-                                lang={lang}
-                              />
                             </div>
                           </td>
                         );
                       })}
                     </tr>
                   ))}
-                  <tr>
-                    <th scope="row" class="label-col sticky-col">
-                      {t(lang, 'candidate.news.heading')}
-                    </th>
-                    {compareCandidates.map((candidate) => (
-                      <td class="candidate-col">
-                        {candidate.newsLinks.length === 0 ? (
-                          <p class="field-value field-value--not-declared">{t(lang, 'candidate.news.empty')}</p>
-                        ) : (
-                          <ul class="news-list">
-                            {candidate.newsLinks.map((link) => (
-                              <li>
-                                <a href={link.url} target="_blank" rel="noopener noreferrer">
-                                  {link.title}
-                                </a>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -383,7 +277,7 @@ function showPendingIndicator(field: ResolvedField): boolean {
   }
 
   .subheading {
-    margin: 0;
+    margin: 0 0 var(--space-2);
     color: var(--color-text-muted);
   }
 
@@ -495,33 +389,6 @@ function showPendingIndicator(field: ResolvedField): boolean {
   .field-value--not-declared {
     font-style: italic;
     color: var(--color-text-muted);
-  }
-
-  .field-value__pending-note {
-    font-size: var(--text-xs);
-    font-style: italic;
-    color: var(--color-text-muted);
-  }
-
-  .news-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .news-list a {
-    color: var(--color-primary);
-    font-weight: 700;
-    text-decoration: none;
-    font-size: var(--text-sm);
-  }
-
-  .news-list a:hover,
-  .news-list a:focus-visible {
-    text-decoration: underline;
   }
 
   .register-slot {

@@ -66,7 +66,7 @@ const EMPTY_WARD = {
 
 // track_record, cases, assets, education, approachability, news — same
 // field set as the report card (PRD §5.3).
-const REPORT_CARD_ROW_COUNT = 6;
+const REPORT_CARD_ROW_COUNT = 9;
 
 const MANY_WARD = {
   id: 96303,
@@ -138,6 +138,7 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       const ids = existing.map((c) => c.id);
       if (ids.length > 0) {
         await db.delete(schema.candidateNewsLinks).where(inArray(schema.candidateNewsLinks.candidateId, ids));
+        await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.candidateId, ids));
         await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, ids));
       }
       await db.delete(schema.candidates).where(eq(schema.candidates.wardId, wardId));
@@ -199,6 +200,15 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
     await db.insert(schema.candidateFields).values([
       {
         candidateId: arjun!.id,
+        fieldKey: 'age',
+        valueEn: '43',
+        sourceType: 'official',
+        authoredLang: 'en',
+        translationStatus: 'done',
+        aiExtracted: true,
+      },
+      {
+        candidateId: arjun!.id,
         fieldKey: 'cases',
         valueEn: 'No pending cases declared in the affidavit.',
         valueKn: null,
@@ -249,6 +259,7 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       const ids = existing.map((c) => c.id);
       if (ids.length > 0) {
         await db.delete(schema.candidateNewsLinks).where(inArray(schema.candidateNewsLinks.candidateId, ids));
+        await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.candidateId, ids));
         await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, ids));
       }
       await db.delete(schema.candidates).where(eq(schema.candidates.wardId, wardId));
@@ -275,12 +286,16 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       expect(html).toContain(`href="${localePath(lang, '/candidate/compare-test-arjun')}"`);
       expect(html).toContain(`href="${localePath(lang, '/candidate/compare-test-zainab')}"`);
       expect(html).toContain(`href="${localePath(lang, '/candidate/compare-test-bhavana')}"`);
+      expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}`)}"`);
+      expect(html).toContain(t(lang, 'compare.links.backToWard'));
     });
 
     it('renders each candidate\'s field values (cases populated, assets not declared)', async () => {
       const html = normalize(await (await renderCompare('en', WARD.id)).text());
       expect(html).toContain('No pending cases declared in the affidavit.');
       expect(html).toContain(t('en', 'common.notDeclared'));
+      expect(html).toContain(t('en', 'common.verification.aiExtracted'));
+      expect(html).toContain(t('en', 'common.verification.checked'));
     });
   });
 
@@ -328,7 +343,7 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       // Every row's label cell (including the header row's empty corner
       // cell) carries the pinned sticky-col class.
       const labelCells = [...tableHtml.matchAll(/class="label-col sticky-col"/g)];
-      expect(labelCells.length).toBe(1 + REPORT_CARD_ROW_COUNT); // header corner + 6 field rows
+      expect(labelCells.length).toBe(1 + REPORT_CARD_ROW_COUNT); // header corner + 9 field rows
     });
   });
 
@@ -400,14 +415,13 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
   });
 
   describe('fields line up with the report card (same field set)', () => {
-    it('all five report-card field labels plus News & coverage render as row labels', async () => {
+    it('all nine profile fields render as row labels', async () => {
       const html = normalize(await (await renderCompare('en', WARD.id)).text());
-      expect(html).toContain(t('en', 'candidate.field.trackRecord'));
-      expect(html).toContain(t('en', 'candidate.field.cases'));
-      expect(html).toContain(t('en', 'candidate.field.assets'));
-      expect(html).toContain(t('en', 'candidate.field.education'));
-      expect(html).toContain(t('en', 'candidate.field.approachability'));
-      expect(html).toContain(escAmp(t('en', 'candidate.news.heading')));
+      for (const key of ['fullName', 'ward', 'partyName', 'gender', 'age', 'education', 'assets', 'cases', 'ecAffidavit']) {
+        expect(html).toContain(t('en', `candidate.field.${key}`));
+      }
+      expect(html).not.toContain(t('en', 'candidate.field.trackRecord'));
+      expect(html).not.toContain(escAmp(t('en', 'candidate.news.heading')));
     });
   });
 

@@ -348,7 +348,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
       if (!ward) return undefined;
       return {
         ward: wardDisplayName(ward, user.language),
-        issuesLink: absoluteUrl(user.language, `/ward/${wardId}/issues`),
+        issuesLink: absoluteUrl(user.language, `/ward/${wardId}`),
         notificationsLink,
         unsubscribeLink,
       };
@@ -375,7 +375,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
       return {
         ward: wardDisplayName(ward, user.language),
         compareLink: absoluteUrl(user.language, `/ward/${wardId}/compare`),
-        issuesLink: absoluteUrl(user.language, `/ward/${wardId}/issues`),
+        issuesLink: absoluteUrl(user.language, `/ward/${wardId}`),
         boothLink: absoluteUrl(user.language, '/voting-guide/find-booth'),
         notificationsLink,
         unsubscribeLink,

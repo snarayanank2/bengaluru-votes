@@ -1,0 +1,75 @@
+---
+import { t, type Lang } from '../i18n';
+import VerificationLabel from './VerificationLabel.astro';
+
+interface Props {
+  label: string;
+  value?: string | null;
+  valueUrl?: string | null;
+  aiExtracted?: boolean;
+  showVerification?: boolean;
+  notDeclared?: boolean;
+  lang: Lang;
+}
+
+const {
+  label,
+  value = null,
+  valueUrl = null,
+  aiExtracted = false,
+  showVerification = true,
+  notDeclared = false,
+  lang,
+} = Astro.props;
+const hasValue = !notDeclared && Boolean(value);
+---
+
+<div class="profile-field">
+  <p class="profile-field__label">{label}</p>
+  {
+    hasValue ? (
+      <>
+        <p class="profile-field__value">
+          {valueUrl ? <a href={valueUrl} target="_blank" rel="noopener noreferrer">{value}</a> : value}
+        </p>
+        {showVerification && <VerificationLabel aiExtracted={aiExtracted} lang={lang} />}
+      </>
+    ) : (
+      <p class="profile-field__value profile-field__value--empty">{t(lang, 'common.notDeclared')}</p>
+    )
+  }
+</div>
+
+<style>
+  .profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-block: var(--space-2);
+  }
+
+  .profile-field__label,
+  .profile-field__value {
+    margin: 0;
+  }
+
+  .profile-field__label {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .profile-field__value {
+    color: var(--color-text);
+    font-size: var(--text-base);
+  }
+
+  .profile-field__value a {
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .profile-field__value--empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+</style>

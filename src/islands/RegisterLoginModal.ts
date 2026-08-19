@@ -363,7 +363,7 @@ declare global {
  *     `onSuccess` (plain sign-in; see `finishSuccess`'s `location.reload()`
  *     fallback).
  *   - `[data-register-slot]` (a ward page's "Register for updates" button,
- *     src/features/pages/Ward.astro / WardIssues.astro) -> prefills the
+ *     src/features/pages/Ward.astro) -> prefills the
  *     ward from that element's `data-ward-id`, and reloads on success so
  *     the slot picks up the "Receiving updates" state via Task 28's
  *     MeSlot island (src/islands/MeSlot.ts), which runs again on the

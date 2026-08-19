@@ -229,7 +229,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = candidate count, `{{3}}` = link to `/w
 >
 > Reply STOP to opt out.
 
-Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/issues`.
+Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}` (the issue vote is inline).
 
 ### WhatsApp — Kannada (`bv_c1_issue_vote_kn`)
 

@@ -130,23 +130,51 @@ describe('seed-dev', () => {
     expect(() => assertNotProduction({ NODE_ENV: 'test' } as NodeJS.ProcessEnv)).not.toThrow();
   });
 
-  it('seeds fictional candidates and ward issues for a few real wards', async () => {
+  it('seeds two bilingual fictional candidates with nine fields in all 369 wards', async () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'test';
     try {
       const result = await seedDev(db);
-      expect(result.wardIds.length).toBeGreaterThan(0);
-      expect(result.candidateCount).toBeGreaterThan(0);
+      expect(result.wardIds).toHaveLength(369);
+      expect(result.candidateCount).toBe(369 * 2);
+      expect(result.issueCount).toBe(3);
 
       const candidates = await db
         .select()
         .from(schema.candidates)
         .where(eq(schema.candidates.wardId, result.wardIds[0]));
       const demoCandidates = candidates.filter((c) => c.slug.startsWith('demo-ward-'));
-      expect(demoCandidates.length).toBeGreaterThan(0);
+      expect(demoCandidates).toHaveLength(2);
       for (const c of demoCandidates) {
         expect(c.nameEn).toMatch(/FICTIONAL/);
+        expect(c.nameKn).toMatch(/ಕಾಲ್ಪನಿಕ/);
+        expect(c.partyEn).toMatch(/FICTIONAL/);
+        expect(c.partyKn).toMatch(/ಕಾಲ್ಪನಿಕ/);
+
+        const fields = await db
+          .select()
+          .from(schema.candidateFields)
+          .where(eq(schema.candidateFields.candidateId, c.id));
+        expect(new Set(fields.map((field) => field.fieldKey))).toEqual(
+          new Set(['full_name', 'ward', 'party', 'gender', 'age', 'education', 'assets', 'cases', 'ec_affidavit']),
+        );
+        expect(fields.some((field) => field.aiExtracted)).toBe(true);
+        expect(fields.some((field) => !field.aiExtracted)).toBe(true);
+
+        const affidavits = await db
+          .select()
+          .from(schema.candidateAffidavits)
+          .where(eq(schema.candidateAffidavits.candidateId, c.id));
+        expect(affidavits).toHaveLength(1);
       }
+
+      const secondRun = await seedDev(db);
+      expect(secondRun.candidateCount).toBe(369 * 2);
+      const candidatesAfterSecondRun = await db
+        .select()
+        .from(schema.candidates)
+        .where(eq(schema.candidates.wardId, result.wardIds[0]));
+      expect(candidatesAfterSecondRun.filter((c) => c.slug.startsWith('demo-ward-'))).toHaveLength(2);
     } finally {
       process.env.NODE_ENV = originalEnv;
     }

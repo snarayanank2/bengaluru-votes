@@ -124,7 +124,12 @@ const voteIssues = JSON.stringify(cityIssues.map((issue) => ({
 })));
 const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY ?? '';
 
-const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
+// `wards.id` is a collision-free route/database key: corporation_id * 1000
+// + the per-corporation ward number. Citizens should see the latter (49 for
+// route id 3049), because ward numbers repeat across corporations.
+const wardNumber = wardId % 1000;
+const wardNameRaw = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
+const wardName = wardNameRaw.replace(/^\d+\s*-\s*/, '');
 const corporationLabel = ward ? t(lang, `ward.corporation.${ward.corporation}`) : '';
 
 // Boundary geometry now comes from this ward's own URL rather than the
@@ -135,8 +140,8 @@ const maps = mapsConfig();
 const boundaryUrl = ward ? `/ward/${wardId}/boundary.json` : null;
 
 const pagePath = `/ward/${wardId}`;
-const title = ward ? t(lang, 'ward.meta.title', { wardName, wardId }) : t(lang, 'ward.notFound.fact');
-const description = ward ? t(lang, 'ward.meta.description', { wardName, wardId }) : t(lang, 'ward.notFound.fact');
+const title = ward ? t(lang, 'ward.meta.title', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
+const description = ward ? t(lang, 'ward.meta.description', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
 
 // Flag misinformation (Task 32, IA §7.2, PRD §6.1) — this page's ONE
 // flaggable target is the ward's own name/number/corporation block.
@@ -157,10 +162,18 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     ward ? (
       <div class="ward">
         <header class="ward-header">
-          <h1>
-            {wardName} <span class="ward-number">{t(lang, 'ward.heading.wardNumber', { wardId })}</span>
-          </h1>
-          <p class="corporation">{corporationLabel}</p>
+          <p class="ward-number">{t(lang, 'ward.heading.wardNumber', { wardNumber })}</p>
+          <h1>{wardName}</h1>
+          <dl class="ward-details">
+            <div>
+              <dt>{t(lang, 'ward.detail.corporation')}</dt>
+              <dd>{corporationLabel}</dd>
+            </div>
+            <div>
+              <dt>{t(lang, 'ward.detail.zone')}</dt>
+              <dd>{ward.zone}</dd>
+            </div>
+          </dl>
           <Button variant="tertiary" type="button" lang={lang} data-flag-action data-ward-id={wardId} data-flag-targets={flagTargets}>
             {t(lang, 'common.flagError')}
           </Button>
@@ -292,17 +305,45 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     font-family: var(--font-heading);
     font-size: var(--text-3xl);
     line-height: var(--leading-3xl);
-    margin: 0 0 var(--space-2);
+    margin: 0;
+  }
+
+  .ward-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
   }
 
   .ward-number {
-    color: var(--color-text-muted);
-    font-weight: 400;
-  }
-
-  .corporation {
     margin: 0;
     color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .ward-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-8);
+    margin: 0;
+  }
+
+  .ward-details div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .ward-details dt {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .ward-details dd {
+    margin: 0;
+    color: var(--color-text);
+    font-weight: 700;
   }
 
   .map-container {

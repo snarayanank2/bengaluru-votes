@@ -108,14 +108,8 @@ const WITHDRAWN_SLUG = 'candidate-report-card-test-withdrawn';
 const REJECTED_SLUG = 'candidate-report-card-test-rejected';
 const PRENOTIFICATION_SLUG = 'candidate-report-card-test-prenotification';
 
-const APPROVED_NEWS_URL = 'https://news.example.com/candidate-coverage';
-const APPROVED_NEWS_TITLE = 'Ward polls: <Live> updates from the trail';
-const SUGGESTED_NEWS_URL = 'https://news.example.com/suggested-item';
-const SUGGESTED_NEWS_TITLE = 'Suggested unapproved coverage — must never appear';
-
 let mainCandidateId: number;
 let affidavitMediaUrl: string;
-let assetsAffidavitMediaUrl: string;
 
 async function deleteCandidateTree(candidateId: number): Promise<void> {
   await db.delete(schema.candidateNewsLinks).where(eq(schema.candidateNewsLinks.candidateId, candidateId));
@@ -144,10 +138,6 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
     const affidavitMedia = await insertMedia(affidavitBytes, 'application/pdf');
     affidavitMediaUrl = affidavitMedia.url;
 
-    const assetsAffidavitBytes = Buffer.from('%PDF-1.4\nassets-affidavit-body\n%%EOF');
-    const assetsAffidavitMedia = await insertMedia(assetsAffidavitBytes, 'application/pdf');
-    assetsAffidavitMediaUrl = assetsAffidavitMedia.url;
-
     const [mainRow] = await db
       .insert(schema.candidates)
       .values({
@@ -168,29 +158,41 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       originUrl: null,
       extractionStatus: 'done',
     });
-    await db.insert(schema.candidateAffidavits).values({
-      candidateId: mainCandidateId,
-      mediaId: assetsAffidavitMedia.id,
-      originUrl: null,
-      extractionStatus: 'done',
-    });
-
     await db.insert(schema.candidateFields).values([
       {
         candidateId: mainCandidateId,
-        fieldKey: 'track_record',
-        valueEn: 'Led the ward roads resurfacing campaign in 2022.',
+        fieldKey: 'gender',
+        valueEn: 'Woman',
         notDeclared: false,
         authoredLang: 'en',
         translationStatus: 'done',
-        sourceUrl: 'https://example.com/track-record-source',
-        sourceType: 'curator',
+        sourceUrl: affidavitMediaUrl,
+        sourceType: 'official',
         aiExtracted: false,
       },
       {
-        // Curator-confirmed affidavit field: aiExtracted cleared, still
-        // sourceType official, source link is the STORED PDF, not any raw
-        // EC URL (PRD §5.2's "the stored affidavit is the public source").
+        candidateId: mainCandidateId,
+        fieldKey: 'age',
+        valueEn: '44',
+        notDeclared: false,
+        authoredLang: 'en',
+        translationStatus: 'done',
+        sourceUrl: affidavitMediaUrl,
+        sourceType: 'official',
+        aiExtracted: true,
+      },
+      {
+        candidateId: mainCandidateId,
+        fieldKey: 'assets',
+        valueEn: 'Rs 42,00,000 in declared assets.',
+        notDeclared: false,
+        authoredLang: 'en',
+        translationStatus: 'done',
+        sourceUrl: affidavitMediaUrl,
+        sourceType: 'official',
+        aiExtracted: true,
+      },
+      {
         candidateId: mainCandidateId,
         fieldKey: 'cases',
         valueEn: 'No pending criminal cases declared.',
@@ -200,50 +202,6 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
         sourceUrl: affidavitMediaUrl,
         sourceType: 'official',
         aiExtracted: false,
-      },
-      {
-        // Not yet curator-confirmed -> AI-extracted marker still showing.
-        candidateId: mainCandidateId,
-        fieldKey: 'assets',
-        valueEn: 'Rs 42,00,000 in declared assets.',
-        notDeclared: false,
-        authoredLang: 'en',
-        translationStatus: 'done',
-        sourceUrl: assetsAffidavitMediaUrl,
-        sourceType: 'official',
-        aiExtracted: true,
-      },
-      // education: deliberately no row -> "a field the curator hasn't
-      // filled" (Not declared fallback).
-      {
-        candidateId: mainCandidateId,
-        fieldKey: 'approachability',
-        valueEn: null,
-        notDeclared: true, // a valid, complete "not declared" answer (PRD §9.1)
-        authoredLang: 'en',
-        translationStatus: 'done',
-        sourceUrl: null,
-        sourceType: 'curator',
-        aiExtracted: false,
-      },
-    ]);
-
-    await db.insert(schema.candidateNewsLinks).values([
-      {
-        candidateId: mainCandidateId,
-        url: APPROVED_NEWS_URL,
-        title: APPROVED_NEWS_TITLE,
-        domain: 'news.example.com',
-        origin: 'curator',
-        status: 'approved',
-      },
-      {
-        candidateId: mainCandidateId,
-        url: SUGGESTED_NEWS_URL,
-        title: SUGGESTED_NEWS_TITLE,
-        domain: 'news.example.com',
-        origin: 'auto',
-        status: 'suggested',
       },
     ]);
 
@@ -293,7 +251,11 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       const expectedName = lang === 'kn' ? 'ವರದಿ ಪತ್ರ ಪರೀಕ್ಷಾ ಅಭ್ಯರ್ಥಿ' : 'Report Card Test Candidate';
       expect(html).toContain(expectedName);
       expect(html).toContain('Independent');
-      expect(html).toContain('Led the ward roads resurfacing campaign in 2022.');
+      expect(html).toContain('Woman');
+      expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}`)}"`);
+      for (const key of ['fullName', 'ward', 'partyName', 'gender', 'age', 'education', 'assets', 'cases', 'ecAffidavit']) {
+        expect(html).toContain(t(lang, `candidate.field.${key}`));
+      }
       expect(html).toContain(t(lang, 'candidate.header.sourceEcNomination'));
     });
   });
@@ -336,10 +298,10 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       expect(res.status).toBe(200);
       const html = normalize(await res.text());
       expect(html).toContain('Prenotification Test Candidate');
-      // Every one of the five report-card fields has no candidate_fields
-      // row yet -> every one falls back to "Not declared".
+      // Name, ward, and party are canonical candidate data. The other six
+      // profile fields fall back to "Not declared".
       const notDeclaredCount = (html.match(new RegExp(t('en', 'common.notDeclared'), 'g')) ?? []).length;
-      expect(notDeclaredCount).toBe(5);
+      expect(notDeclaredCount).toBe(6);
     });
 
     it('renders the neutral initials placeholder, never a fake image, when there is no photo', async () => {
@@ -356,32 +318,28 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       expect(html).toContain(`href="${affidavitMediaUrl}"`);
       expect(affidavitMediaUrl).toMatch(/^\/media\/\d+\/[0-9a-f]{16}$/);
     });
+
+    it('does not show a verification icon on the EC affidavit link itself', async () => {
+      const html = normalize(await (await renderCandidate('en', MAIN_SLUG)).text());
+      const start = html.indexOf(`<p class="profile-field__label">${t('en', 'candidate.field.ecAffidavit')}</p>`);
+      const end = html.indexOf('</div>', start);
+      expect(start).toBeGreaterThan(-1);
+      expect(html.slice(start, end)).not.toContain('verification-label');
+    });
   });
 
-  describe('AI-extracted vs. curator-confirmed Affidavit badge', () => {
+  describe('AI-extracted vs. checked-by-person labels', () => {
     it('an aiExtracted:true field shows the AI-extracted badge', async () => {
       const html = normalize(await (await renderCandidate('en', MAIN_SLUG)).text());
-      expect(html).toContain(t('en', 'common.source.aiExtracted'));
+      expect(html).toContain(t('en', 'common.verification.aiExtracted'));
+      expect(html).toContain(`aria-label="${t('en', 'common.verification.aiExtracted')}"`);
+      expect(html).toContain('verification-tooltip');
     });
 
-    it('a curator-confirmed (aiExtracted:false) official field shows the Affidavit badge', async () => {
+    it('a human-confirmed field shows the green checked label', async () => {
       const html = normalize(await (await renderCandidate('en', MAIN_SLUG)).text());
-      expect(html).toContain(t('en', 'common.source.affidavit'));
-    });
-  });
-
-  describe('news links (Task 38 boundary re-asserted here — load-bearing)', () => {
-    it('renders the approved link (url + title) and NEVER the suggested one', async () => {
-      const html = normalize(await (await renderCandidate('en', MAIN_SLUG)).text());
-      expect(html).toContain(APPROVED_NEWS_URL);
-      // Title is HTML-escaped by Astro in the visible list, so check the
-      // decoded substring rather than the raw '<'.
-      expect(html).toContain('Live');
-      expect(html).toContain('Ward polls:');
-
-      expect(html).not.toContain(SUGGESTED_NEWS_URL);
-      expect(html).not.toContain(SUGGESTED_NEWS_TITLE);
-      expect(html).not.toContain('Suggested unapproved coverage');
+      expect(html).toContain(t('en', 'common.verification.checked'));
+      expect(html).toContain('verification-label--checked');
     });
   });
 
@@ -391,7 +349,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       const match = html.match(/<p class="([^"]*)">No pending criminal cases declared\.[^<]*<\/p>/);
       expect(match, 'expected to find the cases field-value paragraph').not.toBeNull();
       expect(match![1]).not.toMatch(/danger|error|alarm/i);
-      expect(match![1]).toBe('field-value');
+      expect(match![1]).toBe('profile-field__value');
     });
   });
 
@@ -451,7 +409,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       expect(html).toContain(t('en', 'common.flagError'));
       expect(html).toContain('data-flag-action');
       expect(html).toContain(`data-ward-id="${WARD.id}"`);
-      expect(html).toContain(`candidate:${mainCandidateId}:track_record`);
+      expect(html).toContain(`candidate:${mainCandidateId}:full_name`);
       expect(html).toContain(`candidate:${mainCandidateId}:cases`);
     });
 

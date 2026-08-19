@@ -3,7 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { localePath, t, type Lang } from '../../src/i18n';
 import WardEn from '../../src/pages/ward/[id].astro';
@@ -109,6 +109,18 @@ async function renderWard(
   });
 }
 
+async function deleteWardCandidates(): Promise<void> {
+  const rows = await db.select({ id: schema.candidates.id }).from(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
+  const ids = rows.map((row) => row.id);
+  if (ids.length > 0) {
+    await db.delete(schema.candidateNewsLinks).where(inArray(schema.candidateNewsLinks.candidateId, ids));
+    await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.candidateId, ids));
+    await db.delete(schema.candidateStances).where(inArray(schema.candidateStances.candidateId, ids));
+    await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, ids));
+  }
+  await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
+}
+
 describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
@@ -124,12 +136,12 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
         },
       });
     await db.insert(schema.wardIssues).values(CITY_ISSUES).onConflictDoNothing();
-    await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
+    await deleteWardCandidates();
     await db.insert(schema.candidates).values(CANDIDATES);
   });
 
   afterAll(async () => {
-    await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
+    await deleteWardCandidates();
     await client.end();
   });
 
@@ -141,7 +153,10 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
 
       const expectedName = lang === 'kn' ? WARD.nameKn : WARD.nameEn;
       expect(html).toContain(expectedName);
-      expect(html).toContain(String(WARD.id));
+      expect(html).toContain(t(lang, 'ward.heading.wardNumber', { wardNumber: 1 }));
+      expect(html).toContain(t(lang, 'ward.detail.corporation'));
+      expect(html).toContain(t(lang, 'ward.detail.zone'));
+      expect(html).toContain(WARD.zone);
       expect(html).toContain(t(lang, 'ward.corporation.south'));
     });
 

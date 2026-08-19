@@ -21,7 +21,7 @@ const wardId = seedFixtures.primaryWardId;
 test('anonymous visitor registers via OTP, casts an issue vote, and the results reflect it', async ({ page }) => {
   const destination = freshEmail('voter');
 
-  await page.goto(`/ward/${wardId}/issues`);
+  await page.goto(`/ward/${wardId}`);
 
   const voteButton = page.locator('[data-vote-action]');
   await expect(voteButton).toBeVisible();
@@ -33,7 +33,7 @@ test('anonymous visitor registers via OTP, casts an issue vote, and the results 
 
   // Resumed in place: the URL never changed, and the vote form (not the
   // home-ward-only message) is now showing, pre-checked with nothing yet.
-  await expect(page).toHaveURL(new RegExp(`/ward/${wardId}/issues$`));
+  await expect(page).toHaveURL(new RegExp(`/ward/${wardId}$`));
   const voteDialog = page.locator('[data-vote-modal]');
   await expect(voteDialog.locator('[data-vote-form-wrap]')).toBeVisible();
   await expect(voteDialog.locator('[data-vote-home-ward-wrap]')).toBeHidden();
