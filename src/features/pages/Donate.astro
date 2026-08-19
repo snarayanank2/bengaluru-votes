@@ -1,0 +1,41 @@
+---
+/**
+ * Donate (`/donate`, `/kn/donate`) — explains how contributions support
+ * this public-interest election platform and links to Oorvani Foundation's
+ * hosted donation flow.
+ *
+ * The payment widget is deliberately not embedded here: it is operated by a
+ * third party and would require new script/frame/connect CSP allowances plus
+ * a reviewed payment, privacy, and donation-terms integration. Keeping the
+ * transaction on Oorvani's existing support page avoids expanding this
+ * platform's payment-data boundary.
+ *
+ * CACHE-SAFETY: reads only repository content and renders a fixed external
+ * link. It never reads session or request data.
+ */
+import Prose from '../../layouts/Prose.astro';
+import ExternalLinkOut from '../../components/ExternalLinkOut.astro';
+import { t, type Lang } from '../../i18n';
+import { getPageContent } from '../../i18n/content';
+import { renderContentHtml } from '../../lib/render-content';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const content = getPageContent(lang, 'donate');
+
+if (!content) {
+  throw new Error('Donate: missing content/pages/en/donate.md');
+}
+---
+
+<Prose lang={lang} title={content.title} description={content.description} path="/donate">
+  <div set:html={renderContentHtml(content.body, lang)} />
+  <ExternalLinkOut
+    lang={lang}
+    href="https://oorvani.org/support-us"
+    label={t(lang, 'donate.linkOut.label')}
+  />
+</Prose>

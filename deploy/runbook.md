@@ -558,35 +558,15 @@ npm run typecheck
 npm test
 ```
 
-**Known pre-deploy step for `google-maps-migration`:** `npm run translate -- --check`
-fails on this branch as committed, listing:
+**Accepted translation-check exception (2026-08-19):**
+`content/pages/kn/privacy.md` is a known stale target because its location-
+privacy paragraph was translated without an available `ANTHROPIC_API_KEY`.
+Do not hand-write its `sourceHash`; that would forge translation provenance.
 
-- `findBooth.result.directions`
-- `findBooth.result.directionsAriaLabel`
-- `home.form.helper`
-- `home.result.ambiguous`
-- `home.result.unavailable`
-- `content/pages/kn/find-booth.md`
-- `home.form.useLocation`
-- `home.form.locating`
-- `home.result.locationApproximate`
-- `home.result.locationDenied`
-- `home.result.locationUnavailable`
-- `content/pages/kn/privacy.md`
-
-These Kannada strings (for the booth directions links, for the address-only
-ward lookup that replaced pincode search, and — added 2026-08-14 — for the
-"use my current location" control and the privacy-page paragraph disclosing
-it) were hand-written in `src/i18n/kn.json` / `content/pages/kn/*.md` with no
-`__hashes` entry, because `ANTHROPIC_API_KEY` was unavailable in the
-environment that implemented them — hand-writing the hash would forge
-translation provenance and freeze the strings past regeneration, so that was
-deliberately not done.
-**Before deploying this branch:** run `npm run translate` with a real
-`ANTHROPIC_API_KEY` set, review the regenerated Kannada, and commit it so
-`--check` passes clean like every other deploy. This has not been done yet —
-`ANTHROPIC_API_KEY` remains unavailable in the environment that built this
-branch.
+A deploy may proceed when `npm run translate -- --check` lists **only** this
+file. Any other missing or stale target still blocks the deploy. Once a real
+key is available, regenerate and review the privacy translation, commit it,
+and remove this exception.
 
 ### Staging
 

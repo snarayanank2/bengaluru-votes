@@ -103,12 +103,14 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     expect(knHtml).toMatch(/>ಕನ್ನಡ</);
   });
 
-  it('renders all 7 footer links with locale-correct hrefs and labels', () => {
+  it('renders all footer links with locale-correct hrefs and labels', () => {
     const enLinks: Array<[string, string]> = [
       ['/about', 'About this project'],
+      ['/check-registration', 'Check your registration'],
       ['/voting-guide', 'Voting guide'],
       ['/data', 'Our data &amp; sources'],
       ['/partner-with-us', 'Partner with us'],
+      ['/donate', 'Donate'],
       ['/press', 'Press'],
       ['/terms', 'Terms of use'],
       ['/privacy', 'Privacy policy'],

@@ -4,7 +4,8 @@
  * background with lime text, matching Open City's own footer
  * (opencity.in serves it as accent-3 on accent-2); the one dark surface in
  * the system. Footer is the only route to the trust/legal pages (About,
- * Voting guide, Data, Partner with us, Press, Terms, Privacy), and carries
+ * Check your registration, Voting guide, Data, Partner with us, Donate,
+ * Press, Terms, Privacy), and carries
  * the Janaagraha + Oorvani Foundation partner lockup and Open City's
  * social links.
  *
@@ -37,9 +38,11 @@ const { lang } = Astro.props;
 
 const links = [
   { key: 'footer.about', path: '/about' },
+  { key: 'footer.checkRegistration', path: '/check-registration' },
   { key: 'footer.votingGuide', path: '/voting-guide' },
   { key: 'footer.data', path: '/data' },
   { key: 'footer.partnerWithUs', path: '/partner-with-us' },
+  { key: 'footer.donate', path: '/donate' },
   { key: 'footer.press', path: '/press' },
   { key: 'footer.terms', path: '/terms' },
   { key: 'footer.privacy', path: '/privacy' },
@@ -142,7 +145,7 @@ const social = [
     gap: var(--space-3) var(--space-6);
   }
 
-  /* Seven links read as a list, not a paragraph — two tidy columns once
+  /* Nine links read as a list, not a paragraph — two tidy columns once
      there's room for them (literal 480px = --bp-sm). Equal-width columns,
      so on desktop the pair spreads across the 2fr side instead of
      clumping at its left edge. */

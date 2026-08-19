@@ -204,23 +204,6 @@ function wardName(ward: WardRow): string {
 
       {rollDeadlineActive && rollDeadline && <DeadlineBanner deadlineISO={rollDeadline} lang={lang} />}
     </section>
-
-    <section class="shortcuts">
-      <Card>
-        <h2>{t(lang, 'home.shortcuts.checkRegistration.title')}</h2>
-        <p>{t(lang, 'home.shortcuts.checkRegistration.description')}</p>
-        <Button href={localePath(lang, '/check-registration')} variant="secondary" lang={lang}>
-          {t(lang, 'home.shortcuts.checkRegistration.title')}
-        </Button>
-      </Card>
-      <Card>
-        <h2>{t(lang, 'home.shortcuts.votingGuide.title')}</h2>
-        <p>{t(lang, 'home.shortcuts.votingGuide.description')}</p>
-        <Button href={localePath(lang, '/voting-guide')} variant="secondary" lang={lang}>
-          {t(lang, 'home.shortcuts.votingGuide.title')}
-        </Button>
-      </Card>
-    </section>
   </div>
 
   <script>
@@ -343,23 +326,4 @@ function wardName(ward: WardRow): string {
     gap: var(--space-3);
   }
 
-  .shortcuts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-    gap: var(--space-4);
-  }
-
-  /* Shortcut-card contents (slotted into Card, so still in this component's
-     scope). The card title sits a step below the hero h1 (text-xl vs
-     text-3xl), and the heading/description/button get explicit vertical
-     rhythm — Card itself is a bare container with no internal spacing. */
-  .shortcuts h2 {
-    font-size: var(--text-xl);
-    line-height: var(--leading-xl);
-    margin: 0 0 var(--space-2);
-  }
-
-  .shortcuts p {
-    margin: 0 0 var(--space-4);
-  }
 </style>

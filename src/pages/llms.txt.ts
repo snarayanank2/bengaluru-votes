@@ -65,6 +65,7 @@ export const GET: APIRoute = async () => {
     '## About this platform',
     `- About us, funding & how we source data: ${abs('/about')}`,
     `- Data & key metrics: ${abs('/data')}`,
+    `- Donate to support the platform: ${abs('/donate')}`,
     `- Privacy policy: ${abs('/privacy')}`,
     `- Terms & conditions: ${abs('/terms')}`,
     '',
