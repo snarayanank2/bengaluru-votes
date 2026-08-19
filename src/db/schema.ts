@@ -25,7 +25,7 @@ export const eoiPathEnum = pgEnum('eoi_path', ['awareness', 'curation']);
 export const eoiStatusEnum = pgEnum('eoi_status', ['new', 'accepted', 'declined']);
 export const sendCodeEnum = pgEnum('send_code', ['W1', 'R1', 'L1', 'C1', 'C2', 'C3', 'F1']);
 export const sendStatusEnum = pgEnum('send_status', ['sent', 'failed', 'suppressed', 'held']);
-export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'otp_send', 'news_query']);
+export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'otp_send', 'news_query', 'epic_lookup']);
 
 export const wards = pgTable('wards', {
   id: integer('id').primaryKey(),                      // corporation_id*1000 + per-corporation ward number (no city-wide official number exists in source data — see scripts/seed-wards.ts)

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."budget_kind" ADD VALUE IF NOT EXISTS 'epic_lookup';

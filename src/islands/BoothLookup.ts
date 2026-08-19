@@ -1,154 +1,191 @@
 /**
- * BoothLookup — progressive enhancement over the FindBooth page's
- * ward-search-style `<form>` (PRD §5.10, IA §3.12), mirroring
- * src/islands/WardLookup.ts's structure exactly.
+ * BoothLookup — progressive enhancement over the voter-ID booth-lookup
+ * `<form>`, mirroring src/islands/WardLookup.ts's structure exactly.
  *
- * The form is a real `<form method="post">` that works with zero JS: a
- * plain submit POSTs to /voting-guide/find-booth and that page's own
- * `Astro.request.method === 'POST'` branch server-renders the result using
- * the same booth-resolution logic `/api/booth-lookup` uses. This module
- * intercepts the submit, calls `POST /api/booth-lookup` instead, and paints
- * the result inline so a JS-capable visitor never leaves the page.
+ * The form is a real `<form method="post">` that works with zero JS: a plain
+ * submit POSTs to /voting-guide/find-booth and that page's own
+ * `Astro.request.method === 'POST'` branch server-renders the result through
+ * the same `lookupBoothByEpic` the API route uses. This module intercepts the
+ * submit, calls `POST /api/booth-lookup` instead, and paints the result
+ * inline so a JS-capable visitor never leaves the page.
  *
- * Booth lookup accepts a free-text address only (see
- * src/pages/api/booth-lookup.ts). `no_booth_data` and an
- * empty `booths: []` array are treated identically (both are the "we don't
- * have data for you yet" guided-link-out state — see that endpoint's
- * header), and `out_of_coverage`/`unavailable` both render their own
- * message pointing at the ALWAYS-VISIBLE guided link-out block the page
- * renders below the form (see FindBooth.astro) rather than duplicating
- * that link here.
+ * TWO MOUNT POINTS, one implementation: the find-booth page and the home
+ * page's booth card both render `[data-booth-lookup]`, and the home card's
+ * `action` points at the find-booth page — so a no-JS visitor who submits
+ * from the home page lands on the full page with their answer, and a JS
+ * visitor gets it inline without leaving home. `initBoothLookup` wires every
+ * such form it finds, not just the first.
+ *
+ * INPUT IS AN EPIC NUMBER (voter ID), not an address — see
+ * src/pages/api/booth-lookup.ts for why the address mode was removed.
+ *
+ * PRIVACY: the response carries the voter's own name and EPIC. This module
+ * paints them into the DOM and does nothing else with them — no storage, no
+ * analytics call, no URL rewrite. Nothing personal may be added to any of
+ * those; the result must stay as ephemeral as the request.
  *
  * On any failure to fetch/parse — network error, non-2xx, bad JSON — this
- * lets the native form submission proceed (the no-JS server path), same
+ * lets the native form submission proceed (the no-JS server path), the same
  * fallback discipline as WardLookup.
  *
- * Each rendered booth also gets a Google Maps directions link, built by the
- * shared src/lib/maps-links.ts helper (spec §7) from the lat/lng the API
- * already returns — no separate API call. FindBooth.astro's server-rendered
- * POST branch renders the identical link from the same helper; keep both in
- * sync (see that file's header) rather than letting one drift.
+ * The directions link is built by the shared src/lib/maps-links.ts helper
+ * from the lat/lng the API already returns — no separate API call. The
+ * server-rendered POST branch in FindBooth.astro renders the identical link
+ * from the same helper; keep both in sync rather than letting one drift.
  */
 import { directionsUrl } from '../lib/maps-links';
 
-interface BoothRow {
+interface WardPayload {
   id: number;
   nameEn: string;
   nameKn: string;
-  address: string;
-  lat: string;
-  lng: string;
-  wardId: number;
+  corporation: string;
+}
+
+interface BoothPayload {
+  nameEn: string;
+  nameKn: string;
+  serialNo: number;
+  lat: number;
+  lng: number;
+}
+
+interface VoterPayload {
+  epic: string;
+  nameEn: string;
+  nameKn: string;
 }
 
 type LookupResponse =
-  | { result: 'booth'; booths: BoothRow[] }
-  | { result: 'no_booth_data' }
-  | { result: 'out_of_coverage' }
+  | { result: 'booth'; voter: VoterPayload; ward: WardPayload | null; booth: BoothPayload }
+  | { result: 'not_found' }
   | { result: 'unavailable'; reason?: string };
 
-function boothName(lang: string, booth: BoothRow): string {
-  return lang === 'kn' && booth.nameKn ? booth.nameKn : booth.nameEn;
+interface Messages {
+  registeredAs: string;
+  wardLabel: string;
+  boothLabel: string;
+  serialNo: string;
+  wardUnknown: string;
+  notFound: string;
+  unavailable: string;
+  directions: string;
+  directionsAria: string;
 }
 
-function renderBooths(
+/**
+ * Kannada if we have it and the page is Kannada; English otherwise. Upstream
+ * ships an empty string rather than omitting the field when a record has no
+ * Kannada text, hence the truthiness check rather than a null check.
+ */
+function pick(lang: string, en: string, kn: string): string {
+  return lang === 'kn' && kn ? kn : en;
+}
+
+function para(text: string, className?: string): HTMLParagraphElement {
+  const p = document.createElement('p');
+  p.textContent = text;
+  if (className) p.className = className;
+  return p;
+}
+
+function section(label: string): HTMLElement {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'booth-section';
+  const heading = document.createElement('p');
+  heading.className = 'booth-section-label';
+  heading.textContent = label;
+  wrapper.appendChild(heading);
+  return wrapper;
+}
+
+function wardHref(lang: string, wardId: number): string {
+  return lang === 'kn' ? `/kn/ward/${wardId}` : `/ward/${wardId}`;
+}
+
+function renderBooth(
   container: HTMLElement,
   lang: string,
-  label: string,
-  directionsLabel: string,
-  directionsAriaTemplate: string,
-  booths: BoothRow[],
+  msgs: Messages,
+  data: Extract<LookupResponse, { result: 'booth' }>,
 ): void {
-  const list = document.createElement('ul');
-  list.setAttribute('aria-label', label);
-  for (const booth of booths) {
-    const item = document.createElement('li');
-    const name = document.createElement('p');
-    name.textContent = boothName(lang, booth);
-    const address = document.createElement('p');
-    address.textContent = booth.address;
-    const directions = document.createElement('a');
-    directions.href = directionsUrl(booth.lat, booth.lng);
-    directions.target = '_blank';
-    directions.rel = 'noopener noreferrer';
-    directions.textContent = directionsLabel;
-    // The visible text is the same word on every row, so without a
-    // per-booth accessible name a ward with several booths (one school
-    // often hosts several) renders a list of links that all announce
-    // identically — see the `__hints` entry for this key. `t()` lives on
-    // the server; this island imports no i18n table by design (file
-    // header), so the server hands over the TEMPLATE and the one
-    // substitution happens here.
-    directions.setAttribute(
-      'aria-label',
-      directionsAriaTemplate.replace(/\{boothName\}/g, () => boothName(lang, booth)),
-    );
-    item.append(name, address, directions);
-    list.appendChild(item);
-  }
-  container.replaceChildren(list);
-}
+  const root = document.createElement('div');
+  root.className = 'booth-card';
 
-function renderMessage(container: HTMLElement, message: string): void {
-  const p = document.createElement('p');
-  p.textContent = message;
-  container.replaceChildren(p);
+  // Who the roll says this is — the citizen's own check that they typed
+  // their number, not a stranger's.
+  const who = section(msgs.registeredAs);
+  who.appendChild(para(pick(lang, data.voter.nameEn, data.voter.nameKn), 'booth-voter-name'));
+  who.appendChild(para(data.voter.epic, 'booth-epic'));
+  root.appendChild(who);
+
+  const ward = section(msgs.wardLabel);
+  if (data.ward) {
+    const link = document.createElement('a');
+    link.href = wardHref(lang, data.ward.id);
+    link.textContent = pick(lang, data.ward.nameEn, data.ward.nameKn);
+    ward.appendChild(link);
+  } else {
+    ward.appendChild(para(msgs.wardUnknown));
+  }
+  root.appendChild(ward);
+
+  const booth = section(msgs.boothLabel);
+  const boothName = pick(lang, data.booth.nameEn, data.booth.nameKn);
+  booth.appendChild(para(boothName, 'booth-name'));
+  // `t()` on the server leaves `{serialNo}` intact when called without vars
+  // (src/i18n/index.ts) — this island imports no i18n table by design, so the
+  // server hands over the template and the substitution happens here.
+  booth.appendChild(para(msgs.serialNo.replace(/\{serialNo\}/g, () => String(data.booth.serialNo)), 'booth-serial'));
+
+  const directions = document.createElement('a');
+  directions.className = 'booth-directions';
+  directions.href = directionsUrl(String(data.booth.lat), String(data.booth.lng));
+  directions.target = '_blank';
+  directions.rel = 'noopener noreferrer';
+  directions.textContent = msgs.directions;
+  directions.setAttribute('aria-label', msgs.directionsAria.replace(/\{boothName\}/g, () => boothName));
+  booth.appendChild(directions);
+  root.appendChild(booth);
+
+  container.replaceChildren(root);
 }
 
 function renderResult(
   container: HTMLElement,
   lang: string,
-  msgs: Record<string, string>,
+  msgs: Messages,
   data: LookupResponse,
 ): void {
   switch (data.result) {
     case 'booth':
-      // Empty booths:[] is deliberately treated the same as no_booth_data
-      // (see /api/booth-lookup's header) — never render an empty <ul>.
-      if (data.booths.length === 0) {
-        renderMessage(container, msgs.noBoothData ?? '');
-        return;
-      }
-      renderBooths(
-        container,
-        lang,
-        msgs.boothLabel ?? '',
-        msgs.directions ?? '',
-        msgs.directionsAria ?? '',
-        data.booths,
-      );
+      renderBooth(container, lang, msgs, data);
       return;
-    case 'no_booth_data':
-      renderMessage(container, msgs.noBoothData ?? '');
-      return;
-    case 'out_of_coverage':
-      renderMessage(container, msgs.outOfCoverage ?? '');
+    case 'not_found':
+      container.replaceChildren(para(msgs.notFound));
       return;
     case 'unavailable':
-      renderMessage(container, msgs.unavailable ?? '');
+      // Every reason — timeout, failed, malformed, budget — is one message:
+      // the citizen's next step is identical (see the i18n hint).
+      container.replaceChildren(para(msgs.unavailable));
       return;
   }
 }
 
-/**
- * Wires up every `[data-booth-lookup]` form under `root` (defaults to the
- * whole document — there is exactly one on the FindBooth page). Safe to
- * call when the form is absent (does nothing).
- */
-export function initBoothLookup(root: ParentNode = document): void {
-  const form = root.querySelector<HTMLFormElement>('[data-booth-lookup]');
-  if (!form) return;
-
-  const input = form.querySelector<HTMLInputElement>('input[name="address"]');
+function wire(form: HTMLFormElement): void {
+  const input = form.querySelector<HTMLInputElement>('input[name="epic"]');
   const result = form.querySelector<HTMLElement>('[data-booth-result]');
   const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
   if (!input || !result) return;
 
   const lang = form.dataset.lang ?? 'en';
-  const msgs = {
+  const msgs: Messages = {
+    registeredAs: form.dataset.msgRegisteredAs ?? '',
+    wardLabel: form.dataset.msgWardLabel ?? '',
     boothLabel: form.dataset.msgBoothLabel ?? '',
-    noBoothData: form.dataset.msgNoBoothData ?? '',
-    outOfCoverage: form.dataset.msgOutOfCoverage ?? '',
+    serialNo: form.dataset.msgSerialNo ?? '',
+    wardUnknown: form.dataset.msgWardUnknown ?? '',
+    notFound: form.dataset.msgNotFound ?? '',
     unavailable: form.dataset.msgUnavailable ?? '',
     directions: form.dataset.msgDirections ?? '',
     directionsAria: form.dataset.msgDirectionsAria ?? '',
@@ -165,7 +202,7 @@ export function initBoothLookup(root: ParentNode = document): void {
     fetch('/api/booth-lookup', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ address: value }),
+      body: JSON.stringify({ epic: value }),
     })
       .then((res) => {
         if (!res.ok) throw new Error(`booth-lookup: ${res.status}`);
@@ -184,4 +221,14 @@ export function initBoothLookup(root: ParentNode = document): void {
         result.removeAttribute('aria-busy');
       });
   });
+}
+
+/**
+ * Wires up every `[data-booth-lookup]` form under `root` (defaults to the
+ * whole document). Safe to call when no such form is present (does nothing).
+ */
+export function initBoothLookup(root: ParentNode = document): void {
+  for (const form of root.querySelectorAll<HTMLFormElement>('[data-booth-lookup]')) {
+    wire(form);
+  }
 }

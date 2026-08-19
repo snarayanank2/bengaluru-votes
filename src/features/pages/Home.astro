@@ -2,8 +2,13 @@
 /**
  * Home (`/`, `/kn/`) — information-architecture.md §3.1, PRD §5.1/§5.7.
  *
- * Renders through Base with the ward-search form as the centerpiece. The
- * form is a REAL `<form method="post">` — with JS disabled it POSTs back to
+ * Renders through Base with TWO lookups side by side (`.finders`, stacked
+ * below `md`): find your ward from an address, and find your polling booth
+ * from a voter ID. They are boxed as a pair because they answer the same
+ * question from whichever the citizen happens to have to hand — not because
+ * they share any machinery; they share none.
+ *
+ * The ward form is a REAL `<form method="post">` — with JS disabled it POSTs back to
  * this same page and this file's `Astro.request.method === 'POST'` branch
  * below server-renders the result using the SAME resolution function the
  * `/api/ward-lookup` endpoint uses (`lookupWardByAddress` — imported
@@ -11,17 +16,26 @@
  * intercepts the submit and calls the API instead, painting the result
  * inline without a page reload.
  *
+ * The booth card is `src/components/BoothLookupForm.astro`, shared with
+ * `/voting-guide/find-booth`. It is deliberately NOT a second mode of the
+ * ward form beside it — one control, one question. Its `action` points at
+ * `/voting-guide/find-booth`, so a no-JS submit finishes on that page rather
+ * than here, and this file has no POST branch for it.
+ *
  * CACHE-SAFETY: the GET render below never reads cookies/session and reads
  * app_settings only (src/lib/settings.ts — safe under the anonymous-page
  * micro-cache, see that file's header). The POST branch is a per-request
  * geocode lookup and is explicitly marked `cache-control: no-store`; it
- * never touches the GET response.
+ * never touches the GET response. The booth card adds nothing to this: it
+ * never POSTs here, so no personal data from a booth lookup can ever reach
+ * this page's cacheable render.
  */
 import { eq } from 'drizzle-orm';
 import Base from '../../layouts/Base.astro';
 import Banner from '../../components/Banner.astro';
 import DeadlineBanner from '../../components/DeadlineBanner.astro';
 import Card from '../../components/Card.astro';
+import BoothLookupForm from '../../components/BoothLookupForm.astro';
 import FormField from '../../components/FormField.astro';
 import Button from '../../components/Button.astro';
 import { t, localePath, type Lang } from '../../i18n';
@@ -121,49 +135,57 @@ function wardName(ward: WardRow): string {
   path="/"
 >
   <div class="home">
-    <section class="hero">
-      <h1>{t(lang, 'home.hero.heading')}</h1>
-      <p class="subheading">{t(lang, 'home.hero.subheading')}</p>
+    <section class="finders">
+      <Card>
+        <h1>{t(lang, 'home.hero.heading')}</h1>
+        <p class="subheading">{t(lang, 'home.hero.subheading')}</p>
 
-      <form
-        method="post"
-        action={localePath(lang, '/')}
-        class="ward-form"
-        data-ward-lookup
-        data-lang={lang}
-        data-msg-ambiguous={t(lang, 'home.result.ambiguous')}
-        data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
-        data-msg-unavailable={t(lang, 'home.result.unavailable')}
-        data-msg-use-location={t(lang, 'home.form.useLocation')}
-        data-msg-locating={t(lang, 'home.form.locating')}
-        data-msg-location-approximate={t(lang, 'home.result.locationApproximate')}
-        data-msg-location-denied={t(lang, 'home.result.locationDenied')}
-        data-msg-location-unavailable={t(lang, 'home.result.locationUnavailable')}
-        data-maps-key={maps.enabled ? maps.browserKey : undefined}
-      >
-        <FormField
-          label={t(lang, 'home.form.label')}
-          name="query"
-          type="text"
-          helper={t(lang, 'home.form.helper')}
-          required
-          lang={lang}
-        />
-        <Button type="submit" variant="primary" lang={lang}>
-          {t(lang, 'home.form.submit')}
-        </Button>
+        <form
+          method="post"
+          action={localePath(lang, '/')}
+          class="ward-form"
+          data-ward-lookup
+          data-lang={lang}
+          data-msg-ambiguous={t(lang, 'home.result.ambiguous')}
+          data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
+          data-msg-unavailable={t(lang, 'home.result.unavailable')}
+          data-msg-use-location={t(lang, 'home.form.useLocation')}
+          data-msg-locating={t(lang, 'home.form.locating')}
+          data-msg-location-approximate={t(lang, 'home.result.locationApproximate')}
+          data-msg-location-denied={t(lang, 'home.result.locationDenied')}
+          data-msg-location-unavailable={t(lang, 'home.result.locationUnavailable')}
+          data-maps-key={maps.enabled ? maps.browserKey : undefined}
+        >
+          <FormField
+            label={t(lang, 'home.form.label')}
+            name="query"
+            type="text"
+            helper={t(lang, 'home.form.helper')}
+            required
+            lang={lang}
+          />
+          <Button type="submit" variant="primary" lang={lang}>
+            {t(lang, 'home.form.submit')}
+          </Button>
 
-        <div class="ward-result" data-ward-result aria-live="polite">
-          {postResult?.result === 'ward' && (
-            <p>
-              <a href={wardHref(postResult.ward.id)}>{wardName(postResult.ward)}</a>
-            </p>
-          )}
-          {postResult?.result === 'out_of_coverage' && <p>{t(lang, 'home.result.outOfCoverage')}</p>}
-          {postResult?.result === 'ambiguous' && <p>{t(lang, 'home.result.ambiguous')}</p>}
-          {postResult?.result === 'unavailable' && <p>{t(lang, 'home.result.unavailable')}</p>}
-        </div>
-      </form>
+          <div class="ward-result" data-ward-result aria-live="polite">
+            {postResult?.result === 'ward' && (
+              <p>
+                <a href={wardHref(postResult.ward.id)}>{wardName(postResult.ward)}</a>
+              </p>
+            )}
+            {postResult?.result === 'out_of_coverage' && <p>{t(lang, 'home.result.outOfCoverage')}</p>}
+            {postResult?.result === 'ambiguous' && <p>{t(lang, 'home.result.ambiguous')}</p>}
+            {postResult?.result === 'unavailable' && <p>{t(lang, 'home.result.unavailable')}</p>}
+          </div>
+        </form>
+      </Card>
+
+      <Card>
+        <h2>{t(lang, 'home.shortcuts.findBooth.title')}</h2>
+        <p class="subheading">{t(lang, 'home.shortcuts.findBooth.description')}</p>
+        <BoothLookupForm lang={lang} />
+      </Card>
     </section>
 
     <section class="election-status">
@@ -203,7 +225,12 @@ function wardName(ward: WardRow): string {
 
   <script>
     import { initWardLookup } from '../../islands/WardLookup';
+    import { initBoothLookup } from '../../islands/BoothLookup';
     initWardLookup();
+    // The booth card's form (src/components/BoothLookupForm.astro). With JS
+    // off it posts to /voting-guide/find-booth, which renders the same
+    // result server-side.
+    initBoothLookup();
   </script>
 </Base>
 
@@ -217,7 +244,27 @@ function wardName(ward: WardRow): string {
     gap: var(--space-8);
   }
 
-  .hero h1 {
+  /* The page's two entry points, side by side from `md` up and stacked
+     below it (design-system §6.2: layouts are single-column below md). Equal
+     columns, and the default `align-items: stretch` keeps the two boxes the
+     same height so they read as one row of choices rather than two unrelated
+     blocks — which is what they are: same question ("where do I vote, and
+     what is my ward?"), two different things the citizen might have to hand,
+     an address or their voter ID card. */
+  .finders {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 768px) {
+    .finders {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .finders h1,
+  .finders h2 {
     font-family: var(--font-heading);
     font-size: var(--text-3xl);
     line-height: var(--leading-3xl);
@@ -233,7 +280,13 @@ function wardName(ward: WardRow): string {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    max-width: 32rem;
+  }
+
+  /* BoothLookupForm carries block margins for its own standalone page
+     (/voting-guide/find-booth), where it sits between prose sections. In this
+     card the heading above it supplies that spacing already. */
+  .finders :global(.booth-form) {
+    margin-block: 0;
   }
 
   /* Only paint the surface once there's an actual result. The container is

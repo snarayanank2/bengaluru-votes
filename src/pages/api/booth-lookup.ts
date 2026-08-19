@@ -1,40 +1,50 @@
 /**
- * POST /api/booth-lookup — address → voting booth(s) for the resolved ward
- * (PRD §5.10; architecture.md §7 endpoint table — "same shape[as ward-lookup],
- * booth data").
+ * POST /api/booth-lookup — EPIC (voter ID) number -> the citizen's polling
+ * booth, and the ward we know it by.
  *
- * Booth data is a separate dependency from ward boundaries (dependency
- * register §4) and may not be loaded yet even once wards/geocoding are
- * live. So the FIRST thing this handler does is check whether the
- * `booths` table is empty at all — BEFORE calling the geocoder — so an
- * empty table never implies "we tried to find your booth and failed"; it
- * honestly says "we don't have booth data yet" (PRD §5.10's guided
- * link-out state).
+ * INPUT MODE CHANGED 2026-08-19 (milestones.md §3, tracker 127). This
+ * endpoint used to take a free-text address, geocode it to a ward, and read
+ * booths out of the local `booths` table. That path is gone. It could not
+ * work: the addressed polling-station rows were dropped from the plan on
+ * 2026-08-15, nothing seeds `booths` outside `scripts/seed-dev.ts`, and the
+ * empty-table branch therefore answered every real visitor with "we don't
+ * have booth data yet" — a lookup that always fails, dressed as one that
+ * might succeed. The EPIC path returns real data from the BBMP electoral
+ * API instead (src/lib/electoral-api.ts).
  *
- * Once booths exist, this reuses the same address→ward mechanism as
- * ward-lookup (src/lib/geocode.ts). Booth `lat`/`lng` in the response ARE
- * ours — official EC data seeded into `booths`, not Google's — so
- * returning them is NOT the Maps ToS constraint that forbids returning
- * Google's own geocoded coordinates (see the notice atop geocode.ts); only
- * the geocoder's own output must never carry a coordinate.
+ * The `booths` table itself is left in the schema, unused, rather than
+ * dropped in the same change.
  *
- * A degradation kind that isn't `out_of_coverage` maps to
- * `{result:'unavailable', reason}`. Ward lookup uses the same vocabulary
- * since pincode was removed 2026-08-14 (src/pages/api/ward-lookup.ts).
+ * Resolution — including the ward mapping and its point-in-polygon fallback
+ * — lives in `src/lib/booth-lookup.ts`, shared with the no-JS POST branch of
+ * `src/features/pages/FindBooth.astro`. That module also logs the event, so
+ * this file logs nothing: one call site, one log line, no chance of the two
+ * paths reporting differently.
  *
- * Always `cache-control: no-store`, never sets a cookie. PRIVACY: the raw
- * address is never passed to logEvent.
+ * PRIVACY. The response body carries the voter's name and EPIC, because the
+ * citizen asked for their own record and needs to see it is theirs. Nothing
+ * about it is logged, cached or stored (src/lib/electoral-api.ts's header
+ * has the full rule). `cache-control: no-store` on every response, including
+ * the 400s; no cookie is ever set.
  */
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
-import { eq, sql } from 'drizzle-orm';
-import { db } from '../../db/client';
-import { booths } from '../../db/schema';
-import { lookupWardByAddress } from '../../lib/geocode';
-import { logEvent } from '../../lib/log';
+import { lookupBoothByEpic } from '../../lib/booth-lookup';
 
+/**
+ * Deliberately loose. EPIC formats vary (the common one is three letters and
+ * seven digits, but older and state-specific series differ, and some carry
+ * separators), so this rejects only what cannot be a voter ID at all —
+ * anything with a length or a character set that shows the field was misused.
+ * Case and internal spaces are normalized downstream, not rejected here.
+ */
 const bodySchema = z.object({
-  address: z.string().trim().min(1),
+  epic: z
+    .string()
+    .trim()
+    .min(4)
+    .max(32)
+    .regex(/^[A-Za-z0-9\s/-]+$/),
 });
 
 const JSON_HEADERS = { 'content-type': 'application/json', 'cache-control': 'no-store' } as const;
@@ -53,53 +63,8 @@ export const POST: APIRoute = async ({ request }) => {
 
   const parsed = bodySchema.safeParse(raw);
   if (!parsed.success) {
-    return json({ error: 'address is required' }, 400);
+    return json({ error: 'a voter ID (EPIC) number is required' }, 400);
   }
 
-  // Check FIRST, before geocoding, so we never imply we tried and failed —
-  // this is the guided link-out state (PRD §5.10).
-  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(booths);
-  if (total === 0) {
-    logEvent('booth_lookup', { result: 'no_booth_data' });
-    return json({ result: 'no_booth_data' });
-  }
-
-  const lookup = await lookupWardByAddress(parsed.data.address);
-
-  switch (lookup.kind) {
-    case 'ward': {
-      const rows = await db.select().from(booths).where(eq(booths.wardId, lookup.wardId));
-      if (rows.length === 0) {
-        // Booths exist elsewhere but not (yet) for this specific ward —
-        // same honest "no data for you yet" answer, scoped to the ward.
-        logEvent('booth_lookup', { result: 'no_booth_data', wardId: lookup.wardId });
-        return json({ result: 'no_booth_data' });
-      }
-      logEvent('booth_lookup', { result: 'booth', wardId: lookup.wardId, count: rows.length });
-      return json({
-        result: 'booth',
-        booths: rows.map((b) => ({
-          id: b.id,
-          nameEn: b.nameEn,
-          nameKn: b.nameKn,
-          address: b.address,
-          lat: b.lat,
-          lng: b.lng,
-          wardId: b.wardId,
-        })),
-      });
-    }
-    case 'out_of_coverage':
-      logEvent('booth_lookup', { result: 'out_of_coverage' });
-      return json({ result: 'out_of_coverage' });
-    case 'ambiguous':
-      logEvent('booth_lookup', { result: 'unavailable', reason: 'ambiguous' });
-      return json({ result: 'unavailable', reason: 'ambiguous' });
-    case 'budget_exhausted':
-      logEvent('booth_lookup', { result: 'unavailable', reason: 'budget' });
-      return json({ result: 'unavailable', reason: 'budget' });
-    case 'failed':
-      logEvent('booth_lookup', { result: 'unavailable', reason: 'failed' });
-      return json({ result: 'unavailable', reason: 'failed' });
-  }
+  return json(await lookupBoothByEpic(parsed.data.epic));
 };

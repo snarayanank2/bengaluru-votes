@@ -1,0 +1,200 @@
+---
+/**
+ * The voter-ID (EPIC) booth-lookup form, and its server-rendered result.
+ *
+ * Rendered in two places — the find-booth page (`FindBooth.astro`) and the
+ * home page's booth card (`Home.astro`) — which is why it is a component
+ * rather than markup in either. Both mounts share one island
+ * (`src/islands/BoothLookup.ts`, which wires every `[data-booth-lookup]`
+ * form it finds) and one set of `data-msg-*` attributes, so the two can't
+ * drift apart in wording or behaviour.
+ *
+ * NO-JS FIRST. This is a real `<form method="post">` whose action is always
+ * `/voting-guide/find-booth`, on both mounts. With JS off, a submit from the
+ * home page lands on the find-booth page with the answer server-rendered by
+ * that page's POST branch; with JS on, the island paints it in place and the
+ * visitor never leaves. `result` is only ever non-null on the find-booth
+ * page's own POST render.
+ *
+ * PRIVACY. The result carries the voter's name and EPIC number. This markup
+ * is rendered per-request on a `no-store` response and must never appear in
+ * a cacheable one — the caller owns that header (architecture §5). Nothing
+ * here may be given an id, a data attribute or a URL that outlives the
+ * response.
+ *
+ * The directions link is built from `directionsUrl` — the identical helper
+ * and identical URL shape the island uses for the JS path. Keep them in
+ * sync.
+ */
+import FormField from './FormField.astro';
+import Button from './Button.astro';
+import { t, localePath, type Lang } from '../i18n';
+import { directionsUrl } from '../lib/maps-links';
+import type { BoothLookupResult } from '../lib/booth-lookup';
+
+interface Props {
+  lang: Lang;
+  /** The server-rendered outcome of a no-JS POST. Null on a plain GET. */
+  result?: BoothLookupResult | null;
+}
+
+const { lang, result = null } = Astro.props;
+
+/** Kannada when the page is Kannada and we actually have Kannada text for it. */
+function pick(en: string, kn: string): string {
+  return lang === 'kn' && kn ? kn : en;
+}
+
+const booth = result?.result === 'booth' ? result : null;
+const boothName = booth ? pick(booth.booth.nameEn, booth.booth.nameKn) : '';
+
+// Handed to the island as UN-SUBSTITUTED templates: `t()` with no vars
+// returns the raw string with its `{placeholder}` intact (src/i18n/index.ts).
+// The island imports no i18n table by design (see its header), so the server
+// ships the localized template and the island does the substitution.
+const serialTemplate = t(lang, 'findBooth.result.serialNo');
+const directionsAriaTemplate = t(lang, 'findBooth.result.directionsAriaLabel');
+---
+
+<form
+  method="post"
+  action={localePath(lang, '/voting-guide/find-booth')}
+  class="booth-form"
+  data-booth-lookup
+  data-lang={lang}
+  data-msg-registered-as={t(lang, 'findBooth.result.registeredAs')}
+  data-msg-ward-label={t(lang, 'findBooth.result.wardLabel')}
+  data-msg-booth-label={t(lang, 'findBooth.result.boothLabel')}
+  data-msg-serial-no={serialTemplate}
+  data-msg-ward-unknown={t(lang, 'findBooth.result.wardUnknown')}
+  data-msg-not-found={t(lang, 'findBooth.result.notFound')}
+  data-msg-unavailable={t(lang, 'findBooth.result.unavailable')}
+  data-msg-directions={t(lang, 'findBooth.result.directions')}
+  data-msg-directions-aria={directionsAriaTemplate}
+>
+  <FormField
+    label={t(lang, 'findBooth.form.label')}
+    name="epic"
+    type="text"
+    helper={t(lang, 'findBooth.form.helper')}
+    required
+    lang={lang}
+  />
+  <Button type="submit" variant="primary" lang={lang}>
+    {t(lang, 'findBooth.form.submit')}
+  </Button>
+
+  <div class="booth-result" data-booth-result aria-live="polite">
+    {booth && (
+      <div class="booth-card">
+        <div class="booth-section">
+          <p class="booth-section-label">{t(lang, 'findBooth.result.registeredAs')}</p>
+          <p class="booth-voter-name">{pick(booth.voter.nameEn, booth.voter.nameKn)}</p>
+          <p class="booth-epic">{booth.voter.epic}</p>
+        </div>
+
+        <div class="booth-section">
+          <p class="booth-section-label">{t(lang, 'findBooth.result.wardLabel')}</p>
+          {booth.ward ? (
+            <a href={localePath(lang, `/ward/${booth.ward.id}`)}>
+              {pick(booth.ward.nameEn, booth.ward.nameKn)}
+            </a>
+          ) : (
+            <p>{t(lang, 'findBooth.result.wardUnknown')}</p>
+          )}
+        </div>
+
+        <div class="booth-section">
+          <p class="booth-section-label">{t(lang, 'findBooth.result.boothLabel')}</p>
+          <p class="booth-name">{boothName}</p>
+          <p class="booth-serial">
+            {t(lang, 'findBooth.result.serialNo', { serialNo: String(booth.booth.serialNo) })}
+          </p>
+          <a
+            class="booth-directions"
+            href={directionsUrl(String(booth.booth.lat), String(booth.booth.lng))}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t(lang, 'findBooth.result.directionsAriaLabel', { boothName })}
+          >
+            {t(lang, 'findBooth.result.directions')}
+          </a>
+        </div>
+      </div>
+    )}
+    {result?.result === 'not_found' && <p>{t(lang, 'findBooth.result.notFound')}</p>}
+    {result?.result === 'unavailable' && <p>{t(lang, 'findBooth.result.unavailable')}</p>}
+  </div>
+</form>
+
+<style>
+  .booth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 32rem;
+    margin-block: var(--space-6);
+  }
+
+  /* Only paint the surface once there's an actual result. The container is a
+     permanent aria-live region, and Astro leaves an indentation-whitespace
+     text node inside it when the SSR result slots render nothing — so it is
+     never truly `:empty`, and `:not(:empty)` paints an empty grey box under
+     the button before the visitor has typed anything. Key off an element
+     child instead (the island always `replaceChildren`s in a <div>/<p>),
+     which the stray whitespace node doesn't satisfy. Same fix, same reason,
+     as `.ward-result` in Home.astro. */
+  .booth-result:has(> *) {
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+  }
+
+  .booth-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .booth-section p {
+    margin: 0;
+  }
+
+  /* Deliberately not upper-cased: Kannada has no letter case, so a
+     case-transforming label style is an English-only flourish that does
+     nothing on half the site. The design system forbids it outright, and
+     tests/unit/tokens.test.ts enforces that by scanning this file's text. */
+  .booth-section-label {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .booth-voter-name,
+  .booth-name {
+    font-weight: 700;
+  }
+
+  .booth-epic {
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The number a polling official asks for — it has to survive a glance at
+     arm's length in a queue. */
+  .booth-serial {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .booth-directions {
+    display: inline-block;
+    margin-top: var(--space-2);
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .booth-directions:hover,
+  .booth-directions:focus-visible {
+    text-decoration: underline;
+  }
+</style>

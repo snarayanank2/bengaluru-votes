@@ -1,0 +1,2585 @@
+[
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 1,
+  "ward_name": "1 - Ramaswamy Palya",
+  "ward_name_l1": "1 - ರಾಮಸ್ವಾಮಿ ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 2,
+  "ward_name": "2 - Jayamahal",
+  "ward_name_l1": "2 - ಜಯಮಹಲ್"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 3,
+  "ward_name": "3 - Vasanth Nagar",
+  "ward_name_l1": "3 - ವಸಂತ್ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 4,
+  "ward_name": "4 - Sampangirama Nagar",
+  "ward_name_l1": "4 - ಸಂಪಂಗಿರಾಮ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 5,
+  "ward_name": "5 - Shivajinagar",
+  "ward_name_l1": "5 - ಶಿವಾಜಿನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 6,
+  "ward_name": "6 - Bharathi Nagar",
+  "ward_name_l1": "6 - ಭಾರತಿ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 7,
+  "ward_name": "7 - K Kamaraj Ward",
+  "ward_name_l1": "7 - ಕೆ. ಕಾಮರಾಜ್ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 8,
+  "ward_name": "8 - Halasuru",
+  "ward_name_l1": "8 - ಹಲಸೂರು"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 9,
+  "ward_name": "9 - Hoysala Nagara Central",
+  "ward_name_l1": "9 - ಹೊಯ್ಸಳ ನಗರ ಕೇಂದ್ರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 10,
+  "ward_name": "10 - Cox Town",
+  "ward_name_l1": "10 - ಕಾಕ್ಸ್ ಟೌನ್"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 11,
+  "ward_name": "11 - Old Baiyappanahalli",
+  "ward_name_l1": "11 - ಹಳೆ ಬೈಯ್ಯಪ್ಪನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 12,
+  "ward_name": "12 - Kasturi Nagar",
+  "ward_name_l1": "12 - ಕಸ್ತೂರಿ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 13,
+  "ward_name": "13 - Krishnaiahnapalya",
+  "ward_name_l1": "13 - ಕೃಷ್ಣಯ್ಯನಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 14,
+  "ward_name": "14 - Nagavarapalya",
+  "ward_name_l1": "14 - ನಾಗವರಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 15,
+  "ward_name": "15 - Indiranagar",
+  "ward_name_l1": "15 - ಇಂದಿರಾನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 16,
+  "ward_name": "16 - New Thippasandra",
+  "ward_name_l1": "16 - ನ್ಯೂ ತಿಪ್ಪಸಂದ್ರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 17,
+  "ward_name": "17 - Kaggadasapura",
+  "ward_name_l1": "17 - ಕಗ್ಗದಾಸಪುರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 18,
+  "ward_name": "18 - G.M Palya",
+  "ward_name_l1": "18 - ಜಿ.ಎಂ. ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 19,
+  "ward_name": "19 - Jeevan Bhimanagar",
+  "ward_name_l1": "19 - ಜೀವನ್ ಭೀಮನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 20,
+  "ward_name": "20 - Kodihalli",
+  "ward_name_l1": "20 - ಕೋಡಿಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 21,
+  "ward_name": "21 - Konena Agrahara",
+  "ward_name_l1": "21 - ಕೋನೇನ ಅಗ್ರಹಾರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 22,
+  "ward_name": "22 - Domluru",
+  "ward_name_l1": "22 - ದೊಮ್ಮಲೂರು"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 23,
+  "ward_name": "23 - Jogpalya",
+  "ward_name_l1": "23 - ಜೋಗಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 24,
+  "ward_name": "24 - Agaram",
+  "ward_name_l1": "24 - ಅಗರಂ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 25,
+  "ward_name": "25 - Ashokanagar",
+  "ward_name_l1": "25 - ಅಶೋಕನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 26,
+  "ward_name": "26 - Vannarpet",
+  "ward_name_l1": "26 - ವನ್ನಾರಪೇಟೆ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 27,
+  "ward_name": "27 - Ambedkarnagar",
+  "ward_name_l1": "27 - ಅಂಬೇಡ್ಕರ್‌ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 28,
+  "ward_name": "28 - Neelasandra",
+  "ward_name_l1": "28 - ನೀಲಸಂದ್ರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 29,
+  "ward_name": "29 - Austin Town",
+  "ward_name_l1": "29 - ಆಸ್ಟಿನ್ ಟೌನ್"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 30,
+  "ward_name": "30 - Vinayakanagar",
+  "ward_name_l1": "30 - ವಿನಾಯಕನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 31,
+  "ward_name": "31 - Shanthinagar",
+  "ward_name_l1": "31 - ಶಾಂತಿನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 32,
+  "ward_name": "32 - SilverJubliee Park Ward",
+  "ward_name_l1": "32 - ಸಿಲ್ವರ್ ಜುಬ್ಲಿ ಪಾರ್ಕ್ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 33,
+  "ward_name": "33 - Dharmaraya Swamy Temple Ward",
+  "ward_name_l1": "33 - ಧರ್ಮರಾಯ ಸ್ವಾಮಿ ದೇವಸ್ಥಾನ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 34,
+  "ward_name": "34 - D.V Gundappa Ward",
+  "ward_name_l1": "34 - ಡಿ ವಿ ಗುಂಡಪ್ಪ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 35,
+  "ward_name": "35 - Hombegowda Nagara",
+  "ward_name_l1": "35 - ಹೊಂಬೇಗೌಡ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 36,
+  "ward_name": "36 - Someshwara Nagara",
+  "ward_name_l1": "36 - ಸೋಮೇಶ್ವರ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 37,
+  "ward_name": "37 - BHEL Ward",
+  "ward_name_l1": "37 - ಬಿಎಚ್‌ಇಎಲ್ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 38,
+  "ward_name": "38 - Kanakanapalya",
+  "ward_name_l1": "38 - ಕನಕನಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 39,
+  "ward_name": "39 - Venkat Reddy Nagara",
+  "ward_name_l1": "39 - ವೆಂಕಟ್ ರೆಡ್ಡಿ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 40,
+  "ward_name": "40 - Ashoka Pillar",
+  "ward_name_l1": "40 - ಅಶೋಕ ಪಿಲ್ಲರ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 41,
+  "ward_name": "41 - V.V Puram",
+  "ward_name_l1": "41 - ವಿವಿ ಪುರಂ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 42,
+  "ward_name": "42 - Sunkenahalli",
+  "ward_name_l1": "42 - ಸುಂಕೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 43,
+  "ward_name": "43 - Devaraj Urs Ward",
+  "ward_name_l1": "43 - ದೇವರಾಜ್ ಅರಸು ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 44,
+  "ward_name": "44 - Chamarajpet",
+  "ward_name_l1": "44 - ಚಾಮರಾಜಪೇಟೆ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 45,
+  "ward_name": "45 - K.R Market",
+  "ward_name_l1": "45 - ಕೆಆರ್ ಮಾರುಕಟ್ಟೆ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 46,
+  "ward_name": "46 - Cheluvadi Palya",
+  "ward_name_l1": "46 - ಚೆಲುವಾಡಿ ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 47,
+  "ward_name": "47 - IPD Salappa Ward",
+  "ward_name_l1": "47 - ಐಪಿಡಿ ಸಾಲಪ್ಪ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 48,
+  "ward_name": "48 - Azad Nagar",
+  "ward_name_l1": "48 - ಆಜಾದ್ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 49,
+  "ward_name": "49 - Kasturbha Nagar",
+  "ward_name_l1": "49 - ಕಸ್ತೂರಬಾ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 50,
+  "ward_name": "50 - JJR Nagara",
+  "ward_name_l1": "50 - ಜೆಜೆಆರ್ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 51,
+  "ward_name": "51 - Old Guddadahalli",
+  "ward_name_l1": "51 - ಹಳೆ ಗುಡ್ಡದಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 52,
+  "ward_name": "52 - Padarayanapura ",
+  "ward_name_l1": "52 - ಪಾದರಾಯನಪುರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 53,
+  "ward_name": "53 - Rayapuram",
+  "ward_name_l1": "53 - ರಾಯಪುರಂ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 54,
+  "ward_name": "54 - Binnypete",
+  "ward_name_l1": "54 - ಬಿನ್ನಿಪೇಟೆ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 55,
+  "ward_name": "55 - Bhuvaneshwari Nagar",
+  "ward_name_l1": "55 - ಭುವನೇಶ್ವರಿ ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 56,
+  "ward_name": "56 - Gopalpura",
+  "ward_name_l1": "56 - ಗೋಪಾಲಪುರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 57,
+  "ward_name": "57 - Cottonpete",
+  "ward_name_l1": "57 - ಕಾಟನ್ ಪೇಟೆ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 58,
+  "ward_name": "58 - Chickpete",
+  "ward_name_l1": "58 - ಚಿಕ್ಕಪೇಟೆ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 59,
+  "ward_name": "59 - Nehru Nagar",
+  "ward_name_l1": "59 - ನೆಹರು ನಗರ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 60,
+  "ward_name": "60 - Seshadripuram",
+  "ward_name_l1": "60 - ಶೇಷಾದ್ರಿಪುರಂ"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 61,
+  "ward_name": "61 - Dattatreya Ward",
+  "ward_name_l1": "61 - ದತ್ತಾತ್ರೇಯ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 62,
+  "ward_name": "62 - Swatantra Palya Ward",
+  "ward_name_l1": "62 - ಸ್ವತಂತ್ರ ಪಾಳ್ಯ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 1,
+  "corp_name": "Central",
+  "ward_id": 63,
+  "ward_name": "63 - Okalipuram",
+  "ward_name_l1": "63 - ಓಕಳಿಪುರಂ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 1,
+  "ward_name": "1 - Raja Kempegowda Ward",
+  "ward_name_l1": "1 - ರಾಜಾ ಕೆಂಪೇಗೌಡ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 2,
+  "ward_name": "2 - Aerocity Ward",
+  "ward_name_l1": "2 - ಏರೋಸಿಟಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 3,
+  "ward_name": "3 - Chowdeshwari Ward",
+  "ward_name_l1": "3 - ಚೌಡೇಶ್ವರಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 4,
+  "ward_name": "4 - Nyayanga Badavane",
+  "ward_name_l1": "4 - ನ್ಯಾಯಾಂಗ ಬಡಾವಣೆ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 5,
+  "ward_name": "5 - Yelahanka Satellite Town",
+  "ward_name_l1": "5 - ಯಲಹಂಕ ಸ್ಯಾಟಲೈಟ್ ಟೌನ್"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 6,
+  "ward_name": "6 - Doddabetttahalli",
+  "ward_name_l1": "6 - ದೊಡ್ಡಬೆಟ್ಟಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 7,
+  "ward_name": "7 - Attur",
+  "ward_name_l1": "7 - ಅಟ್ಟೂರು"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 8,
+  "ward_name": "8 - Singapura",
+  "ward_name_l1": "8 - ಸಿಂಗಾಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 9,
+  "ward_name": "9 - Kuvempunagara",
+  "ward_name_l1": "9 - ಕುವೆಂಪುನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 10,
+  "ward_name": "10 - Vidyaranyapura",
+  "ward_name_l1": "10 - ವಿದ್ಯಾರಣ್ಯಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 11,
+  "ward_name": "11 - Doddabommasandra",
+  "ward_name_l1": "11 - ದೊಡ್ಡಬೊಮ್ಮಸಂದ್ರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 12,
+  "ward_name": "12 - Thindlu",
+  "ward_name_l1": "12 - ತಿಂಡ್ಲು"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 13,
+  "ward_name": "13 - Kodigehalli",
+  "ward_name_l1": "13 - ಕೊಡಿಗೆಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 14,
+  "ward_name": "14 - Rajiv Gandhi Nagar",
+  "ward_name_l1": "14 - ರಾಜೀವ್‌ ಗಾಂಧಿ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 15,
+  "ward_name": "15 - Byatarayanapura",
+  "ward_name_l1": "15 - ಬ್ಯಾಟರಾಯನಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 16,
+  "ward_name": "16 - Amurthahalli",
+  "ward_name_l1": "16 - ಅಮೃತಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 17,
+  "ward_name": "17 - Jakkur",
+  "ward_name_l1": "17 - ಜಕ್ಕೂರು"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 18,
+  "ward_name": "18 - Kempapura",
+  "ward_name_l1": "18 - ಕೆಂಪಾಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 19,
+  "ward_name": "19 - Thanisandra",
+  "ward_name_l1": "19 - ಥಣಿಸಂದ್ರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 20,
+  "ward_name": "20 - Sampigehalli",
+  "ward_name_l1": "20 - ಸಂಪಿಗೆಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 21,
+  "ward_name": "21 - Kogilu",
+  "ward_name_l1": "21 - ಕೋಗಿಲು"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 22,
+  "ward_name": "22 - Nagavara",
+  "ward_name_l1": "22 - ನಾಗವಾರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 23,
+  "ward_name": "23 - Hennur",
+  "ward_name_l1": "23 - ಹೆಣ್ಣೂರು"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 24,
+  "ward_name": "24 - HBR Layout",
+  "ward_name_l1": "24 - ಎಚ್.ಬಿ.ಆರ್. ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 25,
+  "ward_name": "25 - Govindapura",
+  "ward_name_l1": "25 - ಗೋವಿಂದಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 26,
+  "ward_name": "26 - Samadhana Nagar",
+  "ward_name_l1": "26 - ಸಮಾಧಾನ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 27,
+  "ward_name": "27 - K.G.Halli",
+  "ward_name_l1": "27 - ಕೆ.ಜಿ.ಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 28,
+  "ward_name": "28 - Venkateshpuram",
+  "ward_name_l1": "28 - ವೆಂಕಟೇಶಪುರಂ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 29,
+  "ward_name": "29 - Lingarajpura",
+  "ward_name_l1": "29 - ಲಿಂಗರಾಜಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 30,
+  "ward_name": "30 - Kacharakanahalli",
+  "ward_name_l1": "30 - ಕಾಚರಕನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 31,
+  "ward_name": "31 - Kalyan Nagar",
+  "ward_name_l1": "31 - ಕಲ್ಯಾಣನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 32,
+  "ward_name": "32 - Banaswadi",
+  "ward_name_l1": "32 - ಬಾಣಸವಾಡಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 33,
+  "ward_name": "33 - HRBR Layout",
+  "ward_name_l1": "33 - ಹೆಚ್.ಆರ್.ಬಿ.ಆರ್. ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 34,
+  "ward_name": "34 - Subbayanapalya",
+  "ward_name_l1": "34 - ಸುಬ್ಬಯ್ಯನಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 35,
+  "ward_name": "35 - Kammanahalli",
+  "ward_name_l1": "35 - ಕಮ್ಮನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 36,
+  "ward_name": "36 - Maruthi Seva Nagara",
+  "ward_name_l1": "36 - ಮಾರುತಿ ಸೇವಾ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 37,
+  "ward_name": "37 - Jeevanahalli",
+  "ward_name_l1": "37 - ಜೀವನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 38,
+  "ward_name": "38 - Shampura",
+  "ward_name_l1": "38 - ಶಾಂಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 39,
+  "ward_name": "39 - Kaval Byrasandra",
+  "ward_name_l1": "39 - ಕಾವಲ್ ಬೈರಸಂದ್ರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 40,
+  "ward_name": "40 - Shakthi Nagar",
+  "ward_name_l1": "40 - ಶಕ್ತಿ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 41,
+  "ward_name": "41 - Periyar Nagar",
+  "ward_name_l1": "41 - ಪೆರಿಯಾರ್ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 42,
+  "ward_name": "42 - Aruna Asif Ali Ward",
+  "ward_name_l1": "42 - ಅರುಣಾ ಆಸಿಫ್ ಅಲಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 43,
+  "ward_name": "43 - Varalakshmi Nagar",
+  "ward_name_l1": "43 - ವರಲಕ್ಷ್ಮಿ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 44,
+  "ward_name": "44 - Doddanna Nagar",
+  "ward_name_l1": "44 - ದೊಡ್ಡಣ್ಣ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 45,
+  "ward_name": "45 - Khusal Nagar",
+  "ward_name_l1": "45 - ಕುಶಾಲ್ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 46,
+  "ward_name": "46 - Sagayapuram",
+  "ward_name_l1": "46 - ಸಗಾಯಪುರಂ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 47,
+  "ward_name": "47 - Pulakeshi Nagar",
+  "ward_name_l1": "47 - ಪುಲಕೇಶಿ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 48,
+  "ward_name": "48 - S.K Garden",
+  "ward_name_l1": "48 - ಎಸ್.ಕೆ ಗಾರ್ಡನ್"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 49,
+  "ward_name": "49 - Jaya Chamarajendra Nagara",
+  "ward_name_l1": "49 - ಜಯ ಚಾಮರಾಜೇಂದ್ರ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 50,
+  "ward_name": "50 - Dinnur",
+  "ward_name_l1": "50 - ದಿಣ್ಣೂರು"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 51,
+  "ward_name": "51 - Manorayanapalya",
+  "ward_name_l1": "51 - ಮನೋರಾಯನಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 52,
+  "ward_name": "52 - Vishwanatha Nagenahalli",
+  "ward_name_l1": "52 - ವಿಶ್ವನಾಥ ನಾಗೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 53,
+  "ward_name": "53 - R.T Nagar",
+  "ward_name_l1": "53 - ಆರ್.ಟಿ.ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 54,
+  "ward_name": "54 - Gangenahalli",
+  "ward_name_l1": "54 - ಗಂಗೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 55,
+  "ward_name": "55 - Ganganagar",
+  "ward_name_l1": "55 - ಗಂಗಾನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 56,
+  "ward_name": "56 - Hebbal",
+  "ward_name_l1": "56 - ಹೆಬ್ಬಾಳ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 57,
+  "ward_name": "57 - Bhoopasandra",
+  "ward_name_l1": "57 - ಭೂಪಸಂದ್ರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 58,
+  "ward_name": "58 - Nagashettyhalli",
+  "ward_name_l1": "58 - ನಾಗಶೆಟ್ಟಿಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 59,
+  "ward_name": "59 - Geddalahalli",
+  "ward_name_l1": "59 - ಗೆದ್ದಲಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 60,
+  "ward_name": "60 - Jalahalli",
+  "ward_name_l1": "60 - ಜಾಲಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 61,
+  "ward_name": "61 - HMT Ward",
+  "ward_name_l1": "61 - ಎಚ್.ಎಂ.ಟಿ. ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 62,
+  "ward_name": "62 - Brundavana Nagara",
+  "ward_name_l1": "62 - ಬೃಂದಾವನ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 63,
+  "ward_name": "63 - J.P park",
+  "ward_name_l1": "63 - ಜೆ.ಪಿ. ಪಾರ್ಕ್"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 64,
+  "ward_name": "64 - Yeshwanthpura",
+  "ward_name_l1": "64 - ಯಶವಂತಪುರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 65,
+  "ward_name": "65 - Abbigere",
+  "ward_name_l1": "65 - ಅಬ್ಬಿಗೆರೆ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 66,
+  "ward_name": "66 - Kammagondanahalli",
+  "ward_name_l1": "66 - ಕಮ್ಮಗೊಂಡನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 67,
+  "ward_name": "67 - Shettihalli",
+  "ward_name_l1": "67 - ಶೆಟ್ಟಿಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 68,
+  "ward_name": "68 - Mallasandra",
+  "ward_name_l1": "68 - ಮಲ್ಲಸಂದ್ರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 69,
+  "ward_name": "69 - Bagalagunte",
+  "ward_name_l1": "69 - ಬಾಗಲಗುಂಟೆ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 70,
+  "ward_name": "70 - Manjunatha Nagar",
+  "ward_name_l1": "70 - ಮಂಜುನಾಥ ನಗರ"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 71,
+  "ward_name": "71 - Nele Maheshwaramma Temple Ward",
+  "ward_name_l1": "71 - ನೆಲೆ ಮಹೇಶ್ವರಮ್ಮ ದೇವಸ್ಥಾನ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 2,
+  "corp_name": "North",
+  "ward_id": 72,
+  "ward_name": "72 - Dasarahalli",
+  "ward_name_l1": "72 - ದಾಸರಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 1,
+  "ward_name": "1 - Padmanabhanagara",
+  "ward_name_l1": "1 - ಪದ್ಮನಾಭನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 2,
+  "ward_name": "2 - Kadirenahalli",
+  "ward_name_l1": "2 - ಕದಿರೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 3,
+  "ward_name": "3 - Yarab Nagar",
+  "ward_name_l1": "3 - ಯಾರಬ್ ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 4,
+  "ward_name": "4 - Banashakari Temple Ward",
+  "ward_name_l1": "4 - ಬನಶಂಕರಿ ದೇವಸ್ಥಾನ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 5,
+  "ward_name": "5 - Kane Muneshwara Ward",
+  "ward_name_l1": "5 - ಕಾನೆ ಮುನೇಶ್ವರ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 6,
+  "ward_name": "6 - Gowdanapalya",
+  "ward_name_l1": "6 - ಗೌಡನಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 7,
+  "ward_name": "7 - Byrasandra",
+  "ward_name_l1": "7 - ಬೈರಸಂದ್ರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 8,
+  "ward_name": "8 - Tilak Nagara",
+  "ward_name_l1": "8 - ತಿಲಕ ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 9,
+  "ward_name": "9 - N.A.L Layout",
+  "ward_name_l1": "9 - ಎನ್.ಎ.ಎಲ್ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 10,
+  "ward_name": "10 - Abdul Kalam Nagar",
+  "ward_name_l1": "10 - ಅಬ್ದುಲ್ ಕಲಾಂ ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 11,
+  "ward_name": "11 - Jayanagar East",
+  "ward_name_l1": "11 - ಜಯನಗರ ಪೂರ್ವ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 12,
+  "ward_name": "12 - Pattabhirama Nagar",
+  "ward_name_l1": "12 - ಪಟ್ಟಾಭಿರಾಮ ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 13,
+  "ward_name": "13 - Marenahalli South",
+  "ward_name_l1": "13 - ಮಾರೇನಹಳ್ಳಿ ದಕ್ಷಿಣ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 14,
+  "ward_name": "14 - J.P Nagar",
+  "ward_name_l1": "14 - ಜೆ.ಪಿ. ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 15,
+  "ward_name": "15 - Shakambarinagara",
+  "ward_name_l1": "15 - ಶಾಕಾಂಬರಿನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 16,
+  "ward_name": "16 - Sarakki",
+  "ward_name_l1": "16 - ಸಾರಕ್ಕಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 17,
+  "ward_name": "17 - N.S.Palya",
+  "ward_name_l1": "17 - ಎನ್.ಎಸ್. ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 18,
+  "ward_name": "18 - Viswamanava Kuvempu Ward",
+  "ward_name_l1": "18 - ವಿಶ್ವಮಾನವ ಕುವೆಂಪು ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 19,
+  "ward_name": "19 - New Tavarekere",
+  "ward_name_l1": "19 - ಹೊಸ ತಾವರೆಕೆರೆ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 20,
+  "ward_name": "20 - Madiwala",
+  "ward_name_l1": "20 - ಮಡಿವಾಳ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 21,
+  "ward_name": "21 - Chikka Adugodi",
+  "ward_name_l1": "21 - ಚಿಕ್ಕ ಆಡುಗೋಡಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 22,
+  "ward_name": "22 - S.G.Palya",
+  "ward_name_l1": "22 - ಎಸ್.ಜಿ. ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 23,
+  "ward_name": "23 - Lakkasandra",
+  "ward_name_l1": "23 - ಲಕ್ಕಸಂದ್ರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 24,
+  "ward_name": "24 - A Adugodi",
+  "ward_name_l1": "24 - ಎ ಆಡುಗೋಡಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 25,
+  "ward_name": "25 - National Games Village",
+  "ward_name_l1": "25 - ನ್ಯಾಷನಲ್ ಗೇಮ್ಸ್ ವಿಲೇಜ್"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 26,
+  "ward_name": "26 - Ejipura",
+  "ward_name_l1": "26 - ಈಜಿಪುರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 27,
+  "ward_name": "27 - Sri Lakshmi Devi Ward",
+  "ward_name_l1": "27 - ಶ್ರೀ ಲಕ್ಷ್ಮೀದೇವಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 28,
+  "ward_name": "28 - Kormangala East",
+  "ward_name_l1": "28 - ಕೊರ್ಮಂಗಲ ಪೂರ್ವ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 29,
+  "ward_name": "29 - Kormangala West",
+  "ward_name_l1": "29 - ಕೊರ್ಮಂಗಲ ಪಶ್ಚಿಮ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 30,
+  "ward_name": "30 - Jakkasandra",
+  "ward_name_l1": "30 - ಜಕ್ಕಸಂದ್ರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 31,
+  "ward_name": "31 - Kasavanahalli",
+  "ward_name_l1": "31 - ಕಸವನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 32,
+  "ward_name": "32 - Kudlu",
+  "ward_name_l1": "32 - ಕೂಡ್ಲು"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 33,
+  "ward_name": "33 - Naganathapura",
+  "ward_name_l1": "33 - ನಾಗನಾಥಪುರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 34,
+  "ward_name": "34 - Chikkathoguru",
+  "ward_name_l1": "34 - ಚಿಕ್ಕತೋಗೂರು"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 35,
+  "ward_name": "35 - Vishwapriya Nagara",
+  "ward_name_l1": "35 - ವಿಶ್ವಪ್ರಿಯ ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 36,
+  "ward_name": "36 - Beguru",
+  "ward_name_l1": "36 - ಬೇಗೂರು"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 37,
+  "ward_name": "37 - Yelenahalli",
+  "ward_name_l1": "37 - ಯೆಲೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 38,
+  "ward_name": "38 - Doddakammanahalli",
+  "ward_name_l1": "38 - ದೊಡ್ಡಕಮ್ಮನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 39,
+  "ward_name": "39 - Gottigere",
+  "ward_name_l1": "39 - ಗೊಟ್ಟಿಗೆರೆ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 40,
+  "ward_name": "40 - Anjanapura",
+  "ward_name_l1": "40 - ಅಂಜನಾಪುರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 41,
+  "ward_name": "41 - Kothanur",
+  "ward_name_l1": "41 - ಕೊತ್ತನೂರು"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 42,
+  "ward_name": "42 - RBI Layout",
+  "ward_name_l1": "42 - ಆರ್.ಬಿ.ಐ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 43,
+  "ward_name": "43 - Bheereshwara Nagar",
+  "ward_name_l1": "43 - ಭೀರೇಶ್ವರ ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 44,
+  "ward_name": "44 - Harinagar",
+  "ward_name_l1": "44 - ಹರಿನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 45,
+  "ward_name": "45 - Konanakunte",
+  "ward_name_l1": "45 - ಕೋಣನಕುಂಟೆ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 46,
+  "ward_name": "46 - Yelechenahalli",
+  "ward_name_l1": "46 - ಯೆಲಚೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 47,
+  "ward_name": "47 - Chandranagara",
+  "ward_name_l1": "47 - ಚಂದ್ರನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 48,
+  "ward_name": "48 - Vasantapura",
+  "ward_name_l1": "48 - ವಸಂತಪುರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 49,
+  "ward_name": "49 - Uttarahalli",
+  "ward_name_l1": "49 - ಉತ್ತರಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 50,
+  "ward_name": "50 - Sarvabhouma Nagar",
+  "ward_name_l1": "50 - ಸಾರ್ವಭೌಮ ನಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 51,
+  "ward_name": "51 - Subramanyapura",
+  "ward_name_l1": "51 - ಸುಬ್ರಹ್ಮಣ್ಯಪುರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 52,
+  "ward_name": "52 - Talagattapura",
+  "ward_name_l1": "52 - ತಲಘಟ್ಟಪುರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 53,
+  "ward_name": "53 - Jaraganahalli",
+  "ward_name_l1": "53 - ಜರಗನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 54,
+  "ward_name": "54 - Kengal Hanumanthaiah South",
+  "ward_name_l1": "54 - ಕೆಂಗಲ್ ಹನುಮಂತಯ್ಯ ದಕ್ಷಿಣ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 55,
+  "ward_name": "55 - Puttenahalli",
+  "ward_name_l1": "55 - ಪುಟ್ಟೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 56,
+  "ward_name": "56 - Doresanipalya",
+  "ward_name_l1": "56 - ದೊರೆಸಾನಿಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 57,
+  "ward_name": "57 - Hulimavu",
+  "ward_name_l1": "57 - ಹುಳಿಮಾವು"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 58,
+  "ward_name": "58 - Arakere",
+  "ward_name_l1": "58 - ಅರಕೆರೆ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 59,
+  "ward_name": "59 - Vijaya Bank Layout",
+  "ward_name_l1": "59 - ವಿಜಯ ಬ್ಯಾಂಕ್ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 60,
+  "ward_name": "60 - Bilekahalli",
+  "ward_name_l1": "60 - ಬಿಳೇಕಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 61,
+  "ward_name": "61 - Kodi Chikkanahalli",
+  "ward_name_l1": "61 - ಕೋಡಿ ಚಿಕ್ಕನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 62,
+  "ward_name": "62 - Devarachikkanahalli",
+  "ward_name_l1": "62 - ದೇವರಚಿಕ್ಕನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 63,
+  "ward_name": "63 - Bommanahalli",
+  "ward_name_l1": "63 - ಬೊಮ್ಮನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 64,
+  "ward_name": "64 - Hongasandra",
+  "ward_name_l1": "64 - ಹೊಂಗಸಂದ್ರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 65,
+  "ward_name": "65 - Garvebavi palya",
+  "ward_name_l1": "65 - ಗಾರ್ವೆವೇಬಾವಿ ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 66,
+  "ward_name": "66 - Singasandra",
+  "ward_name_l1": "66 - ಸಿಂಗಸಂದ್ರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 67,
+  "ward_name": "67 - Bandepalya",
+  "ward_name_l1": "67 - ಬಂಡೇಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 68,
+  "ward_name": "68 - Mangammana Palya",
+  "ward_name_l1": "68 - ಮಂಗಮ್ಮನ ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 69,
+  "ward_name": "69 - Hosapalya",
+  "ward_name_l1": "69 - ಹೊಸಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 70,
+  "ward_name": "70 - Iblur",
+  "ward_name_l1": "70 - ಇಬ್ಬಲೂರು"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 71,
+  "ward_name": "71 - Agara",
+  "ward_name_l1": "71 - ಅಗರ"
+ },
+ {
+  "corp_id": 3,
+  "corp_name": "South",
+  "ward_id": 72,
+  "ward_name": "72 - HSR Layout",
+  "ward_name_l1": "72 - ಹೆಚ್‌ಎಸ್‌ಆರ್ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 1,
+  "ward_name": "1 - K Narayanapura",
+  "ward_name_l1": "1 - ಕೆ. ನಾರಾಯಣಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 2,
+  "ward_name": "2 - Horamavu",
+  "ward_name_l1": "2 - ಹೊರಮಾವು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 3,
+  "ward_name": "3 - Chellakere",
+  "ward_name_l1": "3 - ಚೆಲ್ಲಕೆರೆ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 4,
+  "ward_name": "4 - Babusab Palya",
+  "ward_name_l1": "4 - ಬಾಬುಸಾಬ್‌ ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 5,
+  "ward_name": "5 - Hoysala Nagara East",
+  "ward_name_l1": "5 - ಹೊಯ್ಸಳ ನಗರ ಪೂರ್ವ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 6,
+  "ward_name": "6 - Kalkere",
+  "ward_name_l1": "6 - ಕಲ್ಕೆರೆ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 7,
+  "ward_name": "7 - K Chennasandra",
+  "ward_name_l1": "7 - ಕೆ. ಚೆನ್ನಸಂದ್ರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 8,
+  "ward_name": "8 - Anandapura",
+  "ward_name_l1": "8 - ಆನಂದಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 9,
+  "ward_name": "9 - Bhattarahalli",
+  "ward_name_l1": "9 - ಭಟ್ಟರಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 10,
+  "ward_name": "10 - Basavanapura",
+  "ward_name_l1": "10 - ಬಸವನಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 11,
+  "ward_name": "11 - Krishnanagar",
+  "ward_name_l1": "11 - ಕೃಷ್ಣನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 12,
+  "ward_name": "12 - Devasandra",
+  "ward_name_l1": "12 - ದೇವಸಂದ್ರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 13,
+  "ward_name": "13 - Rajarajeshwari Temple Ward",
+  "ward_name_l1": "13 - ರಾಜರಾಜೇಶ್ವರಿ ದೇವಸ್ಥಾನ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 14,
+  "ward_name": "14 - K.R Pura",
+  "ward_name_l1": "14 - ಕೆ.ಆರ್.ಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 15,
+  "ward_name": "15 - Ramamurthy Nagara",
+  "ward_name_l1": "15 - ರಾಮಮೂರ್ತಿ ನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 16,
+  "ward_name": "16 - Kotthur",
+  "ward_name_l1": "16 - ಕೊತ್ತೂರು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 17,
+  "ward_name": "17 - Vijinapura",
+  "ward_name_l1": "17 - ವಿಜಿನಾಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 18,
+  "ward_name": "18 - Dooravaninagar",
+  "ward_name_l1": "18 - ದೂರವಾಣಿನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 19,
+  "ward_name": "19 - K.S. Nissar Ahmed Ward",
+  "ward_name_l1": "19 - ಕೆ.ಎಸ್. ನಿಸಾರ್ ಅಹಮದ್‌ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 20,
+  "ward_name": "20 - A Narayanapura",
+  "ward_name_l1": "20 - ಎ. ನಾರಾಯಣಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 21,
+  "ward_name": "21 - Uday Nagar",
+  "ward_name_l1": "21 - ಉದಯ್ ನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 22,
+  "ward_name": "22 - Mahadevapura",
+  "ward_name_l1": "22 - ಮಹಾದೇವಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 23,
+  "ward_name": "23 - Sangama Ward",
+  "ward_name_l1": "23 - ಸಂಗಮ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 24,
+  "ward_name": "24 - Vignananagara",
+  "ward_name_l1": "24 - ವಿಜ್ಞಾನನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 25,
+  "ward_name": "25 - L.B Shastri Nagar",
+  "ward_name_l1": "25 - ಎಲ್.ಬಿ. ಶಾಸ್ತ್ರಿ ನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 26,
+  "ward_name": "26 - Jagadish Nagar",
+  "ward_name_l1": "26 - ಜಗದೀಶ್‌ ನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 27,
+  "ward_name": "27 - Vibhootipura",
+  "ward_name_l1": "27 - ವಿಭೂತಿಪುರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 28,
+  "ward_name": "28 - Byrathi",
+  "ward_name_l1": "28 - ಬೈರತಿ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 29,
+  "ward_name": "29 - Hoodi",
+  "ward_name_l1": "29 - ಹೂಡಿ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 30,
+  "ward_name": "30 - Belathur",
+  "ward_name_l1": "30 - ಬೆಳತ್ತೂರು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 31,
+  "ward_name": "31 - Kadugodi",
+  "ward_name_l1": "31 - ಕಾಡುಗೋಡಿ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 32,
+  "ward_name": "32 - Channasandra",
+  "ward_name_l1": "32 - ಚನ್ನಸಂದ್ರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 33,
+  "ward_name": "33 - S.M Krishna Ward",
+  "ward_name_l1": "33 - ಎಸ್.ಎಂ. ಕೃಷ್ಣ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 34,
+  "ward_name": "34 - Kaveri Nagara",
+  "ward_name_l1": "34 - ಕಾವೇರಿ ನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 35,
+  "ward_name": "35 - Garudachar Palya",
+  "ward_name_l1": "35 - ಗರುಡಾಚಾರ್ ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 36,
+  "ward_name": "36 - Bharath Aikya Ward",
+  "ward_name_l1": "36 - ಭಾರತ್ ಐಕ್ಯ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 37,
+  "ward_name": "37 - Kundalahalli",
+  "ward_name_l1": "37 - ಕುಂದಲಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 38,
+  "ward_name": "38 - Whitefield",
+  "ward_name_l1": "38 - ವೈಟ್‌ಫೀಲ್ಡ್"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 39,
+  "ward_name": "39 - Hagaduru",
+  "ward_name_l1": "39 - ಹಗದೂರು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 40,
+  "ward_name": "40 - Varthur",
+  "ward_name_l1": "40 - ವರ್ತೂರು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 41,
+  "ward_name": "41 - Munnenkolalu",
+  "ward_name_l1": "41 - ಮುನ್ನೇಕೊಳಲು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 42,
+  "ward_name": "42 - Priyadarshini Ward",
+  "ward_name_l1": "42 - ಪ್ರಿಯದರ್ಶಿನಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 43,
+  "ward_name": "43 - Dodda Nekkundi",
+  "ward_name_l1": "43 - ದೊಡ್ಡ ನೆಕ್ಕುಂದಿ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 44,
+  "ward_name": "44 - Ashwath Nagar",
+  "ward_name_l1": "44 - ಅಶ್ವಥ್‌ ನಗರ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 45,
+  "ward_name": "45 - Marathahalli",
+  "ward_name_l1": "45 - ಮಾರತಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 46,
+  "ward_name": "46 - Yamalur",
+  "ward_name_l1": "46 - ಯಮಲೂರು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 47,
+  "ward_name": "47 - Bellanduru",
+  "ward_name_l1": "47 - ಬೆಳ್ಳಂದೂರು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 48,
+  "ward_name": "48 - Panathur",
+  "ward_name_l1": "48 - ಪಣತ್ತೂರು"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 49,
+  "ward_name": "49 - Doddakannelli Ward",
+  "ward_name_l1": "49 - ದೊಡ್ಡಕನ್ನೆಲ್ಲಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 4,
+  "corp_name": "East",
+  "ward_id": 50,
+  "ward_name": "50 - Gunjur",
+  "ward_name_l1": "50 - ಗುಂಜೂರು"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 1,
+  "ward_name": "1 - Nagasandra",
+  "ward_name_l1": "1 - ನಾಗಸಂದ್ರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 2,
+  "ward_name": "2 - Chokkasandra",
+  "ward_name_l1": "2 - ಚೊಕ್ಕಸಂದ್ರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 3,
+  "ward_name": "3 - Nelagadaranahalli",
+  "ward_name_l1": "3 - ನೆಲಗದರನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 4,
+  "ward_name": "4 - Parvathi Nagar",
+  "ward_name_l1": "4 - ಪಾರ್ವತಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 5,
+  "ward_name": "5 - Rajeshwarinagar",
+  "ward_name_l1": "5 - ರಾಜೇಶ್ವರಿನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 6,
+  "ward_name": "6 - Shivapura",
+  "ward_name_l1": "6 - ಶಿವಾಪುರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 7,
+  "ward_name": "7 - Rajagopala Nagara",
+  "ward_name_l1": "7 - ರಾಜಗೋಪಾಲ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 8,
+  "ward_name": "8 - Hegganahalli",
+  "ward_name_l1": "8 - ಹೆಗ್ಗನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 9,
+  "ward_name": "9 - Srigandhanagar",
+  "ward_name_l1": "9 - ಶ್ರೀಗಂಧನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 10,
+  "ward_name": "10 - Sunkadakatte",
+  "ward_name_l1": "10 - ಸುಂಕದಕಟ್ಟೆ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 11,
+  "ward_name": "11 - Dodda Bidarakallu",
+  "ward_name_l1": "11 - ದೊಡ್ಡ ಬಿದರಕಲ್ಲು"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 12,
+  "ward_name": "12 - Andrahalli",
+  "ward_name_l1": "12 - ಅಂದ್ರಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 13,
+  "ward_name": "13 - Nada prabhu Kempegowda Nagara",
+  "ward_name_l1": "13 - ನಾಡಪ್ರಭು ಕೆಂಪೇಗೌಡ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 14,
+  "ward_name": "14 - Herohalli",
+  "ward_name_l1": "14 - ಹೆರೋಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 15,
+  "ward_name": "15 - Byadarahalli",
+  "ward_name_l1": "15 - ಬ್ಯಾಡರಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 16,
+  "ward_name": "16 - Ullal",
+  "ward_name_l1": "16 - ಉಳ್ಳಾಲ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 17,
+  "ward_name": "17 - Nagadevanahalli",
+  "ward_name_l1": "17 - ನಾಗದೇವನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 18,
+  "ward_name": "18 - Kengal Hanumanthaiah West",
+  "ward_name_l1": "18 - ಕೇಂಗಲ್ ಹನುಮಂತಯ್ಯ ಪಶ್ಚಿಮ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 19,
+  "ward_name": "19 - Shivanpalya",
+  "ward_name_l1": "19 - ಶಿವನಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 20,
+  "ward_name": "20 - Kengeri Kote Ward",
+  "ward_name_l1": "20 - ಕೆಂಗೇರಿ ಕೋಟೆ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 21,
+  "ward_name": "21 - Kengeri",
+  "ward_name_l1": "21 - ಕೆಂಗೇರಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 22,
+  "ward_name": "22 - Bangarappa Nagara",
+  "ward_name_l1": "22 - ಬಂಗಾರಪ್ಪ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 23,
+  "ward_name": "23 - Rajarajeshwari Nagara",
+  "ward_name_l1": "23 - ರಾಜರಾಜೇಶ್ವರಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 24,
+  "ward_name": "24 - Jnana Bharathi Ward",
+  "ward_name_l1": "24 - ಜ್ಞಾನ ಭಾರತಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 25,
+  "ward_name": "25 - Vinayaka Layout",
+  "ward_name_l1": "25 - ವಿನಾಯಕ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 26,
+  "ward_name": "26 - Mallathahalli",
+  "ward_name_l1": "26 - ಮಲ್ಲತ್ತಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 27,
+  "ward_name": "27 - Srigandada Kaval",
+  "ward_name_l1": "27 - ಶ್ರೀಗಂದದ ಕಾವಲ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 28,
+  "ward_name": "28 - Kottegepalya",
+  "ward_name_l1": "28 - ಕೊಟ್ಟಿಗೆಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 29,
+  "ward_name": "29 - Chowdeshwari Nagar",
+  "ward_name_l1": "29 - ಚೌಡೇಶ್ವರಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 30,
+  "ward_name": "30 - Kempegowda Layout",
+  "ward_name_l1": "30 - ಕೆಂಪೇಗೌಡ ಬಡಾವಣೆ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 31,
+  "ward_name": "31 - Freedom Fighter Ward",
+  "ward_name_l1": "31 - ಫ್ರೀಡಂ ಫೈಟರ್ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 32,
+  "ward_name": "32 - Laggere",
+  "ward_name_l1": "32 - ಲಗ್ಗೆರೆ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 33,
+  "ward_name": "33 - Lakshmi Devi Nagar",
+  "ward_name_l1": "33 - ಲಕ್ಷ್ಮೀ ದೇವಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 34,
+  "ward_name": "34 -  Peenya",
+  "ward_name_l1": "34 - ಪೀಣ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 35,
+  "ward_name": "35 - Goraguntepalya",
+  "ward_name_l1": "35 - ಗೊರಗುಂಟೆಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 36,
+  "ward_name": "36 - Nalwadi Krishnaraja Wadiyar Ward",
+  "ward_name_l1": "36 - ನಾಲ್ವಡಿ ಕೃಷ್ಣರಾಜ ಒಡೆಯರ್‌ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 37,
+  "ward_name": "37 - Dr. Puneeth Rajkumar Ward",
+  "ward_name_l1": "37 - ಡಾ. ಪುನೀತ್ ರಾಜ್‌ಕುಮಾರ್ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 38,
+  "ward_name": "38 - Nandini Layout",
+  "ward_name_l1": "38 - ನಂದಿನಿ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 39,
+  "ward_name": "39 - Jai Maruthi Nagar",
+  "ward_name_l1": "39 - ಜೈ ಮಾರುತಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 40,
+  "ward_name": "40 - Mahalakshmipuram",
+  "ward_name_l1": "40 - ಮಹಾಲಕ್ಷ್ಮೀಪುರಂ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 41,
+  "ward_name": "41 - Nagapura",
+  "ward_name_l1": "41 - ನಾಗಪುರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 42,
+  "ward_name": "42 - Raja Mayura Varma Ward",
+  "ward_name_l1": "42 - ರಾಜ ಮಯೂರ ವರ್ಮಾ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 43,
+  "ward_name": "43 - Kethamaranahalli",
+  "ward_name_l1": "43 - ಕೇತಮಾರನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 44,
+  "ward_name": "44 - Shankar Mutt",
+  "ward_name_l1": "44 - ಶಂಕರ ಮಠ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 45,
+  "ward_name": "45 - Shakthi Ganapathi Nagara",
+  "ward_name_l1": "45 - ಶಕ್ತಿ ಗಣಪತಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 46,
+  "ward_name": "46 - Kamalanagara",
+  "ward_name_l1": "46 - ಕಮಲಾನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 47,
+  "ward_name": "47 - Vrishabhavathi Nagar",
+  "ward_name_l1": "47 - ವೃಷಭಾವತಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 48,
+  "ward_name": "48 - Mathikere",
+  "ward_name_l1": "48 - ಮತ್ತಿಕೆರೆ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 49,
+  "ward_name": "49 - Aramane Nagara",
+  "ward_name_l1": "49 - ಅರಮನೆ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 50,
+  "ward_name": "50 - Sadashiva Nagara",
+  "ward_name_l1": "50 - ಸದಾಶಿವ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 51,
+  "ward_name": "51 - Rajamahal",
+  "ward_name_l1": "51 - ರಾಜಮಹಲ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 52,
+  "ward_name": "52 - Kodandarampura",
+  "ward_name_l1": "52 - ಕೋದಂಡರಾಮಪುರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 53,
+  "ward_name": "53 - Malleshwaram",
+  "ward_name_l1": "53 - ಮಲ್ಲೇಶ್ವರಂ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 54,
+  "ward_name": "54 - Subedarpalya",
+  "ward_name_l1": "54 - ಸುಬೇದಾರಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 55,
+  "ward_name": "55 - Subramanyanagara",
+  "ward_name_l1": "55 - ಸುಬ್ರಹ್ಮಣ್ಯನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 56,
+  "ward_name": "56 - Gayathri Nagara",
+  "ward_name_l1": "56 - ಗಾಯತ್ರಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 57,
+  "ward_name": "57 - Kuvempu Ward",
+  "ward_name_l1": "57 - ಕುವೆಂಪು ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 58,
+  "ward_name": "58 - Dayanand Nagara",
+  "ward_name_l1": "58 - ದಯಾನಂದ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 59,
+  "ward_name": "59 - Bandi Reddy Circle Ward",
+  "ward_name_l1": "59 - ಬಂಡಿ ರೆಡ್ಡಿ ವೃತ್ತ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 60,
+  "ward_name": "60 - Prakash Nagara",
+  "ward_name_l1": "60 - ಪ್ರಕಾಶ್ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 61,
+  "ward_name": "61 - Da.Ra. Bendre Ward",
+  "ward_name_l1": "61 - ದ. ರಾ ಬೇಂದ್ರೆ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 62,
+  "ward_name": "62 - Rama Mandira",
+  "ward_name_l1": "62 - ರಾಮ ಮಂದಿರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 63,
+  "ward_name": "63 - Rajajinagara",
+  "ward_name_l1": "63 - ರಾಜಾಜಿನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 64,
+  "ward_name": "64 - Shivanagara",
+  "ward_name_l1": "64 - ಶಿವನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 65,
+  "ward_name": "65 - Manjunath Nagara",
+  "ward_name_l1": "65 - ಮಂಜುನಾಥ್ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 66,
+  "ward_name": "66 - Sane Guruvana Halli",
+  "ward_name_l1": "66 - ಸಾಣೆಗುರುವನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 67,
+  "ward_name": "67 - Basaveshwara Nagara",
+  "ward_name_l1": "67 - ಬಸವೇಶ್ವರ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 68,
+  "ward_name": "68 - Kamakshipalya",
+  "ward_name_l1": "68 - ಕಾಮಾಕ್ಷಿಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 69,
+  "ward_name": "69 - Agrahara Dasarahalli",
+  "ward_name_l1": "69 - ಅಗ್ರಹಾರ ದಾಸರಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 70,
+  "ward_name": "70 - Dr Rajkumar Ward",
+  "ward_name_l1": "70 - ಡಾ. ರಾಜ್‌ಕುಮಾರ್ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 71,
+  "ward_name": "71 - Thimmenahalli",
+  "ward_name_l1": "71 - ತಿಮ್ಮೇನಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 72,
+  "ward_name": "72 - Kaveripura",
+  "ward_name_l1": "72 - ಕಾವೇರಿಪುರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 73,
+  "ward_name": "73 - Dr. Vishnuvardhan Ward",
+  "ward_name_l1": "73 - ಡಾ. ವಿಷ್ಣುವರ್ಧನ್ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 74,
+  "ward_name": "74 - Pattegar Palya",
+  "ward_name_l1": "74 - ಪಟ್ಟೆಗಾರ್‌ ಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 75,
+  "ward_name": "75 - Marenahalli West",
+  "ward_name_l1": "75 - ಮಾರೇನಹಳ್ಳಿ ವೆಸ್ಟ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 76,
+  "ward_name": "76 - Moodalapalya",
+  "ward_name_l1": "76 - ಮೂಡಲಪಾಳ್ಯ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 77,
+  "ward_name": "77 - Maruthi Mandira Ward",
+  "ward_name_l1": "77 - ಮಾರುತಿ ಮಂದಿರ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 78,
+  "ward_name": "78 - Anubhava Nagara",
+  "ward_name_l1": "78 - ಅನುಭವ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 79,
+  "ward_name": "79 - Nagarbhavi",
+  "ward_name_l1": "79 - ನಾಗರಭಾವಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 80,
+  "ward_name": "80 - Chandra Layout",
+  "ward_name_l1": "80 - ಚಂದ್ರ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 81,
+  "ward_name": "81 - Nayanda Halli",
+  "ward_name_l1": "81 - ನಾಯಂಡ ಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 82,
+  "ward_name": "82 - Attiguppe",
+  "ward_name_l1": "82 - ಅತ್ತಿಗುಪ್ಪೆ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 83,
+  "ward_name": "83 - Hampi Nagar",
+  "ward_name_l1": "83 - ಹಂಪಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 84,
+  "ward_name": "84 - Hosahalli",
+  "ward_name_l1": "84 - ಹೊಸಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 85,
+  "ward_name": "85 - Adi Chunchanagiri Ward",
+  "ward_name_l1": "85 - ಆದಿ ಚುಂಚನಗಿರಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 86,
+  "ward_name": "86 - Vidyaranyanagara",
+  "ward_name_l1": "86 - ವಿದ್ಯಾರಣ್ಯನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 87,
+  "ward_name": "87 - K.P Agrahara",
+  "ward_name_l1": "87 - ಕೆ.ಪಿ. ಅಗ್ರಹಾರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 88,
+  "ward_name": "88 - Sangolli Rayanna Ward",
+  "ward_name_l1": "88 - ಸಂಗೊಳ್ಳಿ ರಾಯಣ್ಣ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 89,
+  "ward_name": "89 - Bapuji Nagara",
+  "ward_name_l1": "89 - ಬಾಪೂಜಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 90,
+  "ward_name": "90 - Krishnadevaraya Ward",
+  "ward_name_l1": "90 - ಕೃಷ್ಣದೇವರಾಯ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 91,
+  "ward_name": "91 - Gali Anjaneya Temple Ward",
+  "ward_name_l1": "91 - ಗಾಳಿ ಆಂಜನೇಯ ದೇವಸ್ಥಾನ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 92,
+  "ward_name": "92 - Muneshwara Block",
+  "ward_name_l1": "92 - ಮುನೇಶ್ವರ ಬ್ಲಾಕ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 93,
+  "ward_name": "93 - Avalahalli",
+  "ward_name_l1": "93 - ಆವಲಹಳ್ಳಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 94,
+  "ward_name": "94 - Deepanjali Nagara",
+  "ward_name_l1": "94 - ದೀಪಾಂಜಲಿ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 95,
+  "ward_name": "95 - Swamy Vivekananda Ward",
+  "ward_name_l1": "95 - ಸ್ವಾಮಿ ವಿವೇಕಾನಂದ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 96,
+  "ward_name": "96 - Kathriguppe",
+  "ward_name_l1": "96 - ಕತ್ರಿಗುಪ್ಪೆ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 97,
+  "ward_name": "97 - Srinivasa Nagara",
+  "ward_name_l1": "97 - ಶ್ರೀನಿವಾಸ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 98,
+  "ward_name": "98 - Ashoka Nagara",
+  "ward_name_l1": "98 - ಅಶೋಕ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 99,
+  "ward_name": "99 - T.R Shamanna Nagar",
+  "ward_name_l1": "99 - ಟಿ.ಆರ್. ಶಾಮಣ್ಣ ನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 100,
+  "ward_name": "100 - Srinagar",
+  "ward_name_l1": "100 - ಶ್ರೀನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 101,
+  "ward_name": "101 - Kempambudhi Ward",
+  "ward_name_l1": "101 - ಕೆಂಪಾಂಬುಧಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 102,
+  "ward_name": "102 - Hanumanthanagar",
+  "ward_name_l1": "102 - ಹನುಮಂತನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 103,
+  "ward_name": "103 - N.R Colony",
+  "ward_name_l1": "103 - ಎನ್.ಆರ್ ಕಾಲೋನಿ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 104,
+  "ward_name": "104 - Thyagarajnagar",
+  "ward_name_l1": "104 - ತ್ಯಾಗರಾಜನಗರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 105,
+  "ward_name": "105 - Yediyuru",
+  "ward_name_l1": "105 - ಯಡಿಯೂರು"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 106,
+  "ward_name": "106 - Devagiri Temple Ward",
+  "ward_name_l1": "106 - ದೇವಗಿರಿ ದೇವಸ್ಥಾನ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 107,
+  "ward_name": "107 - Dharmagiri Ward",
+  "ward_name_l1": "107 - ಧರ್ಮಗಿರಿ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 108,
+  "ward_name": "108 - Ganesh Mandira Ward",
+  "ward_name_l1": "108 - ಗಣೇಶ್ ಮಂದಿರ ವಾರ್ಡ್‌"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 109,
+  "ward_name": "109 - Kamakya Layout",
+  "ward_name_l1": "109 - ಕಾಮಕ್ಯ ಲೇಔಟ್"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 110,
+  "ward_name": "110 - Chikkalasandra",
+  "ward_name_l1": "110 - ಚಿಕ್ಕಲಸಂದ್ರ"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 111,
+  "ward_name": "111 - Ittamadu",
+  "ward_name_l1": "111 - ಇಟ್ಟಮಡು"
+ },
+ {
+  "corp_id": 5,
+  "corp_name": "West",
+  "ward_id": 112,
+  "ward_name": "112 - Hosakerehalli",
+  "ward_name_l1": "112 - ಹೊಸಕೆರೆಹಳ್ಳಿ"
+ }
+]
