@@ -143,17 +143,6 @@ const pagePath = `/ward/${wardId}`;
 const title = ward ? t(lang, 'ward.meta.title', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
 const description = ward ? t(lang, 'ward.meta.description', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
 
-// Flag misinformation (Task 32, IA §7.2, PRD §6.1) — this page's ONE
-// flaggable target is the ward's own name/number/corporation block.
-// [data-flag-action]'s data-flag-targets carries this JSON-encoded so
-// src/islands/FlagModal.ts's generic wiring (initFlagModal, mounted once
-// from Base.astro) can open the modal without this page needing its own
-// script. Same anonymous-safe markup for every visitor (design-system.md
-// §7.8) — the auth gate happens client-side on tap, not in this render.
-const flagTargets = ward
-  ? JSON.stringify([{ targetType: 'ward_field', targetRef: `ward:${wardId}:name`, label: t(lang, 'ward.flag.wardFieldLabel') }])
-  : '[]';
-
 const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePath(lang, pagePath) })] : [];
 ---
 
@@ -174,9 +163,6 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
               <dd>{ward.zone}</dd>
             </div>
           </dl>
-          <Button variant="tertiary" type="button" lang={lang} data-flag-action data-ward-id={wardId} data-flag-targets={flagTargets}>
-            {t(lang, 'common.flagError')}
-          </Button>
         </header>
 
         <section aria-label={t(lang, 'ward.map.label')}>

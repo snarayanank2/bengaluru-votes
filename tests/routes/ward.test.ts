@@ -158,6 +158,7 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       expect(html).toContain(t(lang, 'ward.detail.zone'));
       expect(html).toContain(WARD.zone);
       expect(html).toContain(t(lang, 'ward.corporation.south'));
+      expect(html).not.toContain('data-flag-action');
     });
 
     it('en: corporation label maps "south" -> "South", not the raw enum value', async () => {
