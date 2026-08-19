@@ -54,7 +54,15 @@ import CandidateRow from '../../components/CandidateRow.astro';
 import type { CandidateRowCandidate } from '../../components/CandidateRow.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
-import { candidates, media, wardCandidateQuestions, wardIssues, wards } from '../../db/schema';
+import {
+  candidates,
+  media,
+  wardCandidateQuestions,
+  wardIssues,
+  wardKeyAreas,
+  wardOldWardOverlaps,
+  wards,
+} from '../../db/schema';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { placeLd } from '../../lib/seo';
 import { mapsConfig } from '../../lib/maps-config';
@@ -118,6 +126,16 @@ const cityIssues = ward
       .where(and(eq(wardIssues.wardId, wardId), isNotNull(wardIssues.catalogKey)))
       .orderBy(asc(wardIssues.position), asc(wardIssues.id))
   : [];
+const [oldWardOverlaps, keyAreas] = ward
+  ? await Promise.all([
+      db.select().from(wardOldWardOverlaps)
+        .where(eq(wardOldWardOverlaps.wardId, wardId))
+        .orderBy(asc(wardOldWardOverlaps.position)),
+      db.select().from(wardKeyAreas)
+        .where(eq(wardKeyAreas.wardId, wardId))
+        .orderBy(asc(wardKeyAreas.position)),
+    ])
+  : [[], []];
 const voteIssues = JSON.stringify(cityIssues.map((issue) => ({
   id: issue.id,
   title: lang === 'kn' ? (issue.titleKn ?? issue.titleEn ?? '') : (issue.titleEn ?? issue.titleKn ?? ''),
@@ -131,6 +149,7 @@ const wardNumber = wardId % 1000;
 const wardNameRaw = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 const wardName = wardNameRaw.replace(/^\d+\s*-\s*/, '');
 const corporationLabel = ward ? t(lang, `ward.corporation.${ward.corporation}`) : '';
+const numberFormatter = new Intl.NumberFormat(lang === 'kn' ? 'kn-IN' : 'en-IN');
 
 // Boundary geometry now comes from this ward's own URL rather than the
 // 3.5MB full collection (spec §4). `wards.boundaryRef` is still the source
@@ -162,8 +181,55 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
               <dt>{t(lang, 'ward.detail.zone')}</dt>
               <dd>{ward.zone}</dd>
             </div>
+            {ward.assemblyNumber != null && (
+              <div>
+                <dt>{t(lang, 'ward.detail.assembly')}</dt>
+                <dd>
+                  {lang === 'kn' ? ward.assemblyNameKn : ward.assemblyNameEn}
+                  {' · '}{numberFormatter.format(ward.assemblyNumber)}
+                </dd>
+              </div>
+            )}
           </dl>
         </header>
+
+        <Card>
+          <section class="ward-overview" aria-labelledby="ward-overview-heading">
+            <h2 id="ward-overview-heading">{t(lang, 'ward.overview.heading')}</h2>
+            <div class="overview-grid">
+              {(ward.reservationEn || ward.reservationKn) && (
+                <dl class="overview-panel overview-reservation">
+                  <dt>{t(lang, 'ward.overview.reservation')}</dt>
+                  <dd>{lang === 'kn' ? ward.reservationKn : ward.reservationEn}</dd>
+                </dl>
+              )}
+              {oldWardOverlaps.length > 0 && (
+                <section class="overview-panel overview-old-wards">
+                  <h3>{t(lang, 'ward.overview.oldWards')}</h3>
+                  <ul>
+                    {oldWardOverlaps.map((item) => (
+                      <li>
+                        {item.oldWardNumber != null && `${numberFormatter.format(item.oldWardNumber)} — `}
+                        {lang === 'kn' ? item.oldWardNameKn : item.oldWardNameEn}
+                        <strong>{numberFormatter.format(item.publishedOverlapBasisPoints / 100)}%</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <section class="overview-panel overview-key-areas">
+                <h3>{t(lang, 'ward.overview.keyAreas')}</h3>
+                {keyAreas.length > 0 ? (
+                  <ul class="key-areas">
+                    {keyAreas.map((item) => <li>{lang === 'kn' ? item.nameKn : item.nameEn}</li>)}
+                  </ul>
+                ) : (
+                  <p>{t(lang, 'ward.overview.notAvailable')}</p>
+                )}
+              </section>
+            </div>
+          </section>
+        </Card>
 
         <section aria-label={t(lang, 'ward.map.label')}>
           {maps.enabled ? (
@@ -343,6 +409,94 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+
+  .ward-overview {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .ward-overview h2,
+  .ward-overview h3,
+  .ward-overview p,
+  .ward-overview ul,
+  .overview-panel {
+    margin: 0;
+  }
+
+  .ward-overview h2 {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+  }
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .overview-panel {
+    display: grid;
+    align-content: start;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: var(--space-4);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+
+  .overview-panel dt,
+  .overview-panel h3 {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .overview-panel h3 {
+    font-family: inherit;
+    font-weight: 400;
+    line-height: inherit;
+  }
+
+  .overview-panel dd {
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: 700;
+  }
+
+  .overview-reservation dd {
+    font-size: var(--text-base);
+    font-weight: 400;
+  }
+
+  .key-areas {
+    display: grid;
+    gap: var(--space-1);
+    padding-left: var(--space-4);
+  }
+
+  .overview-old-wards ul {
+    display: grid;
+    gap: var(--space-1);
+    padding: 0;
+    list-style: none;
+  }
+
+  .overview-old-wards li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .overview-old-wards strong {
+    flex: none;
+    font-weight: 700;
+  }
+
+  @media (max-width: 760px) {
+    .overview-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .map-fallback {

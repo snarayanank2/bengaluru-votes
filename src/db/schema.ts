@@ -34,7 +34,44 @@ export const wards = pgTable('wards', {
   corporation: corporationEnum('corporation').notNull(),
   zone: text('zone').notNull(),
   boundaryRef: text('boundary_ref').notNull(),         // feature id in data/gba.geojson
+  assemblyNumber: integer('assembly_number'),
+  assemblyNameEn: text('assembly_name_en'),
+  assemblyNameKn: text('assembly_name_kn'),
+  populationTotal: integer('population_total'),
+  populationMale: integer('population_male'),
+  populationFemale: integer('population_female'),
+  reservationEn: text('reservation_en'),
+  reservationKn: text('reservation_kn'),
+  factsSourceUrl: text('facts_source_url'),
+  factsSourceDate: date('facts_source_date'),
 });
+
+export const wardOldWardOverlaps = pgTable('ward_old_ward_overlaps', {
+  id: serial('id').primaryKey(),
+  wardId: integer('ward_id').notNull().references(() => wards.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  oldWardNumber: integer('old_ward_number'),
+  oldWardNameEn: text('old_ward_name_en').notNull(),
+  oldWardNameKn: text('old_ward_name_kn').notNull(),
+  publishedOverlapBasisPoints: integer('published_overlap_basis_points').notNull(),
+}, (t) => [
+  uniqueIndex('ward_old_ward_overlaps_ward_position_uq').on(t.wardId, t.position),
+  index('ward_old_ward_overlaps_ward_idx').on(t.wardId),
+  check('ward_old_ward_overlaps_position_check', sql`${t.position} > 0`),
+  check('ward_old_ward_overlaps_percentage_check', sql`${t.publishedOverlapBasisPoints} between 0 and 10000`),
+]);
+
+export const wardKeyAreas = pgTable('ward_key_areas', {
+  id: serial('id').primaryKey(),
+  wardId: integer('ward_id').notNull().references(() => wards.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  nameEn: text('name_en').notNull(),
+  nameKn: text('name_kn').notNull(),
+}, (t) => [
+  uniqueIndex('ward_key_areas_ward_position_uq').on(t.wardId, t.position),
+  index('ward_key_areas_ward_idx').on(t.wardId),
+  check('ward_key_areas_position_check', sql`${t.position} > 0`),
+]);
 
 export const wardCandidateQuestions = pgTable('ward_candidate_questions', {
   id: serial('id').primaryKey(),

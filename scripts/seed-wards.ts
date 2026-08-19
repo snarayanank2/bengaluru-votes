@@ -62,7 +62,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { sql } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import * as schema from '../src/db/schema';
 import type { Db } from '../src/db/client';
 
@@ -72,6 +72,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_GEOJSON_PATH = path.join(__dirname, '..', 'data', 'gba.geojson');
 const DEFAULT_QUESTIONS_PATH = path.join(__dirname, '..', 'data', 'ward-candidate-questions.json');
 const DEFAULT_CITY_ISSUES_PATH = path.join(__dirname, '..', 'data', 'city-issues.json');
+const DEFAULT_WARD_FACTS_PATH = path.join(__dirname, '..', 'data', 'ward-facts.json');
 
 type WardRow = typeof schema.wards.$inferInsert;
 
@@ -85,6 +86,29 @@ type QuestionSeedData = {
 type WardQuestionRow = typeof schema.wardCandidateQuestions.$inferInsert;
 type WardIssueRow = typeof schema.wardIssues.$inferInsert;
 type CityIssue = { key: string; titleEn: string; titleKn: string };
+type WardFactsSeedData = {
+  sourceUrl: string;
+  sourceDate: string;
+  sourceSha256: string;
+  wards: Array<{
+    uid: string;
+    reservationEn: string;
+    reservationKn: string;
+    oldWards: Array<{ number: number | null; nameEn: string; nameKn: string; percentage: number }>;
+    keyAreas: Array<{ nameEn: string; nameKn: string }>;
+  }>;
+};
+
+function loadWardFacts(pathname: string = DEFAULT_WARD_FACTS_PATH): WardFactsSeedData {
+  const data = JSON.parse(readFileSync(pathname, 'utf8')) as WardFactsSeedData;
+  if (!data.sourceUrl?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(data.sourceDate) || !/^[a-f0-9]{64}$/.test(data.sourceSha256)) {
+    throw new Error('seed-wards: invalid ward facts metadata');
+  }
+  if (data.wards.length !== 369 || new Set(data.wards.map((ward) => ward.uid)).size !== 369) {
+    throw new Error(`seed-wards: ward facts has ${data.wards.length} wards; expected 369 unique wards`);
+  }
+  return data;
+}
 
 function normalizedWardName(value: string): string {
   return value
@@ -95,8 +119,13 @@ function normalizedWardName(value: string): string {
 }
 
 /** Parse data/gba.geojson into `wards` insert rows per the mapping above. */
-export function loadWardRows(geojsonPath: string = DEFAULT_GEOJSON_PATH): WardRow[] {
+export function loadWardRows(
+  geojsonPath: string = DEFAULT_GEOJSON_PATH,
+  wardFactsPath: string = DEFAULT_WARD_FACTS_PATH,
+): WardRow[] {
   const geojson = JSON.parse(readFileSync(geojsonPath, 'utf8')) as GeoJsonFeatureCollection;
+  const facts = loadWardFacts(wardFactsPath);
+  const factsByUid = new Map(facts.wards.map((ward) => [ward.uid.toLowerCase(), ward]));
 
   return geojson.features.map((feature) => {
     const p = feature.properties;
@@ -127,6 +156,22 @@ export function loadWardRows(geojsonPath: string = DEFAULT_GEOJSON_PATH): WardRo
     const zone = String(p.zone_name ?? '').trim();
     if (!zone) throw new Error(`seed-wards: empty zone_name in feature ${featureRef}`);
 
+    const uid = `${String(p.Corporation).trim()}-${wardId}`.toLowerCase();
+    const wardFacts = factsByUid.get(uid);
+    if (!wardFacts) throw new Error(`seed-wards: no ward facts for ${uid}`);
+    const assemblyNameEn = String(p.ac ?? '').trim();
+    const assemblyNameKn = String(p.ac_kn ?? '').trim();
+    const assemblyNumber = Number(p.ac_no);
+    const populationTotal = Number(p.TOT_P);
+    const populationMale = Number(p.TOT_M);
+    const populationFemale = Number(p.TOT_F);
+    if (!assemblyNameEn || !assemblyNameKn || !Number.isInteger(assemblyNumber)) {
+      throw new Error(`seed-wards: invalid assembly data in feature ${featureRef}`);
+    }
+    if (![populationTotal, populationMale, populationFemale].every(Number.isInteger)) {
+      throw new Error(`seed-wards: invalid population data in feature ${featureRef}`);
+    }
+
     return {
       id: corporationId * 1000 + wardId,
       nameEn,
@@ -134,8 +179,53 @@ export function loadWardRows(geojsonPath: string = DEFAULT_GEOJSON_PATH): WardRo
       corporation: corporationRaw as WardRow['corporation'],
       zone,
       boundaryRef: boundaryRefValue,
+      assemblyNumber,
+      assemblyNameEn,
+      assemblyNameKn,
+      populationTotal,
+      populationMale,
+      populationFemale,
+      reservationEn: wardFacts.reservationEn,
+      reservationKn: wardFacts.reservationKn,
+      factsSourceUrl: facts.sourceUrl,
+      factsSourceDate: facts.sourceDate,
     };
   });
+}
+
+export function loadWardFactRows(
+  geojsonPath: string = DEFAULT_GEOJSON_PATH,
+  wardFactsPath: string = DEFAULT_WARD_FACTS_PATH,
+) {
+  const facts = loadWardFacts(wardFactsPath);
+  const wardIdByUid = new Map<string, number>();
+  for (const ward of loadWardRows(geojsonPath, wardFactsPath)) {
+    wardIdByUid.set(`${ward.corporation}-${ward.id % 1000}`, ward.id);
+  }
+  const overlaps: Array<typeof schema.wardOldWardOverlaps.$inferInsert> = [];
+  const keyAreas: Array<typeof schema.wardKeyAreas.$inferInsert> = [];
+  for (const ward of facts.wards) {
+    const wardId = wardIdByUid.get(ward.uid.toLowerCase());
+    if (!wardId) throw new Error(`seed-wards: facts uid not found in GeoJSON: ${ward.uid}`);
+    ward.oldWards.forEach((item, index) => {
+      if (!item.nameEn.trim() || !item.nameKn.trim() || !Number.isFinite(item.percentage)) {
+        throw new Error(`seed-wards: invalid old ward for ${ward.uid}`);
+      }
+      overlaps.push({
+        wardId,
+        position: index + 1,
+        oldWardNumber: item.number,
+        oldWardNameEn: item.nameEn.trim(),
+        oldWardNameKn: item.nameKn.trim(),
+        publishedOverlapBasisPoints: Math.round(item.percentage * 100),
+      });
+    });
+    ward.keyAreas.forEach((item, index) => {
+      if (!item.nameEn.trim() || !item.nameKn.trim()) throw new Error(`seed-wards: invalid key area for ${ward.uid}`);
+      keyAreas.push({ wardId, position: index + 1, nameEn: item.nameEn.trim(), nameKn: item.nameKn.trim() });
+    });
+  }
+  return { overlaps, keyAreas };
 }
 
 /** Map the source's repeated per-corporation ids to our wards by unique name. */
@@ -283,8 +373,28 @@ export async function seedWards(db: Db, geojsonPath?: string): Promise<number> {
         corporation: sql`excluded.corporation`,
         zone: sql`excluded.zone`,
         boundaryRef: sql`excluded.boundary_ref`,
+        assemblyNumber: sql`excluded.assembly_number`,
+        assemblyNameEn: sql`excluded.assembly_name_en`,
+        assemblyNameKn: sql`excluded.assembly_name_kn`,
+        populationTotal: sql`excluded.population_total`,
+        populationMale: sql`excluded.population_male`,
+        populationFemale: sql`excluded.population_female`,
+        reservationEn: sql`excluded.reservation_en`,
+        reservationKn: sql`excluded.reservation_kn`,
+        factsSourceUrl: sql`excluded.facts_source_url`,
+        factsSourceDate: sql`excluded.facts_source_date`,
       },
     });
+
+  const facts = loadWardFactRows(geojsonPath);
+  await db.delete(schema.wardOldWardOverlaps).where(inArray(schema.wardOldWardOverlaps.wardId, [...ids]));
+  await db.delete(schema.wardKeyAreas).where(inArray(schema.wardKeyAreas.wardId, [...ids]));
+  for (let offset = 0; offset < facts.overlaps.length; offset += 500) {
+    await db.insert(schema.wardOldWardOverlaps).values(facts.overlaps.slice(offset, offset + 500));
+  }
+  for (let offset = 0; offset < facts.keyAreas.length; offset += 500) {
+    await db.insert(schema.wardKeyAreas).values(facts.keyAreas.slice(offset, offset + 500));
+  }
 
   await seedWardCandidateQuestions(db, undefined, geojsonPath);
   await seedCityIssues(db, undefined, geojsonPath);
@@ -307,7 +417,7 @@ async function main() {
   const db = drizzle(client, { schema });
   try {
     const count = await seedWards(db);
-    console.log(`seed-wards: upserted ${count} wards, ${count * 5} candidate questions, and ${count * 20} city issues`);
+    console.log(`seed-wards: upserted ${count} wards with facts, ${count * 5} candidate questions, and ${count * 20} city issues`);
   } finally {
     await client.end();
   }

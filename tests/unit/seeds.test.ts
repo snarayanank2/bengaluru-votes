@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
-import { seedWards, loadCityIssueRows, loadWardCandidateQuestionRows, loadWardRows } from '../../scripts/seed-wards';
+import { seedWards, loadCityIssueRows, loadWardCandidateQuestionRows, loadWardFactRows, loadWardRows } from '../../scripts/seed-wards';
 import { seedAdmin, isValidEmail } from '../../scripts/seed-admin';
 import { seedDev, assertNotProduction } from '../../scripts/seed-dev';
 
@@ -36,9 +36,29 @@ describe('seed-wards', () => {
       expect(['north', 'south', 'east', 'west', 'central']).toContain(row.corporation);
       expect(row.zone).toBeTruthy();
       expect(row.boundaryRef).toBeTruthy();
+      expect(row.assemblyNumber).toBeTypeOf('number');
+      expect(row.assemblyNameEn).toBeTruthy();
+      expect(row.assemblyNameKn).toBeTruthy();
+      expect(row.populationTotal).toBeGreaterThan(0);
+      expect(row.populationMale).toBeGreaterThan(0);
+      expect(row.populationFemale).toBeGreaterThan(0);
+      expect(row.reservationEn).toBeTruthy();
+      expect(row.reservationKn).toBeTruthy();
+      expect(row.factsSourceUrl).toBeTruthy();
+      expect(row.factsSourceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
     const ids = new Set(rows.map((r) => r.id));
     expect(ids.size).toBe(369);
+  });
+
+  it('maps bilingual old-ward overlaps and key areas to all wards', () => {
+    const { overlaps, keyAreas } = loadWardFactRows();
+    expect(new Set(overlaps.map((row) => row.wardId)).size).toBe(369);
+    // The upstream source leaves key areas blank for 56 wards.
+    expect(new Set(keyAreas.map((row) => row.wardId)).size).toBe(313);
+    expect(overlaps.every((row) => row.oldWardNameEn && row.oldWardNameKn)).toBe(true);
+    expect(keyAreas.every((row) => row.nameEn && row.nameKn)).toBe(true);
+    expect(overlaps.every((row) => row.publishedOverlapBasisPoints >= 0 && row.publishedOverlapBasisPoints <= 10_000)).toBe(true);
   });
 
   it('maps five bilingual candidate questions to every ward', () => {
@@ -88,6 +108,12 @@ describe('seed-wards', () => {
     expect(questionRows).toHaveLength(369 * 5);
     const issueRows = await db.select().from(schema.wardIssues).where(inArray(schema.wardIssues.wardId, seeded.map((row) => row.id)));
     expect(issueRows.filter((row) => row.catalogKey !== null)).toHaveLength(369 * 20);
+    const overlapRows = await db.select().from(schema.wardOldWardOverlaps)
+      .where(inArray(schema.wardOldWardOverlaps.wardId, seeded.map((row) => row.id)));
+    const keyAreaRows = await db.select().from(schema.wardKeyAreas)
+      .where(inArray(schema.wardKeyAreas.wardId, seeded.map((row) => row.id)));
+    expect(new Set(overlapRows.map((row) => row.wardId)).size).toBe(369);
+    expect(new Set(keyAreaRows.map((row) => row.wardId)).size).toBe(313);
   });
 });
 

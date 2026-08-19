@@ -83,7 +83,7 @@ Never place white text on sun, lime, or leaf. Never place lime or sun on white a
 
 ## 3. Provenance styling — the signature
 
-Every data field on a report card carries a visible source (PRD §11). This source treatment is the platform's visual signature: it appears identically on report cards, compare columns, ward pages, and curator screens, so a screenshot of any field is self-attributing.
+Every candidate report-card field carries a visible source (PRD §11). This source treatment is the platform's visual signature: it appears identically on report cards, compare columns, and curator screens, so a screenshot of any candidate field is self-attributing. Summary facts on ward pages do not use field-level source lines.
 
 **Field row anatomy:** label (muted, 14px) → value (ink, 16px) → source line. The source line is one line, 13px, muted, prefixed by a source badge:
 
@@ -187,6 +187,31 @@ Containers: `--container-prose` 42rem (guides, legal, about pages), `--container
 
 - Radius: `--radius-sm` 6px (buttons, inputs), `--radius-md` 8px (cards, modals), `--radius-full` (chips, badges).
 - Elevation is border-first: cards are `1px solid --color-border` on white. Only two shadows exist: `--shadow-sticky` (app bar when scrolled) and `--shadow-modal` (modals, toasts). Nothing else floats.
+
+### 6.4 First-pass composition rules
+
+Tokens and components do not determine a good composition by themselves. Apply these rules before writing page markup:
+
+1. **List the content groups and rank them.** Decide what is primary, supporting, and metadata. Give each fact one visual role; do not emphasize every value.
+2. **Render peers in parallel form.** Repeated panels use the same container, padding, label element, label size, label weight, and value treatment. Do not mix an H3 in one panel with a muted field label in another. A deliberate exception, such as a large countdown, must be stated in the component specification.
+3. **Choose the layout from real data.** Inspect one sparse record and one dense record before choosing columns, cards, or lists. A three-column layout must still work when one value wraps and when a list contains several items.
+4. **Use only declared tokens.** Before using a CSS custom property, confirm it exists in `src/styles/tokens.css`. An undeclared property can silently invalidate spacing and collapse the layout. Do not invent intermediate token names in component CSS.
+5. **Avoid boxes inside boxes.** Use one enclosing card or a row of peer panels. Add another surface only when it creates a clear level in the information hierarchy.
+6. **Keep metadata subordinate.** Notes, timestamps, and provenance must not compete with the content they qualify. Show them only where the product requires them.
+7. **Design English and Kannada together.** Check real strings in both languages. Labels may wrap, but peer panels must retain the same hierarchy and spacing.
+8. **Define the collapse before desktop styling.** Multi-column groups become one column below `--bp-md` unless a component section specifies otherwise. Never rely on equal text lengths to keep a row aligned.
+
+For repeated fact panels, start with this anatomy and change it only through a documented component rule:
+
+```text
+section heading
+└── peer-panel grid
+    ├── panel: muted 14px label → regular 16px value → optional 13px note
+    ├── panel: muted 14px label → regular 16px value → optional 13px note
+    └── panel: muted 14px label → regular 16px value → optional 13px note
+```
+
+The panels may differ in content length, but not in typographic rank. If one value deserves stronger emphasis, verify that the emphasis represents product importance rather than the convenience of its data type.
 
 ---
 
@@ -334,6 +359,22 @@ Motion is functional only: modal/toast enter-exit (150–200ms ease-out), accord
 - Tokens ship as CSS custom properties on `:root` in one file (e.g. `src/styles/tokens.css`), with `:lang(kn)` overrides beside them. Components consume semantic tokens only (§2.2). This is framework-agnostic: it works with plain scoped Astro styles today and can seed a Tailwind theme later if one is adopted — that choice is not made here.
 - The full font payload (3 families × subset woff2) should stay under ~120KB; preload only the two files above-the-fold pages need per language.
 - Print styles matter for one page: `/partner/{slug}`'s poster block. Everything else can rely on defaults.
+
+### 11.1 UI completion checklist
+
+A UI change is not complete when it compiles. Before handoff:
+
+1. Open the real route in Chrome DevTools with seeded data; do not judge a component from markup alone.
+2. Inspect at 390px mobile and at the desktop app-container width.
+3. Inspect English and Kannada.
+4. Exercise sparse, typical, dense, and long-text records where the data varies.
+5. Compare repeated elements side by side: labels, weights, padding, alignment, wrapping, and empty states must match.
+6. Check computed styles for any dropped declaration or unresolved `var(...)` value.
+7. Check the browser console and the accessibility tree.
+8. Capture a screenshot of the changed section and review it at normal scale. Look for collapsed spacing, accidental emphasis, excessive empty space, nested borders, and metadata that draws too much attention.
+9. Run the relevant route/component tests, typecheck, and the Kannada staleness check.
+
+When a first visual pass fails, record the general cause here or in the affected component section. Do not preserve a one-off correction only in page CSS; turn repeated lessons into a rule, token, component, or automated check.
 
 ## 12. Open questions
 

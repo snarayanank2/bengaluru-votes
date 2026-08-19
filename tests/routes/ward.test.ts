@@ -31,6 +31,30 @@ const WARD = {
   corporation: 'south' as const,
   zone: 'Zone T',
   boundaryRef: 'ward-result-test-ward',
+  assemblyNumber: 163,
+  assemblyNameEn: 'Test Assembly',
+  assemblyNameKn: 'ಪರೀಕ್ಷಾ ವಿಧಾನಸಭಾ ಕ್ಷೇತ್ರ',
+  populationTotal: 19_982,
+  populationMale: 10_120,
+  populationFemale: 9_862,
+  reservationEn: 'General (Women)',
+  reservationKn: 'ಸಾಮಾನ್ಯ (ಮಹಿಳೆಯರು)',
+  factsSourceUrl: 'https://example.org/ward-facts.csv',
+  factsSourceDate: '2026-08-19',
+};
+const OLD_WARD = {
+  wardId: WARD.id,
+  position: 1,
+  oldWardNumber: 112,
+  oldWardNameEn: 'Old Test Ward',
+  oldWardNameKn: 'ಹಳೆಯ ಪರೀಕ್ಷಾ ವಾರ್ಡ್',
+  publishedOverlapBasisPoints: 9_990,
+};
+const KEY_AREA = {
+  wardId: WARD.id,
+  position: 1,
+  nameEn: 'Test Layout',
+  nameKn: 'ಪರೀಕ್ಷಾ ಲೇಔಟ್',
 };
 
 const QUESTIONS = [1, 2, 3, 4, 5].map((position) => ({
@@ -136,6 +160,14 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
         },
       });
     await db.insert(schema.wardIssues).values(CITY_ISSUES).onConflictDoNothing();
+    await db.insert(schema.wardOldWardOverlaps).values(OLD_WARD).onConflictDoUpdate({
+      target: [schema.wardOldWardOverlaps.wardId, schema.wardOldWardOverlaps.position],
+      set: OLD_WARD,
+    });
+    await db.insert(schema.wardKeyAreas).values(KEY_AREA).onConflictDoUpdate({
+      target: [schema.wardKeyAreas.wardId, schema.wardKeyAreas.position],
+      set: KEY_AREA,
+    });
     await deleteWardCandidates();
     await db.insert(schema.candidates).values(CANDIDATES);
   });
@@ -166,6 +198,16 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       const html = normalize(await res.text());
       expect(html).toContain('South');
       expect(html).not.toMatch(/>south</);
+    });
+
+    it.each(['en', 'kn'] as const)('%s: renders the bilingual ward overview', async (lang) => {
+      const html = normalize(await (await renderWard(lang, WARD.id)).text());
+      expect(html).toContain(t(lang, 'ward.overview.heading'));
+      expect(html).toContain(lang === 'kn' ? WARD.assemblyNameKn : WARD.assemblyNameEn);
+      expect(html).toContain(lang === 'kn' ? WARD.reservationKn : WARD.reservationEn);
+      expect(html).toContain(lang === 'kn' ? OLD_WARD.oldWardNameKn : OLD_WARD.oldWardNameEn);
+      expect(html).toContain(lang === 'kn' ? KEY_AREA.nameKn : KEY_AREA.nameEn);
+      expect(html).not.toContain(WARD.factsSourceUrl);
     });
   });
 
