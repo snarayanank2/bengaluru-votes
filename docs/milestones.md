@@ -456,10 +456,10 @@ Accounts, and the three things an account is for.
 **What ships**
 
 - **Register for updates** — email / WhatsApp OTP and a profile at `/account`: home ward, language, notification settings. Staff use the same OTP mechanism (email only, §8); what this milestone adds is the WhatsApp channel, the citizen sign-up flow and the profile.
-- **Vote on issues**, restricted to the citizen's registered home ward.
+- Issue voting has moved to the anonymous ward-page experience: exactly three choices, one ward per browser receipt, with results revealed only after voting. Accounts are not required for it.
 - **Dispute candidate information** — the citizen-facing error report. Everywhere else this is called **flagging**, and it works across any ward rather than only the citizen's own; see the terminology collision in §9.
 
-**Testable when** a citizen can register from a ward page, receive a one-time code, set their home ward and language, vote on their ward's issues, and report an error on any ward.
+**Testable when** a citizen can register from a ward page, receive a one-time code, set their home ward and language, and report an error on any ward.
 
 **Prerequisites**
 

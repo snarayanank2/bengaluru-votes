@@ -184,7 +184,7 @@ Variables: `{{1}}` = roll deadline date, `{{2}}` = link to `/check-registration`
 >
 > Reply STOP to opt out.
 
-Variables: `{{1}}` = ward name, `{{2}}` = candidate count, `{{3}}` = link to `/ward/{id}/candidates`.
+Variables: `{{1}}` = ward name, `{{2}}` = candidate count, `{{3}}` = link to `/ward/{id}` (candidate list is inline).
 
 ### WhatsApp — Kannada (`bv_l1_candidates_filed_kn`)
 
@@ -274,7 +274,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/issues`.
 >
 > Reply STOP to opt out.
 
-Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/candidates`.
+Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}` (candidate list is inline).
 
 ### WhatsApp — Kannada (`bv_c2_final_candidates_kn`)
 

@@ -43,6 +43,13 @@
       "when": 1787145000000,
       "tag": "0005_ward_candidate_questions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787155000000,
+      "tag": "0006_anonymous_issue_voting",
+      "breakpoints": true
     }
   ]
 }

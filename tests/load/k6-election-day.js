@@ -231,10 +231,9 @@ const HAS_CANDIDATE_SLUGS = CANDIDATE_SLUGS.length > 0;
 
 const PAGE_MIX = [
   { weight: 0.25, build: () => withLang('/') },
-  // Candidate-page weight (0.15) folds into ward-result when no slugs are
-  // seeded, rather than silently doing nothing with it.
-  { weight: HAS_CANDIDATE_SLUGS ? 0.20 : 0.35, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}`) },
-  { weight: 0.15, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}/candidates`) },
+  // Candidate-list traffic is part of the ward page now. Candidate report-card
+  // weight folds into it when no candidate slugs are seeded.
+  { weight: HAS_CANDIDATE_SLUGS ? 0.35 : 0.50, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}`) },
   { weight: 0.05, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}/compare`) },
   { weight: 0.10, build: () => withLang(`/ward/${randomFrom(WARD_IDS)}/issues`) },
   {

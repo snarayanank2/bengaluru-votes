@@ -688,14 +688,18 @@ describe('src/middleware.ts', () => {
       expect(res1.headers.get('content-security-policy')).not.toBe(res2.headers.get('content-security-policy'));
     });
 
-    it('/partner-with-us gets the reCAPTCHA script-src/frame-src relaxation; /ward/1 does not', async () => {
+    it('anonymous-write pages get the reCAPTCHA relaxation; the ward issues page does not', async () => {
       const partnerCtx = makeContext({ path: '/partner-with-us' });
       const partnerRes = await run(partnerCtx, nextStub(200));
       expect(partnerRes.headers.get('content-security-policy')).toContain('www.google.com');
 
       const wardCtx = makeContext({ path: '/ward/1' });
       const wardRes = await run(wardCtx, nextStub(200));
-      expect(wardRes.headers.get('content-security-policy')).not.toContain('www.google.com');
+      expect(wardRes.headers.get('content-security-policy')).toContain('www.google.com');
+
+      const issuesCtx = makeContext({ path: '/ward/1/issues' });
+      const issuesRes = await run(issuesCtx, nextStub(200));
+      expect(issuesRes.headers.get('content-security-policy')).not.toContain('www.google.com');
     });
 
     it('a 403/redirect response still carries the CSP header (set on every response)', async () => {

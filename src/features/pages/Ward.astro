@@ -2,8 +2,9 @@
 /**
  * Ward result (`/ward/{id}`, `/kn/ward/{id}`) — information-architecture.md
  * §3.2, PRD §5.1. The hub page for a single GBA ward: name/number/
- * corporation, the boundary map, the register-for-updates slot, and links
- * to the ward's candidates/issues subpages and the (shared) voting guide.
+ * corporation, the boundary map, the register-for-updates slot, the ward's
+ * candidate list and comparison entry point, issue voting, and candidate
+ * questions.
  *
  * Existence check lives in the route twins (src/pages/ward/[id].astro,
  * src/pages/kn/ward/[id].astro), not here — only a page-level frontmatter
@@ -49,12 +50,15 @@ import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
 import Button from '../../components/Button.astro';
 import EmptyState from '../../components/EmptyState.astro';
+import CandidateRow from '../../components/CandidateRow.astro';
+import type { CandidateRowCandidate } from '../../components/CandidateRow.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
-import { wardCandidateQuestions, wards } from '../../db/schema';
-import { asc, eq } from 'drizzle-orm';
+import { candidates, media, wardCandidateQuestions, wardIssues, wards } from '../../db/schema';
+import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { placeLd } from '../../lib/seo';
 import { mapsConfig } from '../../lib/maps-config';
+import { getKnownSetting } from '../../lib/settings';
 
 interface Props {
   lang: Lang;
@@ -71,6 +75,54 @@ const questions = ward
       .where(eq(wardCandidateQuestions.wardId, wardId))
       .orderBy(asc(wardCandidateQuestions.position))
   : [];
+const candidateRows = ward
+  ? await db
+      .select({
+        id: candidates.id,
+        slug: candidates.slug,
+        nameEn: candidates.nameEn,
+        nameKn: candidates.nameKn,
+        partyEn: candidates.partyEn,
+        partyKn: candidates.partyKn,
+        photoMediaId: candidates.photoMediaId,
+        photoHash: media.sha256,
+        status: candidates.status,
+      })
+      .from(candidates)
+      .leftJoin(media, eq(media.id, candidates.photoMediaId))
+      .where(eq(candidates.wardId, wardId))
+  : [];
+const sortedCandidates: (CandidateRowCandidate & { id: number; status: string })[] = candidateRows
+  .map((candidate) => ({
+    id: candidate.id,
+    slug: candidate.slug,
+    nameEn: candidate.nameEn,
+    nameKn: candidate.nameKn,
+    partyEn: candidate.partyEn,
+    partyKn: candidate.partyKn,
+    photoUrl:
+      candidate.photoMediaId != null && candidate.photoHash
+        ? `/media/${candidate.photoMediaId}/${candidate.photoHash.slice(0, 16)}`
+        : null,
+    status: candidate.status,
+  }))
+  .sort((a, b) => a.nameEn.localeCompare(b.nameEn) || a.id - b.id);
+const isCandidateListProvisional = (await getKnownSetting('withdrawals_closed')) !== 'true';
+const notificationDate = await getKnownSetting('notification_date');
+const candidateEmptyFact = notificationDate
+  ? t(lang, 'ward.candidates.empty.fact', { date: notificationDate })
+  : t(lang, 'ward.candidates.empty.awaited');
+const cityIssues = ward
+  ? await db.select({ id: wardIssues.id, titleEn: wardIssues.titleEn, titleKn: wardIssues.titleKn })
+      .from(wardIssues)
+      .where(and(eq(wardIssues.wardId, wardId), isNotNull(wardIssues.catalogKey)))
+      .orderBy(asc(wardIssues.position), asc(wardIssues.id))
+  : [];
+const voteIssues = JSON.stringify(cityIssues.map((issue) => ({
+  id: issue.id,
+  title: lang === 'kn' ? (issue.titleKn ?? issue.titleEn ?? '') : (issue.titleEn ?? issue.titleKn ?? ''),
+})));
+const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY ?? '';
 
 const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 const corporationLabel = ward ? t(lang, `ward.corporation.${ward.corporation}`) : '';
@@ -146,17 +198,58 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
           </Button>
         </section>
 
-        <nav class="ward-links" aria-label={t(lang, 'ward.links.label')}>
-          <Card>
-            <a href={localePath(lang, `/ward/${wardId}/candidates`)}>{t(lang, 'ward.links.candidates')}</a>
-          </Card>
-          <Card>
-            <a href={localePath(lang, `/ward/${wardId}/issues`)}>{t(lang, 'ward.links.issues')}</a>
-          </Card>
-          <Card>
-            <a href={localePath(lang, '/voting-guide')}>{t(lang, 'home.shortcuts.votingGuide.title')}</a>
-          </Card>
-        </nav>
+        <section class="ward-candidates" aria-labelledby="ward-candidates-heading">
+          <h2 id="ward-candidates-heading">{t(lang, 'ward.links.candidates')}</h2>
+          {sortedCandidates.length === 0 ? (
+            <p class="candidate-empty">{candidateEmptyFact}</p>
+          ) : (
+            <>
+              {isCandidateListProvisional && <p class="provisional-marker">{t(lang, 'candidate.provisionalMarker')}</p>}
+              <ul class="candidate-list" aria-label={t(lang, 'ward.candidates.list.label')}>
+                {sortedCandidates.map((candidate) => (
+                  <li class="candidate-item">
+                    <CandidateRow candidate={candidate} lang={lang} />
+                    <span class="status-label">
+                      {t(lang, `candidate.status.${candidate.status}` as `candidate.status.${string}`)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div class="candidate-actions">
+                <Button variant="secondary" href={localePath(lang, `/ward/${wardId}/compare`)} lang={lang}>
+                  {t(lang, 'candidate.links.compare')}
+                </Button>
+              </div>
+            </>
+          )}
+        </section>
+
+        {cityIssues.length > 0 && (
+          <section
+            class="issue-vote"
+            aria-labelledby="issue-vote-heading"
+            data-issue-vote-zone
+            data-ward-id={wardId}
+            data-vote-issues={voteIssues}
+            data-recaptcha-site-key={recaptchaSiteKey}
+            data-msg-voted-elsewhere={t(lang, 'ward.vote.votedElsewhere')}
+          >
+            <h2 id="issue-vote-heading">{t(lang, 'ward.vote.heading')}</h2>
+            <p>{t(lang, 'ward.vote.instructions')}</p>
+            <div class="issue-vote-actions">
+              <Button variant="primary" type="button" lang={lang} data-vote-action>
+                {t(lang, 'common.voteTop3')}
+              </Button>
+              <span data-show-results-wrap hidden>
+                <Button variant="secondary" type="button" lang={lang} data-show-results>
+                  {t(lang, 'ward.vote.showResults')}
+                </Button>
+              </span>
+            </div>
+            <p data-voted-elsewhere hidden></p>
+            <ol class="issue-vote-results" data-vote-results hidden aria-live="polite"></ol>
+          </section>
+        )}
 
         {questions.length > 0 && (
           <section class="candidate-questions" aria-labelledby="candidate-questions-heading">
@@ -182,6 +275,7 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     import { initWardMap } from '../../islands/WardMap';
     initWardMap();
   </script>
+  {recaptchaSiteKey && <script is:inline src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(recaptchaSiteKey)}`} async defer></script>}
 </Base>
 
 <style>
@@ -235,21 +329,58 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     display: flex;
   }
 
-  .ward-links {
+  .ward-candidates {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
     gap: var(--space-4);
   }
 
-  .ward-links a {
-    color: var(--color-primary);
-    font-weight: 700;
-    text-decoration: none;
+  .ward-candidates h2,
+  .candidate-empty,
+  .provisional-marker {
+    margin: 0;
   }
 
-  .ward-links a:hover,
-  .ward-links a:focus-visible {
-    text-decoration: underline;
+  .ward-candidates h2 {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+  }
+
+  .candidate-empty,
+  .provisional-marker,
+  .status-label {
+    color: var(--color-text-muted);
+  }
+
+  .provisional-marker {
+    font-size: var(--text-sm);
+    font-style: italic;
+  }
+
+  .candidate-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .candidate-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .status-label {
+    flex: none;
+    font-size: var(--text-sm);
+  }
+
+  .candidate-actions {
+    display: flex;
+    margin-top: var(--space-2);
   }
 
   .candidate-questions h2 {
@@ -269,5 +400,78 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
 
   .candidate-questions p {
     margin: 0;
+  }
+
+  .issue-vote {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .issue-vote h2,
+  .issue-vote > p {
+    margin: 0;
+  }
+
+  .issue-vote h2 {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+  }
+
+  .issue-vote > p {
+    color: var(--color-text-muted);
+  }
+
+  .issue-vote-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  [data-show-results-wrap]:not([hidden]) {
+    display: contents;
+  }
+
+  .issue-vote-results {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  :global(.issue-result) {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  :global(.issue-result-header) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  :global(.issue-result-title) {
+    font-weight: 700;
+  }
+
+  :global(.issue-result-percentage) {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-muted);
+  }
+
+  :global(.issue-result-track) {
+    height: var(--space-3);
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+  }
+
+  :global(.issue-result-fill) {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
   }
 </style>

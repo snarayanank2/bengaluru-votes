@@ -1,8 +1,8 @@
 /**
  * reCAPTCHA v3 server-side verification (PRD §5.13/§6.3; architecture.md §7
- * "POST /api/eoi: the one anonymous write; protected by reCAPTCHA v3 —
- * server-verified token + score"). This is the ANTI-BOT protection for the
- * platform's one anonymous write path; the middleware's Origin/Sec-Fetch
+ * anonymous writes are protected by reCAPTCHA v3 — server-verified token,
+ * action, and score. This is the ANTI-BOT protection for `/api/eoi` and
+ * `/api/issue-votes`; the middleware's Origin/Sec-Fetch
  * check (src/middleware.ts) is the separate ANTI-CSRF layer that already
  * applies to /api/eoi like every other unsafe-method request.
  *
@@ -41,6 +41,8 @@ export interface VerifyRecaptchaOptions {
   minScore?: number;
   /** Defaults to the real Google siteverify call. Tests always override this. */
   verifier?: RecaptchaVerifier;
+  /** Require the token to have been minted for this v3 action. */
+  expectedAction?: string;
 }
 
 export interface VerifyRecaptchaResult {
@@ -75,6 +77,9 @@ export async function verifyRecaptcha(token: string, opts: VerifyRecaptchaOption
   const minScore = opts.minScore ?? DEFAULT_MIN_SCORE;
 
   if (!secret) {
+    if (process.env.ALLOW_INSECURE_LOCAL_RECAPTCHA === 'true' && /^http:\/\/(localhost|127\.0\.0\.1)(?::\d+)?$/.test(process.env.SITE_ORIGIN ?? '')) {
+      return { ok: true, reason: 'local_explicit_bypass' };
+    }
     if (process.env.NODE_ENV === 'production') {
       logEvent('recaptcha_misconfigured', { reason: 'no_secret_key_in_production' });
       return { ok: false, reason: 'misconfigured' };
@@ -90,6 +95,9 @@ export async function verifyRecaptcha(token: string, opts: VerifyRecaptchaOption
   }
   if (result.score < minScore) {
     return { ok: false, score: result.score, reason: 'low_score' };
+  }
+  if (opts.expectedAction && result.action !== opts.expectedAction) {
+    return { ok: false, score: result.score, reason: 'wrong_action' };
   }
   return { ok: true, score: result.score };
 }

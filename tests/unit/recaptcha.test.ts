@@ -9,6 +9,8 @@ import { verifyRecaptcha } from '../../src/lib/recaptcha';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 const ORIGINAL_SECRET = process.env.RECAPTCHA_SECRET_KEY;
+const ORIGINAL_LOCAL_BYPASS = process.env.ALLOW_INSECURE_LOCAL_RECAPTCHA;
+const ORIGINAL_SITE_ORIGIN = process.env.SITE_ORIGIN;
 
 afterEach(() => {
   process.env.NODE_ENV = ORIGINAL_NODE_ENV;
@@ -17,6 +19,10 @@ afterEach(() => {
   } else {
     process.env.RECAPTCHA_SECRET_KEY = ORIGINAL_SECRET;
   }
+  if (ORIGINAL_LOCAL_BYPASS === undefined) delete process.env.ALLOW_INSECURE_LOCAL_RECAPTCHA;
+  else process.env.ALLOW_INSECURE_LOCAL_RECAPTCHA = ORIGINAL_LOCAL_BYPASS;
+  if (ORIGINAL_SITE_ORIGIN === undefined) delete process.env.SITE_ORIGIN;
+  else process.env.SITE_ORIGIN = ORIGINAL_SITE_ORIGIN;
 });
 
 describe('verifyRecaptcha', () => {
@@ -57,6 +63,15 @@ describe('verifyRecaptcha', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('rejects a valid token minted for a different v3 action', async () => {
+    const result = await verifyRecaptcha('some-token', {
+      secret: 'test-secret',
+      expectedAction: 'issue_vote',
+      verifier: async () => ({ success: true, score: 0.9, action: 'eoi' }),
+    });
+    expect(result).toEqual({ ok: false, score: 0.9, reason: 'wrong_action' });
+  });
+
   it('no secret configured + NODE_ENV !== production -> ok:true (dev accept), verifier never called', async () => {
     process.env.NODE_ENV = 'test';
     delete process.env.RECAPTCHA_SECRET_KEY;
@@ -82,6 +97,16 @@ describe('verifyRecaptcha', () => {
 
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('misconfigured');
+  });
+
+  it('allows the explicit no-key bypass only for a loopback site origin', async () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.RECAPTCHA_SECRET_KEY;
+    process.env.ALLOW_INSECURE_LOCAL_RECAPTCHA = 'true';
+    process.env.SITE_ORIGIN = 'http://localhost:4321';
+    expect(await verifyRecaptcha('local')).toEqual({ ok: true, reason: 'local_explicit_bypass' });
+    process.env.SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
+    expect((await verifyRecaptcha('local')).ok).toBe(false);
   });
 
   it('an explicit opts.secret is used over process.env.RECAPTCHA_SECRET_KEY', async () => {

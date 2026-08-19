@@ -1,472 +1,153 @@
-/**
- * Cast issue vote modal — the client-side half of Task 33 (IA §3.6/§7, PRD
- * §5.5). Built on `ModalController` (src/islands/ModalShell.ts) over the
- * `<dialog>` markup `src/components/VoteModal.astro` renders once per page
- * (from Base.astro), and wired onto WardIssues.astro's "Vote your top 3"
- * `[data-vote-action]` button (its `data-ward-id` and `data-vote-issues` —
- * a JSON-encoded `{id, title}[]` of the ward's CURRENT issues — carry
- * everything `openVoteModal` needs), mirroring how `initFlagModal` wires
- * `[data-flag-action]`.
- *
- * GLOBAL OPENER + WIRING: `openVoteModal` is exported AND attached to
- * `window.bvOpenVoteModal`.
- *
- * AUTH GATING + RESUME (core concept 2; same shape as FlagModal):
- *   - ON OPEN: checks `/api/me` before showing anything. Anonymous ->
- *     `window.bvOpenRegisterLogin` opens FIRST, `onSuccess: () =>
- *     openVoteModal(opts, opener)` re-runs this, now authed.
- *   - HOME-WARD CHECK (PRD §5.5 — voting is home-ward-only): once authed,
- *     compares the visitor's `homeWardId` to `opts.wardId`. A mismatch
- *     shows the home-ward-only message (`[data-vote-home-ward-wrap]`,
- *     naming their actual home ward, with a link to `/account` to change
- *     it) INSTEAD of the checkbox form — there is no point letting them
- *     submit a request that can only ever come back 403.
- *   - PRE-CHECK: on a match, `GET /api/issue-votes?wardId=` loads the
- *     visitor's current active selections for THIS ward (empty if they've
- *     never voted here, or their active set is a different ward) so a
- *     returning voter sees their existing picks already ticked.
- *   - ON SUBMIT 401 (an idle-timed-out session mid-flow): the already-open
- *     vote dialog is deliberately left open (not closed) while
- *     `window.bvOpenRegisterLogin` opens on top of it — native `<dialog>`
- *     supports stacking. `onSuccess` re-PUTs the SAME captured
- *     `{wardId, issueIds}` (the checkboxes were never touched), a seamless
- *     resume with no retyping/re-checking needed.
- *   - ON SUBMIT 403 (`wrong_ward` — the visitor's home ward changed, e.g.
- *     in another tab, between open and submit): re-checks `/api/me` and
- *     swaps to the home-ward-only message, same as the open-time check.
- *
- * CHECKBOX CAP (design-system.md §7.9): the checklist is built entirely
- * client-side (`renderIssueOptions`) from `opts.issues`, capped at three —
- * once three are checked, every OTHER checkbox is `disabled` (a 4th tap is
- * simply impossible, not merely rejected after the fact). The submit
- * button's label counts down ("Vote (2 of 3 selected)") and is disabled at
- * zero selected.
- *
- * ON SUCCESS: splices the PUT response's fresh `results` into the page's
- * `<IssueBars>` (`[data-issue-bars]`, if present — WardIssues.astro's
- * public results section) via `updateIssueBars`, shows a success toast, and
- * closes. The URL never changes at any point in this flow.
- */
 import { ModalController, type ModalDialogLike, type FocusTarget } from './ModalShell';
 
-export interface VoteIssue {
-  id: number;
-  title: string;
-}
-
-export interface OpenVoteModalOptions {
-  wardId: number;
-  issues: VoteIssue[];
-}
-
-interface VoteFormState {
-  wardId: number;
-  issueIds: number[];
-}
-
-interface IssueResultLike {
-  issueId: number;
-  titleEn: string | null;
-  titleKn: string | null;
-  rank: number;
-  sharePct: number;
-}
-
-type MeResponse =
-  | { anonymous: true }
-  | { anonymous: false; homeWardId: number | null; [key: string]: unknown };
-
-type SelectionsResponse = { issueIds: number[] };
-
-interface Elements {
-  dialog: HTMLDialogElement;
-  controller: ModalController;
-  formWrap: HTMLElement;
-  form: HTMLFormElement;
-  optionsContainer: HTMLElement;
-  rateLimitError: HTMLElement;
-  genericError: HTMLElement;
-  submitButton: HTMLButtonElement;
-  homeWardWrap: HTMLElement;
-  homeWardMessage: HTMLElement;
-  msgRateLimit: string;
-  msgGenericError: string;
-  msgSuccess: string;
-  msgSubmitTemplate: string;
-  msgHomeWardTemplate: string;
-}
+export interface VoteIssue { id: number; title: string }
+export interface OpenVoteModalOptions { wardId: number; issues: VoteIssue[]; recaptchaSiteKey?: string }
+type Grecaptcha = { ready(cb: () => void): void; execute(key: string, opts: { action: string }): Promise<string> };
+declare global { interface Window { grecaptcha?: Grecaptcha; bvOpenVoteModal?: typeof openVoteModal } }
 
 const MAX_SELECTIONS = 3;
+let dialog: HTMLDialogElement | null;
+let controller: ModalController | null;
+let current: OpenVoteModalOptions | null = null;
+let opener: FocusTarget | null = null;
 
-let els: Elements | null = null;
-let currentWardId = 0;
-let currentIssues: VoteIssue[] = [];
-
-function text(root: ParentNode, selector: string): string {
-  return root.querySelector(selector)?.textContent ?? '';
+function text(root: ParentNode, selector: string): string { return root.querySelector(selector)?.textContent ?? ''; }
+function checkboxes(): HTMLInputElement[] {
+  return dialog ? [...dialog.querySelectorAll<HTMLInputElement>('[data-vote-issue-options] input')] : [];
 }
-
-function findElements(root: ParentNode): Elements | null {
-  const dialog = root.querySelector<HTMLDialogElement>('[data-vote-modal]');
-  const formWrap = dialog?.querySelector<HTMLElement>('[data-vote-form-wrap]');
-  const form = dialog?.querySelector<HTMLFormElement>('[data-vote-form]');
-  const optionsContainer = dialog?.querySelector<HTMLElement>('[data-vote-issue-options]');
-  const rateLimitError = dialog?.querySelector<HTMLElement>('[data-vote-rate-limit-error]');
-  const genericError = dialog?.querySelector<HTMLElement>('[data-vote-generic-error]');
-  const submitButton = form?.querySelector<HTMLButtonElement>('[data-vote-submit]');
-  const homeWardWrap = dialog?.querySelector<HTMLElement>('[data-vote-home-ward-wrap]');
-  const homeWardMessage = dialog?.querySelector<HTMLElement>('[data-vote-home-ward-message]');
-
-  if (
-    !dialog ||
-    !formWrap ||
-    !form ||
-    !optionsContainer ||
-    !rateLimitError ||
-    !genericError ||
-    !submitButton ||
-    !homeWardWrap ||
-    !homeWardMessage
-  ) {
-    return null;
-  }
-
-  return {
-    dialog,
-    controller: new ModalController(dialog as unknown as ModalDialogLike),
-    formWrap,
-    form,
-    optionsContainer,
-    rateLimitError,
-    genericError,
-    submitButton,
-    homeWardWrap,
-    homeWardMessage,
-    msgRateLimit: text(dialog, '[data-msg-rate-limit]'),
-    msgGenericError: text(dialog, '[data-msg-generic-error]'),
-    msgSuccess: text(dialog, '[data-msg-success]'),
-    msgSubmitTemplate: text(dialog, '[data-msg-submit-template]'),
-    msgHomeWardTemplate: text(dialog, '[data-msg-home-ward-template]'),
-  };
-}
-
-async function fetchMe(): Promise<MeResponse | null> {
-  try {
-    const res = await fetch('/api/me');
-    if (!res.ok) return null;
-    return (await res.json()) as MeResponse;
-  } catch {
-    return null;
+function refresh(): void {
+  if (!dialog) return;
+  const selected = checkboxes().filter((box) => box.checked).length;
+  checkboxes().forEach((box) => { box.disabled = !box.checked && selected >= MAX_SELECTIONS; });
+  const submit = dialog.querySelector<HTMLButtonElement>('[data-vote-submit]');
+  if (submit) {
+    submit.disabled = selected !== MAX_SELECTIONS;
+    submit.textContent = text(dialog, '[data-msg-submit-template]').replace('{n}', String(selected));
   }
 }
-
-async function fetchCurrentSelections(wardId: number): Promise<SelectionsResponse | null> {
-  try {
-    const res = await fetch(`/api/issue-votes?wardId=${wardId}`);
-    if (!res.ok) return null;
-    return (await res.json()) as SelectionsResponse;
-  } catch {
-    return null;
-  }
+function setError(kind: 'rate-limit' | 'verification' | 'generic'): void {
+  if (!dialog) return;
+  dialog.querySelectorAll<HTMLElement>('.form-error').forEach((node) => { node.hidden = true; });
+  const node = dialog.querySelector<HTMLElement>(`[data-vote-${kind}-error]`);
+  if (node) { node.hidden = false; node.textContent = text(dialog, `[data-msg-${kind === 'rate-limit' ? 'rate-limit' : `${kind}-error`}]`); }
 }
-
-async function putVote(state: VoteFormState): Promise<Response> {
-  return fetch('/api/issue-votes', {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(state),
-  });
-}
-
-function clearErrors(): void {
-  if (!els) return;
-  els.rateLimitError.hidden = true;
-  els.rateLimitError.textContent = '';
-  els.genericError.hidden = true;
-  els.genericError.textContent = '';
-}
-
-function showRateLimitError(): void {
-  if (!els) return;
-  els.rateLimitError.hidden = false;
-  els.rateLimitError.textContent = els.msgRateLimit;
-}
-
-function showGenericError(): void {
-  if (!els) return;
-  els.genericError.hidden = false;
-  els.genericError.textContent = els.msgGenericError;
-}
-
-function showSuccessToast(message: string): void {
-  if (typeof document === 'undefined') return;
+function showToast(): void {
+  if (!dialog) return;
   const toast = document.createElement('div');
-  toast.className = 'vote-success-toast';
-  toast.setAttribute('role', 'status');
-  toast.setAttribute('aria-live', 'polite');
-  toast.setAttribute('data-vote-success-toast', '');
-  toast.textContent = message;
-  document.body.appendChild(toast);
+  toast.className = 'vote-success-toast'; toast.role = 'status';
+  toast.textContent = text(dialog, '[data-msg-success]'); document.body.append(toast);
   setTimeout(() => toast.remove(), 5000);
 }
-
-/** Every checkbox currently rendered in the issue-options list. */
-function getCheckboxes(): HTMLInputElement[] {
-  if (!els) return [];
-  return Array.from(els.optionsContainer.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
+function renderOptions(issues: VoteIssue[]): void {
+  const container = dialog?.querySelector<HTMLElement>('[data-vote-issue-options]');
+  if (!container) return;
+  container.replaceChildren(...issues.map((issue) => {
+    const label = document.createElement('label'); label.className = 'vote-issue-option';
+    const input = document.createElement('input'); input.type = 'checkbox'; input.value = String(issue.id);
+    label.append(input, document.createTextNode(issue.title)); return label;
+  }));
+  refresh();
 }
-
-function getCheckedIds(): number[] {
-  return getCheckboxes()
-    .filter((cb) => cb.checked)
-    .map((cb) => Number(cb.value));
+async function captchaToken(siteKey: string): Promise<string | null> {
+  if (!siteKey || !window.grecaptcha) return (!import.meta.env.PROD || ['localhost', '127.0.0.1'].includes(location.hostname)) ? 'local-development' : null;
+  return new Promise((resolve) => window.grecaptcha!.ready(() => {
+    window.grecaptcha!.execute(siteKey, { action: 'issue_vote' }).then(resolve).catch(() => resolve(null));
+  }));
 }
-
-/** Renders the checklist for `currentIssues`, pre-checking `checkedIds`. */
-function renderIssueOptions(checkedIds: Set<number>): void {
-  if (!els) return;
-  els.optionsContainer.innerHTML = '';
-
-  for (const issue of currentIssues) {
-    const label = document.createElement('label');
-    label.className = 'vote-issue-option';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.name = 'issueIds';
-    checkbox.value = String(issue.id);
-    checkbox.checked = checkedIds.has(issue.id);
-    label.append(checkbox, document.createTextNode(issue.title));
-    els.optionsContainer.append(label);
-  }
+function zoneFor(wardId: number): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-issue-vote-zone][data-ward-id="${wardId}"]`);
 }
-
-/** Caps the list at three checked (disables every OTHER checkbox once at the cap), and updates the submit button's countdown label + disabled state (design-system.md §7.9). */
-function refreshSelectionState(): void {
-  if (!els) return;
-  const checkboxes = getCheckboxes();
-  const checkedCount = checkboxes.filter((cb) => cb.checked).length;
-
-  for (const cb of checkboxes) {
-    cb.disabled = !cb.checked && checkedCount >= MAX_SELECTIONS;
-  }
-
-  els.submitButton.textContent = els.msgSubmitTemplate.replace('{n}', String(checkedCount));
-  els.submitButton.disabled = checkedCount === 0;
-}
-
-function showHomeWardMessage(homeWardId: number | null): void {
-  if (!els) return;
-  els.formWrap.hidden = true;
-  els.homeWardWrap.hidden = false;
-  els.homeWardMessage.textContent = els.msgHomeWardTemplate.replace('{wardId}', String(homeWardId ?? ''));
-}
-
-function showVoteForm(checkedIds: number[]): void {
-  if (!els) return;
-  els.homeWardWrap.hidden = true;
-  els.formWrap.hidden = false;
-  renderIssueOptions(new Set(checkedIds));
-  refreshSelectionState();
-}
-
-function pickTitle(lang: string, en: string | null, kn: string | null): string {
-  return lang === 'kn' ? (kn ?? en ?? '') : (en ?? kn ?? '');
-}
-
-/**
- * Splices fresh ranked results into the page's `<IssueBars>`
- * (`[data-issue-bars]`, WardIssues.astro), if present, by cloning one of
- * its OWN server-rendered `<li class="issue-bar">` nodes as a template —
- * this preserves Astro's scoped-style attribute (a plain
- * `document.createElement` node would not carry it, and the bars would
- * render unstyled) — and updating each clone's rank/title/share/fill.
- * Safe no-op if the page has no results section (e.g. this modal is opened
- * from somewhere else) or the ward had zero issues to begin with (no
- * template to clone from).
- */
-function updateIssueBars(results: IssueResultLike[]): void {
-  const container = document.querySelector<HTMLElement>('[data-issue-bars]');
-  const template = container?.querySelector('.issue-bar');
-  if (!container || !template) return;
-
-  const lang = document.documentElement.lang === 'kn' ? 'kn' : 'en';
-
-  const clones = results.map((result) => {
-    const li = template.cloneNode(true) as HTMLElement;
-    const rankEl = li.querySelector('.rank');
-    const titleEl = li.querySelector('.issue-title');
-    const shareEl = li.querySelector('.share');
-    const fillEl = li.querySelector<HTMLElement>('.fill');
-    if (rankEl) rankEl.textContent = String(result.rank);
-    if (titleEl) titleEl.textContent = pickTitle(lang, result.titleEn, result.titleKn);
-    if (shareEl) shareEl.textContent = `${result.sharePct}%`;
-    if (fillEl) fillEl.style.width = `${result.sharePct}%`;
-    return li;
-  });
-
-  container.replaceChildren(...clones);
-}
-
-function captureState(): VoteFormState | null {
-  const issueIds = getCheckedIds();
-  if (issueIds.length === 0) return null;
-  return { wardId: currentWardId, issueIds };
-}
-
-/**
- * Submits `state` and handles every outcome, INCLUDING re-submitting it
- * automatically once auth resumes on a 401, and re-checking the home-ward
- * state on a 403 — see the module header's "AUTH GATING + RESUME" note.
- */
-async function submitVoteState(state: VoteFormState): Promise<void> {
-  let res: Response;
-  try {
-    res = await putVote(state);
-  } catch {
-    showGenericError();
-    return;
-  }
-
-  if (res.status === 401) {
-    window.bvOpenRegisterLogin?.({
-      onSuccess: () => {
-        void submitVoteState(state);
-      },
-    });
-    return;
-  }
-
-  if (res.status === 403) {
-    // The visitor's home ward changed between open and submit (e.g.
-    // another tab) — re-check /api/me and show the home-ward message
-    // instead of a bare error.
-    const me = await fetchMe();
-    showHomeWardMessage(me && !me.anonymous ? me.homeWardId : null);
-    return;
-  }
-
-  if (res.status === 429) {
-    showRateLimitError();
-    return;
-  }
-
-  if (res.ok) {
-    const body = (await res.json()) as { ok: true; results: IssueResultLike[] };
-    updateIssueBars(body.results);
-    els?.controller.close();
-    if (els) showSuccessToast(els.msgSuccess);
-    return;
-  }
-
-  showGenericError();
-}
-
-async function onSubmit(event: SubmitEvent): Promise<void> {
-  event.preventDefault();
-  if (!els) return;
-
-  const state = captureState();
-  if (!state) return;
-
-  clearErrors();
-  els.submitButton.disabled = true;
-  try {
-    await submitVoteState(state);
-  } finally {
-    // Only re-derive the button's disabled/label state if the form is
-    // still the visible state (a success closes the dialog; a 403 switches
-    // to the home-ward message, which has no submit button to re-enable).
-    if (els && !els.formWrap.hidden) refreshSelectionState();
-  }
-}
-
-function wireForm(e: Elements): void {
-  e.form.addEventListener('submit', (event) => {
-    void onSubmit(event);
-  });
-  e.optionsContainer.addEventListener('change', () => refreshSelectionState());
-}
-
-async function openAuthed(opts: OpenVoteModalOptions, opener: FocusTarget | null | undefined, homeWardId: number | null): Promise<void> {
-  if (!els) return;
-
-  currentWardId = opts.wardId;
-  currentIssues = opts.issues;
-
-  if (homeWardId !== opts.wardId) {
-    showHomeWardMessage(homeWardId);
-    els.controller.open(opener ?? undefined);
-    return;
-  }
-
-  const current = await fetchCurrentSelections(opts.wardId);
-  showVoteForm(current?.issueIds ?? []);
-  els.controller.open(opener ?? undefined);
-}
-
-/**
- * Opens the Cast issue vote modal (IA §3.6/§7, PRD §5.5). Anonymous
- * visitors see Register/Login FIRST — this function re-runs as that flow's
- * `onSuccess`, so `opts` (the same ward/issues) is preserved across the
- * handoff. Safe no-op if the modal markup isn't present on this page.
- */
-export function openVoteModal(opts: OpenVoteModalOptions, opener?: FocusTarget | null): void {
-  if (!els) {
-    els = findElements(document);
-    if (!els) return;
-    wireForm(els);
-  }
-
-  clearErrors();
-
-  void fetchMe().then((me) => {
-    if (!me || me.anonymous) {
-      window.bvOpenRegisterLogin?.({
-        onSuccess: () => openVoteModal(opts, opener),
-      });
-      return;
+function applyStatus(zone: HTMLElement, payload: { status: string; wardId?: number; wardNameEn?: string; wardNameKn?: string }): void {
+  const vote = zone.querySelector<HTMLElement>('[data-vote-action]');
+  const show = zone.querySelector<HTMLElement>('[data-show-results-wrap]');
+  const elsewhere = zone.querySelector<HTMLElement>('[data-voted-elsewhere]');
+  if (vote) vote.hidden = payload.status !== 'not_voted';
+  if (show) show.hidden = payload.status !== 'voted_here';
+  if (elsewhere) {
+    elsewhere.hidden = payload.status !== 'voted_elsewhere';
+    if (!elsewhere.hidden) {
+      const name = document.documentElement.lang === 'kn' ? payload.wardNameKn : payload.wardNameEn;
+      elsewhere.textContent = (zone.dataset.msgVotedElsewhere ?? '').replace('{ward}', name ?? String(payload.wardId ?? ''));
     }
-
-    void openAuthed(opts, opener, me.homeWardId);
-  });
-}
-
-declare global {
-  interface Window {
-    bvOpenVoteModal?: typeof openVoteModal;
   }
 }
-
-function parseIssues(raw: string | undefined): VoteIssue[] {
-  if (!raw) return [];
+async function loadStatus(zone: HTMLElement): Promise<void> {
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (issue): issue is VoteIssue => issue && typeof issue.id === 'number' && typeof issue.title === 'string',
-    );
-  } catch {
-    return [];
-  }
+    const res = await fetch(`/api/issue-votes?wardId=${zone.dataset.wardId}`);
+    if (res.ok) applyStatus(zone, await res.json());
+  } catch { /* Keep the anonymous-safe default action visible. */ }
+}
+function renderResults(zone: HTMLElement, results: Array<{ titleEn: string | null; titleKn: string | null; count: number; sharePct: number }>): void {
+  const list = zone.querySelector<HTMLOListElement>('[data-vote-results]');
+  if (!list) return;
+  const lang = document.documentElement.lang === 'kn' ? 'kn' : 'en';
+  list.replaceChildren(...results.filter((result) => result.count > 0).map((result) => {
+    const li = document.createElement('li');
+    const title = lang === 'kn' ? (result.titleKn ?? result.titleEn) : (result.titleEn ?? result.titleKn);
+    const percentage = `${result.sharePct}%`;
+    li.className = 'issue-result';
+    li.setAttribute('aria-label', `${title ?? ''}: ${percentage}`);
+
+    const header = document.createElement('div');
+    header.className = 'issue-result-header';
+    const titleElement = document.createElement('span');
+    titleElement.className = 'issue-result-title';
+    titleElement.textContent = title ?? '';
+    const percentageElement = document.createElement('span');
+    percentageElement.className = 'issue-result-percentage';
+    percentageElement.textContent = percentage;
+    header.append(titleElement, percentageElement);
+
+    const track = document.createElement('div');
+    track.className = 'issue-result-track';
+    track.setAttribute('aria-hidden', 'true');
+    const fill = document.createElement('div');
+    fill.className = 'issue-result-fill';
+    fill.style.width = `${Math.max(0, Math.min(100, result.sharePct))}%`;
+    track.append(fill);
+    li.append(header, track);
+    return li;
+  }));
+  list.hidden = false;
 }
 
-/**
- * Wires every `[data-vote-action]` element on the page (WardIssues.astro's
- * "Vote your top 3" button today) to open this modal with its own
- * `data-ward-id`/`data-vote-issues` (JSON-encoded `VoteIssue[]`), and
- * exposes `window.bvOpenVoteModal` for anything else that wants to open it
- * directly.
- */
-export function initVoteModal(root: ParentNode = document): void {
-  window.bvOpenVoteModal = openVoteModal;
+async function submitVote(event: SubmitEvent): Promise<void> {
+  event.preventDefault(); if (!dialog || !current) return;
+  const issueIds = checkboxes().filter((box) => box.checked).map((box) => Number(box.value));
+  if (issueIds.length !== 3) return;
+  const submit = dialog.querySelector<HTMLButtonElement>('[data-vote-submit]'); if (submit) submit.disabled = true;
+  const token = await captchaToken(current.recaptchaSiteKey ?? '');
+  if (!token) { setError('verification'); refresh(); return; }
+  try {
+    const res = await fetch('/api/issue-votes', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wardId: current.wardId, issueIds, recaptchaToken: token }) });
+    if (!res.ok) { setError(res.status === 429 ? 'rate-limit' : res.status === 403 ? 'verification' : 'generic'); refresh(); return; }
+    const zone = zoneFor(current.wardId); if (zone) applyStatus(zone, { status: 'voted_here' });
+    controller?.close(); showToast();
+  } catch { setError('generic'); refresh(); }
+}
 
-  for (const el of root.querySelectorAll<HTMLElement>('[data-vote-action]')) {
-    el.addEventListener('click', (event) => {
-      event.preventDefault();
-      const wardId = Number(el.dataset.wardId);
-      const issues = parseIssues(el.dataset.voteIssues);
-      if (!Number.isFinite(wardId) || issues.length === 0) return;
-      openVoteModal({ wardId, issues }, el);
+export function openVoteModal(options: OpenVoteModalOptions, trigger?: FocusTarget): void {
+  if (!dialog || !controller) return; current = options; opener = trigger ?? null;
+  dialog.querySelectorAll<HTMLElement>('.form-error').forEach((node) => { node.hidden = true; });
+  renderOptions(options.issues); controller.open(opener);
+}
+
+export function initVoteModal(root: ParentNode = document): void {
+  dialog = root.querySelector<HTMLDialogElement>('[data-vote-modal]');
+  if (!dialog) return; controller = new ModalController(dialog as unknown as ModalDialogLike);
+  dialog.querySelector('[data-vote-form]')?.addEventListener('submit', (event) => void submitVote(event as SubmitEvent));
+  dialog.querySelector('[data-vote-issue-options]')?.addEventListener('change', refresh);
+  root.querySelectorAll<HTMLElement>('[data-issue-vote-zone]').forEach((zone) => {
+    void loadStatus(zone);
+    zone.querySelector<HTMLElement>('[data-vote-action]')?.addEventListener('click', (event) => {
+      const target = event.currentTarget as HTMLElement;
+      openVoteModal({ wardId: Number(zone.dataset.wardId), issues: JSON.parse(zone.dataset.voteIssues ?? '[]'), recaptchaSiteKey: zone.dataset.recaptchaSiteKey ?? '' }, target as FocusTarget);
     });
-  }
+    zone.querySelector<HTMLElement>('[data-show-results]')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget as HTMLButtonElement; button.disabled = true;
+      try { const res = await fetch(`/api/issue-votes?wardId=${zone.dataset.wardId}&results=1`); if (res.ok) renderResults(zone, (await res.json()).results); }
+      finally { button.disabled = false; }
+    });
+  });
+  window.bvOpenVoteModal = openVoteModal;
 }

@@ -1,29 +1,11 @@
 ---
 /**
- * Cast issue vote modal shell (Task 33, IA §3.6/§7, PRD §5.5,
- * design-system.md §7.9) — rendered ONCE per page (from Base.astro, same
- * convention as `src/components/RegisterLoginModal.astro` /
- * `FlagModal.astro`), as a native `<dialog>`. Purely markup/i18n — all
- * behavior (auth gating + resume, home-ward check, the checkbox-cap-at-3
- * list, the fetch calls, splicing fresh results into the page) lives in the
- * client island `src/islands/VoteModal.ts`, which finds this exact markup
- * via `[data-vote-modal]` and its `data-vote-*`/`data-msg-*` hooks.
- *
- * TWO STATES, one dialog (the island toggles which is visible, never both):
- *   - `[data-vote-form-wrap]` — the checkbox list (built entirely
- *     client-side, since the ward's current issue set isn't known to this
- *     component) capped at three, and the submit button whose label counts
- *     down ("Vote (2 of 3 selected)", design-system.md §7.9).
- *   - `[data-vote-home-ward-wrap]` — shown INSTEAD of the form when the
- *     authed visitor's home ward isn't the ward this modal was opened
- *     against (PRD §5.5: voting is home-ward-only) — explains why, with a
- *     link to `/account` to change it, rather than letting them submit a
- *     request that can only ever come back 403.
- *
- * Modal shell (Close button, scrim-tap, Escape, focus trap/return, URL
- * never changes) comes from `ModalController` (src/islands/ModalShell.ts).
+ * Anonymous exactly-three issue-vote dialog. The ward page supplies the
+ * centrally seeded choices; VoteModal.ts handles reCAPTCHA, submission,
+ * receipt-based state, and post-vote result reveal. ModalShell owns focus,
+ * Escape, scrim, and close behavior.
  */
-import { t, localePath, type Lang } from '../i18n';
+import { t, type Lang } from '../i18n';
 
 interface Props {
   lang: Lang;
@@ -46,6 +28,7 @@ const { lang } = Astro.props;
         <div data-vote-issue-options role="group" aria-label={t(lang, 'vote.modal.issuesLabel')}></div>
 
         <p class="form-error" data-vote-rate-limit-error hidden></p>
+        <p class="form-error" data-vote-verification-error hidden></p>
         <p class="form-error" data-vote-generic-error hidden></p>
 
         <button type="submit" class="btn btn--primary" data-vote-submit disabled>
@@ -54,19 +37,13 @@ const { lang } = Astro.props;
       </form>
     </div>
 
-    <div data-vote-home-ward-wrap hidden>
-      <p data-vote-home-ward-message></p>
-      <a class="btn btn--secondary" data-vote-home-ward-link href={localePath(lang, '/account')}>
-        {t(lang, 'vote.modal.changeHomeWard')}
-      </a>
-    </div>
   </div>
 
   <span hidden data-msg-rate-limit>{t(lang, 'vote.modal.rateLimited')}</span>
   <span hidden data-msg-generic-error>{t(lang, 'vote.modal.genericError')}</span>
+  <span hidden data-msg-verification-error>{t(lang, 'vote.modal.verificationError')}</span>
   <span hidden data-msg-success>{t(lang, 'vote.modal.success')}</span>
   <span hidden data-msg-submit-template>{t(lang, 'vote.modal.submitTemplate')}</span>
-  <span hidden data-msg-home-ward-template>{t(lang, 'vote.modal.homeWardOnlyTemplate')}</span>
 </dialog>
 
 <style>

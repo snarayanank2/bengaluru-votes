@@ -85,6 +85,9 @@ services:
       # SendGrid key gets added; it is not a working local login on its own.
       OTP_TEST_SINK: 'true'
       RETENTION_ENABLED: 'false'
+      # Explicitly scoped to a loopback SITE_ORIGIN by recaptcha.ts; lets the
+      # production-mode local container exercise anonymous forms without a key.
+      ALLOW_INSECURE_LOCAL_RECAPTCHA: 'true'
       # Deliberately unset: SENDGRID_*, TWILIO_*, GOOGLE_*, ANTHROPIC_API_KEY,
       # RECAPTCHA_*, SENTRY_DSN, GA_MEASUREMENT_ID. Each degrades to a
       # documented no-op rather than an error (runbook.md "Required

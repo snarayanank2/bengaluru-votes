@@ -338,7 +338,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
       return {
         ward: wardDisplayName(ward, user.language),
         candidateCount: String(count),
-        candidatesLink: absoluteUrl(user.language, `/ward/${wardId}/candidates`),
+        candidatesLink: absoluteUrl(user.language, `/ward/${wardId}`),
         notificationsLink,
         unsubscribeLink,
       };
@@ -357,9 +357,9 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
       const ward = await ctx.getWard(wardId);
       if (!ward) return undefined;
       // reportCardsLink (email) and candidatesLink (whatsapp) are the same
-      // page — the ward's candidate list, each entry linking to its own
+      // section — the ward's inline candidate list, each entry linking to its own
       // report card (docs/messages.md §7's WhatsApp variables line).
-      const candidatesLink = absoluteUrl(user.language, `/ward/${wardId}/candidates`);
+      const candidatesLink = absoluteUrl(user.language, `/ward/${wardId}`);
       return {
         ward: wardDisplayName(ward, user.language),
         candidatesLink,

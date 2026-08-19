@@ -57,6 +57,10 @@ function isPartnerWithUsPath(pathname: string): boolean {
   return stripTrailingSlash(stripLocalePrefix(pathname)) === PARTNER_PATH;
 }
 
+function isWardDetailPath(pathname: string): boolean {
+  return /^\/ward\/\d+$/.test(stripTrailingSlash(stripLocalePrefix(pathname)));
+}
+
 /**
  * Builds the full CSP header value for one response.
  *
@@ -158,7 +162,7 @@ export function buildCsp(nonce: string, pathname: string): string {
   const scriptSrcHosts = ['https://www.googletagmanager.com', ...MAPS_HOSTS];
   let frameSrc = "'none'";
 
-  if (isPartnerWithUsPath(pathname)) {
+  if (isPartnerWithUsPath(pathname) || isWardDetailPath(pathname)) {
     scriptSrcHosts.push('https://www.google.com', 'https://www.gstatic.com');
     frameSrc = 'https://www.google.com';
   }

@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
-import { seedWards, loadWardCandidateQuestionRows, loadWardRows } from '../../scripts/seed-wards';
+import { seedWards, loadCityIssueRows, loadWardCandidateQuestionRows, loadWardRows } from '../../scripts/seed-wards';
 import { seedAdmin, isValidEmail } from '../../scripts/seed-admin';
 import { seedDev, assertNotProduction } from '../../scripts/seed-dev';
 
@@ -53,6 +53,14 @@ describe('seed-wards', () => {
     }
   });
 
+  it('maps the same 20 bilingual catalog issues to every ward', () => {
+    const rows = loadCityIssueRows();
+    expect(rows).toHaveLength(369 * 20);
+    expect(new Set(rows.map((row) => row.wardId)).size).toBe(369);
+    expect(new Set(rows.filter((row) => row.wardId === rows[0].wardId).map((row) => row.catalogKey)).size).toBe(20);
+    expect(rows.every((row) => row.titleEn && row.titleKn)).toBe(true);
+  });
+
   it('inserts 369 wards into the db with non-empty name_kn, and is idempotent', async () => {
     const count = await seedWards(db);
     expect(count).toBe(369);
@@ -78,6 +86,8 @@ describe('seed-wards', () => {
       .from(schema.wardCandidateQuestions)
       .where(inArray(schema.wardCandidateQuestions.wardId, seeded.map((row) => row.id)));
     expect(questionRows).toHaveLength(369 * 5);
+    const issueRows = await db.select().from(schema.wardIssues).where(inArray(schema.wardIssues.wardId, seeded.map((row) => row.id)));
+    expect(issueRows.filter((row) => row.catalogKey !== null)).toHaveLength(369 * 20);
   });
 });
 

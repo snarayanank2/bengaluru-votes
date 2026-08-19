@@ -1,242 +1,89 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
-import { randomUUID } from 'node:crypto';
+import { and, eq, like } from 'drizzle-orm';
+import { ANONYMOUS_VOTE_COOKIE } from '../../src/lib/anonymous-votes';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
-  );
-}
-
-const client = postgres(process.env.DATABASE_URL, { max: 5 });
+if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required; see AGENTS.md');
+const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
+const WARD_ID = 99331;
+let issueIds: number[] = [];
 
-// High, task-specific ward ids (Task 33 brief) — this suite owns
-// 99331 (home ward) / 99332 (a different ward, for the wrong_ward case).
-const HOME_WARD_ID = 99331;
-const OTHER_WARD_ID = 99332;
+vi.mock('../../src/lib/recaptcha', () => ({ verifyRecaptcha: vi.fn() }));
+vi.mock('../../src/lib/budgets', () => ({ consumeBudget: vi.fn() }));
+import { verifyRecaptcha } from '../../src/lib/recaptcha';
+import { consumeBudget } from '../../src/lib/budgets';
+import { GET, PUT } from '../../src/pages/api/issue-votes';
 
-let userId: number;
-let issueA: number;
-let issueB: number;
-let issueC: number;
-let issueD: number;
-
-function putReq(body: unknown): Request {
-  return new Request('http://localhost/api/issue-votes', {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+function jar(token?: string) {
+  let value = token;
+  return {
+    get: vi.fn((name: string) => name === ANONYMOUS_VOTE_COOKIE && value ? { value } : undefined),
+    set: vi.fn((_name: string, next: string) => { value = next; }),
+    token: () => value,
+  };
+}
+function put(cookies: ReturnType<typeof jar>, body: unknown) {
+  return PUT({ request: new Request('http://localhost/api/issue-votes', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), cookies } as any);
+}
+function get(cookies: ReturnType<typeof jar>, suffix = '') {
+  return GET({ url: new URL(`http://localhost/api/issue-votes?wardId=${WARD_ID}${suffix}`), cookies } as any);
 }
 
-function getUrl(wardId: number | string): URL {
-  return new URL(`http://localhost/api/issue-votes?wardId=${wardId}`);
-}
-
-vi.mock('../../src/lib/rate-limit', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/lib/rate-limit')>();
-  return { ...actual, checkDefaultLimit: vi.fn() };
-});
-
-import { checkDefaultLimit } from '../../src/lib/rate-limit';
-import { PUT as issueVotesPUT, GET as issueVotesGET } from '../../src/pages/api/issue-votes';
-
-describe('PUT/GET /api/issue-votes (Task 33, PRD §5.5)', () => {
+describe('anonymous issue vote API', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
+    await db.insert(schema.wards).values({ id: WARD_ID, nameEn: 'Vote Test Ward', nameKn: 'ಮತ ಪರೀಕ್ಷಾ ವಾರ್ಡ್', corporation: 'south', zone: 'Test', boundaryRef: 'vote-test' }).onConflictDoNothing();
+    const rows = await db.insert(schema.wardIssues).values([1, 2, 3, 4].map((position) => ({ wardId: WARD_ID, catalogKey: `route-test-${position}`, titleEn: `Issue ${position}`, titleKn: `ಸಮಸ್ಯೆ ${position}`, position, translationStatus: 'done' as const }))).onConflictDoNothing().returning({ id: schema.wardIssues.id });
+    issueIds = rows.length ? rows.map((r) => r.id) : (await db.select({ id: schema.wardIssues.id }).from(schema.wardIssues).where(and(eq(schema.wardIssues.wardId, WARD_ID), like(schema.wardIssues.catalogKey, 'route-test-%')))).map((r) => r.id);
+  });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(verifyRecaptcha).mockResolvedValue({ ok: true, score: 0.9 });
+    vi.mocked(consumeBudget).mockResolvedValue(true);
+  });
+  afterAll(() => client.end());
 
-    for (const ward of [
-      {
-        id: HOME_WARD_ID,
-        nameEn: 'Issue Votes Route Test Home Ward',
-        nameKn: 'ಮತ ಮಾರ್ಗ ಪರೀಕ್ಷಾ ಮನೆ ವಾರ್ಡ್',
-        corporation: 'south' as const,
-        zone: 'Zone V',
-        boundaryRef: 'issue-votes-route-test-home-ward',
-      },
-      {
-        id: OTHER_WARD_ID,
-        nameEn: 'Issue Votes Route Test Other Ward',
-        nameKn: 'ಮತ ಮಾರ್ಗ ಪರೀಕ್ಷಾ ಇತರ ವಾರ್ಡ್',
-        corporation: 'south' as const,
-        zone: 'Zone V',
-        boundaryRef: 'issue-votes-route-test-other-ward',
-      },
-    ]) {
-      await db.insert(schema.wards).values(ward).onConflictDoUpdate({ target: schema.wards.id, set: ward });
-    }
-
-    const [user] = await db
-      .insert(schema.users)
-      .values({
-        email: `issue-votes-route-test-user-${randomUUID()}@example.com`,
-        homeWardId: HOME_WARD_ID,
-        role: 'citizen',
-        status: 'active',
-      })
-      .returning();
-    userId = user!.id;
-
-    const issues = await db
-      .insert(schema.wardIssues)
-      .values([
-        { wardId: HOME_WARD_ID, titleEn: 'Roads', titleKn: 'Roads (kn)', position: 0 },
-        { wardId: HOME_WARD_ID, titleEn: 'Water', titleKn: 'Water (kn)', position: 1 },
-        { wardId: HOME_WARD_ID, titleEn: 'Waste', titleKn: 'Waste (kn)', position: 2 },
-        { wardId: HOME_WARD_ID, titleEn: 'Lighting', titleKn: 'Lighting (kn)', position: 3 },
-      ])
-      .returning({ id: schema.wardIssues.id });
-    [issueA, issueB, issueC, issueD] = issues.map((i) => i.id);
+  it('accepts an anonymous exactly-three vote and sets an opaque HttpOnly receipt', async () => {
+    const cookies = jar();
+    const res = await put(cookies, { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'captcha' });
+    expect(res.status).toBe(200);
+    expect(cookies.set).toHaveBeenCalledWith(ANONYMOUS_VOTE_COOKIE, expect.any(String), expect.objectContaining({ httpOnly: true, sameSite: 'strict', path: '/' }));
+    expect(verifyRecaptcha).toHaveBeenCalledWith('captcha', { expectedAction: 'issue_vote' });
   });
 
-  afterAll(async () => {
-    await client.end();
+  it('rejects duplicate or non-three selections before CAPTCHA', async () => {
+    const res = await put(jar(), { wardId: WARD_ID, issueIds: [issueIds[0], issueIds[0], issueIds[1]], recaptchaToken: 'captcha' });
+    expect(res.status).toBe(400);
+    expect(verifyRecaptcha).not.toHaveBeenCalled();
   });
 
-  describe('PUT', () => {
-    it('anonymous (no session) -> 401, no-store', async () => {
-      vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-
-      const res = await issueVotesPUT({
-        request: putReq({ wardId: HOME_WARD_ID, issueIds: [issueA] }),
-        locals: { session: null },
-      } as any);
-
-      expect(res.status).toBe(401);
-      expect(res.headers.get('cache-control')).toBe('no-store');
-    });
-
-    it('wrong ward (not the citizen\'s home ward) -> 403 {error: "wrong_ward"}', async () => {
-      vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-
-      const res = await issueVotesPUT({
-        request: putReq({ wardId: OTHER_WARD_ID, issueIds: [issueA] }),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-
-      expect(res.status).toBe(403);
-      expect(await res.json()).toEqual({ error: 'wrong_ward' });
-    });
-
-    it('0 selections -> 400', async () => {
-      vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-
-      const res = await issueVotesPUT({
-        request: putReq({ wardId: HOME_WARD_ID, issueIds: [] }),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-
-      expect(res.status).toBe(400);
-      expect(await res.json()).toEqual({ error: 'invalid_selection_count' });
-    });
-
-    it('4 selections -> 400', async () => {
-      vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-
-      const res = await issueVotesPUT({
-        request: putReq({ wardId: HOME_WARD_ID, issueIds: [issueA, issueB, issueC, issueD] }),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-
-      expect(res.status).toBe(400);
-      expect(await res.json()).toEqual({ error: 'invalid_selection_count' });
-    });
-
-    it('over rate limit -> 429', async () => {
-      vi.mocked(checkDefaultLimit).mockResolvedValue(false);
-
-      const res = await issueVotesPUT({
-        request: putReq({ wardId: HOME_WARD_ID, issueIds: [issueA] }),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-
-      expect(res.status).toBe(429);
-    });
-
-    it('valid -> 200 {ok:true, results}, no-store, and issueIds are never present in logged output', async () => {
-      vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const res = await issueVotesPUT({
-        request: putReq({ wardId: HOME_WARD_ID, issueIds: [issueA, issueB] }),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-
-      expect(res.status).toBe(200);
-      expect(res.headers.get('cache-control')).toBe('no-store');
-      const body = await res.json();
-      expect(body.ok).toBe(true);
-      expect(Array.isArray(body.results)).toBe(true);
-      const byId = new Map(body.results.map((r: { issueId: number; sharePct: number }) => [r.issueId, r.sharePct]));
-      expect(byId.get(issueA)).toBeGreaterThan(0);
-      expect(byId.get(issueB)).toBeGreaterThan(0);
-
-      // PRIVACY: the specific issueIds chosen never appear in any logged line
-      // (only the opaque wardId/userId identifiers may).
-      const logged = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-      expect(logged).not.toContain(`issueIds`);
-      expect(logged).not.toContain(String(issueA));
-      expect(logged).not.toContain(String(issueB));
-      logSpy.mockRestore();
-    });
+  it('fails closed when CAPTCHA fails and when the daily circuit breaker is exhausted', async () => {
+    vi.mocked(verifyRecaptcha).mockResolvedValueOnce({ ok: false, reason: 'wrong_action' });
+    expect((await put(jar(), { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'bad' })).status).toBe(403);
+    vi.mocked(consumeBudget).mockResolvedValueOnce(false);
+    expect((await put(jar(), { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'captcha' })).status).toBe(429);
   });
 
-  describe('GET', () => {
-    it('anonymous (no session) -> 401', async () => {
-      const res = await issueVotesGET({ url: getUrl(HOME_WARD_ID), locals: { session: null } } as any);
-      expect(res.status).toBe(401);
-    });
+  it('does not reveal results before voting; reveals descending counts and percentages afterward', async () => {
+    const cookies = jar();
+    expect((await get(cookies, '&results=1')).status).toBe(403);
+    await put(cookies, { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'captcha' });
+    const status = await get(cookies);
+    expect(await status.json()).toEqual({ status: 'voted_here' });
+    const resultsRes = await get(cookies, '&results=1');
+    expect(resultsRes.status).toBe(200);
+    const body = await resultsRes.json() as any;
+    expect(body.results[0]).toEqual(expect.objectContaining({ count: expect.any(Number), sharePct: expect.any(Number) }));
+    expect(body.results.map((r: any) => r.count)).toEqual([...body.results.map((r: any) => r.count)].sort((a, b) => b - a));
+  });
 
-    it("authed, no active set in this ward -> {issueIds: []}", async () => {
-      // A brand-new user with no vote-sets at all.
-      const [freshUser] = await db
-        .insert(schema.users)
-        .values({
-          email: `issue-votes-route-test-fresh-${randomUUID()}@example.com`,
-          homeWardId: HOME_WARD_ID,
-          role: 'citizen',
-          status: 'active',
-        })
-        .returning();
-
-      const res = await issueVotesGET({
-        url: getUrl(HOME_WARD_ID),
-        locals: { session: { userId: freshUser!.id, role: 'citizen' } },
-      } as any);
-
-      expect(res.status).toBe(200);
-      expect(await res.json()).toEqual({ issueIds: [] });
-    });
-
-    it('authed, has an active set in this ward -> its selected issueIds', async () => {
-      vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-      // Cast via the PUT path itself so this exercises the real read-after-write.
-      await issueVotesPUT({
-        request: putReq({ wardId: HOME_WARD_ID, issueIds: [issueA, issueC] }),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-
-      const res = await issueVotesGET({
-        url: getUrl(HOME_WARD_ID),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.issueIds.sort((a: number, b: number) => a - b)).toEqual([issueA, issueC].sort((a, b) => a - b));
-    });
-
-    it('invalid wardId query param -> 400', async () => {
-      const res = await issueVotesGET({
-        url: getUrl('not-a-number'),
-        locals: { session: { userId, role: 'citizen' } },
-      } as any);
-      expect(res.status).toBe(400);
-    });
+  it('prevents a second ballot from the same receipt', async () => {
+    const cookies = jar();
+    expect((await put(cookies, { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'captcha' })).status).toBe(200);
+    expect((await put(cookies, { wardId: WARD_ID, issueIds: issueIds.slice(1, 4), recaptchaToken: 'captcha' })).status).toBe(409);
   });
 });

@@ -26,7 +26,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { budgetCounters } from '../db/schema';
 
-export type BudgetKind = 'geocode' | 'otp_send' | 'news_query' | 'epic_lookup';
+export type BudgetKind = 'geocode' | 'otp_send' | 'news_query' | 'epic_lookup' | 'anonymous_vote';
 
 /** UTC calendar date as 'YYYY-MM-DD', matching the `date` (string-mode) column. */
 function todayUtc(): string {

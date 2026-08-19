@@ -3,7 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { localePath, t, type Lang } from '../../src/i18n';
 import WardEn from '../../src/pages/ward/[id].astro';
@@ -39,6 +39,34 @@ const QUESTIONS = [1, 2, 3, 4, 5].map((position) => ({
   questionEn: `English candidate question ${position}`,
   questionKn: `ಕನ್ನಡ ಅಭ್ಯರ್ಥಿ ಪ್ರಶ್ನೆ ${position}`,
 }));
+const CITY_ISSUES = Array.from({ length: 20 }, (_, index) => ({
+  wardId: WARD.id,
+  catalogKey: `ward-page-test-${index + 1}`,
+  titleEn: `City issue ${index + 1}`,
+  titleKn: `ನಗರ ಸಮಸ್ಯೆ ${index + 1}`,
+  position: index + 1,
+  translationStatus: 'done' as const,
+}));
+const CANDIDATES = [
+  {
+    slug: 'ward-page-test-zainab',
+    wardId: WARD.id,
+    nameEn: 'Zainab (FICTIONAL)',
+    nameKn: 'ಝೈನಬ್ (ಕಾಲ್ಪನಿಕ)',
+    partyEn: 'Demo Party B',
+    partyKn: 'ಡೆಮೊ ಪಕ್ಷ ಬಿ',
+    status: 'contesting' as const,
+  },
+  {
+    slug: 'ward-page-test-arjun',
+    wardId: WARD.id,
+    nameEn: 'Arjun (FICTIONAL)',
+    nameKn: 'ಅರ್ಜುನ್ (ಕಾಲ್ಪನಿಕ)',
+    partyEn: 'Demo Party A',
+    partyKn: 'ಡೆಮೊ ಪಕ್ಷ ಎ',
+    status: 'filed' as const,
+  },
+];
 
 /**
  * Strips the container API's dev-mode debug attributes and collapses
@@ -95,9 +123,13 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
           questionKn: sql`excluded.question_kn`,
         },
       });
+    await db.insert(schema.wardIssues).values(CITY_ISSUES).onConflictDoNothing();
+    await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
+    await db.insert(schema.candidates).values(CANDIDATES);
   });
 
   afterAll(async () => {
+    await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
     await client.end();
   });
 
@@ -155,23 +187,30 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
     });
   });
 
-  describe('links to candidates/issues/voting-guide', () => {
-    it.each(['en', 'kn'] as const)('%s: locale-correct hrefs', async (lang) => {
+  describe('inline candidate list', () => {
+    it.each(['en', 'kn'] as const)('%s: renders candidates and a compare button without a candidate-list page link', async (lang) => {
       const res = await renderWard(lang, WARD.id);
       const html = normalize(await res.text());
+      const arjun = lang === 'kn' ? CANDIDATES[1].nameKn : CANDIDATES[1].nameEn;
+      const zainab = lang === 'kn' ? CANDIDATES[0].nameKn : CANDIDATES[0].nameEn;
 
-      expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}/candidates`)}"`);
-      expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}/issues`)}"`);
-      expect(html).toContain(`href="${localePath(lang, '/voting-guide')}"`);
+      expect(html).toContain(arjun);
+      expect(html).toContain(zainab);
+      expect(html.indexOf(arjun)).toBeLessThan(html.indexOf(zainab));
+      expect(html).toContain(`href="${localePath(lang, `/candidate/${CANDIDATES[1].slug}`)}"`);
+      expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}/compare`)}"`);
+      expect(html).toContain(t(lang, 'candidate.links.compare'));
+      expect(html).not.toContain(`href="${localePath(lang, `/ward/${WARD.id}/candidates`)}"`);
+      expect(html).not.toContain(`href="${localePath(lang, `/ward/${WARD.id}/issues`)}"`);
     });
   });
 
   describe('questions to ask candidates', () => {
-    it.each(['en', 'kn'] as const)('%s: renders five localized question cards after the existing cards', async (lang) => {
+    it.each(['en', 'kn'] as const)('%s: renders five localized question cards below issue voting', async (lang) => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
       const questionsStart = html.indexOf('class="candidate-questions"');
 
-      expect(questionsStart).toBeGreaterThan(html.indexOf('class="ward-links"'));
+      expect(questionsStart).toBeGreaterThan(html.indexOf('data-issue-vote-zone'));
       expect(html).toContain(t(lang, 'ward.questions.heading'));
       for (const question of QUESTIONS) {
         expect(html).toContain(lang === 'kn' ? question.questionKn : question.questionEn);
@@ -179,6 +218,19 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
 
       const questionsHtml = html.slice(questionsStart, html.indexOf('</section>', questionsStart));
       expect(questionsHtml.match(/<li>/g)).toHaveLength(5);
+    });
+  });
+
+  describe('anonymous top-three issue vote', () => {
+    it.each(['en', 'kn'] as const)('%s: appears above candidate questions with 20 bilingual choices and hidden results', async (lang) => {
+      const html = normalize(await (await renderWard(lang, WARD.id)).text());
+      expect(html.indexOf('data-issue-vote-zone')).toBeLessThan(html.indexOf('class="candidate-questions"'));
+      expect(html).toContain(t(lang, 'common.voteTop3'));
+      expect(html).toContain(t(lang, 'ward.vote.showResults'));
+      expect(html).toContain(lang === 'kn' ? CITY_ISSUES[0].titleKn : CITY_ISSUES[0].titleEn);
+      expect(html).toContain('data-show-results-wrap hidden');
+      expect(html).toContain('data-vote-results hidden');
+      expect(html).not.toMatch(/City issue 1[^<]*\d+ votes/);
     });
   });
 

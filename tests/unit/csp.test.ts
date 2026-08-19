@@ -12,7 +12,7 @@ const MAPS_SCRIPT_SRC = 'https://maps.googleapis.com https://maps.gstatic.com';
 
 describe('src/lib/csp.ts#buildCsp', () => {
   describe('base policy (non-partner paths)', () => {
-    it.each(['/', '/ward/57', '/candidate/some-slug', '/account', '/api/me', '/kn/ward/57'])(
+    it.each(['/', '/candidate/some-slug', '/account', '/api/me'])(
       '%s: strict script-src with the exact nonce interpolated, no unsafe-inline',
       (pathname) => {
         const csp = buildCsp(NONCE, pathname);
@@ -23,7 +23,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
     );
 
     it('worker-src allows blob: (Google Maps JS API web worker)', () => {
-      const csp = buildCsp(NONCE, '/ward/57');
+      const csp = buildCsp(NONCE, '/account');
       expect(csp).toContain("worker-src 'self' blob:");
     });
 
@@ -33,7 +33,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
     });
 
     it('frame-src is none on a non-partner path', () => {
-      const csp = buildCsp(NONCE, '/ward/57');
+      const csp = buildCsp(NONCE, '/account');
       expect(csp).toContain("frame-src 'none'");
     });
 
@@ -58,7 +58,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
       );
     });
 
-    it.each(['/ward/57', '/account', '/api/me', '/', '/kn/ward/57', '/partner/some-slug'])(
+    it.each(['/account', '/api/me', '/', '/partner/some-slug'])(
       '%s (non-partner-with-us path) does NOT contain www.google.com in script-src',
       (pathname) => {
         const csp = buildCsp(NONCE, pathname);
@@ -114,6 +114,18 @@ describe('src/lib/csp.ts#buildCsp', () => {
       const csp = buildCsp(NONCE, '/partner-with-us/sub');
       expect(csp).not.toContain('www.google.com');
       expect(csp).toContain("frame-src 'none'");
+    });
+  });
+
+  describe('ward detail extension (anonymous-vote reCAPTCHA v3)', () => {
+    it.each(['/ward/57', '/kn/ward/57', '/ward/57/'])('%s permits the reCAPTCHA script and frame', (pathname) => {
+      const csp = buildCsp(NONCE, pathname);
+      expect(csp).toContain('https://www.google.com');
+      expect(csp).toContain('https://www.gstatic.com');
+      expect(csp).toContain('frame-src https://www.google.com');
+    });
+    it('does not relax the separate ward issues route', () => {
+      expect(buildCsp(NONCE, '/ward/57/issues')).not.toContain('https://www.gstatic.com');
     });
   });
 
@@ -198,9 +210,10 @@ describe('src/lib/csp.ts#buildCsp', () => {
       }
     });
 
-    it('still adds the reCAPTCHA hosts on /partner-with-us only', () => {
+    it('adds the reCAPTCHA hosts on anonymous-write pages only', () => {
       expect(buildCsp('n0nce', '/partner-with-us')).toContain('https://www.gstatic.com');
-      expect(buildCsp('n0nce', '/ward/1')).not.toContain('https://www.gstatic.com');
+      expect(buildCsp('n0nce', '/ward/1')).toContain('https://www.gstatic.com');
+      expect(buildCsp('n0nce', '/ward/1/issues')).not.toContain('https://www.gstatic.com');
     });
 
     it('still forbids unsafe-inline in script-src', () => {

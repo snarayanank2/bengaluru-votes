@@ -20,14 +20,15 @@ This platform is operated by the **Oorvani Foundation**.
 - **`src` attribution** — if you arrived via a partner's tagged link, we record which partner sent you, for measurement only. This grants no permissions and doesn't change anything you see.
 - **Standard server logs** — the ordinary technical logs any web server keeps (IP address, request timestamps, and similar), kept for security and operational purposes.
 - **Google Analytics usage data and cookies** — see below.
+- **Issue-vote receipt** — after you vote, we store a random receipt in an HttpOnly browser cookie and keep only its SHA-256 hash in our database. It is not linked to a name, phone number, email address, account, or IP address. It prevents that browser from casting another ballot and lets it reveal results for the ward where it voted.
 
 ## How do we measure site usage?
 
 We use **Google Analytics** to understand how visitors use this platform, alongside our own server-side application events. Google Analytics sets cookies and collects usage data (pages visited, general location, device type) as described in Google's own privacy policy.
 
-## reCAPTCHA on the partner-with-us form
+## reCAPTCHA on anonymous submissions
 
-The [partner with us](/partner-with-us) expression-of-interest form is protected by **Google reCAPTCHA v3**, which sets its own cookies and sends usage data to Google, to keep that anonymous, no-account form safe from automated abuse. No other form on this platform uses reCAPTCHA.
+The [partner with us](/partner-with-us) expression-of-interest form and anonymous ward issue voting are protected by **Google reCAPTCHA v3**, which sets its own cookies and sends usage data to Google to keep these no-account submissions safe from automated abuse.
 
 ## Who else processes your data?
 
@@ -77,7 +78,9 @@ Our proposal — pending confirmation by legal counsel — is that citizen conta
 
 ## Issue votes
 
-Votes cast on ward issues are published only in **aggregate** — a ranked order with percentage shares for the ward — never as an individually identifiable vote tied to your name or account.
+You choose exactly three issues and can cast one ballot from a browser in one ward. Results remain hidden until that browser votes, then appear as issue counts and the percentage of ward ballots that selected each issue. Because every ballot has three selections, those percentages can add up to 300%.
+
+The database stores the ballot choices beside a hash of the random browser receipt, not beside your name or account. We do not log the receipt or your selected issue IDs. Clearing browser storage can remove the receipt; this practical safeguard reduces repeat voting but cannot prove that one person has voted only once without requiring identity or registration.
 
 ## Language of this policy
 

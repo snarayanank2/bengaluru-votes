@@ -25,7 +25,7 @@ export const eoiPathEnum = pgEnum('eoi_path', ['awareness', 'curation']);
 export const eoiStatusEnum = pgEnum('eoi_status', ['new', 'accepted', 'declined']);
 export const sendCodeEnum = pgEnum('send_code', ['W1', 'R1', 'L1', 'C1', 'C2', 'C3', 'F1']);
 export const sendStatusEnum = pgEnum('send_status', ['sent', 'failed', 'suppressed', 'held']);
-export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'otp_send', 'news_query', 'epic_lookup']);
+export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'otp_send', 'news_query', 'epic_lookup', 'anonymous_vote']);
 
 export const wards = pgTable('wards', {
   id: integer('id').primaryKey(),                      // corporation_id*1000 + per-corporation ward number (no city-wide official number exists in source data — see scripts/seed-wards.ts)
@@ -112,12 +112,16 @@ export const candidateNewsLinks = pgTable('candidate_news_links', {
 export const wardIssues = pgTable('ward_issues', {
   id: serial('id').primaryKey(),
   wardId: integer('ward_id').notNull().references(() => wards.id),
+  catalogKey: text('catalog_key'),
   titleEn: text('title_en'),
   titleKn: text('title_kn'),
   authoredLang: langEnum('authored_lang').notNull().default('en'),
   translationStatus: translationStatusEnum('translation_status').notNull().default('pending'),
   position: integer('position').notNull().default(0),
-}, (t) => [index('ward_issues_ward_idx').on(t.wardId)]);
+}, (t) => [
+  index('ward_issues_ward_idx').on(t.wardId),
+  uniqueIndex('ward_issues_catalog_uq').on(t.wardId, t.catalogKey).where(sql`${t.catalogKey} is not null`),
+]);
 
 export const candidateStances = pgTable('candidate_stances', {
   id: serial('id').primaryKey(),
@@ -240,6 +244,18 @@ export const issueVoteSets = pgTable('issue_vote_sets', {
 
 export const issueVoteSelections = pgTable('issue_vote_selections', {
   setId: integer('set_id').notNull().references(() => issueVoteSets.id, { onDelete: 'cascade' }),
+  wardIssueId: integer('ward_issue_id').notNull().references(() => wardIssues.id, { onDelete: 'cascade' }),
+}, (t) => [primaryKey({ columns: [t.setId, t.wardIssueId] })]);
+
+export const anonymousIssueVoteSets = pgTable('anonymous_issue_vote_sets', {
+  id: serial('id').primaryKey(),
+  voterHash: text('voter_hash').notNull().unique(),
+  wardId: integer('ward_id').notNull().references(() => wards.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => [index('anonymous_issue_vote_sets_ward_idx').on(t.wardId)]);
+
+export const anonymousIssueVoteSelections = pgTable('anonymous_issue_vote_selections', {
+  setId: integer('set_id').notNull().references(() => anonymousIssueVoteSets.id, { onDelete: 'cascade' }),
   wardIssueId: integer('ward_issue_id').notNull().references(() => wardIssues.id, { onDelete: 'cascade' }),
 }, (t) => [primaryKey({ columns: [t.setId, t.wardIssueId] })]);
 

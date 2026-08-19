@@ -170,7 +170,7 @@ describe('Ward issues & voting page (/ward/{id}/issues) — IA §3.6, PRD §5.4/
   });
 
   describe('with issues', () => {
-    it.each(['en', 'kn'] as const)('%s: renders issue titles, IssueBars, and no raw vote counts', async (lang) => {
+    it.each(['en', 'kn'] as const)('%s: renders issue titles and keeps voting/results off this detail page', async (lang) => {
       const res = await renderWardIssues(lang, WARD.id);
       expect(res.status).toBe(200);
       const html = normalize(await res.text());
@@ -180,14 +180,8 @@ describe('Ward issues & voting page (/ward/{id}/issues) — IA §3.6, PRD §5.4/
       expect(html).toContain(roadsTitle);
       expect(html).toContain(waterTitle);
 
-      // IssueBars is present (rank markers + % share).
-      expect(html).toMatch(/%/);
-      expect(html).toContain('issue-bar');
-
-      // showCounts is false — the component never emits its count span, and
-      // there is no raw "N votes"-style figure anywhere in the results markup.
-      expect(html).not.toContain('class="count"');
-      expect(html).not.toMatch(/\bvotes?:\s*\d+/i);
+      expect(html).not.toContain('data-vote-action');
+      expect(html).not.toContain('data-issue-bars');
     });
 
     it.each(['en', 'kn'] as const)('%s: withdrawn candidate stance is excluded; contesting stance is shown with source', async (lang) => {
@@ -205,13 +199,12 @@ describe('Ward issues & voting page (/ward/{id}/issues) — IA §3.6, PRD §5.4/
     });
   });
 
-  describe('"Vote your top 3" action + register-for-updates slot (anonymous-only)', () => {
-    it.each(['en', 'kn'] as const)('%s: renders both anonymous controls', async (lang) => {
+  describe('register-for-updates slot', () => {
+    it.each(['en', 'kn'] as const)('%s: renders registration but no voting control', async (lang) => {
       const res = await renderWardIssues(lang, WARD.id);
       const html = normalize(await res.text());
 
-      expect(html).toContain(t(lang, 'common.voteTop3'));
-      expect(html).toMatch(/data-vote-action[^>]*data-ward-id="94002"|data-ward-id="94002"[^>]*data-vote-action/);
+      expect(html).not.toContain('data-vote-action');
 
       expect(html).toContain(t(lang, 'common.registerForUpdates'));
       expect(html).toMatch(

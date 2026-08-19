@@ -1,10 +1,8 @@
 ---
 /**
- * Candidates-in-ward list (`/kn/ward/{id}/candidates`) — Kannada twin, see
- * src/pages/ward/[id]/candidates.astro for the full explanation of the 404
- * handling.
+ * Legacy Kannada candidate-list URL. Candidate lists now live on the ward
+ * page; keep shared links working with a permanent redirect.
  */
-import WardCandidates from '../../../../features/pages/WardCandidates.astro';
 import { db } from '../../../../db/client';
 import { wards } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
@@ -20,6 +18,6 @@ const [exists] = await db.select({ id: wards.id }).from(wards).where(eq(wards.id
 if (!exists) {
   return new Response(null, { status: 404 });
 }
----
 
-<WardCandidates lang="kn" wardId={wardId} />
+return new Response(null, { status: 308, headers: { Location: `/kn/ward/${wardId}` } });
+---

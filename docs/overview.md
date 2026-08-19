@@ -97,17 +97,16 @@ Two notes that matter more than they look.
 
 - Search and browse all published information: find their ward, view candidate report cards, compare candidates, read ward issues, look up their booth.
 - Access voting logistics: check registration/eligibility, and read how-to-vote and voter-ID guidance.
-- See public issue-vote results for any ward, and see the flag and vote buttons — tapping either prompts them to register.
+- Vote once from their browser on exactly three centrally defined issues in one ward, without registering; after voting, reveal that ward's counts and percentages.
 - On any page for their ward, see a **"Register for updates"** prompt — tapping it opens the same sign-up popup, with that ward carried through as their home ward once they complete it.
 - Can donate
-- **Out of scope:** no subscriptions, no submitting, no editing. Fully read-only.
+- **Out of scope:** no subscriptions or editing.
 
 ### 5.2 Registered citizen
 *Signs up with email and/or WhatsApp, their ward, and a language preference. Everything the anonymous user can do, plus:*
 
 - Receive **ward-scoped updates** (election dates and notices, the roll deadline, candidate milestones, booth logistics) by email / WhatsApp, in their preferred language.
 - **Flag misinformation** on any ward or candidate — across **any ward**, via a popup.
-- **Vote on their top 3 issues**, but only in their **registered home ward**.
 - **See what happened to what they submitted** — each flag shown as pending, accepted or rejected, with the curator's reason. Already built, at `/account/submissions`.
 - Set a **saved language preference** that also governs the language of their updates.
 
@@ -171,9 +170,9 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 | Curator publish gate | Curators are trusted; edits go live immediately, no second approval. |
 | Authentication | **One OTP mechanism for every role.** Citizens by email or WhatsApp; staff — admins, curators, transcribers — by **email only**. No passwords, no 2FA, no sign-in links. The first admin is bootstrapped with `npm run seed:admin`. |
 | Registration & flagging | Both are popups — no redirection. |
-| Anonymous contribution | Sees flag and vote actions; prompted to register at submit. |
-| Issue-vote visibility | Aggregated results are public, visible to anonymous citizens. |
-| Issue-vote scope | Registered citizens vote only in their home ward. |
+| Anonymous contribution | Issue voting needs no account; flagging still prompts for registration. |
+| Issue-vote visibility | Counts and percentages are returned only after that browser has voted in the ward. |
+| Issue-vote scope | One immutable, exactly-three ballot in one ward per browser receipt. |
 | Flagging scope | Registered citizens can flag across any ward. |
 | Issue list ownership | **Derived centrally**, in one editorial pass, from Sahaaya / JAM output and Open City complaints — not defined per ward by a curator. It is already a launch dependency; it needs a named owner. |
 | Report card content | **Affidavit-sourced fields and the affidavit itself.** Curator-compiled press coverage is deferred — it has no owner at this headcount. |

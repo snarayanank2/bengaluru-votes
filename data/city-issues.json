@@ -1,0 +1,102 @@
+[
+  {
+    "key": "garbage",
+    "titleEn": "Garbage collection and illegal dumping",
+    "titleKn": "ಕಸ ಸಂಗ್ರಹ ಮತ್ತು ಅಕ್ರಮ ಕಸ ಸುರಿಯುವುದು"
+  },
+  {
+    "key": "roads",
+    "titleEn": "Roads and potholes",
+    "titleKn": "ರಸ್ತೆಗಳು ಮತ್ತು ಗುಂಡಿಗಳು"
+  },
+  {
+    "key": "road-digging",
+    "titleEn": "Repeated road digging and utility coordination",
+    "titleKn": "ಪುನರಾವರ್ತಿತ ರಸ್ತೆ ಅಗೆಯುವಿಕೆ ಮತ್ತು ಸೇವಾ ಸಂಸ್ಥೆಗಳ ಸಮನ್ವಯ"
+  },
+  {
+    "key": "footpaths",
+    "titleEn": "Footpaths, encroachments, and accessibility",
+    "titleKn": "ಪಾದಚಾರಿ ಮಾರ್ಗಗಳು, ಒತ್ತುವರಿಗಳು ಮತ್ತು ಸುಗಮ ಪ್ರವೇಶ"
+  },
+  {
+    "key": "traffic",
+    "titleEn": "Traffic congestion and junction management",
+    "titleKn": "ಸಂಚಾರ ದಟ್ಟಣೆ ಮತ್ತು ಜಂಕ್ಷನ್ ನಿರ್ವಹಣೆ"
+  },
+  {
+    "key": "public-transport",
+    "titleEn": "Public transport and last-mile connectivity",
+    "titleKn": "ಸಾರ್ವಜನಿಕ ಸಾರಿಗೆ ಮತ್ತು ಕೊನೆಯ ಹಂತದ ಸಂಪರ್ಕ"
+  },
+  {
+    "key": "flooding",
+    "titleEn": "Storm-water drains and flooding",
+    "titleKn": "ಮಳೆನೀರು ಚರಂಡಿಗಳು ಮತ್ತು ಪ್ರವಾಹ"
+  },
+  {
+    "key": "sewage",
+    "titleEn": "Sewage and water contamination",
+    "titleKn": "ಒಳಚರಂಡಿ ಮತ್ತು ನೀರಿನ ಮಾಲಿನ್ಯ"
+  },
+  {
+    "key": "water-supply",
+    "titleEn": "Reliable water supply and groundwater",
+    "titleKn": "ವಿಶ್ವಾಸಾರ್ಹ ನೀರು ಸರಬರಾಜು ಮತ್ತು ಅಂತರ್ಜಲ"
+  },
+  {
+    "key": "street-lighting",
+    "titleEn": "Street lighting",
+    "titleKn": "ಬೀದಿ ದೀಪಗಳು"
+  },
+  {
+    "key": "public-toilets",
+    "titleEn": "Public toilets and neighbourhood cleanliness",
+    "titleKn": "ಸಾರ್ವಜನಿಕ ಶೌಚಾಲಯಗಳು ಮತ್ತು ನೆರೆಹೊರೆಯ ಸ್ವಚ್ಛತೆ"
+  },
+  {
+    "key": "public-spaces",
+    "titleEn": "Parks, playgrounds, and public spaces",
+    "titleKn": "ಉದ್ಯಾನಗಳು, ಆಟದ ಮೈದಾನಗಳು ಮತ್ತು ಸಾರ್ವಜನಿಕ ಸ್ಥಳಗಳು"
+  },
+  {
+    "key": "lakes",
+    "titleEn": "Lakes and water bodies",
+    "titleKn": "ಕೆರೆಗಳು ಮತ್ತು ಜಲಮೂಲಗಳು"
+  },
+  {
+    "key": "environment",
+    "titleEn": "Trees, green cover, air, and noise pollution",
+    "titleKn": "ಮರಗಳು, ಹಸಿರು ಹೊದಿಕೆ, ವಾಯು ಮತ್ತು ಶಬ್ದ ಮಾಲಿನ್ಯ"
+  },
+  {
+    "key": "planning",
+    "titleEn": "Unauthorised construction and planning violations",
+    "titleKn": "ಅನಧಿಕೃತ ನಿರ್ಮಾಣ ಮತ್ತು ಯೋಜನಾ ನಿಯಮ ಉಲ್ಲಂಘನೆಗಳು"
+  },
+  {
+    "key": "public-health",
+    "titleEn": "Public health, mosquitoes, and disease prevention",
+    "titleKn": "ಸಾರ್ವಜನಿಕ ಆರೋಗ್ಯ, ಸೊಳ್ಳೆಗಳು ಮತ್ತು ರೋಗ ತಡೆಗಟ್ಟುವಿಕೆ"
+  },
+  {
+    "key": "animals",
+    "titleEn": "Stray dogs and animal management",
+    "titleKn": "ಬೀದಿ ನಾಯಿಗಳು ಮತ್ತು ಪ್ರಾಣಿ ನಿರ್ವಹಣೆ"
+  },
+  {
+    "key": "public-safety",
+    "titleEn": "Public safety and safer streets",
+    "titleKn": "ಸಾರ್ವಜನಿಕ ಸುರಕ್ಷತೆ ಮತ್ತು ಸುರಕ್ಷಿತ ಬೀದಿಗಳು"
+  },
+  {
+    "key": "civic-documents",
+    "titleEn": "Khata, property tax, and civic documentation",
+    "titleKn": "ಖಾತಾ, ಆಸ್ತಿ ತೆರಿಗೆ ಮತ್ತು ನಾಗರಿಕ ದಾಖಲೆಗಳು"
+  },
+  {
+    "key": "ward-governance",
+    "titleEn": "Grievance resolution, transparency, and ward governance",
+    "titleKn": "ದೂರು ಪರಿಹಾರ, ಪಾರದರ್ಶಕತೆ ಮತ್ತು ವಾರ್ಡ್ ಆಡಳಿತ"
+  }
+]

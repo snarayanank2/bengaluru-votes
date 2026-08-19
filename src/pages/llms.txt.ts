@@ -56,7 +56,7 @@ export const GET: APIRoute = async () => {
     `- Election info / explainer: ${abs('/about-election')}`,
     '',
     '## Wards',
-    `Every one of Bengaluru's ${wardCount} GBA wards has its own page at ${abs('/ward/{id}')}, linking to that ward's candidates (${abs('/ward/{id}/candidates')}), side-by-side comparison (${abs('/ward/{id}/compare')}), and issues & voting (${abs('/ward/{id}/issues')}). A sample:`,
+    `Every one of Bengaluru's ${wardCount} GBA wards has its own page at ${abs('/ward/{id}')}, with that ward's candidate list, side-by-side candidate comparison (${abs('/ward/{id}/compare')}), and issue voting. A sample:`,
     sampleWardLines,
     '',
     '## Candidates',

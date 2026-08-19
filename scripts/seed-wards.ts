@@ -71,6 +71,7 @@ const VALID_CORPORATIONS = new Set(['north', 'south', 'east', 'west', 'central']
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_GEOJSON_PATH = path.join(__dirname, '..', 'data', 'gba.geojson');
 const DEFAULT_QUESTIONS_PATH = path.join(__dirname, '..', 'data', 'ward-candidate-questions.json');
+const DEFAULT_CITY_ISSUES_PATH = path.join(__dirname, '..', 'data', 'city-issues.json');
 
 type WardRow = typeof schema.wards.$inferInsert;
 
@@ -82,6 +83,8 @@ type QuestionSeedData = {
 };
 
 type WardQuestionRow = typeof schema.wardCandidateQuestions.$inferInsert;
+type WardIssueRow = typeof schema.wardIssues.$inferInsert;
+type CityIssue = { key: string; titleEn: string; titleKn: string };
 
 function normalizedWardName(value: string): string {
   return value
@@ -211,6 +214,53 @@ export async function seedWardCandidateQuestions(
   return rows.length;
 }
 
+/** Expand the shared 20-issue catalog into one bilingual row per ward. */
+export function loadCityIssueRows(
+  cityIssuesPath: string = DEFAULT_CITY_ISSUES_PATH,
+  wardGeojsonPath: string = DEFAULT_GEOJSON_PATH,
+): WardIssueRow[] {
+  const issues = JSON.parse(readFileSync(cityIssuesPath, 'utf8')) as CityIssue[];
+  if (!Array.isArray(issues) || issues.length !== 20) {
+    throw new Error(`seed-wards: city issue catalog has ${issues.length} issues; expected 20`);
+  }
+  const keys = new Set<string>();
+  issues.forEach((issue, index) => {
+    if (!issue.key?.trim() || !issue.titleEn?.trim() || !issue.titleKn?.trim()) {
+      throw new Error(`seed-wards: invalid city issue at position ${index + 1}`);
+    }
+    if (keys.has(issue.key)) throw new Error(`seed-wards: duplicate city issue key ${issue.key}`);
+    keys.add(issue.key);
+  });
+
+  return loadWardRows(wardGeojsonPath).flatMap((ward) => issues.map((issue, index) => ({
+    wardId: ward.id,
+    catalogKey: issue.key.trim(),
+    titleEn: issue.titleEn.trim(),
+    titleKn: issue.titleKn.trim(),
+    authoredLang: 'en' as const,
+    translationStatus: 'done' as const,
+    position: index + 1,
+  })));
+}
+
+export async function seedCityIssues(db: Db, cityIssuesPath?: string, wardGeojsonPath?: string): Promise<number> {
+  const rows = loadCityIssueRows(cityIssuesPath, wardGeojsonPath);
+  // Keep batches comfortably below Postgres's bind-parameter limit.
+  for (let offset = 0; offset < rows.length; offset += 500) {
+    await db.insert(schema.wardIssues).values(rows.slice(offset, offset + 500)).onConflictDoUpdate({
+      target: [schema.wardIssues.wardId, schema.wardIssues.catalogKey],
+      targetWhere: sql`${schema.wardIssues.catalogKey} is not null`,
+      set: {
+        titleEn: sql`excluded.title_en`,
+        titleKn: sql`excluded.title_kn`,
+        translationStatus: 'done',
+        position: sql`excluded.position`,
+      },
+    });
+  }
+  return rows.length;
+}
+
 /** Upsert every ward row from data/gba.geojson. Idempotent. Returns the row count. */
 export async function seedWards(db: Db, geojsonPath?: string): Promise<number> {
   const rows = loadWardRows(geojsonPath);
@@ -237,6 +287,7 @@ export async function seedWards(db: Db, geojsonPath?: string): Promise<number> {
     });
 
   await seedWardCandidateQuestions(db, undefined, geojsonPath);
+  await seedCityIssues(db, undefined, geojsonPath);
 
   return rows.length;
 }
@@ -256,7 +307,7 @@ async function main() {
   const db = drizzle(client, { schema });
   try {
     const count = await seedWards(db);
-    console.log(`seed-wards: upserted ${count} wards and ${count * 5} candidate questions`);
+    console.log(`seed-wards: upserted ${count} wards, ${count * 5} candidate questions, and ${count * 20} city issues`);
   } finally {
     await client.end();
   }

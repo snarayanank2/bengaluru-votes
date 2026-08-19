@@ -71,7 +71,7 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: 'invalid eoi payload' }, 400);
   }
 
-  const verified = await verifyRecaptcha(parsed.data.recaptchaToken);
+  const verified = await verifyRecaptcha(parsed.data.recaptchaToken, { expectedAction: 'eoi' });
   if (!verified.ok) {
     // PRIVACY: log the reCAPTCHA outcome only — never the submitted fields.
     logEvent('eoi_recaptcha_rejected', { reason: verified.reason });

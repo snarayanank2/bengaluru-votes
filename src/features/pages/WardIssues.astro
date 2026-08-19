@@ -1,52 +1,25 @@
 ---
 /**
- * Ward issues & voting (`/ward/{id}/issues`, `/kn/ward/{id}/issues`) —
- * information-architecture.md §3.6, PRD §5.4 (issues & candidate stance),
- * §5.5 (citizen issue voting), §13.1 (Phase 1 page — ships before candidate
- * data). Renders: the curator-defined issue list, each issue's candidate
- * stances (where any exist), the public ranked/percentage results, the
- * "Vote your top 3" action, and the register-for-updates slot.
+ * Ward issue and candidate-stance detail (`/ward/{id}/issues` and Kannada
+ * twin). Anonymous top-three voting and gated results now live on the main
+ * ward page; this route retains the issue/stance reading experience.
  *
  * Existence check lives in the route twins (src/pages/ward/[id]/issues.astro,
  * src/pages/kn/ward/[id]/issues.astro), not here — same pattern as
  * Ward.astro/[id].astro; see that file's header comment for the full
  * rationale. The `ward` lookup below is guarded defensively anyway.
  *
- * CACHE-SAFETY (architecture.md §5, binding): this component never reads
- * cookies/session. Both anonymous-only controls below — the register-for-
- * updates slot and the "Vote your top 3" action — always render their full
- * enabled anonymous markup (design-system.md §7.8: gated actions never
- * render disabled), identical for every visitor. The public issue-vote
- * results are themselves global per-ward state (same aggregate for
- * everyone), so nothing on this page varies by visitor. The "Vote your top
- * 3" button is a plain `type="button"` (no `href` — same convention as the
- * "Flag an error" button below it) carrying `data-vote-action`/
- * `data-ward-id`/`data-vote-issues` (this ward's CURRENT issues as a
- * JSON-encoded `{id,title}[]`, in the page's own language); Task 33's
- * `src/islands/VoteModal.ts` (mounted once from Base.astro) wires it up —
- * there is no server-rendered fallback href, matching FlagModal's own
- * JS-only convention. Task 28's MeSlot island (src/islands/MeSlot.ts) swaps
- * the register-for-updates control the same way it does on Ward.astro, and
- * lightly marks `data-vote-action` with `data-already-voted` when this ward
- * is the signed-in visitor's active issue-vote-set ward (a hint only —
- * VoteModal's own `/api/issue-votes` GET is what actually pre-checks the
- * modal's selections).
- *
- * No-raw-counts guarantee (PRD §5.5): `issueResults` (src/lib/votes.ts)
- * never returns a count field, and `<IssueBars>` is called with
- * `showCounts={false}` — belt and braces, since the data itself carries no
- * count to show.
+ * CACHE-SAFETY: this component never reads cookies or session state. The
+ * registration slot remains client-personalized through `/api/me`.
  */
 import Base from '../../layouts/Base.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Button from '../../components/Button.astro';
 import SourceLine from '../../components/SourceLine.astro';
-import IssueBars from '../../components/IssueBars.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
 import { wards, wardIssues, candidateStances, candidates } from '../../db/schema';
 import { and, asc, eq, notInArray } from 'drizzle-orm';
-import { issueResults } from '../../lib/votes';
 
 interface Props {
   lang: Lang;
@@ -108,12 +81,6 @@ for (const row of stanceRows) {
   }
 }
 
-const results = ward ? await issueResults(wardId) : [];
-const barResults = results.map((r) => ({
-  issueTitle: pick(lang, r.titleEn, r.titleKn),
-  rank: r.rank,
-  sharePct: r.sharePct,
-}));
 
 const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 const pagePath = `/ward/${wardId}/issues`;
@@ -133,14 +100,6 @@ const flagTargets = JSON.stringify(
   })),
 );
 
-// Cast issue vote (Task 33, PRD §5.5) — the ward's current issues, in the
-// page's own language, for src/islands/VoteModal.ts's client-built checkbox
-// list. Same "current issue list only" scoping as issueResults: an issue
-// deleted after this button was rendered simply won't be an option the next
-// time the page (and this JSON) is served.
-const voteIssues = JSON.stringify(
-  issues.map((issue) => ({ id: issue.id, title: pick(lang, issue.titleEn, issue.titleKn) })),
-);
 ---
 
 <Base lang={lang} title={title} description={description} path={pagePath}>
@@ -193,23 +152,6 @@ const voteIssues = JSON.stringify(
               })}
             </ol>
 
-            <section class="results" aria-label={t(lang, 'ward.issues.results.label')}>
-              <h2>{t(lang, 'ward.issues.results.heading')}</h2>
-              <IssueBars results={barResults} lang={lang} showCounts={false} />
-            </section>
-
-            <section class="vote-action">
-              <Button
-                variant="primary"
-                type="button"
-                lang={lang}
-                data-vote-action
-                data-ward-id={wardId}
-                data-vote-issues={voteIssues}
-              >
-                {t(lang, 'common.voteTop3')}
-              </Button>
-            </section>
           </>
         )}
 
@@ -308,13 +250,6 @@ const voteIssues = JSON.stringify(
     color: var(--color-text);
   }
 
-  .results h2 {
-    font-family: var(--font-heading);
-    font-size: var(--text-xl);
-    margin: 0 0 var(--space-4);
-  }
-
-  .vote-action,
   .register-slot {
     display: flex;
   }
