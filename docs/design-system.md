@@ -1,8 +1,8 @@
 # GBA Elections Citizen Platform — Design System
 
-**Status:** Draft v1 · **Applies to:** `bengaluruvotes.opencity.in` · **Date:** July 2026
+**Status:** Draft v1.1 · **Applies to:** `bengaluruvotes.opencity.in` · **Date:** August 2026
 
-This document defines the visual language for the platform: tokens, typography, components, and the rules that keep the interface trustworthy and neutral. It is the reference for anyone building a page from `docs/information-architecture.md`.
+This document defines the visual language for the platform: tokens, typography, components, and the rules that keep the interface trustworthy and neutral. It is the reference for anyone building or reviewing a page.
 
 The platform is a subdomain of [opencity.in](https://opencity.in/), run by the same operator (Oorvani Foundation). Open City has no formal design system, but its site has a consistent identity — a forest-green and yellow palette, Manrope headings, PT Sans body — and this system extends that identity so the subdomain reads as part of the family. All Open City values below were taken from the live site's theme presets in July 2026.
 
@@ -171,7 +171,37 @@ Sentence case everywhere: headings, buttons, labels. Buttons name the action's o
 
 ### 6.1 Spacing
 
-4px base scale: `--space-1` through `--space-12` = 4, 8, 12, 16, 24, 32, 48, 64px (plus intermediate steps as needed). Component-internal spacing uses 4–16; between-section spacing uses 24–64.
+Spacing uses a 4px base scale. These are the complete declared tokens; there are no implied intermediate names.
+
+| Token | Value | Default use |
+|---|---:|---|
+| `--space-1` | 4px | Icon-to-label or other micro-gap |
+| `--space-2` | 8px | Label-to-value, related text lines, adjacent controls |
+| `--space-3` | 12px | Tight item groups and compact action rows |
+| `--space-4` | 16px | Card padding, form-field gaps, card/grid gaps |
+| `--space-6` | 24px | Subsections and separation before a related action group |
+| `--space-8` | 32px | Default gap between page sections |
+| `--space-12` | 48px | Major page regions with a clear hierarchy change |
+| `--space-16` | 64px | Hero or landing-page separation only |
+
+Use the smallest token that makes the relationship clear. Related content stays close; a change in topic gets more space. Do not use 48px or 64px to repair a component whose internal spacing or alignment is wrong.
+
+Common vertical relationships:
+
+| Relationship | Gap |
+|---|---:|
+| Heading → subtitle or lead | `--space-2` |
+| Paragraph → paragraph | `--space-4` |
+| Section heading → section content | `--space-4` |
+| Field → field or card → card | `--space-4` |
+| Content group → its actions | `--space-6` |
+| Page section → page section | `--space-8` |
+
+These relationships are defaults, not values to add together. For example, a section stack supplies the heading-to-content gap; the first child must not add another top margin.
+
+The parent owns spacing between siblings. Prefer `gap` on a flex or grid parent over margins on each child. Components own their internal padding, not their distance from neighboring components. Reset default heading and paragraph margins inside composed components so browser margins do not combine with token spacing. Do not add container padding again inside a child section or card.
+
+Use only declared tokens in component CSS. If an existing token cannot express a recurring relationship, add and document a token here and in `src/styles/tokens.css`; do not use an arbitrary pixel value or invent a custom-property name locally. Fixed dimensions required by another rule—such as a 44px touch target or 56px app bar—are not spacing values.
 
 ### 6.2 Breakpoints and containers
 
@@ -182,6 +212,19 @@ Sentence case everywhere: headings, buttons, labels. Buttons name the action's o
 | `--bp-lg` | 1024px | Desktop; compare grid widens |
 
 Containers: `--container-prose` 42rem (guides, legal, about pages), `--container-app` 64rem (ward pages, compare, curator/admin tables). Side padding 16px mobile, 24px ≥md. Layouts are single-column below `md`; nothing depends on hover.
+
+### 6.2.1 Alignment and responsive grids
+
+- A page has one container and one primary left edge. Its heading, lead text, sections, and action rows align to that edge. Full-bleed banners and maps are explicit exceptions.
+- Text and controls are left-aligned by default. Center alignment is reserved for short, self-contained content such as a countdown, confirmation, or empty state; do not center ordinary headings over left-aligned content.
+- Repeated panels share one grid, the same padding, and the same internal anatomy. Let grid items stretch to a common row height when useful, but align their contents to the start. A longer Kannada label must not vertically center its panel beside a shorter English-shaped panel.
+- Use `align-items: start` for cards, field groups, and variable-length content. Use `align-items: center` only for a single-line relationship such as an icon and label, avatar and name, or controls in one action row.
+- Multi-column content collapses to one column below `--bp-md` unless its component specification says otherwise. Preserve DOM order during collapse. Do not use fixed heights or assumed line counts to line up neighboring cards.
+- Use explicit `gap` and grid columns. Do not use `justify-content: space-between` to manufacture spacing between unrelated content; it creates unstable gaps as text wraps.
+- Text columns and their headers align left. Numeric table columns align right and use tabular figures. A column's cells and header always share the same alignment.
+- Form controls in a group share a width and left edge. Their labels, helper text, and errors align with the control, not with the page edge independently.
+- Icon-and-text controls use a fixed-size icon, `--space-2` between icon and label, and centered cross-axis alignment. Icons do not shift when a label wraps.
+- If alignment differs from these defaults, state the reason in the component specification. Responsive convenience alone is not a reason for peer components to use different anatomy.
 
 ### 6.3 Shape and elevation
 
@@ -245,13 +288,17 @@ Social icons are 24px marks in 44×44 targets (§7.3), drawn in the footer's own
 
 Minimum target 44×44px; text 16px, Manrope 700. Loading state replaces the label with a spinner but holds the button's width. Disabled: `--gray-300` fill, `--gray-600` text — used only for genuinely unavailable actions, never to hide a gated one (§7.8).
 
+Buttons in an action row use flex-wrap, `--space-2` between related actions, and start alignment. Keep the primary action first in DOM and visual order. Do not give one button a one-off margin; the action-row parent owns the gap. On narrow screens, allow labels to wrap before making every button full-width. If actions must stack, keep their order and use one consistent width treatment for peer actions.
+
 ### 7.4 Links
 
 Forest, underlined in body text (color alone fails color-blind users); nav and card-title links may drop the underline when context makes them obvious. External links (EC/CEO Karnataka lookups) get an external-link glyph — the guided link-out on `/check-registration` is a primary-button-styled link with the glyph, so leaving the platform is explicit.
 
 ### 7.5 Cards and field rows
 
-Cards: white, border, radius-md, 16px padding. The **candidate row** (photo 56px circle, name in `--text-xl` Manrope 700, party name + symbol beneath in `--text-sm`) is identical in ward lists and compare headers. The **field row** with its source line (§3) is the unit of the report card; compare columns are the same field rows aligned in a grid so values line up across candidates (IA §3.5). Compare on mobile: 2-up columns with horizontal scroll and sticky field labels.
+Cards: white, border, radius-md, `--space-4` padding. A card's direct content stack uses `--space-2` for label/value relationships and `--space-4` between distinct content groups. Card titles have no browser-default margin. A grid of peer cards uses `--space-4` and start-aligns card contents; peer cards do not receive different padding to compensate for different content lengths.
+
+The **candidate row** (photo 56px circle, name in `--text-xl` Manrope 700, party name + symbol beneath in `--text-sm`) is identical in ward lists and compare headers. The **field row** with its source line (§3) is the unit of the report card. Its label, value, and source share a left edge, with `--space-1` between label and value and `--space-2` before the source when present. Compare columns repeat the same field-row grid so labels and values line up across candidates (IA §3.5). Compare on mobile: 2-up columns with horizontal scroll and sticky field labels.
 
 ### 7.6 Banners and countdowns
 
@@ -277,6 +324,8 @@ The three modals (Register/Login, Flag misinformation, Cast issue vote — IA §
 ### 7.10 Forms
 
 Labels above inputs, always visible (no placeholder-as-label). Inputs: 16px text (prevents iOS zoom), 44px min height, radius-sm, `--color-border`; focus border `--oc-forest` plus ring. Errors: brick text below the input plus a border change — never color alone. Helper text muted, above the error slot.
+
+A field is one vertical stack: label, control, helper text, then error. Use `--space-1` within that stack and `--space-4` between fields. Reserve the error slot only when preventing layout shift materially helps a multi-step flow; do not leave unexplained blank space in ordinary forms. Put form actions `--space-6` after the final field and apply the action-row rules in §7.3. Checkbox and radio controls align to the first line of their label, not the label block's vertical center.
 
 ### 7.11 Issue-vote results
 
@@ -368,11 +417,13 @@ A UI change is not complete when it compiles. Before handoff:
 2. Inspect at 390px mobile and at the desktop app-container width.
 3. Inspect English and Kannada.
 4. Exercise sparse, typical, dense, and long-text records where the data varies.
-5. Compare repeated elements side by side: labels, weights, padding, alignment, wrapping, and empty states must match.
-6. Check computed styles for any dropped declaration or unresolved `var(...)` value.
-7. Check the browser console and the accessibility tree.
-8. Capture a screenshot of the changed section and review it at normal scale. Look for collapsed spacing, accidental emphasis, excessive empty space, nested borders, and metadata that draws too much attention.
-9. Run the relevant route/component tests, typecheck, and the Kannada staleness check.
+5. Verify the page has one primary left edge. Overlay or measure repeated elements when necessary; do not accept a near match by eye.
+6. Compare repeated elements side by side: labels, weights, padding, alignment, wrapping, and empty states must match.
+7. Confirm parent layouts own sibling gaps and components own only their internal padding. Remove compensating one-off margins.
+8. Check computed styles for any dropped declaration, unresolved `var(...)` value, or spacing value outside the declared scale.
+9. Check the browser console and the accessibility tree.
+10. Capture a screenshot of the changed section and review it at normal scale. Look for collapsed spacing, accidental emphasis, excessive empty space, nested borders, drifting edges, and metadata that draws too much attention.
+11. Run the relevant route/component tests, typecheck, and the Kannada staleness check.
 
 When a first visual pass fails, record the general cause here or in the affected component section. Do not preserve a one-off correction only in page CSS; turn repeated lessons into a rule, token, component, or automated check.
 
