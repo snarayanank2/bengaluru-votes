@@ -5,7 +5,7 @@
  * module IS the root of the authorization chain the rest of the app reads
  * (`src/lib/authz.ts`'s `canEditWard`, `src/lib/curator.ts`'s
  * `scopedWardIds`, both keyed off `users.role` + `curator_scopes`). Every
- * mutation here is audit-logged (PRD §11) and admin-only (PRD §7's
+ * mutation here is admin-only (PRD §7's
  * permissions matrix): `src/middleware.ts` already 403s any non-admin
  * session on the `/admin/*` route class, and each mutator below
  * re-asserts `actor.role === 'admin'` anyway — defense in depth against a
@@ -26,8 +26,7 @@
  *
  * UNCAPPED (PRD §14): `setCuratorScope` enforces no upper bound on ward
  * count — an admin may scope a curator across all 369 wards if that is
- * the right call for that person. The audit log + rollback (Task 47) are
- * the only backstop, by design — there is no size guard to work around.
+ * the right call for that person. There is no size guard.
  *
  * ORDERING: `grantRole` and `setCuratorScope` are deliberately independent
  * — `setCuratorScope` does not check or require the target user's current
@@ -48,9 +47,8 @@
  * accepted residual race (concurrent double-revoke).
  */
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { curatorScopes, eoiSubmissions, users, wards } from '../db/schema';
-import { writeAudit, type Tx } from './audit';
 
 /** The actor shape every mutator below requires — same session shape `src/middleware.ts` puts on `locals.session`, narrowed to admin. */
 export type AdminActor = { userId: number; role: 'admin' };
@@ -66,11 +64,6 @@ function assertAdmin(actor: { role: string }): void {
   if (actor.role !== 'admin') {
     throw new Error('admin_only');
   }
-}
-
-/** Shared actor shape `writeAudit` (src/lib/audit.ts) expects. */
-function auditActor(actor: AdminActor) {
-  return { userId: actor.userId, role: 'admin' as const };
 }
 
 /**
@@ -102,8 +95,8 @@ function auditActor(actor: AdminActor) {
  * count=2 before either commits, so both could pass this check and the pair
  * could still commit to zero admins. Admin churn is rare (PRD §14) and a
  * table-wide lock to close this completely was judged not worth the added
- * contention on every grant/revoke — the audit log + `scripts/seed-admin.ts`
- * remain the backstop for this low-probability race.
+ * contention on every grant/revoke was judged not worth it;
+ * `scripts/seed-admin.ts` is the recovery path for this low-probability race.
  */
 async function assertNotSelfOrLastAdmin(
   tx: Tx,
@@ -163,15 +156,6 @@ export async function grantRole(actor: AdminActor, targetUserId: number, role: '
     }
 
     await tx.update(users).set({ role }).where(eq(users.id, targetUserId));
-
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'grant_role',
-      entityType: 'user',
-      entityId: String(targetUserId),
-      oldValue: existing.role,
-      newValue: role,
-    });
   });
 }
 
@@ -181,7 +165,7 @@ export async function grantRole(actor: AdminActor, targetUserId: number, role: '
  * citizen would be inert everywhere it's read, per module docstring, but
  * leaving it around would be a silent trap for a future re-grant that
  * expects to start from zero). Both the role update and the scope wipe
- * happen in one transaction with the audit write.
+ * happen in one transaction.
  *
  * LOCKOUT-PREVENTION GUARD (Task 44 review): before applying the change,
  * rejects with `'cannot_revoke_self'` (the caller revoking their own id) or
@@ -204,15 +188,6 @@ export async function revokeRole(actor: AdminActor, targetUserId: number): Promi
 
     await tx.update(users).set({ role: 'citizen' }).where(eq(users.id, targetUserId));
     await tx.delete(curatorScopes).where(eq(curatorScopes.userId, targetUserId));
-
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'revoke_role',
-      entityType: 'user',
-      entityId: String(targetUserId),
-      oldValue: existing.role,
-      newValue: 'citizen',
-    });
   });
 }
 
@@ -241,24 +216,10 @@ export async function setCuratorScope(actor: AdminActor, targetUserId: number, w
       }
     }
 
-    const existingRows = await tx
-      .select({ wardId: curatorScopes.wardId })
-      .from(curatorScopes)
-      .where(eq(curatorScopes.userId, targetUserId));
-
     await tx.delete(curatorScopes).where(eq(curatorScopes.userId, targetUserId));
     if (uniqueWardIds.length > 0) {
       await tx.insert(curatorScopes).values(uniqueWardIds.map((wardId) => ({ userId: targetUserId, wardId })));
     }
-
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'set_scope',
-      entityType: 'user',
-      entityId: String(targetUserId),
-      oldValue: existingRows.map((r) => r.wardId),
-      newValue: uniqueWardIds,
-    });
   });
 }
 

@@ -31,9 +31,8 @@
  *         the row back to `pending`, and the next `translateFieldSoon`
  *         call regenerates it for real).
  *       - `'done'`    — the other-language value was written (or, for an
- *         empty authored value, there was nothing to translate), status
- *         is now `'done'`, and — only when an actual translation was
- *         written — a SYSTEM audit entry was recorded.
+ *         empty authored value, there was nothing to translate), and the
+ *         status is now `'done'`.
  *       - `'skipped'` — no translator available (no `ANTHROPIC_API_KEY`
  *         and no injected `opts.translator`); the row is untouched
  *         (stays `'pending'`) and NOTHING crashes. `jobs` (Task 56)
@@ -62,8 +61,7 @@
  */
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client';
-import { candidateFields, candidates, wardIssues, candidateStances } from '../db/schema';
-import { writeAudit } from './audit';
+import { candidateFields, wardIssues, candidateStances } from '../db/schema';
 import glossaryJson from '../i18n/glossary.json';
 
 export type TranslateTable = 'candidate_fields' | 'ward_issues' | 'candidate_stances';
@@ -188,29 +186,18 @@ interface LoadedRow {
   valueKn: string | null;
   /** Field-name/candidate-or-ward context folded into the prompt (brief: "field name / context"). */
   contextNote: string;
-  /** Matches the `entityType`/`entityId` convention `src/lib/publish.ts` already uses for this table's audit rows. */
-  entityType: 'candidate_field' | 'ward_issue' | 'candidate_stance';
-  entityId: string;
-  wardId: number | null;
 }
 
 async function loadRow(target: TranslateTarget): Promise<LoadedRow | null> {
   if (target.table === 'candidate_fields') {
     const [row] = await db.select().from(candidateFields).where(eq(candidateFields.id, target.id));
     if (!row) return null;
-    const [candidate] = await db
-      .select({ wardId: candidates.wardId })
-      .from(candidates)
-      .where(eq(candidates.id, row.candidateId));
     return {
       authoredLang: row.authoredLang,
       translationStatus: row.translationStatus,
       valueEn: row.valueEn,
       valueKn: row.valueKn,
       contextNote: `A candidate report-card field ("${row.fieldKey}") on a GBA ward-election candidate profile (candidate id ${row.candidateId}).`,
-      entityType: 'candidate_field',
-      entityId: `${row.candidateId}:${row.fieldKey}`,
-      wardId: candidate?.wardId ?? null,
     };
   }
 
@@ -223,31 +210,21 @@ async function loadRow(target: TranslateTarget): Promise<LoadedRow | null> {
       valueEn: row.titleEn,
       valueKn: row.titleKn,
       contextNote: `A ward issue title (ward id ${row.wardId}) — a short local topic citizens vote on and candidates take stances on.`,
-      entityType: 'ward_issue',
-      entityId: String(row.id),
-      wardId: row.wardId,
     };
   }
 
   const [row] = await db.select().from(candidateStances).where(eq(candidateStances.id, target.id));
   if (!row) return null;
-  const [candidate] = await db
-    .select({ wardId: candidates.wardId })
-    .from(candidates)
-    .where(eq(candidates.id, row.candidateId));
   return {
     authoredLang: row.authoredLang,
     translationStatus: row.translationStatus,
     valueEn: row.valueEn,
     valueKn: row.valueKn,
     contextNote: `A candidate's stated position on ward issue id ${row.wardIssueId} (candidate id ${row.candidateId}).`,
-    entityType: 'candidate_stance',
-    entityId: `${row.wardIssueId}:${row.candidateId}`,
-    wardId: candidate?.wardId ?? null,
   };
 }
 
-/** Sets ONLY `translationStatus` — used for the "nothing to translate" (empty authored value) done-with-no-model-call path. No audit entry: no content changed. */
+/** Sets ONLY `translationStatus` for the empty authored-value path. */
 async function markStatus(target: TranslateTarget, status: 'pending' | 'done' | 'manual'): Promise<void> {
   if (target.table === 'candidate_fields') {
     await db.update(candidateFields).set({ translationStatus: status, updatedAt: new Date() }).where(eq(candidateFields.id, target.id));
@@ -258,54 +235,18 @@ async function markStatus(target: TranslateTarget, status: 'pending' | 'done' | 
   }
 }
 
-/**
- * The column-name key the audit oldValue/newValue should use for the
- * OTHER-language value, per table — `ward_issues`' real columns are
- * `titleEn`/`titleKn`, not `valueEn`/`valueKn` (those are only accurate for
- * `candidate_fields`/`candidate_stances`). Using the wrong key here doesn't
- * corrupt any data, but it does write a misleading audit trail (e.g. a
- * ward-issue translation recorded as `{valueKn: "..."}` when the actual
- * column is `titleKn`) — the audit log is a trust surface, so the recorded
- * key must match the real column.
- */
-function auditValueKey(table: TranslateTable, otherLang: Lang): 'valueEn' | 'valueKn' | 'titleEn' | 'titleKn' {
-  if (table === 'ward_issues') {
-    return otherLang === 'en' ? 'titleEn' : 'titleKn';
+/** Writes the freshly-translated other-language value and marks it done. */
+async function writeTranslationDone(target: TranslateTarget, otherLang: Lang, translated: string): Promise<void> {
+  if (target.table === 'candidate_fields') {
+    const set = otherLang === 'en' ? { valueEn: translated } : { valueKn: translated };
+    await db.update(candidateFields).set({ ...set, translationStatus: 'done', updatedAt: new Date() }).where(eq(candidateFields.id, target.id));
+  } else if (target.table === 'ward_issues') {
+    const set = otherLang === 'en' ? { titleEn: translated } : { titleKn: translated };
+    await db.update(wardIssues).set({ ...set, translationStatus: 'done' }).where(eq(wardIssues.id, target.id));
+  } else {
+    const set = otherLang === 'en' ? { valueEn: translated } : { valueKn: translated };
+    await db.update(candidateStances).set({ ...set, translationStatus: 'done' }).where(eq(candidateStances.id, target.id));
   }
-  return otherLang === 'en' ? 'valueEn' : 'valueKn';
-}
-
-/** Writes the freshly-translated OTHER-language value + `translationStatus: 'done'`, and its system audit entry, atomically. */
-async function writeTranslationDone(target: TranslateTarget, row: LoadedRow, otherLang: Lang, translated: string): Promise<void> {
-  const key = auditValueKey(target.table, otherLang);
-  const oldValue = { [key]: otherLang === 'en' ? row.valueEn : row.valueKn };
-  const newValue = { [key]: translated };
-
-  await db.transaction(async (tx) => {
-    if (target.table === 'candidate_fields') {
-      const set = otherLang === 'en' ? { valueEn: translated } : { valueKn: translated };
-      await tx
-        .update(candidateFields)
-        .set({ ...set, translationStatus: 'done', updatedAt: new Date() })
-        .where(eq(candidateFields.id, target.id));
-    } else if (target.table === 'ward_issues') {
-      const set = otherLang === 'en' ? { titleEn: translated } : { titleKn: translated };
-      await tx.update(wardIssues).set({ ...set, translationStatus: 'done' }).where(eq(wardIssues.id, target.id));
-    } else {
-      const set = otherLang === 'en' ? { valueEn: translated } : { valueKn: translated };
-      await tx.update(candidateStances).set({ ...set, translationStatus: 'done' }).where(eq(candidateStances.id, target.id));
-    }
-
-    await writeAudit(tx, {
-      actor: { userId: null, role: 'system' },
-      action: 'mt',
-      entityType: row.entityType,
-      entityId: row.entityId,
-      wardId: row.wardId,
-      oldValue,
-      newValue,
-    });
-  });
 }
 
 /**
@@ -330,7 +271,7 @@ export async function translateFieldNow(
 
   if (!sourceText || sourceText.trim().length === 0) {
     // Nothing to translate (e.g. a notDeclared field with no authored
-    // prose at all) — done, no model call, no audit (no content changed).
+    // prose at all) — done, with no model call or content write.
     await markStatus(target, 'done');
     return 'done';
   }
@@ -359,7 +300,7 @@ export async function translateFieldNow(
     return 'pending'; // an empty model response is treated like a failure — never write an empty "translation"
   }
 
-  await writeTranslationDone(target, row, otherLang, translated.trim());
+  await writeTranslationDone(target, otherLang, translated.trim());
   return 'done';
 }
 

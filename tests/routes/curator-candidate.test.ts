@@ -405,11 +405,6 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
       expect(readiness?.signedOffAt).toBeNull();
       expect(readiness?.clearedAt).not.toBeNull();
 
-      const auditRows = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.entityType, 'ward_readiness'), eq(schema.auditLog.entityId, String(WARD_STATUS_CLEAR.id))));
-      expect(auditRows.some((r) => r.action === 'sign_off_clear' && r.actorUserId === curatorId)).toBe(true);
     });
   });
 

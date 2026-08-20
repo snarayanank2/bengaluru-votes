@@ -203,21 +203,14 @@ const EXTRACTED_FIELD_KEYS = ['cases', 'assets', 'education'] as const;
 /**
  * Runs AI extraction for the affidavit stored as `mediaId` and publishes its
  * three fields (`cases`, `assets`, `education`) onto `candidateId`, each
- * marked `aiExtracted: true`, sourced from the stored affidavit PDF, actor
- * `system` (PRD §5.2's "system entry" audit requirement — `publishCandidateField`
- * writes that audit row itself). A `null` extracted value publishes as
+ * marked `aiExtracted: true`, sourced from the stored affidavit PDF, and
+ * published as the `system` actor. A `null` extracted value publishes as
  * `notDeclared: true` with the same affidavit source (PRD §9.1 — not
  * declared is a complete answer, not an absence).
  *
- * The extraction PUBLISH is always audited under `actorUserId: null`,
- * `actorRole: 'system'` (schema.ts's `audit_log.actor_user_id` convention —
- * "null = system (MT, extraction, jobs)") — this is a system action
- * regardless of which curator's upload triggered it. The `actor` parameter
- * below is accepted only for call-site symmetry / future use and is
- * DELIBERATELY not threaded into the publish actor: WHO triggered the
- * upload is already captured by the `candidate_affidavits` row and the
- * upload action's own audit entry, not by the extraction publish itself
- * (Task 37 review Fix 2).
+ * The extraction publish uses the system actor regardless of which curator's
+ * upload triggered it. The `actor` parameter below is accepted only for
+ * call-site symmetry and future use.
  *
  * Sets `candidate_affidavits.extractionStatus` to `'done'` on success or
  * `'failed'` on any failure (model error, or output that fails strict

@@ -25,8 +25,7 @@
  *
  * APPROVAL IS THE ACCOUNTABILITY POINT for an auto-suggested link (PRD
  * §5.2's "accountability stays with the curator"): `approveNewsLink` is a
- * normal audit-logged curator publish, exactly like any other curator
- * edit — it flips `status` to `approved` and stamps `approvedBy`.
+ * curator approval — it flips `status` to `approved` and stamps `approvedBy`.
  *
  * WRITE-TIME http(s) VALIDATION (architecture §7/§13): `addNewsLink`
  * re-validates the URL itself rather than trusting its caller — the
@@ -39,7 +38,6 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db/client';
 import { candidateNewsLinks, candidates, type newsOriginEnum, type newsStatusEnum } from '../db/schema';
-import { writeAudit } from './audit';
 import { isUniqueViolation } from './db-errors';
 
 export type NewsLinkOrigin = (typeof newsOriginEnum.enumValues)[number];
@@ -98,10 +96,8 @@ function isHttpUrl(value: string): boolean {
  *     `suggested` row is still reachable — and approvable — via this same
  *     page's suggested-links list (`listNewsLinks`'s default view).
  *
- * Audited as `action: 'news_link_add'`, `entityType: 'candidate_news_link'`
- * — a curator-added link is itself a publish-like accountable event (PRD
- * §11: every published change is audit-logged), even though it never
- * passes through the separate approval step an auto-suggestion does.
+ * A curator-added link never passes through the separate approval step an
+ * auto-suggestion does.
  */
 export async function addNewsLink(
   actor: NewsLinkActor,
@@ -146,16 +142,6 @@ export async function addNewsLink(
       throw err;
     }
 
-    await writeAudit(tx, {
-      actor,
-      action: 'news_link_add',
-      entityType: 'candidate_news_link',
-      entityId: String(inserted!.id),
-      wardId: candidate.wardId,
-      newValue: { url, title: trimmedTitle, domain, origin: 'curator', status: 'approved' },
-      sourceUrl: url,
-    });
-
     return { id: inserted!.id };
   });
 }
@@ -166,11 +152,10 @@ export async function addNewsLink(
  * `status` to `'approved'` and sets `approvedBy` to the approving curator.
  * THIS is the accountability point PRD §5.2 means by "accountability
  * stays with the curator" for an auto-suggested link: a normal
- * audit-logged curator publish, identical in spirit to any other curator
- * edit (architecture §7).
+ * curator approval, identical in spirit to any other curator edit.
  *
  * IDEMPOTENT on an already-approved link: re-approving is a silent no-op
- * (no audit write, no error) — unlike `flags.ts`'s `resolveFlag` (where
+ * (no write and no error) — unlike `flags.ts`'s `resolveFlag` (where
  * accept-vs-reject are mutually exclusive outcomes worth guarding a
  * double-resolve against), approving an already-approved link twice can't
  * produce a conflicting result, so there is nothing to protect against by
@@ -197,25 +182,11 @@ export async function approveNewsLink(actor: NewsLinkActor, linkId: number): Pro
       return; // idempotent no-op — see docstring
     }
 
-    const [candidate] = await tx
-      .select({ wardId: candidates.wardId })
-      .from(candidates)
-      .where(eq(candidates.id, existing.candidateId));
-
     await tx
       .update(candidateNewsLinks)
       .set({ status: 'approved', approvedBy: actor.userId })
       .where(eq(candidateNewsLinks.id, linkId));
 
-    await writeAudit(tx, {
-      actor,
-      action: 'news_link_approve',
-      entityType: 'candidate_news_link',
-      entityId: String(linkId),
-      wardId: candidate?.wardId ?? null,
-      oldValue: { status: existing.status, approvedBy: existing.approvedBy },
-      newValue: { status: 'approved', approvedBy: actor.userId },
-    });
   });
 }
 

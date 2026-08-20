@@ -37,9 +37,8 @@
  * later, separate total-votes figure is out of scope for this function.
  */
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { db, type Db } from '../db/client';
+import { db, type Db, type Tx } from '../db/client';
 import { wardIssues, issueVoteSets, issueVoteSelections, users } from '../db/schema';
-import type { Tx } from './audit';
 import { isUniqueViolation } from './db-errors';
 
 export interface IssueResult {
@@ -127,9 +126,6 @@ export async function issueResults(wardId: number): Promise<IssueResult[]> {
  * retireActiveSet(userId, tx); })`. Defaults to the module-level `db` for
  * every other (non-transactional) call site.
  *
- * NOT an audited action (Task 4/prototype decision, reaffirmed here): the
- * audit log records published DATA changes and moderation/admin actions,
- * never a citizen's own vote choices — so this never calls `writeAudit`.
  */
 export async function retireActiveSet(userId: number, executor: Db | Tx = db): Promise<void> {
   await executor
@@ -180,15 +176,6 @@ async function retireAndInsertSet(tx: Tx, userId: number, wardId: number, issueI
  *      -> `issue_not_in_ward` (defends against a stale client holding an
  *      issue id that's since been deleted, or one belonging to a different
  *      ward entirely).
- *
- * NO AUDIT (controller decision, overrides an earlier "audit-logged" plan
- * note): a citizen's individual issue picks are NEVER written to
- * `audit_log`. The audit log is the published-DATA-change +
- * moderation/admin trail (PRD §11) and is admin-readable — logging "user X
- * voted for issues A, B, C" would be a privacy leak for a citizen action
- * that is only ever exposed in aggregate (PRD §5.5's ranked %, no raw
- * counts). This mirrors {@link retireActiveSet}, which already never
- * audits for the same reason.
  *
  * CONCURRENCY: the retire + insert happen in ONE transaction
  * ({@link retireAndInsertSet}). For a citizen who already has an active

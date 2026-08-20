@@ -1,8 +1,8 @@
 ---
 /**
  * `/curator` (Task 34, information-architecture.md §5.1) — a curator's
- * home: review-queue count, a recent-activity audit tail, and the
- * awaiting-sign-off list for their scoped wards (admin: every ward).
+ * home: review-queue count and the awaiting-sign-off list for their scoped
+ * wards (admin: every ward).
  *
  * No `/kn/` twin — curator/admin routes are internal tooling (noindex, see
  * src/middleware.ts), rendered in the signed-in user's OWN saved
@@ -28,7 +28,7 @@ interface Props {
 }
 
 const { lang, data } = Astro.props;
-const { queueCount, recentActivity, awaitingSignOff } = data;
+const { queueCount, awaitingSignOff } = data;
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.dashboard.meta.title')} description={t(lang, 'curator.dashboard.meta.description')}>
@@ -56,38 +56,6 @@ const { queueCount, recentActivity, awaitingSignOff } = data;
               </li>
             ))}
           </ul>
-        )
-      }
-    </Card>
-
-    <Card>
-      <h2>{t(lang, 'curator.dashboard.recentActivity.heading')}</h2>
-      {
-        recentActivity.length === 0 ? (
-          <p>{t(lang, 'curator.dashboard.recentActivity.empty')}</p>
-        ) : (
-          <table class="activity-table">
-            <thead>
-              <tr>
-                <th>{t(lang, 'curator.dashboard.recentActivity.colAction')}</th>
-                <th>{t(lang, 'curator.dashboard.recentActivity.colEntity')}</th>
-                <th>{t(lang, 'curator.dashboard.recentActivity.colWard')}</th>
-                <th>{t(lang, 'curator.dashboard.recentActivity.colWhen')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentActivity.map((entry) => (
-                <tr>
-                  <td>{entry.action}</td>
-                  <td>
-                    {entry.entityType}:{entry.entityId}
-                  </td>
-                  <td>{entry.wardId ?? '—'}</td>
-                  <td>{entry.createdAt.toISOString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         )
       }
     </Card>
@@ -158,20 +126,4 @@ const { queueCount, recentActivity, awaitingSignOff } = data;
     font-size: var(--text-sm);
   }
 
-  .activity-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-  }
-
-  .activity-table th,
-  .activity-table td {
-    text-align: left;
-    padding: var(--space-2);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .activity-table tbody tr:nth-child(odd) {
-    background: var(--color-surface);
-  }
 </style>

@@ -9,7 +9,7 @@
  * SCOPE ENFORCEMENT (the security core of this task): every query here that
  * lists data is scoped to the caller's wards via `scopedWardIds` — a curator
  * with no matching `curator_scopes` row for a ward never sees that ward's
- * queue items, audit tail, or sign-off status. `null` from `scopedWardIds`
+ * queue items or sign-off status. `null` from `scopedWardIds`
  * is the admin sentinel ("no ward filter — see every ward"), never confused
  * with an empty array ("this curator has zero assigned wards — see
  * nothing"). The single-item lookup (`loadQueueItem`) does NOT scope-check
@@ -28,7 +28,6 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
-  auditLog,
   candidateAffidavits,
   candidateFields,
   candidateNewsLinks,
@@ -124,15 +123,6 @@ export function humanTargetLabel(targetType: FlagTargetType, targetRef: string):
 // Dashboard (IA §5.1)
 // ---------------------------------------------------------------------------
 
-export interface DashboardAuditRow {
-  id: number;
-  action: string;
-  entityType: string;
-  entityId: string;
-  wardId: number | null;
-  createdAt: Date;
-}
-
 export interface AwaitingSignOffWard {
   wardId: number;
   nameEn: string;
@@ -143,14 +133,13 @@ export interface AwaitingSignOffWard {
 
 export interface DashboardData {
   queueCount: number;
-  recentActivity: DashboardAuditRow[];
   awaitingSignOff: AwaitingSignOffWard[];
 }
 
 export async function loadDashboard(userId: number, role: Role): Promise<DashboardData> {
   const wardIds = await scopedWardIds(userId, role);
   if (wardIds !== null && wardIds.length === 0) {
-    return { queueCount: 0, recentActivity: [], awaitingSignOff: [] };
+    return { queueCount: 0, awaitingSignOff: [] };
   }
 
   const flagWardFilter = wardIds ? inArray(flagItems.wardId, wardIds) : undefined;
@@ -158,21 +147,6 @@ export async function loadDashboard(userId: number, role: Role): Promise<Dashboa
     .select({ count: sql<number>`count(*)::int` })
     .from(flagItems)
     .where(flagWardFilter ? and(eq(flagItems.status, 'pending'), flagWardFilter) : eq(flagItems.status, 'pending'));
-
-  const auditWardFilter = wardIds ? inArray(auditLog.wardId, wardIds) : undefined;
-  const recentActivity = await db
-    .select({
-      id: auditLog.id,
-      action: auditLog.action,
-      entityType: auditLog.entityType,
-      entityId: auditLog.entityId,
-      wardId: auditLog.wardId,
-      createdAt: auditLog.createdAt,
-    })
-    .from(auditLog)
-    .where(auditWardFilter)
-    .orderBy(desc(auditLog.createdAt))
-    .limit(10);
 
   const wardFilter = wardIds ? inArray(wards.id, wardIds) : undefined;
   const wardRows = await db
@@ -205,7 +179,7 @@ export async function loadDashboard(userId: number, role: Role): Promise<Dashboa
   // never-signed-off wards in their original (ward-id) order behind them.
   awaitingSignOff.sort((a, b) => Number(b.clearedByChange) - Number(a.clearedByChange));
 
-  return { queueCount: Number(countRow?.count ?? 0), recentActivity, awaitingSignOff };
+  return { queueCount: Number(countRow?.count ?? 0), awaitingSignOff };
 }
 
 // ---------------------------------------------------------------------------
@@ -1014,7 +988,7 @@ export type SignOffOutcome = { kind: 'saved' } | { kind: 'out_of_scope' };
  * Handles the "Mark ward ready" form. `signOffWard` (src/lib/readiness.ts)
  * itself re-checks scope (defense in depth — the route twin has already
  * 403'd once for GET/POST, same convention as every other scope-checked
- * mutator in this module) and does the actual snapshot + audit write.
+ * mutator in this module) and writes the readiness snapshot.
  */
 export async function handleWardSignOff(actor: CuratorActor, wardId: number): Promise<SignOffOutcome> {
   try {

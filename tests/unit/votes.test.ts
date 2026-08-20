@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { and, count, eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { issueResults, castVoteSet } from '../../src/lib/votes';
 
@@ -62,12 +62,6 @@ async function makeUser(email: string, homeWardId: number = WARD_ID): Promise<nu
     .onConflictDoUpdate({ target: schema.users.email, set: { homeWardId } })
     .returning({ id: schema.users.id });
   return user!.id;
-}
-
-/** Count of audit_log rows — used to assert castVoteSet never writes one (PRD §5.5's aggregated-public, never-per-citizen privacy decision). */
-async function auditRowCount(): Promise<number> {
-  const [row] = await db.select({ n: count() }).from(schema.auditLog);
-  return row?.n ?? 0;
 }
 
 /** The single (guaranteed by active_set_uq) active set's selected issue ids for `userId`, or [] if none. */
@@ -330,18 +324,5 @@ describe('issueResults (src/lib/votes.ts) — PRD §5.5', () => {
       expect(results[0]!.sharePct).toBe(100);
     });
 
-    it('NO AUDIT: casting a vote writes zero audit_log rows (a citizen\'s issue picks are never in the admin-readable audit trail)', async () => {
-      const issueA = await makeIssue('Roads', 0);
-      const issueB = await makeIssue('Water', 1);
-      const user = await makeUser('votes-fixture-a@example.com');
-
-      const before = await auditRowCount();
-      await castVoteSet(user, WARD_ID, [issueA]);
-      // Re-cast too — retireActiveSet's own path must also stay un-audited.
-      await castVoteSet(user, WARD_ID, [issueB]);
-      const after = await auditRowCount();
-
-      expect(after).toBe(before);
-    });
   });
 });

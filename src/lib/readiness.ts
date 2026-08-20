@@ -22,7 +22,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { candidateFields, candidates, wardReadiness } from '../db/schema';
-import { writeAudit } from './audit';
 import { canEditWard } from './authz';
 
 /** The three affidavit-derived report-card fields whose completeness this task's gate cares about (name/party are checked separately, off the `candidates` row itself). */
@@ -172,8 +171,7 @@ export function wasClearedByChange(row: { signedOffAt: Date | null; clearedAt: D
  * human override, not a bug to guard against here. `isWardReadyForComms`
  * is what actually enforces completeness for anything downstream.
  *
- * Upserts the `ward_readiness` row (a ward may never have had one) and
- * writes an audit entry (`action: 'sign_off'`) atomically.
+ * Upserts the `ward_readiness` row (a ward may never have had one).
  */
 export async function signOffWard(actor: CuratorActor, wardId: number): Promise<void> {
   const inScope = await canEditWard(actor.userId, actor.role, wardId);
@@ -185,8 +183,6 @@ export async function signOffWard(actor: CuratorActor, wardId: number): Promise<
   const now = new Date();
 
   await db.transaction(async (tx) => {
-    const [existing] = await tx.select().from(wardReadiness).where(eq(wardReadiness.wardId, wardId));
-
     const newValue = {
       completenessSnapshot: readiness,
       signedOffBy: actor.userId,
@@ -199,22 +195,6 @@ export async function signOffWard(actor: CuratorActor, wardId: number): Promise<
       .values({ wardId, ...newValue })
       .onConflictDoUpdate({ target: wardReadiness.wardId, set: newValue });
 
-    await writeAudit(tx, {
-      actor: { userId: actor.userId, role: actor.role },
-      action: 'sign_off',
-      entityType: 'ward_readiness',
-      entityId: String(wardId),
-      wardId,
-      oldValue: existing
-        ? {
-            completenessSnapshot: existing.completenessSnapshot,
-            signedOffBy: existing.signedOffBy,
-            signedOffAt: existing.signedOffAt,
-            clearedAt: existing.clearedAt,
-          }
-        : null,
-      newValue,
-    });
   });
 }
 

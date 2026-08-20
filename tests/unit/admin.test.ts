@@ -107,10 +107,6 @@ async function upsertUser(email: string, role: 'citizen' | 'curator' | 'admin'):
   return row!.id;
 }
 
-function auditEntityIdIn(userIds: number[]) {
-  return inArray(schema.auditLog.entityId, userIds.map(String));
-}
-
 let adminId: number;
 let citizenId: number;
 let plainCitizenId: number;
@@ -153,7 +149,6 @@ describe('src/lib/admin.ts (Task 44)', () => {
       ...extraFixtureIds,
     ];
     await db.delete(schema.curatorScopes).where(inArray(schema.curatorScopes.userId, userIds));
-    await db.delete(schema.auditLog).where(auditEntityIdIn(userIds)); // no-op: audit_log is append-only (DO INSTEAD NOTHING rules)
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, ...userIds]));
     await db.delete(schema.wards).where(inArray(schema.wards.id, ALL_WARD_IDS));
     await client.end();
@@ -184,21 +179,12 @@ describe('src/lib/admin.ts (Task 44)', () => {
   });
 
   describe('grantRole', () => {
-    it('promotes a citizen to curator and writes an audit row', async () => {
+    it('promotes a citizen to curator', async () => {
       await grantRole(admin, citizenId, 'curator');
 
       const [row] = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, citizenId));
       expect(row?.role).toBe('curator');
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'grant_role'), eq(schema.auditLog.entityId, String(citizenId))));
-      expect(audit).toBeDefined();
-      expect(audit!.entityType).toBe('user');
-      expect(audit!.actorUserId).toBe(adminId);
-      expect(audit!.actorRole).toBe('admin');
-      expect(audit!.newValue).toBe('curator');
     });
 
     it('rejects a non-admin actor without touching the DB', async () => {
@@ -224,12 +210,6 @@ describe('src/lib/admin.ts (Task 44)', () => {
       const scopeRows = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, scopedCuratorId));
       expect(scopeRows).toEqual([]);
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'revoke_role'), eq(schema.auditLog.entityId, String(scopedCuratorId))));
-      expect(audit).toBeDefined();
-      expect(audit!.newValue).toBe('citizen');
     });
 
     it('rejects a non-admin actor without touching the DB', async () => {
@@ -266,17 +246,6 @@ describe('src/lib/admin.ts (Task 44)', () => {
       const rows = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, bulkCuratorId));
       expect(rows.length).toBe(100);
       expect(rows.map((r) => r.wardId).sort((a, b) => a - b)).toEqual(BULK_WARD_IDS.slice().sort((a, b) => a - b));
-    });
-
-    it('writes a set_scope audit row', async () => {
-      await setCuratorScope(admin, zoneCuratorId, [WARD_PLAIN.id]);
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'set_scope'), eq(schema.auditLog.entityId, String(zoneCuratorId))))
-        .orderBy(schema.auditLog.id);
-      expect(audit).toBeDefined();
-      expect(audit!.actorRole).toBe('admin');
     });
 
     it('rejects a non-admin actor', async () => {

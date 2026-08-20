@@ -145,7 +145,7 @@ No layer translates at request time. Regeneration is unconditional — **hand-ed
 
 Curator edits **go live immediately** — no approval gate. Every field carries a visible source, distinguishing official/affidavit data from curator-compiled context. `src/lib/publish.ts` owns the publish path (including manual-override vs source-change MT regeneration).
 
-**The audit log was removed from the design on 2026-08-15** (`docs/architecture.md` §6, §7, §13) — no change history, no `/admin/audit`, no restore. The code has not been deleted yet: `src/lib/audit.ts`, `src/lib/audit-restore.ts`, `src/pages/admin/audit.astro`, the two test files and migration `0001_audit_append_only.sql` are all still present and still wired into the publish path. **Removing them is tracker 147** — until it lands, don't build anything new on `writeAudit`.
+**The audit log was removed on 2026-08-19** (tracker 147; `docs/architecture.md` §6, §7, §13) — no change history, no `/admin/audit`, and no restore action. Migration `0008_remove_audit_log.sql` drops the legacy table; `0001_audit_append_only.sql` remains only as immutable migration history.
 
 ### Contribution flows
 

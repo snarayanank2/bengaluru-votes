@@ -7,13 +7,10 @@
  * ============================================================================
  * ERASURE SEVERS IDENTITY, AGGREGATES SURVIVE — read before changing eraseUser
  * ============================================================================
- * Architecture §7: a deletion request runs an ADMIN-triggered, audit-logged
- * routine that (1) deletes the OTP/session/contact data and consent records,
- * and (2) severs identity from what remains — the `users` row becomes an
- * OPAQUE TOMBSTONE so `issue_vote_sets`/`issue_vote_selections`, `flag_
- * submissions`, and `audit_log` rows keep their aggregate + provenance value
- * with NO path back to a person. Audit *facts* survive; audit *identity*
- * does not.
+ * Architecture §7: an admin-triggered deletion request removes OTP,
+ * session, contact, and consent data, then leaves the `users` row as an
+ * opaque tombstone so issue-vote aggregates and flag submissions retain
+ * referential integrity without a path back to the person.
  *
  * DELETED (this user's rows only, in the SAME transaction as everything
  * else below): `otp_codes` — both by `userId` (the `add_contact` purpose,
@@ -39,25 +36,15 @@
  * an admin/curator target's role field itself is untouched by erasure
  * (see the LAST-ADMIN GUARD below for why erasing an active admin is
  * still guarded the same as banning one). `issue_vote_sets`/
- * `issue_vote_selections`, `flag_submissions`, `audit_log` rows — never
- * touched here; their `userId`/`actorUserId` column still points at this
- * now-opaque row id, which is the entire point of a tombstone rather than
- * a hard delete.
- *
- * AUDITED: one `erase_user` row, `entityId` = the erased user's (now
- * opaque) id. `oldValue`/`newValue` carry ONLY the status transition
- * (`{status:'active'|'banned'}` -> `{status:'erased'}`) — NEVER the
- * erased email/phone, which is precisely the PII this routine exists to
- * remove. Do not add fields to this audit write without re-reading this
- * paragraph.
+ * `issue_vote_selections` and `flag_submissions` are never touched here;
+ * their `userId` still points at the now-opaque row id, which is the point
+ * of a tombstone rather than a hard delete.
  *
  * IDEMPOTENT BY CONSTRUCTION, not by a special-cased early return: every
  * write above (null a column that's already null, delete rows that are
  * already gone, set `status` to the value it already has) is naturally a
  * no-op the second time, so calling `eraseUser` again on an already-erased
- * row does not throw, does not corrupt anything, and still writes another
- * `erase_user` audit row (a repeat erasure attempt is itself a fact worth
- * recording — "an admin re-confirmed the tombstone," not an error).
+ * row does not throw or corrupt anything.
  *
  * LAST-ADMIN / SELF GUARDS (mirrors src/lib/admin.ts's
  * `assertNotSelfOrLastAdmin`, distinct error codes per this task's brief):
@@ -89,9 +76,8 @@
  * what actually removes the row rather than leaving a dead one behind.
  */
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { flagSubmissions, otpCodes, sessions, users, wards } from '../db/schema';
-import { writeAudit, type Tx } from './audit';
 
 /** Same actor shape src/lib/admin.ts's `AdminActor` uses — every mutator below re-asserts `role === 'admin'` itself (defense in depth, see that module's docstring for the full rationale). */
 export type AdminActor = { userId: number; role: 'admin' };
@@ -100,10 +86,6 @@ function assertAdmin(actor: { role: string }): void {
   if (actor.role !== 'admin') {
     throw new Error('admin_only');
   }
-}
-
-function auditActor(actor: AdminActor) {
-  return { userId: actor.userId, role: 'admin' as const };
 }
 
 type ExistingUser = { role: string; status: string; email: string | null; phone: string | null };
@@ -138,7 +120,7 @@ async function assertNotLastActiveAdmin(tx: Tx, existing: ExistingUser, actionVe
 
 /**
  * DPDP erasure (architecture.md §7, PRD §5.16). See module docstring for
- * exactly what's deleted/nulled/kept/audited and the idempotency argument.
+ * exactly what's deleted, nulled, and kept, plus the idempotency argument.
  * Throws `'user_not_found'`, `'cannot_erase_self'`, or
  * `'cannot_erase_last_admin'` before writing anything.
  */
@@ -181,14 +163,6 @@ export async function eraseUser(actor: AdminActor, targetUserId: number): Promis
       })
       .where(eq(users.id, targetUserId));
 
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'erase_user',
-      entityType: 'user',
-      entityId: String(targetUserId),
-      oldValue: { status: existing.status },
-      newValue: { status: 'erased' },
-    });
   });
 }
 
@@ -197,11 +171,9 @@ export async function eraseUser(actor: AdminActor, targetUserId: number): Promis
  * users"). Kills every active session for the user immediately (see module
  * docstring's SESSIONS ARE DELETED note) and rejects an already-erased
  * target (`'cannot_ban_erased'` — erasure is terminal, never re-bannable).
- * `reason`, if given, is an admin-supplied moderation note (e.g. "spam") —
- * never the erased/banned user's own PII — folded into the audit
- * `newValue`.
+ * `reason`, if given, is accepted for caller compatibility but is not stored.
  */
-export async function banUser(actor: AdminActor, targetUserId: number, reason?: string): Promise<void> {
+export async function banUser(actor: AdminActor, targetUserId: number, _reason?: string): Promise<void> {
   assertAdmin(actor);
 
   await db.transaction(async (tx) => {
@@ -222,14 +194,6 @@ export async function banUser(actor: AdminActor, targetUserId: number, reason?: 
     await tx.update(users).set({ status: 'banned' }).where(eq(users.id, targetUserId));
     await tx.delete(sessions).where(eq(sessions.userId, targetUserId));
 
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'ban_user',
-      entityType: 'user',
-      entityId: String(targetUserId),
-      oldValue: { status: existing.status },
-      newValue: reason ? { status: 'banned', reason } : { status: 'banned' },
-    });
   });
 }
 
@@ -254,14 +218,6 @@ export async function reactivateUser(actor: AdminActor, targetUserId: number): P
 
     await tx.update(users).set({ status: 'active' }).where(eq(users.id, targetUserId));
 
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'reactivate_user',
-      entityType: 'user',
-      entityId: String(targetUserId),
-      oldValue: { status: existing.status },
-      newValue: { status: 'active' },
-    });
   });
 }
 
@@ -289,7 +245,7 @@ export interface UserSearchRow {
  * -by-omission spirit as `findUserIdByLookup` in src/lib/admin.ts, though
  * this returns rows, not a single id). Each row includes its
  * `flag_submissions` count (IA §6.3 "view submission history") — a count
- * only; the full list lives via the flags/audit tooling, not duplicated
+ * only; the full list lives via the flags tooling, not duplicated
  * here.
  */
 export async function searchUsers(queryRaw: string): Promise<UserSearchRow[]> {

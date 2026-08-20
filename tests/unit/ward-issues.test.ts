@@ -73,7 +73,6 @@ async function resetFixtures(): Promise<void> {
   }
   await db.delete(schema.wardIssues).where(inArray(schema.wardIssues.wardId, ALL_WARD_IDS));
   await db.delete(schema.issueVoteSets).where(inArray(schema.issueVoteSets.wardId, ALL_WARD_IDS));
-  await db.delete(schema.auditLog).where(inArray(schema.auditLog.wardId, ALL_WARD_IDS));
 }
 
 describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.5', () => {
@@ -117,11 +116,6 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
       expect(first?.translationStatus).toBe('pending');
       expect(second!.position).toBeGreaterThan(first!.position);
 
-      const auditRows = await db
-        .select()
-        .from(schema.auditLog)
-        .where(eq(schema.auditLog.entityId, String(firstId)));
-      expect(auditRows.some((r) => r.entityType === 'ward_issue' && r.actorUserId === curatorId)).toBe(true);
     });
 
     it('out-of-scope curator throws out_of_scope, nothing written', async () => {
@@ -222,12 +216,6 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
         .where(eq(schema.issueVoteSelections.setId, voteSet!.id));
       expect(remainingSelections).toHaveLength(1);
       expect(remainingSelections[0]?.wardIssueId).toBe(issueToKeep);
-
-      const auditRows = await db
-        .select()
-        .from(schema.auditLog)
-        .where(eq(schema.auditLog.entityId, String(issueToRemove)));
-      expect(auditRows.some((r) => r.action === 'delete' && r.entityType === 'ward_issue')).toBe(true);
 
       await db.delete(schema.issueVoteSelections).where(eq(schema.issueVoteSelections.setId, voteSet!.id));
       await db.delete(schema.issueVoteSets).where(eq(schema.issueVoteSets.id, voteSet!.id));

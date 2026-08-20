@@ -31,7 +31,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 
 if (!process.env.DATABASE_URL) {
@@ -118,10 +118,6 @@ async function makeWardComplete(wardId: number): Promise<void> {
   await insertCompleteFields(candidateId);
 }
 
-function auditEntityIdIn(entityType: string, ids: (number | string)[]) {
-  return and(eq(schema.auditLog.entityType, entityType), inArray(schema.auditLog.entityId, ids.map(String)));
-}
-
 async function upsertUser(email: string, role: 'citizen' | 'admin', srcAttribution?: string): Promise<number> {
   const [row] = await db
     .insert(schema.users)
@@ -168,11 +164,9 @@ describe('src/lib/partners.ts (Task 46)', () => {
 
   afterAll(async () => {
     if (createdEoiIds.length > 0) {
-      await db.delete(schema.auditLog).where(auditEntityIdIn('eoi_submission', createdEoiIds));
       await db.delete(schema.eoiSubmissions).where(inArray(schema.eoiSubmissions.id, createdEoiIds));
     }
     if (createdPartnerIds.length > 0) {
-      await db.delete(schema.auditLog).where(auditEntityIdIn('partner', createdPartnerIds));
       await db.delete(schema.partnerWards).where(inArray(schema.partnerWards.partnerId, createdPartnerIds));
       await db.delete(schema.partners).where(inArray(schema.partners.id, createdPartnerIds));
     }
@@ -182,7 +176,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
       await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, candidateIds));
     }
     await db.delete(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARD_IDS));
-    await db.delete(schema.auditLog).where(auditEntityIdIn('ward_readiness', ALL_WARD_IDS));
     await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARD_IDS));
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, citizenId]));
     await db.delete(schema.users).where(inArray(schema.users.email, [EMAILS.regUserA1, EMAILS.regUserA2]));
@@ -217,10 +210,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
       const wardRows = await db.select().from(schema.partnerWards).where(eq(schema.partnerWards.partnerId, id));
       expect(wardRows.map((r) => r.wardId).sort((a, b) => a - b)).toEqual([WARD_COVERED_1.id, WARD_COVERED_2.id]);
 
-      const [audit] = await db.select().from(schema.auditLog).where(and(eq(schema.auditLog.action, 'create_partner'), eq(schema.auditLog.entityId, String(id))));
-      expect(audit).toBeDefined();
-      expect(audit!.actorRole).toBe('admin');
-      expect(audit!.actorUserId).toBe(adminId);
     });
 
     it('rejects a slug with spaces/uppercase/punctuation', async () => {
@@ -266,12 +255,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
       const wardRows = await db.select().from(schema.partnerWards).where(eq(schema.partnerWards.partnerId, id));
       expect(wardRows.map((r) => r.wardId)).toEqual([WARD_COVERED_2.id]);
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'update_partner'), eq(schema.auditLog.entityId, String(id))));
-      expect(audit).toBeDefined();
-      expect(audit!.actorRole).toBe('admin');
     });
 
     it('omitting wardIds leaves the existing coverage untouched', async () => {
@@ -366,13 +349,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
       const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_OVERRIDE.id));
       expect(row?.commsHoldOverride).toBe(true);
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'override_comms_hold'), eq(schema.auditLog.entityId, String(WARD_OVERRIDE.id))));
-      expect(audit).toBeDefined();
-      expect(audit!.actorRole).toBe('admin');
-
       expect(await isWardReadyForComms(WARD_OVERRIDE.id)).toBe(true);
 
       const held = await heldWards();
@@ -410,12 +386,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
       const [partnerRow] = await db.select().from(schema.partners).where(eq(schema.partners.id, partnerId));
       expect(partnerRow?.slug).toBe(SLUG_AWARENESS);
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'accept_eoi_awareness'), eq(schema.auditLog.entityId, String(eoiId))));
-      expect(audit).toBeDefined();
-      expect(audit!.actorRole).toBe('admin');
     });
 
     it('acceptEoiCuration marks accepted WITHOUT creating a partner or granting any role — no self-activation', async () => {
@@ -434,25 +404,15 @@ describe('src/lib/partners.ts (Task 46)', () => {
       const citizenRoleAfter = (await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, citizenId)))[0]?.role;
       expect(citizenRoleAfter).toBe(citizenRoleBefore); // unchanged — the /admin/roles grant is a separate, manual step
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'accept_eoi_curation'), eq(schema.auditLog.entityId, String(eoiId))));
-      expect(audit).toBeDefined();
     });
 
-    it('declineEoi marks declined, audited', async () => {
+    it('declineEoi marks declined', async () => {
       const eoiId = await insertEoi('awareness');
       await declineEoi(admin, eoiId);
 
       const [eoi] = await db.select().from(schema.eoiSubmissions).where(eq(schema.eoiSubmissions.id, eoiId));
       expect(eoi?.status).toBe('declined');
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'decline_eoi'), eq(schema.auditLog.entityId, String(eoiId))));
-      expect(audit).toBeDefined();
     });
 
     it('rejects re-processing an already-accepted/declined EOI', async () => {

@@ -55,10 +55,6 @@ describe('news.ts — candidate news links (Task 38)', () => {
       })
       .onConflictDoUpdate({ target: schema.wards.id, set: { nameEn: 'News Links Test Ward' } });
 
-    // audit_log is append-only (can't be cleaned between runs), so — like
-    // tests/unit/audit.test.ts / tests/unit/flags.test.ts — this suite
-    // creates a fresh candidate (and hence fresh entityIds) every run via a
-    // unique slug.
     const [candidate] = await db
       .insert(schema.candidates)
       .values({
@@ -89,15 +85,6 @@ describe('news.ts — candidate news links (Task 38)', () => {
     expect(row!.status).toBe('approved');
     expect(row!.approvedBy).toBe(CURATOR_ACTOR.userId);
 
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'candidate_news_link'), eq(schema.auditLog.entityId, String(id))));
-    const addRow = auditRows.find((r) => r.action === 'news_link_add');
-    expect(addRow).toBeDefined();
-    expect(addRow!.actorUserId).toBe(CURATOR_ACTOR.userId);
-    expect(addRow!.actorRole).toBe('curator');
-    expect(addRow!.wardId).toBe(WARD_ID);
   });
 
   it('addNewsLink: a javascript: url throws "invalid_url" and inserts nothing', async () => {
@@ -164,14 +151,6 @@ describe('news.ts — candidate news links (Task 38)', () => {
     expect(after!.status).toBe('approved');
     expect(after!.approvedBy).toBe(CURATOR_ACTOR.userId);
 
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'candidate_news_link'), eq(schema.auditLog.entityId, String(suggested!.id))));
-    const approveRow = auditRows.find((r) => r.action === 'news_link_approve');
-    expect(approveRow).toBeDefined();
-    expect(approveRow!.actorUserId).toBe(CURATOR_ACTOR.userId);
-    expect(approveRow!.wardId).toBe(WARD_ID);
   });
 
   it('approveNewsLink: re-approving an already-approved link is an idempotent no-op', async () => {

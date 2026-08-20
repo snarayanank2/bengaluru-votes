@@ -25,7 +25,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
@@ -145,10 +145,6 @@ async function upsertUser(email: string, fields: Partial<UserInsert> = {}): Prom
   return row!.id;
 }
 
-function auditEntityIdIn(userIds: number[]) {
-  return inArray(schema.auditLog.entityId, userIds.map(String));
-}
-
 let adminId: number;
 let curatorId: number;
 let citizenId: number;
@@ -183,7 +179,6 @@ describe('/admin/users (Task 45)', () => {
     const userIds = [curatorId, citizenId, banTargetId, reactivateTargetId, eraseTargetId, csrfTargetId];
     await db.delete(schema.otpCodes).where(inArray(schema.otpCodes.destination, [EMAILS.eraseTarget, ERASE_TARGET_PHONE]));
     await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, ...userIds]));
-    await db.delete(schema.auditLog).where(auditEntityIdIn(userIds)); // no-op: audit_log is append-only
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, ...userIds]));
     await db.delete(schema.wards).where(eq(schema.wards.id, WARD.id));
     await client.end();
@@ -250,12 +245,6 @@ describe('/admin/users (Task 45)', () => {
       const { readSession } = await import('../../src/lib/session');
       expect(await readSession(target.cookieValue)).toBeNull();
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'ban_user'), eq(schema.auditLog.entityId, String(banTargetId))));
-      expect(audit).toBeDefined();
-      expect(audit!.actorUserId).toBe(adminId);
     });
 
     it('POST formAction=reactivate restores status active', async () => {
@@ -298,12 +287,6 @@ describe('/admin/users (Task 45)', () => {
       expect(row?.consentAt).toBeNull();
       expect(row?.homeWardId).toBe(WARD.id);
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'erase_user'), eq(schema.auditLog.entityId, String(eraseTargetId))));
-      expect(audit).toBeDefined();
-      expect(JSON.stringify([audit!.oldValue, audit!.newValue])).not.toContain(EMAILS.eraseTarget);
     });
 
     it("POST formAction=erase targeting the caller's OWN id -> 400 friendly error", async () => {

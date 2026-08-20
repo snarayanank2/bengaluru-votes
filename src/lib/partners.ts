@@ -22,7 +22,7 @@
  *      src/lib/readiness.ts) because they're incomplete, never signed off,
  *      or cleared by a later candidate-set change. This is the early
  *      warning for curator gaps: a held ward is a send that won't go out.
- *      `overrideCommsHold` is the admin's release valve (audited).
+ *      `overrideCommsHold` is the admin's release valve.
  *   3. EOI QUEUE (`listEois` + the triage actions) — expressions of
  *      interest split by path. Accepting the 'awareness' path PROVISIONS a
  *      partner (slug + kit page). Accepting the 'curation' path does NOT
@@ -33,16 +33,14 @@
  *      these two steps apart means an EOI acceptance alone can never grant
  *      any permission.
  *
- * ADMIN-ONLY + AUDITED, same defense-in-depth convention as
+ * ADMIN-ONLY, using the same defense-in-depth convention as
  * src/lib/admin.ts: `src/middleware.ts` already 403s any non-admin session
  * on `/admin/*`, and every mutator here re-asserts `actor.role === 'admin'`
- * anyway. Every mutation (partner create/update, override, EOI
- * accept/decline) writes an immutable `audit_log` row (PRD §11).
+ * anyway.
  */
 import { eq, inArray, sql } from 'drizzle-orm';
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { eoiSubmissions, partners, partnerWards, users, wardReadiness, wards } from '../db/schema';
-import { writeAudit, type Tx } from './audit';
 import { isUniqueViolation } from './db-errors';
 import { computeReadiness, wasClearedByChange } from './readiness';
 import type { AdminActor } from './admin';
@@ -54,11 +52,6 @@ function assertAdmin(actor: { role: string }): void {
   if (actor.role !== 'admin') {
     throw new Error('admin_only');
   }
-}
-
-/** Shared actor shape `writeAudit` expects. */
-function auditActor(actor: AdminActor) {
-  return { userId: actor.userId, role: 'admin' as const };
 }
 
 // ---------------------------------------------------------------------------
@@ -97,7 +90,7 @@ export interface CreatePartnerInput {
 
 /**
  * Creates a partner row + its initial `partner_wards` coverage set, in one
- * transaction, audited. Throws `'invalid_slug'` for a slug that fails
+ * transaction. Throws `'invalid_slug'` for a slug that fails
  * `isValidPartnerSlug`, `'invalid_ward_id'` for any unknown ward id (the
  * whole insert is rejected — no partial partner-with-bad-wards state), and
  * `'duplicate_slug'` for a slug that collides with an existing partner
@@ -127,15 +120,6 @@ export async function createPartner(actor: AdminActor, input: CreatePartnerInput
       if (uniqueWardIds.length > 0) {
         await tx.insert(partnerWards).values(uniqueWardIds.map((wardId) => ({ partnerId, wardId })));
       }
-
-      await writeAudit(tx, {
-        actor: auditActor(actor),
-        action: 'create_partner',
-        entityType: 'partner',
-        entityId: String(partnerId),
-        oldValue: null,
-        newValue: { slug, name, contact: contact ?? null, wardIds: uniqueWardIds },
-      });
 
       return { id: partnerId };
     });
@@ -191,14 +175,6 @@ export async function updatePartner(actor: AdminActor, partnerId: number, input:
       }
     }
 
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'update_partner',
-      entityType: 'partner',
-      entityId: String(partnerId),
-      oldValue: { name: existing.name, contact: existing.contact },
-      newValue: { ...patch, wardIds: newWardIds },
-    });
   });
 }
 
@@ -364,8 +340,8 @@ export async function heldWards(): Promise<HeldWard[]> {
 
 /**
  * RELEASES the comms send for `wardId`: sets `ward_readiness.commsHoldOverride
- * = true` (upserting the row if a ward has never had one), audited
- * (`'override_comms_hold'`). This is a WARD-LEVEL flag — every future send
+ * = true` (upserting the row if a ward has never had one). This is a
+ * WARD-LEVEL flag — every future send
  * for this ward is released, per `isWardReadyForComms`'s override escape
  * hatch (src/lib/readiness.ts), not a one-time/per-send toggle; there is no
  * separate "re-hold" action here because the flag is meant to stay released
@@ -380,22 +356,11 @@ export async function overrideCommsHold(actor: AdminActor, wardId: number): Prom
       throw new Error('invalid_ward_id');
     }
 
-    const [existing] = await tx.select().from(wardReadiness).where(eq(wardReadiness.wardId, wardId));
-
     await tx
       .insert(wardReadiness)
       .values({ wardId, commsHoldOverride: true })
       .onConflictDoUpdate({ target: wardReadiness.wardId, set: { commsHoldOverride: true } });
 
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'override_comms_hold',
-      entityType: 'ward_readiness',
-      entityId: String(wardId),
-      wardId,
-      oldValue: existing ? { commsHoldOverride: existing.commsHoldOverride } : null,
-      newValue: { commsHoldOverride: true },
-    });
   });
 }
 
@@ -445,8 +410,7 @@ export interface AcceptEoiAwarenessInput {
  * partner slug + kit page `/partner/{slug}`, Task 48) via `createPartner`
  * — the whole point of the awareness path (IA §6.4: "accepting awareness
  * -> provisions a partner slug + kit page"). Runs as two separate
- * transactions (partner creation, each already self-auditing via
- * `createPartner`; then the EOI status flip + its own audit row) rather
+ * transactions (partner creation, then the EOI status flip) rather
  * than one nested transaction — simpler, and a failure between the two
  * leaves the EOI merely un-marked-accepted with a real partner already
  * created, which is a safe, visibly-recoverable state (an admin can
@@ -472,21 +436,13 @@ export async function acceptEoiAwareness(actor: AdminActor, eoiId: number, input
 
   await db.transaction(async (tx) => {
     await tx.update(eoiSubmissions).set({ status: 'accepted' }).where(eq(eoiSubmissions.id, eoiId));
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'accept_eoi_awareness',
-      entityType: 'eoi_submission',
-      entityId: String(eoiId),
-      oldValue: { status: eoi.status },
-      newValue: { status: 'accepted', partnerId },
-    });
   });
 
   return { partnerId };
 }
 
 /**
- * Accepts a 'curation'-path EOI — marks it accepted and audits it, and
+ * Accepts a 'curation'-path EOI — marks it accepted and
  * NOTHING ELSE. Deliberately does NOT grant the curator role or touch
  * `curator_scopes` (PRD §5.13: "no self-activation") — this only records
  * that an admin has decided this person should become a curator; the
@@ -498,33 +454,17 @@ export async function acceptEoiCuration(actor: AdminActor, eoiId: number): Promi
   assertAdmin(actor);
 
   await db.transaction(async (tx) => {
-    const eoi = await loadPendingEoi(tx, eoiId);
+    await loadPendingEoi(tx, eoiId);
     await tx.update(eoiSubmissions).set({ status: 'accepted' }).where(eq(eoiSubmissions.id, eoiId));
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'accept_eoi_curation',
-      entityType: 'eoi_submission',
-      entityId: String(eoiId),
-      oldValue: { status: eoi.status },
-      newValue: { status: 'accepted' },
-    });
   });
 }
 
-/** Declines an EOI (either path), audited. Throws `'eoi_not_found'` / `'eoi_already_processed'`. */
+/** Declines an EOI (either path). Throws `'eoi_not_found'` / `'eoi_already_processed'`. */
 export async function declineEoi(actor: AdminActor, eoiId: number): Promise<void> {
   assertAdmin(actor);
 
   await db.transaction(async (tx) => {
-    const eoi = await loadPendingEoi(tx, eoiId);
+    await loadPendingEoi(tx, eoiId);
     await tx.update(eoiSubmissions).set({ status: 'declined' }).where(eq(eoiSubmissions.id, eoiId));
-    await writeAudit(tx, {
-      actor: auditActor(actor),
-      action: 'decline_eoi',
-      entityType: 'eoi_submission',
-      entityId: String(eoiId),
-      oldValue: { status: eoi.status },
-      newValue: { status: 'declined' },
-    });
   });
 }

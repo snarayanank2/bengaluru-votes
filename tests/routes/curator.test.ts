@@ -420,11 +420,6 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
       const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, itemDedupe.id));
       expect(item?.status).toBe('accepted');
 
-      const auditRows = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.entityType, 'candidate_field'), eq(schema.auditLog.entityId, `${candidateA}:cases`)));
-      expect(auditRows.some((r) => r.action === 'publish' && r.actorUserId === curatorId)).toBe(true);
     });
 
     it('accept without the confirmation checkbox -> validation error, nothing published', async () => {

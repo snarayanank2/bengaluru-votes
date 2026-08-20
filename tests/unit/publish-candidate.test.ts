@@ -140,19 +140,6 @@ describe('src/lib/publish.ts — publishCandidateCore / createCandidate / publis
       expect(readiness?.signedOffAt).toBeNull();
       expect(readiness?.clearedAt).not.toBeNull();
 
-      const clearAudit = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.entityType, 'ward_readiness'), eq(schema.auditLog.entityId, String(WARD_SIGNED_OFF.id))));
-      expect(clearAudit.some((r) => r.action === 'sign_off_clear')).toBe(true);
-
-      const coreAudit = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.entityType, 'candidate'), eq(schema.auditLog.entityId, String(candidateId))));
-      expect(coreAudit.some((r) => r.action === 'publish' && (r.newValue as { status: string }).status === 'contesting')).toBe(
-        true,
-      );
     });
   });
 
@@ -249,13 +236,6 @@ describe('src/lib/publish.ts — publishCandidateCore / createCandidate / publis
         .where(and(eq(schema.candidateStances.wardIssueId, wardIssueId), eq(schema.candidateStances.candidateId, candidate.id)));
       expect(stance?.valueEn).toBe('Will prioritize pothole repair.');
 
-      const auditRows = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.entityType, 'candidate_stance'), eq(schema.auditLog.entityId, `${wardIssueId}:${candidate.id}`)));
-      expect(auditRows.length).toBe(1);
-      expect(auditRows[0]!.action).toBe('publish');
-
       await publishStance(ACTOR, {
         wardIssueId,
         candidateId: candidate.id,
@@ -272,11 +252,6 @@ describe('src/lib/publish.ts — publishCandidateCore / createCandidate / publis
       expect(updated?.valueEn).toBe('Updated stance.');
       expect(updated?.sourceType).toBe('official');
 
-      const auditRowsAfter = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.entityType, 'candidate_stance'), eq(schema.auditLog.entityId, `${wardIssueId}:${candidate.id}`)));
-      expect(auditRowsAfter.length).toBe(2);
     });
   });
 });

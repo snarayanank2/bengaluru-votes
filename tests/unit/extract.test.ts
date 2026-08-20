@@ -106,7 +106,6 @@ async function cleanup(): Promise<void> {
     await db.delete(schema.media).where(inArray(schema.media.id, createdMediaIds));
     createdMediaIds.length = 0;
   }
-  await db.delete(schema.auditLog).where(eq(schema.auditLog.wardId, WARD.id));
   await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
 }
 
@@ -155,12 +154,6 @@ describe('extractAffidavitFields (Task 37)', () => {
     const [affidavitRow] = await db.select().from(schema.candidateAffidavits).where(eq(schema.candidateAffidavits.mediaId, mediaId));
     expect(affidavitRow!.extractionStatus).toBe('done');
 
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'candidate_field'), eq(schema.auditLog.actorRole, 'system'), eq(schema.auditLog.wardId, WARD.id)));
-    expect(auditRows.length).toBeGreaterThanOrEqual(3);
-    expect(auditRows.every((r) => r.actorUserId === null)).toBe(true);
   });
 
   it('a null extracted field publishes notDeclared:true with the affidavit as its source', async () => {
@@ -285,30 +278,6 @@ describe('extractAffidavitFields (Task 37)', () => {
     const fieldRows = await db.select().from(schema.candidateFields).where(eq(schema.candidateFields.candidateId, candidateId));
     expect(fieldRows.length).toBe(3);
     expect(fieldRows.every((f) => f.notDeclared === false)).toBe(true);
-  });
-
-  it('Fix 2: the extraction publish audits actorUserId=null/actorRole=system even when a curator userId triggered it', async () => {
-    const { candidateId, mediaId } = await setupFixture();
-    const extractor = vi.fn(async (_pdfBytes: Buffer): Promise<AffidavitExtraction> => ({ cases: 'x', assets: null, education: null }));
-
-    // A real curator's userId is passed in as the triggering actor...
-    await extractAffidavitFields(mediaId, candidateId, { userId: 424242 }, extractor);
-
-    // ...but the extraction PUBLISH's own audit row must still be system/null.
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(
-        and(
-          eq(schema.auditLog.entityType, 'candidate_field'),
-          eq(schema.auditLog.entityId, `${candidateId}:cases`),
-        ),
-      );
-    expect(auditRows.length).toBeGreaterThanOrEqual(1);
-    for (const row of auditRows) {
-      expect(row.actorUserId).toBeNull();
-      expect(row.actorRole).toBe('system');
-    }
   });
 
   it('a failure on one affidavit does not corrupt fields already published for another candidate', async () => {

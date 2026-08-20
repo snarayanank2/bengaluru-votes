@@ -22,7 +22,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
@@ -137,10 +137,6 @@ async function upsertUser(email: string, role: 'citizen' | 'curator' | 'admin'):
   return row!.id;
 }
 
-function auditEntityIdIn(entityType: string, ids: (number | string)[]) {
-  return and(eq(schema.auditLog.entityType, entityType), inArray(schema.auditLog.entityId, ids.map(String)));
-}
-
 let adminId: number;
 let curatorId: number;
 let citizenId: number;
@@ -172,15 +168,12 @@ describe('/admin/partners (Task 46)', () => {
 
   afterAll(async () => {
     if (createdEoiIds.length > 0) {
-      await db.delete(schema.auditLog).where(auditEntityIdIn('eoi_submission', createdEoiIds));
       await db.delete(schema.eoiSubmissions).where(inArray(schema.eoiSubmissions.id, createdEoiIds));
     }
     if (createdPartnerIds.length > 0) {
-      await db.delete(schema.auditLog).where(auditEntityIdIn('partner', createdPartnerIds));
       await db.delete(schema.partnerWards).where(inArray(schema.partnerWards.partnerId, createdPartnerIds));
       await db.delete(schema.partners).where(inArray(schema.partners.id, createdPartnerIds));
     }
-    await db.delete(schema.auditLog).where(auditEntityIdIn('ward_readiness', ALL_WARD_IDS));
     await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARD_IDS));
     await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, curatorId, citizenId]));
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, curatorId, citizenId]));
@@ -234,12 +227,6 @@ describe('/admin/partners (Task 46)', () => {
       const wardRows = await db.select().from(schema.partnerWards).where(eq(schema.partnerWards.partnerId, row!.id));
       expect(wardRows.map((r) => r.wardId)).toEqual([WARD_COVERED.id]);
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'create_partner'), eq(schema.auditLog.entityId, String(row!.id))));
-      expect(audit).toBeDefined();
-      expect(audit!.actorRole).toBe('admin');
     });
 
     it('POST formAction=create_partner without confirm -> 400, no partner created', async () => {
@@ -272,11 +259,6 @@ describe('/admin/partners (Task 46)', () => {
       const wardRows = await db.select().from(schema.partnerWards).where(eq(schema.partnerWards.partnerId, created!.id));
       expect(wardRows.map((r) => r.wardId)).toEqual([WARD_REPLACE.id]);
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'update_partner'), eq(schema.auditLog.entityId, String(created!.id))));
-      expect(audit).toBeDefined();
     });
   });
 
@@ -294,12 +276,6 @@ describe('/admin/partners (Task 46)', () => {
 
       const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_OVERRIDE.id));
       expect(row?.commsHoldOverride).toBe(true);
-
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'override_comms_hold'), eq(schema.auditLog.entityId, String(WARD_OVERRIDE.id))));
-      expect(audit).toBeDefined();
 
       const afterRes = await run(PartnersRoute, '/admin/partners', { cookieValue: adminAuth.cookieValue });
       const html = normalize(await afterRes.text());

@@ -30,12 +30,11 @@
  * implements as a SAVEPOINT, see node_modules/drizzle-orm/postgres-js).
  * When the insert fails, only that savepoint rolls back; the outer
  * transaction (still open) can then re-SELECT the winner's row and
- * proceed with the submission + audit as normal.
+ * proceed with the submission as normal.
  */
 import { and, eq } from 'drizzle-orm';
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { candidates, flagItems, flagSubmissions, wardIssues, wards } from '../db/schema';
-import { writeAudit, type Tx } from './audit';
 import { canEditWard } from './authz';
 import { isUniqueViolation } from './db-errors';
 import { publishCandidateFieldTx, type PublishCandidateFieldInput } from './publish';
@@ -161,9 +160,7 @@ async function findOrCreatePendingItem(tx: Tx, input: SubmitFlagInput, wardId: n
 /**
  * Submits a citizen's misinformation flag against `targetRef` (PRD §6.1,
  * §6.2). Finds-or-creates the pending queue item for `targetRef`, appends
- * this submitter's `flag_submissions` row, and writes an audit entry
- * recording the flag event (NOT a published-data change — the moderation
- * trail, PRD §11) — all in one transaction.
+ * this submitter's `flag_submissions` row in one transaction.
  */
 export async function submitFlag(userId: number, input: SubmitFlagInput): Promise<{ flagItemId: number }> {
   // Derive the ward from the TARGET, server-side — the client-supplied
@@ -181,15 +178,6 @@ export async function submitFlag(userId: number, input: SubmitFlagInput): Promis
       userId,
       detail: input.detail,
       suggestedValue: input.suggestedValue ?? null,
-      sourceUrl: input.sourceUrl ?? null,
-    });
-
-    await writeAudit(tx, {
-      actor: { userId, role: 'citizen' },
-      action: 'flag',
-      entityType: 'flag',
-      entityId: String(itemId),
-      wardId,
       sourceUrl: input.sourceUrl ?? null,
     });
 
@@ -238,7 +226,7 @@ export async function submitFlag(userId: number, input: SubmitFlagInput): Promis
  * BEFORE doing any publish work. If the item is no longer pending (already
  * accepted or rejected — including by a call that's racing us and wins the
  * lock first), this throws `flag_already_resolved` and rolls back: no
- * publish, no audit write, no status flip. Without this, two concurrent
+ * publish and no status flip. Without this, two concurrent
  * accepts on the same item could both publish (double-publish), or an
  * accept followed by a reject could flip an already-published item's
  * status to `rejected` while leaving the publish in place. The UPDATE
@@ -303,16 +291,6 @@ export async function resolveFlag(
         resolvedAt: new Date(),
       })
       .where(and(eq(flagItems.id, flagItemId), eq(flagItems.status, 'pending')));
-
-    await writeAudit(tx, {
-      actor,
-      action: 'flag_reject',
-      entityType: 'flag',
-      entityId: String(flagItemId),
-      wardId: item.wardId,
-      oldValue: { status: item.status },
-      newValue: { status: 'rejected', reason: resolution.reason },
-    });
 
     return null;
   });

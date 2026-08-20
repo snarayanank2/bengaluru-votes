@@ -72,9 +72,6 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
       })
       .onConflictDoUpdate({ target: schema.wards.id, set: { nameEn: 'Flags Test Ward B (out of scope)' } });
 
-    // audit_log is append-only (can't be cleaned between runs), so — like
-    // tests/unit/audit.test.ts — this suite creates a fresh candidate (and
-    // hence fresh targetRefs/entityIds) every run via a unique slug.
     const [candidate] = await db
       .insert(schema.candidates)
       .values({
@@ -172,29 +169,6 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     expect(submissions.map((s) => s.userId).sort()).toEqual([submitterAId, submitterBId].sort());
   });
 
-  it('writes an audit "flag" event for every submission (moderation trail, not a publish)', async () => {
-    const targetRef = targetRefFor('audit_check');
-
-    const { flagItemId } = await submitFlag(submitterAId, {
-      wardId: WARD_ID,
-      targetType: 'candidate_field',
-      targetRef,
-      detail: 'Track record claim looks fabricated.',
-    });
-
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'flag'), eq(schema.auditLog.entityId, String(flagItemId))));
-
-    expect(auditRows.length).toBeGreaterThanOrEqual(1);
-    const submitRow = auditRows.find((r) => r.action === 'flag');
-    expect(submitRow).toBeDefined();
-    expect(submitRow!.actorRole).toBe('citizen');
-    expect(submitRow!.actorUserId).toBe(submitterAId);
-    expect(submitRow!.wardId).toBe(WARD_ID);
-  });
-
   it('resolveFlag ACCEPT: publishes the candidate field AND marks the item accepted; both submitters see the same accepted status', async () => {
     const targetRef = targetRefFor('track_record');
 
@@ -235,12 +209,6 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
       .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'track_record')));
     expect(field).toBeDefined();
     expect(field!.valueEn).toBe('Two-term corporator, led road-repair drive.');
-
-    const publishAuditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'candidate_field'), eq(schema.auditLog.entityId, `${candidateId}:track_record`)));
-    expect(publishAuditRows.some((r) => r.action === 'publish' && r.actorUserId === scopedCuratorId)).toBe(true);
 
     const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, first.flagItemId));
     expect(item!.status).toBe('accepted');
@@ -294,12 +262,6 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
       .from(schema.candidateFields)
       .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'assets')));
     expect(field).toBeUndefined();
-
-    const rejectAuditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'flag'), eq(schema.auditLog.entityId, String(first.flagItemId))));
-    expect(rejectAuditRows.some((r) => r.action === 'flag_reject' && r.actorUserId === 4202)).toBe(true);
 
     const submissions = await db
       .select()
@@ -463,23 +425,9 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
 
     await resolveFlag({ userId: scopedCuratorId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput });
 
-    const auditRowsAfterFirst = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'candidate_field'), eq(schema.auditLog.entityId, `${candidateId}:approachability`)));
-    const publishCountAfterFirst = auditRowsAfterFirst.filter((r) => r.action === 'publish').length;
-    expect(publishCountAfterFirst).toBe(1);
-
     await expect(
       resolveFlag({ userId: scopedCuratorId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput }),
     ).rejects.toThrow('flag_already_resolved');
-
-    const auditRowsAfterSecond = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'candidate_field'), eq(schema.auditLog.entityId, `${candidateId}:approachability`)));
-    const publishCountAfterSecond = auditRowsAfterSecond.filter((r) => r.action === 'publish').length;
-    expect(publishCountAfterSecond).toBe(publishCountAfterFirst);
 
     const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
     expect(item!.status).toBe('accepted');

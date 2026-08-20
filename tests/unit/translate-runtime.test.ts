@@ -127,17 +127,6 @@ describe('src/lib/translate-runtime.ts — runtime MT of curator data (Task 40)'
     // The English (authored) value is untouched.
     expect(field.valueEn).toBe('Two-term corporator, led a road-repair drive.');
 
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(
-        and(eq(schema.auditLog.entityType, 'candidate_field'), eq(schema.auditLog.entityId, `${candidateId}:mt_success`)),
-      );
-    const mtRow = auditRows.find((r) => r.action === 'mt');
-    expect(mtRow).toBeDefined();
-    expect(mtRow!.actorRole).toBe('system');
-    expect(mtRow!.actorUserId).toBeNull();
-    expect((mtRow!.newValue as { valueKn: string }).valueKn).toBe('ಅನುವಾದ');
   });
 
   it('TIMEOUT: a translator that never resolves leaves the row pending, with no partial write', async () => {
@@ -245,20 +234,9 @@ describe('src/lib/translate-runtime.ts — runtime MT of curator data (Task 40)'
     expect(row?.titleKn).toBe('ರಸ್ತೆ ನಿರ್ವಹಣೆ');
     expect(row?.translationStatus).toBe('done');
 
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'ward_issue'), eq(schema.auditLog.entityId, String(issueId))));
-    const mtRow = auditRows.find((r) => r.action === 'mt' && r.actorRole === 'system');
-    expect(mtRow).toBeDefined();
-    // ward_issues' real columns are titleEn/titleKn — the audit newValue key
-    // must reflect that, NOT the candidate_fields/candidate_stances
-    // valueEn/valueKn key (the bug this test guards against).
-    expect(mtRow!.newValue).toEqual({ titleKn: 'ರಸ್ತೆ ನಿರ್ವಹಣೆ' });
-    expect(mtRow!.newValue).not.toHaveProperty('valueKn');
   });
 
-  it('candidate_stances: translates valueEn into valueKn, audited as candidate_stance', async () => {
+  it('candidate_stances: translates valueEn into valueKn', async () => {
     const [issue] = await db
       .insert(schema.wardIssues)
       .values({ wardId: WARD_ID, titleEn: 'Water supply', authoredLang: 'en', translationStatus: 'done', position: 1 })
@@ -287,11 +265,6 @@ describe('src/lib/translate-runtime.ts — runtime MT of curator data (Task 40)'
     expect(row?.valueKn).toBe('ಮೊದಲ ವರ್ಷದೊಳಗೆ ಪೈಪ್‌ಲೈನ್ ಸರಿಪಡಿಸುತ್ತೇನೆ.');
     expect(row?.translationStatus).toBe('done');
 
-    const auditRows = await db
-      .select()
-      .from(schema.auditLog)
-      .where(and(eq(schema.auditLog.entityType, 'candidate_stance'), eq(schema.auditLog.entityId, `${issueId}:${candidateId}`)));
-    expect(auditRows.some((r) => r.action === 'mt' && r.actorRole === 'system')).toBe(true);
   });
 
   // -------------------------------------------------------------------------

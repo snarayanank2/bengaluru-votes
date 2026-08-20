@@ -57,6 +57,13 @@
       "when": 1787160000000,
       "tag": "0007_ward_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787165000000,
+      "tag": "0008_remove_audit_log",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,12 @@
 import { and, eq } from 'drizzle-orm';
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { candidateFields, candidateStances, candidates, wardReadiness, type candidateStatusEnum } from '../db/schema';
-import { writeAudit, type Actor, type Tx } from './audit';
 import { translateFieldSoon } from './translate-runtime';
+
+export type Actor = {
+  userId: number | null;
+  role: 'curator' | 'admin' | 'system' | 'citizen';
+};
 
 export type CandidateStatus = (typeof candidateStatusEnum.enumValues)[number];
 
@@ -81,7 +85,7 @@ export function decideTranslationStatus(
 
 /**
  * Tx-accepting core of the publish path: upserts the candidate_fields row
- * and writes its audit entry using the CALLER's transaction handle, so a
+ * using the CALLER's transaction handle, so a
  * caller that must publish a field atomically alongside other writes of its
  * own (Task 31's `resolveFlag` — publish the field AND mark the flag item
  * accepted in one transaction) can do so without nesting a second top-level
@@ -117,16 +121,6 @@ export async function publishCandidateFieldTx(
 
   const translationStatus = decideTranslationStatus(existing, input);
 
-  const newValue = {
-    valueEn: input.valueEn ?? null,
-    valueKn: input.valueKn ?? null,
-    notDeclared: input.notDeclared ?? false,
-    sourceUrl: input.sourceUrl,
-    sourceType: input.sourceType,
-    authoredLang: input.authoredLang,
-    aiExtracted,
-  };
-
   const [field] = await tx
     .insert(candidateFields)
     .values({
@@ -158,35 +152,13 @@ export async function publishCandidateFieldTx(
     })
     .returning({ id: candidateFields.id });
 
-  await writeAudit(tx, {
-    actor,
-    action: 'publish',
-    entityType: 'candidate_field',
-    entityId: `${input.candidateId}:${input.fieldKey}`,
-    wardId: candidate.wardId,
-    fieldKey: input.fieldKey,
-    oldValue: existing
-      ? {
-          valueEn: existing.valueEn,
-          valueKn: existing.valueKn,
-          notDeclared: existing.notDeclared,
-          sourceUrl: existing.sourceUrl,
-          sourceType: existing.sourceType,
-          authoredLang: existing.authoredLang,
-          aiExtracted: existing.aiExtracted,
-        }
-      : null,
-    newValue,
-    sourceUrl: input.sourceUrl,
-  });
-
   return { id: field.id, translationStatus };
 }
 
 /**
  * The single publish path for candidate report-card fields. Upserts the
- * field and writes the audit entry in one transaction: either both land or
- * neither does. After the transaction commits, kicks off (fire-and-forget)
+ * field in one transaction. After the transaction commits, kicks off
+ * (fire-and-forget)
  * machine translation for the field — but ONLY when
  * {@link decideTranslationStatus} decided this publish is a `'pending'`
  * (authored-value / source) change. A `'manual'` write (the curator hand-
@@ -262,9 +234,7 @@ async function generateUniqueSlug(tx: Tx, wardId: number, nameEn: string): Promi
  * Clears ward `wardId`'s sign-off (PRD §9.1: "sign-off clears on
  * candidate-set change"; architecture §6) — sets `signedOffAt = null`,
  * `clearedAt = now`, upserting the `ward_readiness` row if the ward has
- * never had one (a ward that's never been signed off still needs a
- * clear-audit row the first time its candidate set changes, so a future
- * "why does this ward need sign-off" query has an answer). Always runs
+ * never had one. Always runs
  * inside the CALLER's transaction, atomically with the candidate-set change
  * that triggered it — a status flip or a new candidate must never land
  * without this clear landing too.
@@ -275,8 +245,7 @@ async function generateUniqueSlug(tx: Tx, wardId: number, nameEn: string): Promi
  * requires `signedOffAt` to have been non-null) correctly does not treat a
  * ward that was never signed off as "held by a clear".
  */
-async function clearWardSignOff(tx: Tx, actor: Actor, wardId: number): Promise<void> {
-  const [existing] = await tx.select().from(wardReadiness).where(eq(wardReadiness.wardId, wardId));
+async function clearWardSignOff(tx: Tx, wardId: number): Promise<void> {
   const now = new Date();
 
   await tx
@@ -284,15 +253,6 @@ async function clearWardSignOff(tx: Tx, actor: Actor, wardId: number): Promise<v
     .values({ wardId, signedOffAt: null, clearedAt: now })
     .onConflictDoUpdate({ target: wardReadiness.wardId, set: { signedOffAt: null, clearedAt: now } });
 
-  await writeAudit(tx, {
-    actor,
-    action: 'sign_off_clear',
-    entityType: 'ward_readiness',
-    entityId: String(wardId),
-    wardId,
-    oldValue: existing ? { signedOffAt: existing.signedOffAt, clearedAt: existing.clearedAt } : null,
-    newValue: { signedOffAt: null, clearedAt: now },
-  });
 }
 
 export type PublishCandidateCoreInput = {
@@ -307,7 +267,7 @@ export type PublishCandidateCoreInput = {
 
 /**
  * Updates a candidate's core (non-report-card) fields — name, party, photo,
- * lifecycle status — in one transaction with its audit entry. Any field
+ * lifecycle status in one transaction. Any field
  * left `undefined` is left unchanged; pass `null` for `nameKn`/`partyKn`/
  * `photoMediaId` to explicitly clear them.
  *
@@ -319,7 +279,7 @@ export type PublishCandidateCoreInput = {
  * that does NOT touch status (e.g. just correcting a spelling) is not a
  * candidate-set change and leaves sign-off untouched.
  */
-export async function publishCandidateCore(actor: Actor, input: PublishCandidateCoreInput): Promise<void> {
+export async function publishCandidateCore(_actor: Actor, input: PublishCandidateCoreInput): Promise<void> {
   await db.transaction(async (tx) => {
     const [existing] = await tx.select().from(candidates).where(eq(candidates.id, input.candidateId));
     if (!existing) {
@@ -338,33 +298,9 @@ export async function publishCandidateCore(actor: Actor, input: PublishCandidate
 
     await tx.update(candidates).set(next).where(eq(candidates.id, input.candidateId));
 
-    await writeAudit(tx, {
-      actor,
-      action: 'publish',
-      entityType: 'candidate',
-      entityId: String(input.candidateId),
-      wardId: existing.wardId,
-      oldValue: {
-        nameEn: existing.nameEn,
-        nameKn: existing.nameKn,
-        partyEn: existing.partyEn,
-        partyKn: existing.partyKn,
-        photoMediaId: existing.photoMediaId,
-        status: existing.status,
-      },
-      newValue: {
-        nameEn: next.nameEn,
-        nameKn: next.nameKn,
-        partyEn: next.partyEn,
-        partyKn: next.partyKn,
-        photoMediaId: next.photoMediaId,
-        status: next.status,
-      },
-    });
-
     const statusChanged = input.status !== undefined && input.status !== existing.status;
     if (statusChanged) {
-      await clearWardSignOff(tx, actor, existing.wardId);
+      await clearWardSignOff(tx, existing.wardId);
     }
   });
 }
@@ -387,7 +323,7 @@ export type CreateCandidateInput = {
  * for the slug scheme.
  */
 export async function createCandidate(
-  actor: Actor,
+  _actor: Actor,
   input: CreateCandidateInput,
 ): Promise<{ id: number; slug: string }> {
   return db.transaction(async (tx) => {
@@ -408,25 +344,7 @@ export async function createCandidate(
 
     const id = row!.id;
 
-    await writeAudit(tx, {
-      actor,
-      action: 'publish',
-      entityType: 'candidate',
-      entityId: String(id),
-      wardId: input.wardId,
-      oldValue: null,
-      newValue: {
-        slug,
-        nameEn: input.nameEn,
-        nameKn: input.nameKn ?? null,
-        partyEn: input.partyEn,
-        partyKn: input.partyKn ?? null,
-        photoMediaId: input.photoMediaId ?? null,
-        status: 'filed',
-      },
-    });
-
-    await clearWardSignOff(tx, actor, input.wardId);
+    await clearWardSignOff(tx, input.wardId);
 
     return { id, slug };
   });
@@ -447,14 +365,14 @@ export type PublishStanceInput = {
 };
 
 /**
- * Upserts a candidate's stance on a ward issue, audited atomically; kicks
+ * Upserts a candidate's stance on a ward issue atomically; kicks
  * off translation after commit — but only when {@link decideTranslationStatus}
  * (the same manual-override / source-change-regeneration rule
  * {@link publishCandidateField} uses) decides this publish is a `'pending'`
  * change, not a `'manual'` translation edit or a no-op re-publish (Task 40;
  * architecture §9).
  */
-export async function publishStance(actor: Actor, input: PublishStanceInput): Promise<void> {
+export async function publishStance(_actor: Actor, input: PublishStanceInput): Promise<void> {
   const { id: stanceId, translationStatus } = await db.transaction(async (tx) => {
     const [candidate] = await tx
       .select({ wardId: candidates.wardId })
@@ -492,25 +410,6 @@ export async function publishStance(actor: Actor, input: PublishStanceInput): Pr
         set: newValue,
       })
       .returning({ id: candidateStances.id });
-
-    await writeAudit(tx, {
-      actor,
-      action: 'publish',
-      entityType: 'candidate_stance',
-      entityId: `${input.wardIssueId}:${input.candidateId}`,
-      wardId: candidate.wardId,
-      oldValue: existing
-        ? {
-            valueEn: existing.valueEn,
-            valueKn: existing.valueKn,
-            sourceUrl: existing.sourceUrl,
-            sourceType: existing.sourceType,
-            authoredLang: existing.authoredLang,
-          }
-        : null,
-      newValue,
-      sourceUrl: input.sourceUrl,
-    });
 
     return { id: row!.id, translationStatus };
   });

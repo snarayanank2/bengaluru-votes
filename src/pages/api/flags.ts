@@ -1,7 +1,7 @@
 /**
  * POST /api/flags — the citizen misinformation-flagging path's front door
  * (PRD §6.1-§6.3; architecture §7 "POST /api/flags gated write, dedupe,
- * audit; sourceUrl http(s)-validated §13").
+ * moderation; sourceUrl http(s)-validated §13").
  *
  * Session-gated: flagging (unlike anonymous read paths) requires an
  * identity so the dedupe/count and the per-account rate limit both mean

@@ -85,10 +85,6 @@ async function upsertUser(email: string, fields: Partial<UserInsert> = {}): Prom
   return row!.id;
 }
 
-function auditEntityIdIn(userIds: number[]) {
-  return inArray(schema.auditLog.entityId, userIds.map(String));
-}
-
 let adminId: number;
 let citizenId: number;
 let eraseTargetId: number;
@@ -149,14 +145,13 @@ describe('src/lib/erasure.ts (Task 45)', () => {
     await db.delete(schema.otpCodes).where(inArray(schema.otpCodes.userId, userIds));
     await db.delete(schema.otpCodes).where(inArray(schema.otpCodes.destination, [ERASE_TARGET_PHONE, EMAILS.eraseTarget]));
     await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, ...userIds]));
-    await db.delete(schema.auditLog).where(auditEntityIdIn([adminId, ...userIds])); // no-op: audit_log is append-only
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, ...userIds]));
     await db.delete(schema.wards).where(eq(schema.wards.id, WARD.id));
     await client.end();
   });
 
   describe('eraseUser: severs identity, aggregates survive', () => {
-    it('nulls contact/consent, sets status erased, deletes otp/sessions, but KEEPS votes/flags/audit', async () => {
+    it('nulls contact/consent, sets status erased, deletes otp/sessions, but keeps votes and flags', async () => {
       // Contact/consent/attribution present before erasure.
       const [before] = await db.select().from(schema.users).where(eq(schema.users.id, eraseTargetId));
       expect(before?.email).toBe(EMAILS.eraseTarget);
@@ -194,16 +189,6 @@ describe('src/lib/erasure.ts (Task 45)', () => {
         flagItemId: flagItem!.id,
         userId: eraseTargetId,
         detail: 'Erasure test flag detail',
-      });
-
-      // A pre-existing audit_log row referencing this user as the actor
-      // (e.g. from that flag submission) — must survive erasure unchanged.
-      await db.insert(schema.auditLog).values({
-        actorUserId: eraseTargetId,
-        actorRole: 'citizen',
-        action: 'flag_submit',
-        entityType: 'flag_item',
-        entityId: String(flagItem!.id),
       });
 
       await eraseUser(admin, eraseTargetId);
@@ -245,27 +230,6 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       expect(flagSubRows.length).toBe(1);
       expect(flagSubRows[0]?.userId).toBe(eraseTargetId);
 
-      // KEPT: the pre-existing audit_log row, actorUserId unchanged (now an
-      // opaque tombstone id).
-      const [priorAudit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'flag_submit'), eq(schema.auditLog.entityId, String(flagItem!.id))));
-      expect(priorAudit).toBeDefined();
-      expect(priorAudit!.actorUserId).toBe(eraseTargetId);
-
-      // The erasure ITSELF is audited, with NO PII.
-      const [eraseAudit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'erase_user'), eq(schema.auditLog.entityId, String(eraseTargetId))));
-      expect(eraseAudit).toBeDefined();
-      expect(eraseAudit!.entityType).toBe('user');
-      expect(eraseAudit!.actorUserId).toBe(adminId);
-      expect(eraseAudit!.actorRole).toBe('admin');
-      const auditJson = JSON.stringify([eraseAudit!.oldValue, eraseAudit!.newValue]);
-      expect(auditJson).not.toContain(EMAILS.eraseTarget);
-      expect(auditJson).not.toContain(ERASE_TARGET_PHONE);
     });
 
     it('is idempotent: erasing an already-erased user does not throw or change anything further', async () => {
@@ -303,13 +267,6 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       expect(row?.status).toBe('banned');
       expect(await readSession(cookieValue)).toBeNull();
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'ban_user'), eq(schema.auditLog.entityId, String(banTargetId))));
-      expect(audit).toBeDefined();
-      expect(audit!.actorRole).toBe('admin');
-      expect(JSON.stringify(audit!.newValue)).toContain('spam');
     });
 
     it('reactivateUser restores status active', async () => {
@@ -317,11 +274,6 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       const [row] = await db.select({ status: schema.users.status }).from(schema.users).where(eq(schema.users.id, reactivateTargetId));
       expect(row?.status).toBe('active');
 
-      const [audit] = await db
-        .select()
-        .from(schema.auditLog)
-        .where(and(eq(schema.auditLog.action, 'reactivate_user'), eq(schema.auditLog.entityId, String(reactivateTargetId))));
-      expect(audit).toBeDefined();
     });
 
     it('banUser rejects an erased target (cannot_ban_erased) — erasure is terminal', async () => {

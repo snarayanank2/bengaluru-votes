@@ -1,5 +1,5 @@
 import {
-  pgTable, pgEnum, serial, bigserial, integer, text, boolean, timestamp,
+  pgTable, pgEnum, serial, integer, text, boolean, timestamp,
   jsonb, uniqueIndex, index, primaryKey, customType, date, check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -329,21 +329,6 @@ export const wardReadiness = pgTable('ward_readiness', {
   clearedAt: timestamp('cleared_at'),                     // set when candidate-set change clears it
   commsHoldOverride: boolean('comms_hold_override').notNull().default(false),  // admin release
 });
-
-export const auditLog = pgTable('audit_log', {            // append-only (enforced in Task 5)
-  id: bigserial('id', { mode: 'number' }).primaryKey(),
-  actorUserId: integer('actor_user_id'),                  // null = system (MT, extraction, jobs)
-  actorRole: text('actor_role').notNull(),                // 'curator' | 'admin' | 'system' | 'citizen'
-  action: text('action').notNull(),                       // 'publish' | 'flag' | 'sign_off' | 'restore' | …
-  entityType: text('entity_type').notNull(),
-  entityId: text('entity_id').notNull(),
-  wardId: integer('ward_id'),
-  fieldKey: text('field_key'),
-  oldValue: jsonb('old_value'),
-  newValue: jsonb('new_value'),
-  sourceUrl: text('source_url'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-}, (t) => [index('audit_entity_idx').on(t.entityType, t.entityId), index('audit_created_idx').on(t.createdAt)]);
 
 export const campaignSends = pgTable('campaign_sends', {  // send-once ledger per user × code
   id: serial('id').primaryKey(),

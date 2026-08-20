@@ -3,7 +3,7 @@
  * information-architecture.md §5.5-equivalent). A ward's issues are the
  * fixed candidate-stance topics AND the citizen "top 3" vote options
  * (`/ward/{id}/issues`) — the curator fully owns this list (add, retitle,
- * retire) and every mutation is scope-checked (`canEditWard`) and audited.
+ * retire) and every mutation is scope-checked (`canEditWard`).
  *
  * VOTE SEMANTICS — the two operations differ deliberately:
  *   - RENAME updates `title_en` on the EXISTING row (same `id`). Every
@@ -27,7 +27,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { wardIssues } from '../db/schema';
-import { writeAudit } from './audit';
 import { canEditWard } from './authz';
 import { translateFieldSoon } from './translate-runtime';
 
@@ -55,7 +54,7 @@ export async function listWardIssues(wardId: number): Promise<WardIssueRow[]> {
  * issues land at the end of the list. `authoredLang` is always `'en'` (the
  * curator's own input language for this form); `translationStatus` starts
  * `'pending'`, and translation is kicked off (fire-and-forget) once the
- * insert + its audit entry have actually committed.
+ * insert has committed.
  */
 export async function addWardIssue(actor: CuratorActor, wardId: number, titleEn: string): Promise<{ id: number }> {
   const inScope = await canEditWard(actor.userId, actor.role, wardId);
@@ -74,16 +73,6 @@ export async function addWardIssue(actor: CuratorActor, wardId: number, titleEn:
       .insert(wardIssues)
       .values({ wardId, titleEn, titleKn: null, authoredLang: 'en', translationStatus: 'pending', position })
       .returning({ id: wardIssues.id });
-
-    await writeAudit(tx, {
-      actor,
-      action: 'publish',
-      entityType: 'ward_issue',
-      entityId: String(row!.id),
-      wardId,
-      oldValue: null,
-      newValue: { titleEn, position },
-    });
 
     return row!.id;
   });
@@ -113,15 +102,6 @@ export async function renameWardIssue(actor: CuratorActor, issueId: number, titl
   await db.transaction(async (tx) => {
     await tx.update(wardIssues).set({ titleEn, translationStatus: 'pending' }).where(eq(wardIssues.id, issueId));
 
-    await writeAudit(tx, {
-      actor,
-      action: 'publish',
-      entityType: 'ward_issue',
-      entityId: String(issueId),
-      wardId: existing.wardId,
-      oldValue: { titleEn: existing.titleEn },
-      newValue: { titleEn },
-    });
   });
 
   translateFieldSoon({ table: 'ward_issues', id: issueId });
@@ -145,14 +125,5 @@ export async function removeWardIssue(actor: CuratorActor, issueId: number): Pro
   await db.transaction(async (tx) => {
     await tx.delete(wardIssues).where(eq(wardIssues.id, issueId));
 
-    await writeAudit(tx, {
-      actor,
-      action: 'delete',
-      entityType: 'ward_issue',
-      entityId: String(issueId),
-      wardId: existing.wardId,
-      oldValue: { titleEn: existing.titleEn, titleKn: existing.titleKn, position: existing.position },
-      newValue: null,
-    });
   });
 }
