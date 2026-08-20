@@ -274,9 +274,11 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
                 {sortedCandidates.map((candidate) => (
                   <li class="candidate-item">
                     <CandidateRow candidate={candidate} lang={lang} />
-                    <span class="status-label">
-                      {t(lang, `candidate.status.${candidate.status}` as `candidate.status.${string}`)}
-                    </span>
+                    {(candidate.status === 'withdrawn' || candidate.status === 'rejected') && (
+                      <span class="status-label">
+                        {t(lang, `candidate.status.${candidate.status}` as `candidate.status.${string}`)}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -350,7 +352,7 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     padding: var(--space-8) var(--container-pad-x);
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-12);
   }
 
   .ward-header h1 {
@@ -409,6 +411,12 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+
+  @media (min-width: 768px) {
+    .map-container {
+      aspect-ratio: 16 / 7;
+    }
   }
 
   .ward-overview {
@@ -525,6 +533,10 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     font-family: var(--font-heading);
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);
+  }
+
+  .ward-candidates :global(.candidate-row .name) {
+    font-size: var(--text-lg);
   }
 
   .candidate-empty,

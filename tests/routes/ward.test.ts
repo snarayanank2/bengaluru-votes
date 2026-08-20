@@ -258,6 +258,8 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       expect(html).toContain(`href="${localePath(lang, `/candidate/${CANDIDATES[1].slug}`)}"`);
       expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}/compare`)}"`);
       expect(html).toContain(t(lang, 'candidate.links.compare'));
+      expect(html).not.toContain(t(lang, 'candidate.status.contesting'));
+      expect(html).not.toContain(t(lang, 'candidate.status.filed'));
       expect(html).not.toContain(`href="${localePath(lang, `/ward/${WARD.id}/candidates`)}"`);
       expect(html).not.toContain(`href="${localePath(lang, `/ward/${WARD.id}/issues`)}"`);
     });
