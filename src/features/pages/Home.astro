@@ -30,14 +30,11 @@
  */
 import { eq } from 'drizzle-orm';
 import Base from '../../layouts/Base.astro';
-import Banner from '../../components/Banner.astro';
-import DeadlineBanner from '../../components/DeadlineBanner.astro';
 import Card from '../../components/Card.astro';
 import BoothLookupForm from '../../components/BoothLookupForm.astro';
 import FormField from '../../components/FormField.astro';
 import Button from '../../components/Button.astro';
 import { t, localePath, type Lang } from '../../i18n';
-import { getSettings } from '../../lib/settings';
 import { lookupWardByAddress } from '../../lib/geocode';
 import { mapsConfig } from '../../lib/maps-config';
 import { db } from '../../db/client';
@@ -101,21 +98,12 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const settings = await getSettings(['notification_date', 'election_date', 'roll_deadline']);
-
 // Places Autocomplete on the lookup input (src/islands/WardLookup.ts). Same
 // runtime-config discipline as the ward map: read here, handed over as a data
 // attribute, never a build-time PUBLIC_* var — see src/lib/maps-config.ts.
 // When maps are off the attribute is `undefined`, which Astro omits entirely,
 // so the key never reaches the HTML and the island does nothing.
 const maps = mapsConfig();
-const notificationDate = settings.notification_date;
-const electionDate = settings.election_date;
-const rollDeadline = settings.roll_deadline;
-
-const rollDeadlineActive = rollDeadline
-  ? new Date(`${rollDeadline}T23:59:59Z`).getTime() >= Date.now()
-  : false;
 
 function wardHref(id: number): string {
   return localePath(lang, `/ward/${id}`);
@@ -262,22 +250,6 @@ function wardName(ward: WardRow): string {
       </div>
     </section>
 
-    <section class="election-status">
-      {!notificationDate ? (
-        <Banner kind="notice" lang={lang}>
-          {t(lang, 'home.election.awaited')}
-        </Banner>
-      ) : (
-        notificationDate &&
-        electionDate && (
-          <Banner kind="notice" lang={lang}>
-            {t(lang, 'home.election.status', { notificationDate, electionDate })}
-          </Banner>
-        )
-      )}
-
-      {rollDeadlineActive && rollDeadline && <DeadlineBanner deadlineISO={rollDeadline} lang={lang} />}
-    </section>
   </div>
 
   <script>
@@ -292,12 +264,11 @@ function wardName(ward: WardRow): string {
 </Base>
 
 <style>
-  .home {
-    padding-block-end: var(--space-8);
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
 
   .home-hero {
     width: 100%;
@@ -307,8 +278,7 @@ function wardName(ward: WardRow): string {
 
   .hero-inner,
   .why-vote-inner,
-  .booth-inner,
-  .election-status {
+  .booth-inner {
     max-width: var(--container-app);
     margin-inline: auto;
     padding-inline: var(--container-pad-x);
@@ -780,13 +750,6 @@ function wardName(ward: WardRow): string {
     margin: var(--space-2) 0 0;
     color: var(--color-text-muted);
     font-size: var(--text-sm);
-  }
-
-  .election-status {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding-block-start: var(--space-8);
   }
 
   @media (max-width: 767px) {

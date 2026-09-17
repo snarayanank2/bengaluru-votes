@@ -6,10 +6,8 @@ import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
 import { localePath, t, type Lang } from '../../src/i18n';
 
-vi.mock('../../src/lib/settings', () => ({ getSettings: vi.fn() }));
 vi.mock('../../src/lib/geocode', () => ({ lookupWardByAddress: vi.fn() }));
 
-import { getSettings } from '../../src/lib/settings';
 import { lookupWardByAddress } from '../../src/lib/geocode';
 import Home from '../../src/features/pages/Home.astro';
 
@@ -88,8 +86,6 @@ async function renderHome(lang: Lang): Promise<string> {
   return normalize(html);
 }
 
-const NO_SETTINGS = { notification_date: null, election_date: null, roll_deadline: null };
-
 describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
@@ -101,7 +97,6 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
   });
 
   beforeEach(() => {
-    vi.mocked(getSettings).mockReset().mockResolvedValue(NO_SETTINGS);
     vi.mocked(lookupWardByAddress).mockReset();
   });
 
@@ -176,54 +171,6 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       expect(html).toMatch(/VoteModal\.astro\?astro&type=script/);
       expect(html).toMatch(/Base\.astro\?astro&type=script/);
       expect(html).toMatch(/bv_src/);
-    });
-  });
-
-  describe('election status (app_settings, mocked via src/lib/settings)', () => {
-    it('shows "notification awaited" when notification_date is absent', async () => {
-      vi.mocked(getSettings).mockResolvedValue(NO_SETTINGS);
-      const html = await renderHome('en');
-      expect(html).toContain('Election notification awaited');
-    });
-
-    it('shows the election status once notification_date and election_date are set', async () => {
-      vi.mocked(getSettings).mockResolvedValue({
-        notification_date: '2026-08-01',
-        election_date: '2026-09-15',
-        roll_deadline: null,
-      });
-      const html = await renderHome('en');
-      expect(html).not.toContain('Election notification awaited');
-      expect(html).toContain('2026-08-01');
-      expect(html).toContain('2026-09-15');
-    });
-  });
-
-  describe('roll deadline (DeadlineBanner)', () => {
-    it('renders DeadlineBanner when roll_deadline is set in the future', async () => {
-      vi.mocked(getSettings).mockResolvedValue({
-        notification_date: null,
-        election_date: null,
-        roll_deadline: '2099-12-31',
-      });
-      const html = await renderHome('en');
-      expect(html).toContain('deadline-banner');
-    });
-
-    it('renders nothing there when roll_deadline is absent', async () => {
-      vi.mocked(getSettings).mockResolvedValue(NO_SETTINGS);
-      const html = await renderHome('en');
-      expect(html).not.toContain('deadline-banner');
-    });
-
-    it('does not render DeadlineBanner when roll_deadline is in the past', async () => {
-      vi.mocked(getSettings).mockResolvedValue({
-        notification_date: null,
-        election_date: null,
-        roll_deadline: '2000-01-01',
-      });
-      const html = await renderHome('en');
-      expect(html).not.toContain('deadline-banner');
     });
   });
 

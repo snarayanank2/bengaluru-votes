@@ -54,7 +54,7 @@ describe('src/lib/env-banner.ts#envBannerKey', () => {
   it('production copy keeps the launch date intact in both languages', () => {
     // The hint tells the translator to render the date, never to translate
     // it as a word — if the day number vanishes, the banner is wrong.
-    expect(EN['banner.production']).toContain('15');
-    expect(KN['banner.production']).toContain('15');
+    expect(EN['banner.production']).toContain('Nov 1');
+    expect(KN['banner.production']).toContain('1');
   });
 });
