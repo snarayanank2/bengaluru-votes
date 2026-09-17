@@ -40,6 +40,10 @@
   --hero-alert: #c1392b;
   --hero-button-hover: #ece1cb;
   --hero-button-text: #18230f;
+  --why-vote-bg: #f0b429;
+  --why-vote-text: #6b4a06;
+  --why-vote-ink: #18230f;
+  --why-vote-pill: rgba(24, 35, 15, 0.1);
   --shadow-hero-button-hover: 0 2px 6px rgba(19, 32, 16, 0.08), 0 8px 18px rgba(19, 32, 16, 0.12);
   --oc-black: #000000;
 
@@ -56,6 +60,10 @@
   --color-hero-surface: var(--hero-surface);
   --color-hero-alert: var(--hero-alert);
   --color-hero-button-text: var(--hero-button-text);
+  --color-why-vote-bg: var(--why-vote-bg);
+  --color-why-vote-text: var(--why-vote-text);
+  --color-why-vote-ink: var(--why-vote-ink);
+  --color-why-vote-pill: var(--why-vote-pill);
   --color-surface: var(--gray-100);
   --color-border: var(--gray-300);
   --color-primary: var(--oc-forest);

@@ -193,6 +193,41 @@ function wardName(ward: WardRow): string {
       </div>
     </section>
 
+    <section class="why-vote-section" aria-labelledby="why-vote-title">
+      <div class="why-vote-inner">
+        <div class="why-vote-heading">
+          <div class="why-vote-kicker">
+            <span class="why-vote-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+                <path d="M4 10l3-6h10l3 6" />
+                <path d="m9.5 13.5 2 2 4-4" />
+              </svg>
+            </span>
+            <span class="why-vote-eyebrow">{t(lang, 'home.whyVote.eyebrow')}</span>
+          </div>
+          <h2 id="why-vote-title">{t(lang, 'home.whyVote.title')}</h2>
+        </div>
+
+        <div class="why-vote-content">
+          <p>{t(lang, 'home.whyVote.paragraph1')}</p>
+          <p>{t(lang, 'home.whyVote.paragraph2')}</p>
+          <p>{t(lang, 'home.whyVote.paragraph3')}</p>
+          <p>{t(lang, 'home.whyVote.paragraph4')}</p>
+          <p>{t(lang, 'home.whyVote.paragraph5')}</p>
+          <p><strong>{t(lang, 'home.whyVote.closing')}</strong></p>
+
+          <div class="why-vote-pills" aria-label={t(lang, 'home.whyVote.title')}>
+            <span>{t(lang, 'home.whyVote.tag.roads')}</span>
+            <span>{t(lang, 'home.whyVote.tag.parks')}</span>
+            <span>{t(lang, 'home.whyVote.tag.sanitation')}</span>
+            <span>{t(lang, 'home.whyVote.tag.drainage')}</span>
+            <span>{t(lang, 'home.whyVote.tag.streetlights')}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="booth-section">
       <div class="booth-inner">
         <Card>
@@ -247,6 +282,7 @@ function wardName(ward: WardRow): string {
   }
 
   .hero-inner,
+  .why-vote-inner,
   .booth-inner,
   .election-status {
     max-width: var(--container-app);
@@ -422,6 +458,81 @@ function wardName(ward: WardRow): string {
     background: var(--color-hero-alert);
   }
 
+  .why-vote-section {
+    background: var(--color-why-vote-bg);
+    color: var(--color-why-vote-text);
+  }
+
+  .why-vote-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--space-8);
+    padding-block: var(--space-8);
+  }
+
+  .why-vote-heading {
+    min-width: 0;
+  }
+
+  .why-vote-kicker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block-end: var(--space-3);
+  }
+
+  .why-vote-icon {
+    display: inline-flex;
+    color: var(--color-why-vote-text);
+  }
+
+  .why-vote-eyebrow {
+    font-family: var(--font-heading);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .why-vote-heading h2 {
+    max-width: 22ch;
+    margin: 0;
+    color: var(--color-why-vote-ink);
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    line-height: 1.2;
+  }
+
+  .why-vote-content {
+    min-width: 0;
+  }
+
+  .why-vote-content p {
+    margin: 0 0 var(--space-3);
+    color: var(--color-why-vote-ink);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .why-vote-content p:last-of-type {
+    margin-block-end: var(--space-4);
+  }
+
+  .why-vote-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .why-vote-pills span {
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-why-vote-pill);
+    color: var(--color-why-vote-ink);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
   .booth-section {
     padding-block: var(--space-8);
     background: var(--color-surface);
@@ -538,6 +649,15 @@ function wardName(ward: WardRow): string {
 
     .hero-form :global(.btn) {
       width: 100%;
+    }
+
+    .why-vote-inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+
+    .why-vote-heading h2 {
+      max-width: none;
     }
   }
 
