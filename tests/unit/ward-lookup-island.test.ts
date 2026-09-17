@@ -197,6 +197,7 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
         await flush();
 
         expect(result.getAttribute('aria-live')).toBe('polite');
+        expect(result.dataset.resultState).toBe('success');
         const link = result.querySelector('a');
         expect(link).not.toBeNull();
         expect(link!.getAttribute('href')).toBe(lang === 'kn' ? '/kn/ward/5025' : '/ward/5025');

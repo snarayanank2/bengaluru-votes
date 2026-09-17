@@ -56,12 +56,17 @@ function wardName(lang: string, ward: WardRow): string {
   return lang === 'kn' ? ward.nameKn : ward.nameEn;
 }
 
+function setResultState(container: HTMLElement, state: string): void {
+  container.dataset.resultState = state;
+}
+
 function renderWard(container: HTMLElement, lang: string, ward: WardRow, note?: string): void {
   const link = document.createElement('a');
   link.href = wardHref(lang, ward.id);
   link.textContent = wardName(lang, ward);
 
   if (!note) {
+    setResultState(container, 'success');
     container.replaceChildren(link);
     return;
   }
@@ -72,12 +77,14 @@ function renderWard(container: HTMLElement, lang: string, ward: WardRow, note?: 
   caveat.className = 'ward-note';
   caveat.dataset.wardNote = '';
   caveat.textContent = note;
+  setResultState(container, 'success');
   container.replaceChildren(link, caveat);
 }
 
-function renderMessage(container: HTMLElement, message: string): void {
+function renderMessage(container: HTMLElement, message: string, state = 'message'): void {
   const p = document.createElement('p');
   p.textContent = message;
+  setResultState(container, state);
   container.replaceChildren(p);
 }
 
@@ -93,15 +100,15 @@ function renderResult(
       renderWard(container, lang, data.ward, wardNote);
       return;
     case 'out_of_coverage':
-      renderMessage(container, msgs.outOfCoverage ?? '');
+      renderMessage(container, msgs.outOfCoverage ?? '', 'out-of-coverage');
       return;
     case 'ambiguous':
-      renderMessage(container, msgs.ambiguous ?? '');
+      renderMessage(container, msgs.ambiguous ?? '', 'ambiguous');
       return;
     case 'unavailable':
       // Deliberately the same copy for `budget` and `failed`: both are our
       // outage, neither is fixable by the citizen rewording anything.
-      renderMessage(container, msgs.unavailable ?? '');
+      renderMessage(container, msgs.unavailable ?? '', 'unavailable');
       return;
   }
 }

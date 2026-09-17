@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { readFileSync } from 'node:fs';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -135,6 +136,15 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       expect(html.indexOf('class="home-hero"')).toBeLessThan(html.indexOf('class="booth-section"'));
     });
 
+    it('keeps the mobile ward-search controls in one row beneath the address field', async () => {
+      const source = readFileSync('src/features/pages/Home.astro', 'utf8');
+      expect(source).toContain('grid-template-columns: minmax(0, 1fr) 48px;');
+      expect(source).toContain('.hero-form :global(.ward-locate) {\n      grid-column: 2;');
+      expect(source).toContain(
+        '.hero-form .ward-result[data-result-state]:not([data-result-state="success"]) {\n    grid-column: 1;',
+      );
+    });
+
     it('sets <html lang> correctly and emits the hreflang pair (via Base)', async () => {
       const enHtml = await renderHome('en');
       const knHtml = await renderHome('kn');
@@ -204,6 +214,7 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
 
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(html).toContain(`href="/ward/${WARD.id}"`);
+      expect(html).toContain('class="ward-result ward-result--success"');
       expect(html).toContain(WARD.nameEn);
     });
 

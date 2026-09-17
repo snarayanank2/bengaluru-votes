@@ -159,7 +159,12 @@ function wardName(ward: WardRow): string {
               {t(lang, 'home.form.submit')}
             </Button>
 
-            <div class="ward-result" data-ward-result aria-live="polite">
+            <div
+              class={postResult?.result === 'ward' ? 'ward-result ward-result--success' : 'ward-result'}
+              data-ward-result
+              data-result-state={postResult?.result ?? undefined}
+              aria-live="polite"
+            >
               {postResult?.result === 'ward' && (
                 <p>
                   <a href={wardHref(postResult.ward.id)}>{wardName(postResult.ward)}</a>
@@ -410,11 +415,41 @@ function wardName(ward: WardRow): string {
   .hero-form .ward-result {
     grid-column: 1 / -1;
     grid-row: 2;
+    align-self: start;
     color: var(--color-on-hero);
   }
 
+  .hero-form .ward-result[data-result-state]:not([data-result-state="success"]) {
+    grid-column: 1;
+    width: 100%;
+  }
+
   .hero-form .ward-result:has(> *) {
-    background: color-mix(in srgb, var(--color-hero-bg) 70%, var(--white));
+    width: fit-content;
+    max-width: 100%;
+    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--color-hero-surface);
+  }
+
+  .hero-form .ward-result :global(p) {
+    margin: 0;
+    color: var(--color-hero-muted);
+    line-height: var(--leading-md);
+  }
+
+  .hero-form .ward-result :global(a) {
+    color: var(--color-accent);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  .hero-form .ward-result :global(a:hover),
+  .hero-form .ward-result :global(a:focus-visible) {
+    color: var(--color-on-hero);
   }
 
   .hero-stats {
@@ -764,19 +799,35 @@ function wardName(ward: WardRow): string {
     }
 
     .hero-form {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr) 48px;
     }
 
     .hero-query,
-    .hero-form :global(.btn),
-    .hero-form :global(.ward-locate),
     .hero-form .ward-result {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
+
+    .hero-form :global(.btn) {
       grid-column: 1;
+      grid-row: auto;
+    }
+
+    .hero-form :global(.ward-locate) {
+      grid-column: 2;
       grid-row: auto;
     }
 
     .hero-form :global(.btn) {
       width: 100%;
+    }
+
+    .hero-form .ward-result:has(> *) {
+      width: 100%;
+    }
+
+    .hero-form .ward-result[data-result-state]:not([data-result-state="success"]) {
+      grid-column: 1 / -1;
     }
 
     .why-vote-inner {
