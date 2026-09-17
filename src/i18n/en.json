@@ -39,6 +39,7 @@
   "voterId.form6.label": "Fill Form 6 online",
   "voterId.form8.label": "Fill Form 8 online",
   "findBooth.form.label": "Voter ID (EPIC) number",
+  "findBooth.form.placeholder": "Voter ID / EPIC number",
   "findBooth.form.helper": "The number on your voter ID card — letters followed by digits, like ABC1234567.",
   "findBooth.form.submit": "Find my booth",
   "findBooth.result.boothLabel": "Your polling booth",

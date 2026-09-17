@@ -46,6 +46,8 @@
   --why-vote-pill: rgba(24, 35, 15, 0.1);
   --basics-muted: #57624a;
   --basics-border: rgba(24, 35, 15, 0.12);
+  --methodology-bg: #ccdabd;
+  --methodology-text: #28371c;
   --shadow-hero-button-hover: 0 2px 6px rgba(19, 32, 16, 0.08), 0 8px 18px rgba(19, 32, 16, 0.12);
   --oc-black: #000000;
 
@@ -68,6 +70,8 @@
   --color-why-vote-pill: var(--why-vote-pill);
   --color-basics-muted: var(--basics-muted);
   --color-basics-border: var(--basics-border);
+  --color-methodology-bg: var(--methodology-bg);
+  --color-methodology-text: var(--methodology-text);
   --color-surface: var(--gray-100);
   --color-border: var(--gray-300);
   --color-primary: var(--oc-forest);

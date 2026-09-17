@@ -124,6 +124,8 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       expect(html).toContain('placeholder="Your address"');
       expect(html).toContain('Find Your Ward');
       expect(html).toContain('class="booth-section"');
+      expect(html).toContain('placeholder="Voter ID / EPIC number"');
+      expect(html).not.toContain('The number on your voter ID card');
       expect(html).toContain('class="why-vote-section"');
       expect(html).toContain('Why your vote in the ward election matters.');
       expect(html).toContain('Voting strengthens democracy and empowers citizens to hold local leaders accountable');
