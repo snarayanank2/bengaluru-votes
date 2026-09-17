@@ -128,6 +128,13 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       expect(html).toContain('Why your vote in the ward election matters.');
       expect(html).toContain('Voting strengthens democracy and empowers citizens to hold local leaders accountable');
       expect(html).not.toContain('whyVoteToggle');
+      expect(html).toContain('class="basics-section"');
+      expect(html).toContain('Three things worth understanding.');
+      expect(html).toContain('What is the Greater Bengaluru Authority?');
+      expect(html).toContain('What is a ward');
+      expect(html).toContain('Every ward elects one councillor');
+      expect(html).toContain('What is a ward councillor?');
+      expect((html.match(/<details class="basics-item" open/g) ?? []).length).toBe(1);
       expect(html.indexOf('class="home-hero"')).toBeLessThan(html.indexOf('class="booth-section"'));
     });
 
