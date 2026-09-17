@@ -103,6 +103,14 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     expect(knHtml).toMatch(/>ಕನ್ನಡ</);
   });
 
+  it('renders the reference partner lockup without replacing the Bengaluru Votes brand', () => {
+    expect(enHtml).toContain('>Bengaluru Votes<');
+    expect(enHtml).toContain('src="/img/opencity-logo.png"');
+    expect(enHtml).toContain('src="/img/janaagraha-logo.png"');
+    expect(enHtml).toContain('class="header-separator"');
+    expect(enHtml).toContain('class="header-star"');
+  });
+
   it('renders all footer links with locale-correct hrefs and labels', () => {
     const enLinks: Array<[string, string]> = [
       ['/about', 'About this project'],

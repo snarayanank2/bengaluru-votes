@@ -1,8 +1,9 @@
 ---
 /**
  * AppBar — design-system.md §7.1, information-architecture.md §1 (global
- * elements). White, 56px, sticky. Left: the brand lockup — the "Bengaluru
- * Votes" text wordmark (the home link) followed by the Open City logo,
+ * elements). Off-white, 80px, sticky. Left: the brand lockup — the
+ * "Bengaluru Votes" text wordmark (the home link) followed by the OpenCity
+ * and Janaagraha logos,
  * settling design-system.md §12's open question: wordmark asset, no
  * byline. Right: the EN | ಕನ್ನಡ language toggle and the Sign in control.
  *
@@ -12,10 +13,9 @@
  * abbreviation is CSS-only (both spans always render) — see the stylesheet's
  * phone block for the width arithmetic.
  *
- * The Open City mark sits OUTSIDE the home anchor deliberately: nesting it
- * would put it under that anchor's `aria-label="Bengaluru Votes"`, which
- * overrides descendant alt text, so screen readers would never hear "Open
- * City" at all. As a sibling `<img alt="OpenCity">` it names itself.
+ * The partner marks sit OUTSIDE the home anchor deliberately: nesting them
+ * would put them under that anchor's `aria-label="Bengaluru Votes"`, which
+ * overrides descendant alt text. As sibling images they name themselves.
  *
  * Served from `public/img/` (so `/img/opencity-logo.png`), not imported
  * through `astro:assets` — this repo has no `sharp`, and Astro 5's default
@@ -59,7 +59,12 @@ const segments: Array<{ lang: Lang; label: string }> = [
         <span class="logo-full">Bengaluru Votes</span>
         <span class="logo-short">BV</span>
       </a>
-      <img class="oc-logo" src="/img/opencity-logo.png" alt="OpenCity" width="81" height="20" />
+      <span class="header-separator" aria-hidden="true"></span>
+      <div class="partner-marks" aria-label="OpenCity and Janaagraha">
+        <img class="oc-logo" src="/img/opencity-logo.png" alt="OpenCity" width="81" height="20" />
+        <span class="header-star" aria-hidden="true">★</span>
+        <img class="janaagraha-logo" src="/img/janaagraha-logo.png" alt="Janaagraha" width="133" height="22" />
+      </div>
     </div>
 
     <div class="controls">
@@ -91,8 +96,8 @@ const segments: Array<{ lang: Lang; label: string }> = [
     position: sticky;
     top: 0;
     z-index: 50;
-    height: 56px;
-    background: var(--color-bg);
+    height: 80px;
+    background: var(--color-header-bg);
     box-shadow: var(--shadow-sticky);
   }
 
@@ -123,15 +128,37 @@ const segments: Array<{ lang: Lang; label: string }> = [
     white-space: nowrap;
   }
 
-  /* Hairline separator so the two marks read as one lockup rather than as
-     two competing logos crowded together. */
+  .partner-marks {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+  }
+
+  .header-separator {
+    display: block;
+    width: 1px;
+    height: 28px;
+    background: var(--color-border);
+    flex-shrink: 0;
+  }
+
   .oc-logo {
     display: block;
     width: auto;
     height: 20px;
-    padding-inline-start: var(--space-3);
-    border-inline-start: 1px solid var(--color-border);
-    flex-shrink: 0;
+  }
+
+  .header-star {
+    color: var(--color-primary);
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .janaagraha-logo {
+    display: block;
+    width: auto;
+    height: 22px;
   }
 
   .logo-short {
@@ -220,9 +247,24 @@ const segments: Array<{ lang: Lang; label: string }> = [
       display: inline;
     }
 
+    .partner-marks {
+      gap: 4px;
+    }
+
+    .header-separator {
+      height: 24px;
+    }
+
     .oc-logo {
-      height: 18px;
-      padding-inline-start: var(--space-2);
+      height: 13px;
+    }
+
+    .janaagraha-logo {
+      height: 14px;
+    }
+
+    .header-star {
+      font-size: 11px;
     }
 
     .controls {
@@ -230,22 +272,42 @@ const segments: Array<{ lang: Lang; label: string }> = [
     }
 
     .segment {
-      padding-inline: var(--space-2);
+      padding-inline: 4px;
     }
 
     .sign-in {
-      padding-inline: var(--space-3);
+      padding-inline: var(--space-2);
     }
   }
 
-  /* The last ~9px, for the 320px floor (old iPhone SE, Galaxy Fold cover
-     screen): the hairline rule and its inset go, and plain space carries the
-     lockup instead. Above 360px the rule stays — it reads better than
-     spacing alone once there is room for it. */
+  /* Keep the complete lockup usable at the 320px floor as well. */
   @media (max-width: 359px) {
+    .brand {
+      gap: 4px;
+    }
+
+    .logo {
+      font-size: var(--text-base);
+    }
+
+    .partner-marks {
+      gap: 3px;
+    }
+
+    .header-separator {
+      height: 20px;
+    }
+
     .oc-logo {
-      padding-inline-start: 0;
-      border-inline-start: 0;
+      height: 12px;
+    }
+
+    .janaagraha-logo {
+      height: 12px;
+    }
+
+    .controls {
+      gap: 4px;
     }
   }
 </style>

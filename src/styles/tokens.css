@@ -32,6 +32,7 @@
   --sun-tint: #fff8d6;
   --brick-tint: #faeceb;
   --white: #ffffff;
+  --paper: #fbfaf6;
   --oc-black: #000000;
 
   /* ---------------------------------------------------------------------
@@ -40,6 +41,7 @@
   --color-text: var(--ink);
   --color-text-muted: var(--gray-600);
   --color-bg: var(--white);
+  --color-header-bg: var(--paper);
   --color-surface: var(--gray-100);
   --color-border: var(--gray-300);
   --color-primary: var(--oc-forest);
