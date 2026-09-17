@@ -33,6 +33,14 @@
   --brick-tint: #faeceb;
   --white: #ffffff;
   --paper: #fbfaf6;
+  --hero-forest: #132010;
+  --hero-cream: #f2ead9;
+  --hero-muted: #a7b89a;
+  --hero-surface: #1b2b16;
+  --hero-alert: #c1392b;
+  --hero-button-hover: #ece1cb;
+  --hero-button-text: #18230f;
+  --shadow-hero-button-hover: 0 2px 6px rgba(19, 32, 16, 0.08), 0 8px 18px rgba(19, 32, 16, 0.12);
   --oc-black: #000000;
 
   /* ---------------------------------------------------------------------
@@ -42,6 +50,12 @@
   --color-text-muted: var(--gray-600);
   --color-bg: var(--white);
   --color-header-bg: var(--paper);
+  --color-hero-bg: var(--hero-forest);
+  --color-on-hero: var(--hero-cream);
+  --color-hero-muted: var(--hero-muted);
+  --color-hero-surface: var(--hero-surface);
+  --color-hero-alert: var(--hero-alert);
+  --color-hero-button-text: var(--hero-button-text);
   --color-surface: var(--gray-100);
   --color-border: var(--gray-300);
   --color-primary: var(--oc-forest);

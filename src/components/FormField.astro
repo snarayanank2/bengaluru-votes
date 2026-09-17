@@ -17,12 +17,13 @@ interface Props {
   type?: FormFieldType;
   error?: string;
   helper?: string;
+  placeholder?: string;
   required?: boolean;
   value?: string;
   lang: Lang;
 }
 
-const { label, name, type = 'text', error, helper, required = false, value, lang } = Astro.props;
+const { label, name, type = 'text', error, helper, placeholder, required = false, value, lang } = Astro.props;
 
 const inputId = `field-${name}`;
 const helperId = helper ? `${inputId}-helper` : undefined;
@@ -46,6 +47,7 @@ const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
     name={name}
     type={type}
     value={value}
+    placeholder={placeholder}
     required={required}
     aria-required={required ? 'true' : undefined}
     aria-invalid={error ? 'true' : undefined}

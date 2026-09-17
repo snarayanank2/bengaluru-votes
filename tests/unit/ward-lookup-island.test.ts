@@ -361,6 +361,8 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
       // type=button, or clicking it would submit the empty address form.
       expect(button!.type).toBe('button');
       expect(button!.textContent).toBe(t('kn', 'home.form.useLocation'));
+      expect(button!.querySelector('svg')).not.toBeNull();
+      expect(button!.getAttribute('aria-label')).toBe(t('kn', 'home.form.useLocation'));
     });
 
     it('posts the position as {lat, lng} and renders the resolved ward', async () => {

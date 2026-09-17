@@ -115,6 +115,18 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       }
     });
 
+    it('renders the reference-style hero and places the booth lookup in its own section', async () => {
+      const html = await renderHome('en');
+      expect(html).toContain('class="home-hero"');
+      expect(html).toContain('MAKE AN INFORMED CHOICE');
+      expect(html).toContain('Before you vote, understand your neighbourhood');
+      expect(html).toContain('class="hero-form"');
+      expect(html).toContain('placeholder="Your address"');
+      expect(html).toContain('Find Your Ward');
+      expect(html).toContain('class="booth-section"');
+      expect(html.indexOf('class="home-hero"')).toBeLessThan(html.indexOf('class="booth-section"'));
+    });
+
     it('sets <html lang> correctly and emits the hreflang pair (via Base)', async () => {
       const enHtml = await renderHome('en');
       const knHtml = await renderHome('kn');

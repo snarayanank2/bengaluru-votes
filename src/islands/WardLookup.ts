@@ -237,7 +237,21 @@ function attachGeolocation(
   button.type = 'button';
   button.className = 'ward-locate';
   button.dataset.wardLocate = '';
-  button.textContent = label;
+  button.setAttribute('aria-label', label);
+
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('width', '20');
+  icon.setAttribute('height', '20');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.setAttribute('focusable', 'false');
+  icon.innerHTML = '<path d="M12 3a9 9 0 1 0 9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 7a5 5 0 1 0 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 11v2m-1-1h2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+  button.append(icon);
+
+  const text = document.createElement('span');
+  text.className = 'ward-locate-label';
+  text.textContent = label;
+  button.append(text);
 
   const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
   if (submitButton) submitButton.insertAdjacentElement('afterend', button);
