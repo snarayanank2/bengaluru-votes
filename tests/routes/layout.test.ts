@@ -141,6 +141,14 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     expect(enHtml).toContain('A joint project by');
   });
 
+  it('puts the joint-project block first and separates the three footer columns', () => {
+    const partners = enHtml.indexOf('class="footer-partners"');
+    const firstColumn = enHtml.indexOf('class="footer-link-column footer-link-column--divided"');
+    expect(partners).toBeGreaterThanOrEqual(0);
+    expect(firstColumn).toBeGreaterThan(partners);
+    expect(enHtml.match(/class="footer-link-column footer-link-column--divided"/g)).toHaveLength(2);
+  });
+
   it('renders the three social links with accessible names and safe rel (§7.2)', () => {
     const accounts: Array<[string, string]> = [
       ['https://x.com/opencity_in', 'X'],

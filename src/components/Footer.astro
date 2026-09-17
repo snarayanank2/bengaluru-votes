@@ -9,8 +9,8 @@
  * the Janaagraha + Oorvani Foundation partner lockup and Open City's
  * social links.
  *
- * Two columns in a 2:1 split at md and up (links left; partners and social
- * right), stacked on mobile.
+ * Three columns at md and up (partners first, then two navigation columns),
+ * separated by vertical rules and stacked on mobile.
  *
  * Both partner logos are dark-on-transparent PNGs, so each sits on its own
  * white chip rather than being recolored — a partner's mark is theirs, and
@@ -75,17 +75,6 @@ const social = [
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <nav aria-label="Footer">
-      <ul role="list" class="footer-links">
-        {
-          links.map((link) => (
-            <li>
-              <a href={localePath(lang, link.path)}>{t(lang, link.key)}</a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
     <div class="footer-partners">
       <p class="partners-label">{t(lang, 'footer.jointProject')}</p>
       <ul role="list" class="partner-logos">
@@ -115,6 +104,28 @@ const social = [
         }
       </ul>
     </div>
+    <nav class="footer-link-column footer-link-column--divided" aria-label="Footer">
+      <ul role="list" class="footer-links">
+        {
+          links.slice(0, 5).map((link) => (
+            <li>
+              <a href={localePath(lang, link.path)}>{t(lang, link.key)}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <nav class="footer-link-column footer-link-column--divided" aria-label="More footer links">
+      <ul role="list" class="footer-links">
+        {
+          links.slice(5).map((link) => (
+            <li>
+              <a href={localePath(lang, link.path)}>{t(lang, link.key)}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
   </div>
 </footer>
 
@@ -132,27 +143,23 @@ const social = [
     gap: var(--space-8);
   }
 
-  /* 2:1 split at md (literal 768px — --bp-md can't be read in a query). */
+  /* Three equal columns at md (literal 768px — --bp-md can't be read in a query). */
   @media (min-width: 768px) {
     .footer-inner {
-      grid-template-columns: 2fr 1fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       align-items: start;
+    }
+
+    .footer-link-column--divided,
+    .footer-partners + .footer-link-column {
+      border-left: 1px solid color-mix(in srgb, var(--color-on-footer) 45%, transparent);
+      padding-left: var(--space-8);
     }
   }
 
   .footer-links {
     display: grid;
-    gap: var(--space-3) var(--space-6);
-  }
-
-  /* Nine links read as a list, not a paragraph — two tidy columns once
-     there's room for them (literal 480px = --bp-sm). Equal-width columns,
-     so on desktop the pair spreads across the 2fr side instead of
-     clumping at its left edge. */
-  @media (min-width: 480px) {
-    .footer-links {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    gap: var(--space-3);
   }
 
   .footer-links a {
