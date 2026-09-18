@@ -58,6 +58,9 @@ services:
         SITE_ORIGIN: http://localhost:${PORT:-4321}
         EXTRA_ALLOWED_ORIGIN: http://localhost:${PORT:-4321}
     image: bengaluru-votes:local
+    # Gitignored local credentials; never commit this file.
+    env_file:
+      - ./.env.local
     # 127.0.0.1 only — never 0.0.0.0. This stack has weak fixed credentials
     # and no TLS; it must not be reachable from the local network.
     ports:
@@ -83,13 +86,9 @@ services:
       # Explicitly scoped to a loopback SITE_ORIGIN by recaptcha.ts; lets the
       # production-mode local container exercise anonymous forms without a key.
       ALLOW_INSECURE_LOCAL_RECAPTCHA: 'true'
-      # Deliberately unset: SENDGRID_*, TWILIO_*, GOOGLE_*, ANTHROPIC_API_KEY,
-      # RECAPTCHA_*, SENTRY_DSN, GA_MEASUREMENT_ID. Each degrades to a
-      # documented no-op rather than an error (runbook.md "Required
-      # environment variables"). Address ward-lookup falls back to the
-      # pincode table without GOOGLE_GEOCODING_API_KEY; Kannada MT stays
-      # 'pending' without ANTHROPIC_API_KEY. Add them to a local override
-      # file if you need to exercise those paths.
+      # SENDGRID_*, TWILIO_*, ANTHROPIC_API_KEY, SENTRY_DSN and
+      # GA_MEASUREMENT_ID remain deliberately unset. Each degrades to a
+      # documented no-op (runbook.md).
     volumes:
       # Mount the working tree for hot reload. Keep image-installed
       # node_modules visible inside the container rather than shadowing them
