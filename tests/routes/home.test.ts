@@ -185,13 +185,11 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
   });
 
   describe('shortcut cards', () => {
-    it('links to /check-registration and /voting-guide, locale-correct', async () => {
+    it('links to /voter-faqs, locale-correct', async () => {
       const enHtml = await renderHome('en');
       const knHtml = await renderHome('kn');
-      expect(enHtml).toContain('href="/check-registration"');
-      expect(enHtml).toContain('href="/voting-guide"');
-      expect(knHtml).toContain('href="/kn/check-registration"');
-      expect(knHtml).toContain('href="/kn/voting-guide"');
+      expect(enHtml).toContain('href="/voter-faqs"');
+      expect(knHtml).toContain('href="/kn/voter-faqs"');
     });
   });
 

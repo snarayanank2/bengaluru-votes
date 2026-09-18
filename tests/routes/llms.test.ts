@@ -54,8 +54,7 @@ describe('llms.txt (Task 57)', () => {
 
   it('links the voting guides as absolute URLs', async () => {
     const body = await (await GET({} as any)).text();
-    expect(body).toContain(`${SITE_ORIGIN}/voting-guide`);
-    expect(body).toContain(`${SITE_ORIGIN}/check-registration`);
+    expect(body).toContain(`${SITE_ORIGIN}/voter-faqs`);
     expect(body).toContain(`${SITE_ORIGIN}/voting-guide/voter-id`);
     expect(body).toContain(`${SITE_ORIGIN}/voting-guide/how-to-vote`);
     expect(body).toContain(`${SITE_ORIGIN}/voting-guide/find-booth`);

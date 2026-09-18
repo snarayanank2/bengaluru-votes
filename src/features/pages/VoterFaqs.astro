@@ -1,31 +1,15 @@
 ---
 /**
- * Voting guide hub (`/voting-guide`, `/kn/voting-guide`) —
- * information-architecture.md §3.9, PRD §5.17.
- *
- * This is the "forwardable first-time-voter link" (task brief) — it
- * renders the Task 8 `voting-guide` content entry (the narrative checklist
- * prose, with 5 of its 6 steps already deep-linking inline) AND, below it,
- * a structural 6-step deep-link list built from i18n keys rather than
- * parsed out of the content — every step gets a link this way (including
- * step 4, "read the candidates", which the prose leaves unlinked since
- * candidate report cards are per-ward and there's nothing to link to until
- * a ward is chosen — this step links to '/', same as step 3's ward finder,
- * per the task brief).
- *
- * Steps 1 (check the roll) and 2 (enrol/transfer) are the two that expire
- * when the roll closes, so the roll-deadline countdown renders once above
- * the step list rather than being repeated per step.
- *
- * CACHE-SAFETY: only reads app_settings — no cookie/session access, safe
- * under the anonymous-page micro-cache.
+ * Voter FAQs (`/voter-faqs`, `/kn/voter-faqs`) — the single public hub for
+ * registration questions and the first-time voter checklist.
  */
 import Prose from '../../layouts/Prose.astro';
 import DeadlineBanner from '../../components/DeadlineBanner.astro';
+import ExternalLinkOut from '../../components/ExternalLinkOut.astro';
 import Card from '../../components/Card.astro';
 import { localePath, t, type Lang } from '../../i18n';
 import { getPageContent } from '../../i18n/content';
-import { renderContentHtml } from '../../lib/render-content';
+import { renderContentHtml, splitMarkdownSections } from '../../lib/render-content';
 import { getSettings } from '../../lib/settings';
 
 interface Props {
@@ -34,20 +18,23 @@ interface Props {
 
 const { lang } = Astro.props;
 
-const content = getPageContent(lang, 'voting-guide');
+const content = getPageContent(lang, 'voter-faqs');
 if (!content) {
-  throw new Error('VotingGuide: missing content/pages/en/voting-guide.md');
+  throw new Error('VoterFaqs: missing content/pages/en/voter-faqs.md');
 }
 
-const settings = await getSettings(['roll_deadline']);
+const sections = splitMarkdownSections(content.body);
+const beforeLinkOut = sections.slice(0, 3).join('');
+const afterLinkOut = sections.slice(3).join('');
+
+const settings = await getSettings(['roll_deadline', 'roll_lookup_url']);
 const rollDeadline = settings.roll_deadline;
 const rollDeadlineActive = rollDeadline
   ? new Date(`${rollDeadline}T23:59:59Z`).getTime() >= Date.now()
   : false;
 
-// PRD §5.17 — every one of the 6 checklist steps deep-links somewhere.
 const steps: Array<{ labelKey: string; path: string }> = [
-  { labelKey: 'votingGuide.steps.checkRoll', path: '/check-registration' },
+  { labelKey: 'votingGuide.steps.checkRoll', path: '/voter-faqs' },
   { labelKey: 'votingGuide.steps.enrolOrTransfer', path: '/voting-guide/voter-id' },
   { labelKey: 'votingGuide.steps.findWard', path: '/' },
   { labelKey: 'votingGuide.steps.readCandidates', path: '/' },
@@ -56,13 +43,17 @@ const steps: Array<{ labelKey: string; path: string }> = [
 ];
 ---
 
-<Prose lang={lang} title={content.title} description={content.description} path="/voting-guide">
-  <div set:html={renderContentHtml(content.body, lang)} />
+<Prose lang={lang} title={content.title} description={content.description} path="/voter-faqs">
+  {rollDeadlineActive && rollDeadline && <DeadlineBanner deadlineISO={rollDeadline} lang={lang} />}
+
+  <div set:html={renderContentHtml(beforeLinkOut, lang)} />
+
+  <ExternalLinkOut lang={lang} href={settings.roll_lookup_url} label={t(lang, 'checkRegistration.linkOut.label')} />
+
+  <div set:html={renderContentHtml(afterLinkOut, lang)} />
 
   <section class="steps" aria-labelledby="steps-heading">
     <h2 id="steps-heading">{t(lang, 'votingGuide.steps.heading')}</h2>
-
-    {rollDeadlineActive && rollDeadline && <DeadlineBanner deadlineISO={rollDeadline} lang={lang} />}
 
     <ol class="step-list">
       {steps.map((step, index) => (

@@ -245,7 +245,7 @@ const PAGE_MIX = [
     build: () =>
       withLang(
         randomFrom([
-          '/voting-guide',
+          '/voter-faqs',
           '/voting-guide/voter-id',
           '/voting-guide/how-to-vote',
           '/voting-guide/find-booth',

@@ -23,4 +23,4 @@ Unlike an MLA or MP, a corporator's mandate is hyper-local: your ward, not your 
 
 Ward-level decisions — which street gets fixed first, how waste is collected, where a park comes up — are shaped directly by who represents your ward. Because this is the first election under the new GBA structure, and the last ward election was so long ago, most voters are choosing a corporator for a ward that didn't exist in its current form the last time they voted. Knowing your ward and its candidates matters more than usual this time round.
 
-Ready to check the details that apply to you? Start with [finding your ward](/), then [check you're on the roll](/check-registration), and follow the [first-time voter checklist](/voting-guide) through to voting day.
+Ready to check the details that apply to you? Start with [finding your ward](/), then use the [Voter FAQs](/voter-faqs) to check you're on the roll and follow the first-time voter checklist through to voting day.

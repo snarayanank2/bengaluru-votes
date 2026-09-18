@@ -24,9 +24,9 @@
  * 2. REWRITES ROOT-RELATIVE LINKS FOR THE REQUESTED LANGUAGE. Content
  *    files are authored once in English and the Kannada translation
  *    preserves links "exactly as given" (scripts/translate.ts's prompt
- *    rule) — so a Kannada content file's `[text](/check-registration)`
+ *    rule) — so a Kannada content file's `[text](/voter-faqs)`
  *    link is still the bare English-canonical path, not
- *    `/kn/check-registration`. Left alone, a Kannada reader clicking a
+ *    `/kn/voter-faqs`. Left alone, a Kannada reader clicking a
  *    content link would silently drop back into English. This renderer's
  *    custom `marked.Renderer.link` runs every internal (root-relative)
  *    href through the same `localePath()` used everywhere else in the

@@ -114,8 +114,7 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
   it('renders footer links with locale-correct hrefs and omits the retired data page', () => {
     const enLinks: Array<[string, string]> = [
       ['/about', 'About Bengaluru Votes'],
-      ['/check-registration', 'Check your registration'],
-      ['/voting-guide', 'Voting guide'],
+      ['/voter-faqs', 'Voter FAQs'],
       ['/donate', 'Donate'],
       ['/terms', 'Terms of use'],
       ['/privacy', 'Privacy policy'],

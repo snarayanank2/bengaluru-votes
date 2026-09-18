@@ -93,8 +93,8 @@ const siteOrigin = Astro.site ?? new URL('https://bengaluruvotes.opencity.in');
 
 const taggedLink = new URL(`/?src=${encodeURIComponent(slug)}`, siteOrigin).href;
 const votingGuideLink = {
-  en: new URL(`${localePath('en', '/voting-guide')}?src=${encodeURIComponent(slug)}`, siteOrigin).href,
-  kn: new URL(`${localePath('kn', '/voting-guide')}?src=${encodeURIComponent(slug)}`, siteOrigin).href,
+  en: new URL(`${localePath('en', '/voter-faqs')}?src=${encodeURIComponent(slug)}`, siteOrigin).href,
+  kn: new URL(`${localePath('kn', '/voter-faqs')}?src=${encodeURIComponent(slug)}`, siteOrigin).href,
 };
 
 const pagePath = `/partner/${slug}`;

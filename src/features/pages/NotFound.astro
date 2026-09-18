@@ -8,7 +8,7 @@
  * status (see src/pages/ward/[id].astro's header comment for the same
  * rule). This component is purely the visitor-facing content: a short
  * "we couldn't find that page" message plus three helpful links back
- * (Home, Voting guide, Check registration) so a dead/stale link doesn't
+ * (Home, Voter FAQs) so a dead/stale link doesn't
  * strand a citizen.
  *
  * CACHE-SAFETY / robustness: no DB, no app_settings, no cookie/session
@@ -44,11 +44,8 @@ const body = t(lang, 'error.notFound.body');
       <Button variant="primary" href={localePath(lang, '/')} lang={lang}>
         {t(lang, 'error.backHome')}
       </Button>
-      <Button variant="secondary" href={localePath(lang, '/voting-guide')} lang={lang}>
-        {t(lang, 'footer.votingGuide')}
-      </Button>
-      <Button variant="secondary" href={localePath(lang, '/check-registration')} lang={lang}>
-        {t(lang, 'home.shortcuts.checkRegistration.title')}
+      <Button variant="secondary" href={localePath(lang, '/voter-faqs')} lang={lang}>
+        {t(lang, 'footer.voterFaqs')}
       </Button>
     </div>
   </EmptyState>

@@ -327,7 +327,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
       if (!ctx.rollDeadline) return undefined;
       return {
         deadline: formatDate(ctx.rollDeadline, user.language),
-        checkRegistrationLink: absoluteUrl(user.language, '/check-registration'),
+        checkRegistrationLink: absoluteUrl(user.language, '/voter-faqs'),
         guideLink: absoluteUrl(user.language, '/voting-guide/voter-id'),
       };
     }

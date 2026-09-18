@@ -23,9 +23,8 @@ vi.mock('../../src/lib/booth-lookup', () => ({ lookupBoothByEpic: vi.fn() }));
 
 import { getSettings } from '../../src/lib/settings';
 import { lookupBoothByEpic } from '../../src/lib/booth-lookup';
-import CheckRegistration from '../../src/features/pages/CheckRegistration.astro';
+import VoterFaqs from '../../src/features/pages/VoterFaqs.astro';
 import AboutElection from '../../src/features/pages/AboutElection.astro';
-import VotingGuide from '../../src/features/pages/VotingGuide.astro';
 import VoterId from '../../src/features/pages/VoterId.astro';
 import HowToVote from '../../src/features/pages/HowToVote.astro';
 import FindBooth from '../../src/features/pages/FindBooth.astro';
@@ -161,25 +160,25 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
     vi.mocked(lookupBoothByEpic).mockReset();
   });
 
-  describe('CheckRegistration (/check-registration)', () => {
+  describe('VoterFaqs (/voter-faqs)', () => {
     it('renders a distinctive sentence from the EN content, in both languages, with correct title/description/lang', async () => {
-      const en = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const en = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(en.html).toContain('the worst mistake this platform could make');
-      expect(en.html).toContain('<title>Check if you');
+      expect(en.html).toContain('<title>Voter FAQs');
       expect(en.html).toMatch(/<html lang="en"/);
 
-      const kn = await renderPage(CheckRegistration, 'kn', '/check-registration');
+      const kn = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
       expect(kn.html).toContain('ಈ ವೇದಿಕೆ ಮಾಡಬಹುದಾದ ಅತ್ಯಂತ ಕೆಟ್ಟ ತಪ್ಪು');
       expect(kn.html).toMatch(/<html lang="kn"/);
     });
 
     it('never leaks the INPUT NEEDED authoring marker into the rendered HTML', async () => {
-      const { html } = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(html).not.toContain('INPUT NEEDED');
     });
 
     it('eligibility basics appear BEFORE the external link-out button, in document order', async () => {
-      const { html } = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       const eligibilityIndex = html.indexOf('18 years or older');
       const linkOutIndex = html.indexOf('data-external-link');
       expect(eligibilityIndex).toBeGreaterThan(-1);
@@ -188,7 +187,7 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
     });
 
     it('the guided link-out carries the external glyph and rel="noopener noreferrer", target=_blank', async () => {
-      const { html } = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(html).toContain('class="external-glyph"');
       const anchor = findAnchorTag(html, 'data-external-link');
       expect(anchor).toContain('rel="noopener noreferrer"');
@@ -196,29 +195,29 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
     });
 
     it('shows the pending-note placeholder and href="#" when roll_lookup_url is not set', async () => {
-      const { html } = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(html).toContain('Official link pending');
       expect(html).toContain('href="#"');
     });
 
     it('uses the real URL and omits the pending note once roll_lookup_url is set', async () => {
       vi.mocked(getSettings).mockResolvedValue({ ...NO_SETTINGS, roll_lookup_url: 'https://voters.eci.gov.in/' });
-      const { html } = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(html).toContain('href="https://voters.eci.gov.in/"');
       expect(html).not.toContain('Official link pending');
     });
 
     it('renders DeadlineBanner when roll_deadline is set in the future, not when absent/past', async () => {
       vi.mocked(getSettings).mockResolvedValue({ ...NO_SETTINGS, roll_deadline: '2099-12-31' });
-      const future = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const future = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(future.html).toContain('deadline-banner');
 
       vi.mocked(getSettings).mockResolvedValue(NO_SETTINGS);
-      const absent = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const absent = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(absent.html).not.toContain('deadline-banner');
 
       vi.mocked(getSettings).mockResolvedValue({ ...NO_SETTINGS, roll_deadline: '2000-01-01' });
-      const past = await renderPage(CheckRegistration, 'en', '/check-registration');
+      const past = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(past.html).not.toContain('deadline-banner');
     });
   });
@@ -269,23 +268,23 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
     });
   });
 
-  describe('VotingGuide (/voting-guide)', () => {
+  describe('VoterFaqs checklist (/voter-faqs)', () => {
     it('renders a distinctive sentence from the EN content, in both languages', async () => {
-      const en = await renderPage(VotingGuide, 'en', '/voting-guide');
+      const en = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(en.html).toContain('nearly everyone under thirty has never voted');
-      const kn = await renderPage(VotingGuide, 'kn', '/voting-guide');
+      const kn = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
       expect(kn.html).toContain('ಬೆಂಗಳೂರಿನ ಕೊನೆಯ ವಾರ್ಡ್ ಚುನಾವಣೆ');
     });
 
     it('never leaks the "roll-deadline countdown" authoring comment into the rendered HTML', async () => {
-      const { html } = await renderPage(VotingGuide, 'en', '/voting-guide');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(html).not.toContain('PRD §5.6, §5.17');
     });
 
     it('all 6 checklist steps deep-link to the right EN paths', async () => {
-      const { html } = await renderPage(VotingGuide, 'en', '/voting-guide');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       for (const href of [
-        '/check-registration',
+        '/voter-faqs',
         '/voting-guide/voter-id',
         '/voting-guide/find-booth',
         '/voting-guide/how-to-vote',
@@ -298,9 +297,9 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
     });
 
     it('all 6 checklist steps deep-link to the right kn paths', async () => {
-      const { html } = await renderPage(VotingGuide, 'kn', '/voting-guide');
+      const { html } = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
       for (const href of [
-        '/kn/check-registration',
+        '/kn/voter-faqs',
         '/kn/voting-guide/voter-id',
         '/kn/voting-guide/find-booth',
         '/kn/voting-guide/how-to-vote',
@@ -312,14 +311,14 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
     });
 
     it('each step in the structural checklist binds ITS OWN label to ITS OWN href (EN) — not just "both appear somewhere"', async () => {
-      const { html } = await renderPage(VotingGuide, 'en', '/voting-guide');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       const items = extractStepListItems(html);
       expect(items).toHaveLength(6);
 
       // Ordered [label, href] pairs matching VotingGuide.astro's `steps` array
       // exactly (src/i18n/en.json `votingGuide.steps.*`).
       const expected: Array<[string, string]> = [
-        ["Check you", '/check-registration'], // "Check you're on the roll" — split at the apostrophe below.
+        ["Check you", '/voter-faqs'], // "Check you're on the roll" — split at the apostrophe below.
         ['Enrol or transfer your registration', '/voting-guide/voter-id'],
         ['Find your ward', '/'],
         ['Read about the candidates', '/'],
@@ -335,14 +334,14 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
     });
 
     it('each step in the structural checklist binds ITS OWN label to ITS OWN href (kn) — not just "both appear somewhere"', async () => {
-      const { html } = await renderPage(VotingGuide, 'kn', '/voting-guide');
+      const { html } = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
       const items = extractStepListItems(html);
       expect(items).toHaveLength(6);
 
       // Ordered [label, href] pairs matching VotingGuide.astro's `steps` array
       // exactly (src/i18n/kn.json `votingGuide.steps.*`).
       const expected: Array<[string, string]> = [
-        ['ನೀವು ಪಟ್ಟಿಯಲ್ಲಿ ಇದ್ದೀರಾ ಎಂದು ಪರಿಶೀಲಿಸಿ', '/kn/check-registration'],
+        ['ನೀವು ಪಟ್ಟಿಯಲ್ಲಿ ಇದ್ದೀರಾ ಎಂದು ಪರಿಶೀಲಿಸಿ', '/kn/voter-faqs'],
         ['ನಿಮ್ಮ ನೋಂದಣಿಯನ್ನು ನೋಂದಾಯಿಸಿ ಅಥವಾ ವರ್ಗಾಯಿಸಿ', '/kn/voting-guide/voter-id'],
         ['ನಿಮ್ಮ ವಾರ್ಡ್ ಹುಡುಕಿ', '/kn/'],
         ['ಅಭ್ಯರ್ಥಿಗಳ ಬಗ್ಗೆ ಓದಿ', '/kn/'],
@@ -359,7 +358,7 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
 
     it('renders DeadlineBanner near the steps when roll_deadline is set in the future', async () => {
       vi.mocked(getSettings).mockResolvedValue({ ...NO_SETTINGS, roll_deadline: '2099-12-31' });
-      const { html } = await renderPage(VotingGuide, 'en', '/voting-guide');
+      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       expect(html).toContain('deadline-banner');
     });
   });

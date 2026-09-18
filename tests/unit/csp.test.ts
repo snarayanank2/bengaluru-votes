@@ -155,7 +155,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
     });
 
     it('keeps the maps hosts on every route, not just the ward page', () => {
-      for (const path of ['/', '/kn/', '/voting-guide']) {
+      for (const path of ['/', '/kn/', '/voter-faqs']) {
         expect(buildCsp('n0nce', path)).toContain('https://maps.googleapis.com');
       }
     });

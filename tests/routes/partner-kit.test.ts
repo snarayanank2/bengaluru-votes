@@ -188,16 +188,16 @@ describe('Partner kit (/partner/{slug}, /kn/partner/{slug}) — IA §3.19, PRD �
     it.each(['en', 'kn'] as const)('%s page: first-time-voter text links /voting-guide, localized per language, with ?src', async (pageLang) => {
       const html = normalize(await (await renderPartnerKit(pageLang, SLUG)).text());
 
-      const enVotingGuideLink = `${SITE_ORIGIN}${localePath('en', '/voting-guide')}?src=${SLUG}`;
-      const knVotingGuideLink = `${SITE_ORIGIN}${localePath('kn', '/voting-guide')}?src=${SLUG}`;
+      const enVotingGuideLink = `${SITE_ORIGIN}${localePath('en', '/voter-faqs')}?src=${SLUG}`;
+      const knVotingGuideLink = `${SITE_ORIGIN}${localePath('kn', '/voter-faqs')}?src=${SLUG}`;
 
       const enFirstTime = t('en', 'partnerKit.forward.firstTimeVoter.body', { link: enVotingGuideLink });
       const knFirstTime = t('kn', 'partnerKit.forward.firstTimeVoter.body', { link: knVotingGuideLink });
 
       expect(html).toContain(enFirstTime);
       expect(html).toContain(knFirstTime);
-      expect(html).toContain('/voting-guide');
-      expect(html).toContain('/kn/voting-guide');
+      expect(html).toContain('/voter-faqs');
+      expect(html).toContain('/kn/voter-faqs');
     });
 
     it('every forward text is inside a copyable (readonly textarea) block', async () => {

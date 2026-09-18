@@ -51,7 +51,7 @@ async function renderPage(
 }
 
 describe('404 page (Task 23) — IA/PRD friendly not-found', () => {
-  it('EN: renders with status 404, noindex, lang="en", and links back to home/voting-guide/check-registration', async () => {
+  it('EN: renders with status 404, noindex, lang="en", and links back to home/voter-faqs', async () => {
     const { html, response } = await renderPage(NotFoundEn, '/some/unknown/path');
 
     expect(response.status).toBe(404);
@@ -61,8 +61,7 @@ describe('404 page (Task 23) — IA/PRD friendly not-found', () => {
     expect(html).toContain(t('en', 'error.notFound.body'));
 
     expect(html).toContain(`href="${localePath('en', '/')}"`);
-    expect(html).toContain(`href="${localePath('en', '/voting-guide')}"`);
-    expect(html).toContain(`href="${localePath('en', '/check-registration')}"`);
+    expect(html).toContain(`href="${localePath('en', '/voter-faqs')}"`);
   });
 
   it('KN: renders with status 404, noindex, lang="kn", and links localized to /kn/...', async () => {
@@ -75,8 +74,7 @@ describe('404 page (Task 23) — IA/PRD friendly not-found', () => {
     expect(html).toContain(t('kn', 'error.notFound.body'));
 
     expect(html).toContain(`href="${localePath('kn', '/')}"`);
-    expect(html).toContain(`href="${localePath('kn', '/voting-guide')}"`);
-    expect(html).toContain(`href="${localePath('kn', '/check-registration')}"`);
+    expect(html).toContain(`href="${localePath('kn', '/voter-faqs')}"`);
   });
 
   it('does not read any cookie/session — identical markup with/without a cookie on the request, no set-cookie', async () => {

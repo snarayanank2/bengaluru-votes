@@ -120,14 +120,14 @@ describe('src/lib/send/render.ts renderMessage', () => {
     it('converts an email body Markdown -> HTML: **bold** -> <strong>, "- bullets" -> <ul><li>, [text](url) -> <a href>', () => {
       const rendered = renderMessage('R1', 'en', 'email', {
         deadline: '31 August',
-        checkRegistrationLink: 'https://bengaluruvotes.opencity.in/check-registration',
+        checkRegistrationLink: 'https://bengaluruvotes.opencity.in/voter-faqs',
         guideLink: 'https://bengaluruvotes.opencity.in/voting-guide/register',
       });
 
       const html = renderEmailMarkdown(rendered.body);
 
       expect(html).toContain('<strong>31 August</strong>');
-      expect(html).toContain('<a href="https://bengaluruvotes.opencity.in/check-registration">Check your registration</a>');
+      expect(html).toContain('<a href="https://bengaluruvotes.opencity.in/voter-faqs">Check your registration</a>');
       expect(html).not.toContain('**');
       expect(html).not.toMatch(/\[[^\]]+\]\([^)]+\)/);
     });
