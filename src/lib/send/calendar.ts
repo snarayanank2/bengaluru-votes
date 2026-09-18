@@ -328,7 +328,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
       return {
         deadline: formatDate(ctx.rollDeadline, user.language),
         checkRegistrationLink: absoluteUrl(user.language, '/voter-faqs'),
-        guideLink: absoluteUrl(user.language, '/voting-guide/voter-id'),
+        guideLink: absoluteUrl(user.language, '/voter-faqs#registration'),
       };
     }
     case 'L1': {
@@ -376,7 +376,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
         ward: wardDisplayName(ward, user.language),
         compareLink: absoluteUrl(user.language, `/ward/${wardId}/compare`),
         issuesLink: absoluteUrl(user.language, `/ward/${wardId}`),
-        boothLink: absoluteUrl(user.language, '/voting-guide/find-booth'),
+        boothLink: absoluteUrl(user.language, '/'),
         notificationsLink,
         unsubscribeLink,
       };
@@ -390,7 +390,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
         booth: `${boothName}, ${booth.address}`,
         openTime: ctx.pollOpenTime,
         closeTime: ctx.pollCloseTime,
-        boothGuideLink: absoluteUrl(user.language, '/voting-guide/find-booth'),
+        boothGuideLink: absoluteUrl(user.language, '/voter-faqs#voting-day'),
       };
     }
     default:

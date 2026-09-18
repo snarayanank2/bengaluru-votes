@@ -55,9 +55,10 @@ describe('llms.txt (Task 57)', () => {
   it('links the voting guides as absolute URLs', async () => {
     const body = await (await GET({} as any)).text();
     expect(body).toContain(`${SITE_ORIGIN}/voter-faqs`);
-    expect(body).toContain(`${SITE_ORIGIN}/voting-guide/voter-id`);
-    expect(body).toContain(`${SITE_ORIGIN}/voting-guide/how-to-vote`);
-    expect(body).toContain(`${SITE_ORIGIN}/voting-guide/find-booth`);
+    expect(body).toContain(`${SITE_ORIGIN}/voter-faqs#registration`);
+    expect(body).toContain(`${SITE_ORIGIN}/voter-faqs#voting-day`);
+    expect(body).toContain(`Find your polling booth: ${SITE_ORIGIN}/`);
+    expect(body).not.toContain('/voting-guide/');
   });
 
   it('links ward pages and the full sitemap index as absolute URLs', async () => {

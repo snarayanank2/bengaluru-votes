@@ -242,15 +242,7 @@ const PAGE_MIX = [
   },
   {
     weight: 0.10,
-    build: () =>
-      withLang(
-        randomFrom([
-          '/voter-faqs',
-          '/voting-guide/voter-id',
-          '/voting-guide/how-to-vote',
-          '/voting-guide/find-booth',
-        ]),
-      ),
+    build: () => withLang('/voter-faqs'),
   },
 ];
 const PAGE_MIX_TOTAL_WEIGHT = PAGE_MIX.reduce((sum, p) => sum + p.weight, 0);

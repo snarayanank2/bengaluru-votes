@@ -64,9 +64,6 @@ export const STATIC_ROUTES: string[] = [
   '/voter-faqs',
   '/privacy',
   '/terms',
-  '/voting-guide/how-to-vote',
-  '/voting-guide/voter-id',
-  '/voting-guide/find-booth',
 ];
 
 /** Same fallback convention as astro.config.mjs / src/lib/send/calendar.ts. */

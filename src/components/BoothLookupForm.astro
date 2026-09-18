@@ -2,19 +2,12 @@
 /**
  * The voter-ID (EPIC) booth-lookup form, and its server-rendered result.
  *
- * Rendered in two places — the find-booth page (`FindBooth.astro`) and the
- * home page's booth card (`Home.astro`) — which is why it is a component
- * rather than markup in either. Both mounts share one island
- * (`src/islands/BoothLookup.ts`, which wires every `[data-booth-lookup]`
- * form it finds) and one set of `data-msg-*` attributes, so the two can't
- * drift apart in wording or behaviour.
- *
- * NO-JS FIRST. This is a real `<form method="post">` whose action is always
- * `/voting-guide/find-booth`, on both mounts. With JS off, a submit from the
- * home page lands on the find-booth page with the answer server-rendered by
- * that page's POST branch; with JS on, the island paints it in place and the
- * visitor never leaves. `result` is only ever non-null on the find-booth
- * page's own POST render.
+ * Public lookup is mounted on the home page and handled by
+ * `src/islands/BoothLookup.ts` through POST /api/booth-lookup.
+ * The legacy form action is retained deliberately, but its informational
+ * route has been removed: there is no supported no-JS booth lookup page.
+ * Keep the reusable result rendering available without moving POST
+ * handling into the FAQ.
  *
  * PRIVACY. The result carries the voter's name and EPIC number. This markup
  * is rendered per-request on a `no-store` response and must never appear in

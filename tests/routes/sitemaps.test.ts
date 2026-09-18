@@ -172,7 +172,7 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
     // path — a raw `.not.toContain('/admin')` would false-positive on
     // those. What actually matters is that no <loc>/href PATH starts with
     // an excluded prefix.
-    const EXCLUDED_PREFIXES = ['/account/', '/curator/', '/admin/', '/partner/', '/api/'];
+    const EXCLUDED_PREFIXES = ['/account/', '/curator/', '/admin/', '/partner/', '/api/', '/voting-guide/'];
 
     function urlPaths(xml: string): string[] {
       const matches = [...xml.matchAll(/(?:<loc>|href=")(https:\/\/[^"<]+)(?:<\/loc>|")/g)];

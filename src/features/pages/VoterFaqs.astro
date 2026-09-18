@@ -35,22 +35,22 @@ const rollDeadlineActive = rollDeadline
 
 const steps: Array<{ labelKey: string; path: string }> = [
   { labelKey: 'votingGuide.steps.checkRoll', path: '/voter-faqs' },
-  { labelKey: 'votingGuide.steps.enrolOrTransfer', path: '/voting-guide/voter-id' },
+  { labelKey: 'votingGuide.steps.enrolOrTransfer', path: '/voter-faqs#registration' },
   { labelKey: 'votingGuide.steps.findWard', path: '/' },
   { labelKey: 'votingGuide.steps.readCandidates', path: '/' },
-  { labelKey: 'votingGuide.steps.findBooth', path: '/voting-guide/find-booth' },
-  { labelKey: 'votingGuide.steps.vote', path: '/voting-guide/how-to-vote' },
+  { labelKey: 'votingGuide.steps.findBooth', path: '/voter-faqs#polling-booth' },
+  { labelKey: 'votingGuide.steps.vote', path: '/voter-faqs#voting-day' },
 ];
 ---
 
 <Prose lang={lang} title={content.title} description={content.description} path="/voter-faqs">
   {rollDeadlineActive && rollDeadline && <DeadlineBanner deadlineISO={rollDeadline} lang={lang} />}
 
-  <div set:html={renderContentHtml(beforeLinkOut, lang)} />
+  <div class="faq-content" set:html={renderContentHtml(beforeLinkOut, lang)} />
 
   <ExternalLinkOut lang={lang} href={settings.roll_lookup_url} label={t(lang, 'checkRegistration.linkOut.label')} />
 
-  <div set:html={renderContentHtml(afterLinkOut, lang)} />
+  <div class="faq-content" set:html={renderContentHtml(afterLinkOut, lang)} />
 
   <section class="steps" aria-labelledby="steps-heading">
     <h2 id="steps-heading">{t(lang, 'votingGuide.steps.heading')}</h2>
@@ -71,6 +71,11 @@ const steps: Array<{ labelKey: string; path: string }> = [
 </Prose>
 
 <style>
+  .faq-content :global(span[id]) {
+    display: block;
+    scroll-margin-top: 7rem;
+  }
+
   .steps {
     margin-block-start: var(--space-8);
     display: flex;

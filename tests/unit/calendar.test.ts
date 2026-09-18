@@ -352,6 +352,10 @@ describe('src/lib/send/calendar.ts — runCampaign (DB-backed)', () => {
       .mock.calls.find((c) => c[0] === user.email && c[1] === 'Your polling booth and what to carry');
     expect(f1Call).toBeDefined();
     expect(f1Call![2]).toContain('Test Government School Booth');
+    expect(f1Call![2]).toContain('/voter-faqs#voting-day');
+    const userEmails = vi.mocked(sendEmail).mock.calls.filter((c) => c[0] === user.email);
+    expect(userEmails.some((c) => c[2].includes('/voter-faqs#registration'))).toBe(true);
+    expect(userEmails.every((c) => !c[2].includes('/voting-guide/'))).toBe(true);
   });
 
   it('F1 defers (no send, no ledger row) when booth/poll-time data is unavailable — never invents booth or timing facts', async () => {

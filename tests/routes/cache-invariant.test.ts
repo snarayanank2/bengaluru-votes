@@ -9,7 +9,7 @@
  *
  * GUARDS:
  *   1. PUBLIC GET CACHE-INVARIANCE (the core guarantee, architecture §5):
- *      for `/`, `/ward/{id}`, `/candidate/{slug}`, `/voting-guide/how-to-vote`,
+ *      for `/`, `/ward/{id}`, `/candidate/{slug}`, `/voter-faqs`,
  *      `/about` — render once with no Cookie header and once with
  *      a valid `bv_session` cookie for a real logged-in citizen. Assert (a)
  *      neither response sets `Set-Cookie`, and (b) the HTML bodies are
@@ -52,7 +52,7 @@ import { storeMedia, MEDIA_LIMITS } from '../../src/lib/media';
 import IndexPage from '../../src/pages/index.astro';
 import WardPage from '../../src/pages/ward/[id].astro';
 import CandidatePage from '../../src/pages/candidate/[slug].astro';
-import HowToVotePage from '../../src/pages/voting-guide/how-to-vote.astro';
+import VoterFaqsPage from '../../src/pages/voter-faqs.astro';
 import AboutPage from '../../src/pages/about.astro';
 import * as WardBoundaryRoute from '../../src/pages/ward/[id]/boundary.json';
 import { loadWardPolygons, wardForPoint } from '../../src/lib/geo';
@@ -309,7 +309,7 @@ describe('§12 cache-invariant + security guard suite', () => {
         path: `/candidate/${CANDIDATE_SLUG}`,
         params: { slug: CANDIDATE_SLUG },
       },
-      { name: '/voting-guide/how-to-vote', page: HowToVotePage, path: '/voting-guide/how-to-vote' },
+      { name: '/voter-faqs', page: VoterFaqsPage, path: '/voter-faqs' },
       { name: '/about', page: AboutPage, path: '/about' },
     ];
 

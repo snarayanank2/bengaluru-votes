@@ -81,7 +81,7 @@ describe('src/lib/send/render.ts renderMessage', () => {
       booth: 'Govt School, 5th Cross',
       openTime: '7:00 AM',
       closeTime: '6:00 PM',
-      boothGuideLink: 'https://bengaluruvotes.opencity.in/voting-guide/find-booth',
+      boothGuideLink: 'https://bengaluruvotes.opencity.in/voter-faqs#voting-day',
     };
 
     it('whatsapp EN body interpolates all four vars in order', () => {
@@ -89,7 +89,7 @@ describe('src/lib/send/render.ts renderMessage', () => {
       expect(rendered.templateSid).toBe('bv_f1_booth_logistics_en');
       expect(rendered.body).toBe(
         'Election day is close. Your booth: **Govt School, 5th Cross**. Polls open 7:00 AM–6:00 PM. ' +
-          'Carry your voter ID (EPIC) or an accepted alternative photo ID. Full details: https://bengaluruvotes.opencity.in/voting-guide/find-booth',
+          'Carry your voter ID (EPIC) or an accepted alternative photo ID. Full details: https://bengaluruvotes.opencity.in/voter-faqs#voting-day',
       );
     });
 
@@ -99,7 +99,7 @@ describe('src/lib/send/render.ts renderMessage', () => {
         '1': 'Govt School, 5th Cross',
         '2': '7:00 AM',
         '3': '6:00 PM',
-        '4': 'https://bengaluruvotes.opencity.in/voting-guide/find-booth',
+        '4': 'https://bengaluruvotes.opencity.in/voter-faqs#voting-day',
       });
     });
 

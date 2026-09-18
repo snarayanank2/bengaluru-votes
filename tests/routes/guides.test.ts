@@ -163,18 +163,22 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
   describe('VoterFaqs (/voter-faqs)', () => {
     it('renders a distinctive sentence from the EN content, in both languages, with correct title/description/lang', async () => {
       const en = await renderPage(VoterFaqs, 'en', '/voter-faqs');
-      expect(en.html).toContain('the worst mistake this platform could make');
+      expect(en.html).toContain('Check your registration, prepare your documents');
       expect(en.html).toContain('<title>Voter FAQs');
       expect(en.html).toMatch(/<html lang="en"/);
 
       const kn = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
-      expect(kn.html).toContain('ಈ ವೇದಿಕೆ ಮಾಡಬಹುದಾದ ಅತ್ಯಂತ ಕೆಟ್ಟ ತಪ್ಪು');
+      expect(kn.html).toContain('ನಿಮ್ಮ ನೋಂದಣಿಯನ್ನು ಪರಿಶೀಲಿಸಿ, ದಾಖಲೆಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಿ');
       expect(kn.html).toMatch(/<html lang="kn"/);
     });
 
-    it('never leaks the INPUT NEEDED authoring marker into the rendered HTML', async () => {
-      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
+    it.each(['en', 'kn'] as const)('keeps the %s FAQ free of author commentary and lookup forms', async (lang) => {
+      const { html } = await renderPage(VoterFaqs, lang, '/voter-faqs');
       expect(html).not.toContain('INPUT NEEDED');
+      expect(html).not.toContain('CONFIRM');
+      expect(html).not.toContain('A wrong answer about whether');
+      expect(html).not.toContain('data-booth-lookup');
+      expect(html).not.toContain('/voting-guide/');
     });
 
     it('eligibility basics appear BEFORE the external link-out button, in document order', async () => {
@@ -271,9 +275,9 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
   describe('VoterFaqs checklist (/voter-faqs)', () => {
     it('renders a distinctive sentence from the EN content, in both languages', async () => {
       const en = await renderPage(VoterFaqs, 'en', '/voter-faqs');
-      expect(en.html).toContain('nearly everyone under thirty has never voted');
+      expect(en.html).toContain('Work through these steps before election day');
       const kn = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
-      expect(kn.html).toContain('ಬೆಂಗಳೂರಿನ ಕೊನೆಯ ವಾರ್ಡ್ ಚುನಾವಣೆ');
+      expect(kn.html).toContain('ಚುನಾವಣೆಯ ದಿನದ ಮೊದಲು ಈ ಹಂತಗಳನ್ನು ಪೂರೈಸಿ');
     });
 
     it('never leaks the "roll-deadline countdown" authoring comment into the rendered HTML', async () => {
@@ -285,9 +289,9 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
       for (const href of [
         '/voter-faqs',
-        '/voting-guide/voter-id',
-        '/voting-guide/find-booth',
-        '/voting-guide/how-to-vote',
+        '/voter-faqs#registration',
+        '/voter-faqs#polling-booth',
+        '/voter-faqs#voting-day',
       ]) {
         expect(html).toContain(`href="${href}"`);
       }
@@ -300,9 +304,9 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       const { html } = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
       for (const href of [
         '/kn/voter-faqs',
-        '/kn/voting-guide/voter-id',
-        '/kn/voting-guide/find-booth',
-        '/kn/voting-guide/how-to-vote',
+        '/kn/voter-faqs#registration',
+        '/kn/voter-faqs#polling-booth',
+        '/kn/voter-faqs#voting-day',
       ]) {
         expect(html).toContain(`href="${href}"`);
       }
@@ -319,11 +323,11 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       // exactly (src/i18n/en.json `votingGuide.steps.*`).
       const expected: Array<[string, string]> = [
         ["Check you", '/voter-faqs'], // "Check you're on the roll" — split at the apostrophe below.
-        ['Enrol or transfer your registration', '/voting-guide/voter-id'],
+        ['Enrol or transfer your registration', '/voter-faqs#registration'],
         ['Find your ward', '/'],
         ['Read about the candidates', '/'],
-        ['Find your booth', '/voting-guide/find-booth'],
-        ['Vote on election day', '/voting-guide/how-to-vote'],
+        ['Find your booth', '/voter-faqs#polling-booth'],
+        ['Vote on election day', '/voter-faqs#voting-day'],
       ];
 
       expected.forEach(([label, href], i) => {
@@ -342,11 +346,11 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       // exactly (src/i18n/kn.json `votingGuide.steps.*`).
       const expected: Array<[string, string]> = [
         ['ನೀವು ಪಟ್ಟಿಯಲ್ಲಿ ಇದ್ದೀರಾ ಎಂದು ಪರಿಶೀಲಿಸಿ', '/kn/voter-faqs'],
-        ['ನಿಮ್ಮ ನೋಂದಣಿಯನ್ನು ನೋಂದಾಯಿಸಿ ಅಥವಾ ವರ್ಗಾಯಿಸಿ', '/kn/voting-guide/voter-id'],
+        ['ನಿಮ್ಮ ನೋಂದಣಿಯನ್ನು ನೋಂದಾಯಿಸಿ ಅಥವಾ ವರ್ಗಾಯಿಸಿ', '/kn/voter-faqs#registration'],
         ['ನಿಮ್ಮ ವಾರ್ಡ್ ಹುಡುಕಿ', '/kn/'],
         ['ಅಭ್ಯರ್ಥಿಗಳ ಬಗ್ಗೆ ಓದಿ', '/kn/'],
-        ['ನಿಮ್ಮ ಮತಗಟ್ಟೆ ಹುಡುಕಿ', '/kn/voting-guide/find-booth'],
-        ['ಚುನಾವಣೆಯ ದಿನ ಮತ ಚಲಾಯಿಸಿ', '/kn/voting-guide/how-to-vote'],
+        ['ನಿಮ್ಮ ಮತಗಟ್ಟೆ ಹುಡುಕಿ', '/kn/voter-faqs#polling-booth'],
+        ['ಚುನಾವಣೆಯ ದಿನ ಮತ ಚಲಾಯಿಸಿ', '/kn/voter-faqs#voting-day'],
       ];
 
       expected.forEach(([label, href], i) => {

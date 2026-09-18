@@ -1,20 +1,8 @@
 /**
- * BoothLookup — progressive enhancement over the voter-ID booth-lookup
- * `<form>`, mirroring src/islands/WardLookup.ts's structure exactly.
- *
- * The form is a real `<form method="post">` that works with zero JS: a plain
- * submit POSTs to /voting-guide/find-booth and that page's own
- * `Astro.request.method === 'POST'` branch server-renders the result through
- * the same `lookupBoothByEpic` the API route uses. This module intercepts the
- * submit, calls `POST /api/booth-lookup` instead, and paints the result
- * inline so a JS-capable visitor never leaves the page.
- *
- * TWO MOUNT POINTS, one implementation: the find-booth page and the home
- * page's booth card both render `[data-booth-lookup]`, and the home card's
- * `action` points at the find-booth page — so a no-JS visitor who submits
- * from the home page lands on the full page with their answer, and a JS
- * visitor gets it inline without leaving home. `initBoothLookup` wires every
- * such form it finds, not just the first.
+ * BoothLookup handles the homepage voter-ID form through
+ * `POST /api/booth-lookup`, painting the result inline. Public booth lookup
+ * requires JavaScript now that the standalone guide routes are removed.
+ * `initBoothLookup` wires every `[data-booth-lookup]` form it finds.
  *
  * INPUT IS AN EPIC NUMBER (voter ID), not an address — see
  * src/pages/api/booth-lookup.ts for why the address mode was removed.
@@ -25,8 +13,8 @@
  * those; the result must stay as ephemeral as the request.
  *
  * On any failure to fetch/parse — network error, non-2xx, bad JSON — this
- * lets the native form submission proceed (the no-JS server path), the same
- * fallback discipline as WardLookup.
+ * retains the legacy native submission behavior. Its action route is no
+ * longer available; this is not a supported no-JS lookup fallback.
  *
  * The directions link is built by the shared src/lib/maps-links.ts helper
  * from the lat/lng the API already returns — no separate API call. The

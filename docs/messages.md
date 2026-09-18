@@ -370,7 +370,7 @@ Variables: `{{1}}` = ward name, `{{2}}` = link to `/ward/{id}/compare` (issues a
 
 > Election day is close. Your booth: **{{1}}**. Polls open {{2}}–{{3}}. Carry your voter ID (EPIC) or an accepted alternative photo ID. Full details: {{4}}
 
-Variables: `{{1}}` = booth name/address, `{{2}}`/`{{3}}` = poll open/close times, `{{4}}` = link to `/voting-guide/find-booth`.
+Variables: `{{1}}` = booth name/address, `{{2}}`/`{{3}}` = poll open/close times, `{{4}}` = link to `/voter-faqs#voting-day`.
 
 ### WhatsApp — Kannada (`bv_f1_booth_logistics_kn`)
 

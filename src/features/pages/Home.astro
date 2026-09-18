@@ -14,11 +14,10 @@
  * intercepts the submit and calls the API instead, painting the result
  * inline without a page reload.
  *
- * The booth card is `src/components/BoothLookupForm.astro`, shared with
- * `/voting-guide/find-booth`. It is deliberately NOT a second mode of the
- * ward form beside it — one control, one question. Its `action` points at
- * `/voting-guide/find-booth`, so a no-JS submit finishes on that page rather
- * than here, and this file has no POST branch for it.
+ * The booth card is `src/components/BoothLookupForm.astro`, handled by the
+ * JavaScript island through /api/booth-lookup. Its legacy form action is
+ * retained, but the old guide route has been removed. This file has no
+ * booth POST branch; public booth lookup requires JavaScript.
  *
  * CACHE-SAFETY: the GET render below never reads cookies/session and reads
  * app_settings only (src/lib/settings.ts — safe under the anonymous-page
@@ -261,9 +260,7 @@ function wardName(ward: WardRow): string {
     import { initWardLookup } from '../../islands/WardLookup';
     import { initBoothLookup } from '../../islands/BoothLookup';
     initWardLookup();
-    // The booth card's form (src/components/BoothLookupForm.astro). With JS
-    // off it posts to /voting-guide/find-booth, which renders the same
-    // result server-side.
+    // Homepage booth lookup uses the API and renders the result in place.
     initBoothLookup();
   </script>
 </Base>
@@ -732,9 +729,7 @@ function wardName(ward: WardRow): string {
     gap: var(--space-4);
   }
 
-  /* BoothLookupForm carries block margins for its own standalone page
-     (/voting-guide/find-booth), where it sits between prose sections. In this
-     card the heading above it supplies that spacing already. */
+  /* The card heading supplies spacing above the shared booth form. */
   .booth-inner :global(.booth-form) {
     margin-block: var(--space-6) 0;
   }
