@@ -43,7 +43,7 @@ Two consequences run through everything below:
 
 | # | Milestone | Ships to | Effort | Waits on | Waits on (external) |
 |---|---|---|---|---|---|
-| **M1** | Ward Discovery for Anonymous Users | Every visitor | 5d | — | Ward issues data, candidate questions data, donation URL |
+| **M1** | Ward Discovery for Anonymous Users | Every visitor | 5d | — | Ward issues data, candidate questions data |
 | **M2** | GTM Soft Launch Readiness | Partners, press | 5d | — | GTM lead unnamed; Citizen Matters / Open City edits |
 | **M3** | GTM Soft Launch | The public | 3d | M1, M2 | **Announcement (N)** |
 | **M4a** | Ability to send Email | — (infrastructure) | 2d | — | Twilio/SendGrid account |
@@ -102,7 +102,7 @@ An unregistered visitor arrives, finds their ward, finds their polling booth, an
 - **Ward issues** — the plain-language issue list, reworked from Sahaaya / JAM output and Open City complaints (tracker 63).
 - **Questions you should ask your candidates** — editorial content, from the Janaagraha material (tracker 10, 14).
 - **A zero state that is an answer, not an apology** *(proposed, carried forward; tracker 89)*. Candidate pages have no data until N+12. The empty state has to say what is known, when candidates appear, and where to go meanwhile — a ward page with a blank candidate list reads as a broken site, and M3 puts real traffic on exactly these pages.
-- **The donation page.** `/donate` and `/kn/donate`: what the platform costs to run, what a donation pays for, who Oorvani is, and a link out to Oorvani Foundation's existing donation flow (tracker 95). Linked from the footer, not the app bar — a donation ask competing with the ward finder for attention costs more trust than it raises. **No payment integration:** nothing is collected on our domain, so no payment vendor, no processor agreement, and no card data anywhere near this codebase. Embedded payments would be a separate milestone; the link-out is a day's work and this is why it fits inside M1.
+- **The footer donation link.** In both languages, Donate links directly to https://oorvani.org/support-us, Oorvani Foundation's existing donation flow (tracker 95). There is no internal donation page. **No payment integration:** nothing is collected on our domain, so no payment vendor, no processor agreement, and no card data anywhere near this codebase. Donation details, including 80G/receipt wording, belong to Oorvani's hosted flow.
 
 **Testable when** a visitor with no account and no cookies can type an address, land on their ward, see ward facts and a boundary map, read the ward's issues and the questions to ask, enter an EPIC number and get their polling booth, reach Oorvani's donation flow in one click from the footer, and — on the candidates page — read a clear explanation of why it is empty and what happens next.
 
@@ -116,7 +116,7 @@ An unregistered visitor arrives, finds their ward, finds their polling booth, an
 | **Ward issues data** | tracker 63, not started |
 | **Questions to ask candidates** | tracker 10, 14, not started |
 | ~~A working KSEC EPIC→booth lookup~~ — **met**, by BBMP's API rather than KSEC's | tracker 127 still reads *To Triage*; the sheet is behind the code as of 2026-08-19 |
-| **The Oorvani donation URL, and the 80G / receipt wording** | tracker 94; *not listed on the sheet* |
+| **The Oorvani donation URL** | ✓ footer links directly to https://oorvani.org/support-us; 80G/receipt wording belongs to the hosted flow (tracker 94's former page-content scope) |
 
 **Risk — the EPIC path works, and is now a dependency on somebody else's server.** The question this risk used to ask ("does such an endpoint exist, and can it be called from a server?") is answered: yes, and yes. What replaces it is narrower but does not go away.
 
@@ -131,7 +131,7 @@ What has NOT changed: if that endpoint goes away, the fallback is an addressed p
 
 **Risk — ward lookup has no fallback.** Google geocoding is the only path from a typed address to a ward, so an exhausted budget or a Google outage takes the headline feature down. The device-location path survives, and only for a visitor with JS who grants permission (`docs/architecture.md` §11).
 
-**M1 is five separate deliverables at the same five days it carried when it was one.** Two are now done: ward lookup, and — as of 2026-08-19 — booth lookup by EPIC, which was the part most likely to fail outright. **The three that remain are the three that wait on content nobody has started**: ward issues (tracker 63), the questions to ask candidates (tracker 10, 14), and the donation page's URL and 80G wording (tracker 94). None of them is hard to build; all of them are blocked on somebody writing or obtaining something. That inverts the earlier reading of this milestone — the engineering risk has largely gone, and what is left is entirely acquisition. Track the five parts separately, and note that no amount of engineering time moves the remaining three.
+**M1 is five separate deliverables at the same five days it carried when it was one.** Three are now done: ward lookup, booth lookup by EPIC (as of 2026-08-19), and the footer donation link directly to https://oorvani.org/support-us. **The two that remain wait on content**: ward issues (tracker 63) and the questions to ask candidates (tracker 10, 14). The former donation-page URL and 80G wording dependency (tracker 94) no longer blocks the footer link-out. Track the five parts separately; engineering time alone does not supply the remaining content.
 
 ---
 
@@ -589,8 +589,8 @@ The nine-milestone plan of 2026-08-14 is superseded. **No number survived unchan
 
 | Old | Old name | Now |
 |---|---|---|
-| M1 | Ward Discovery | **M1**, expanded — adds booth-by-EPIC, ward issues, candidate questions, and the donation page |
-| M2 | Donation page | folded into **M1** |
+| M1 | Ward Discovery | **M1**, expanded — adds booth-by-EPIC, ward issues, candidate questions, and the footer donation link |
+| M2 | Donation page | folded into **M1**; now a direct footer link to https://oorvani.org/support-us |
 | M3 | Partnerships page | folded into **M2** (GTM Soft Launch Readiness) |
 | M4 | Launch | split into **M2** + **M3**, with the candidate-facing half at **M12** + **M13** |
 | M5 | Admin functionality | **M6** |
@@ -625,7 +625,7 @@ Several things this plan depends on have no home on disk right now and are not r
 - **Row 127 (booth by EPIC) is now tagged M1** — it had no milestone at all despite being named scope in M1. **It is still open on the sheet and the work is done** (2026-08-19, §3): close it, and correct its description while doing so, because it says KSEC and the endpoint that exists is BBMP's. This is the one place the sheet is currently behind the code rather than ahead of it.
 - **Nineteen rows were added on 2026-08-15** to cover requirements that `docs/overview.md` states but nothing tracked: the RTI and the returning-officer collection operation (129, 132), owners for affidavit acquisition and the data operation (133, 134), measuring the 85% extraction assumption (130), the GCS bucket (135), the comms go/no-go date and hard-launch sequencing decisions (136, 137), the M12–M14 rows above, the transcriber path on `/partner-with-us` (142), the future-civic-tools consent checkbox (143), the retention-enforcement job (144), the About page's funding disclosure (145), and the nine-field report card reconciliation (146). Row **35** was created because row 16 cited "the retention decision (ID 35)" and no such row existed.
 - **Task ID 87 was used twice** — "Enable billing in GCP" and "Link to Google Analytics". The second was renumbered **131** on 2026-08-15.
-- **The donation-page rows were tagged M2** from the old plan and belong to M1. Row 94 — the Oorvani URL and the 80G wording — **was** the one M1 prerequisite the Milestones tab did not list; it was added to M1's External Dependencies on 2026-08-15 and the rows were re-tagged to M1 the same day. The two tabs and `project-dependencies.md` §5.8 now agree.
+- **The former donation-page rows were tagged M2** from the old plan and belong to M1. Row 94 — the Oorvani URL and the 80G wording — **was** the one M1 prerequisite the Milestones tab did not list; it was added to M1's External Dependencies on 2026-08-15 and the rows were re-tagged to M1 the same day. The implemented scope is now a direct footer link to https://oorvani.org/support-us, with no internal donation page or local 80G/receipt copy (`project-dependencies.md` §5.8). This documentation update does not update the tracker.
 - **The address-based booth rows were deleted on 2026-08-15**, leaving row 127 (booth by EPIC) as the only booth row. That is a decision, not a tidy-up, and it was the right one: the EPIC path shipped on 2026-08-19 (§3) and the address path never had data behind it — nothing seeded the `booths` table outside `scripts/seed-dev.ts`, so the address lookup answered every real visitor with "we don't have booth data yet". It has since been removed from the endpoint and the page. **The gap the deletion left is still open**: if that government endpoint goes away, the fallback those rows described — an addressed polling-station list — is tracked nowhere on the Tasks tab. `project-dependencies.md` §4.7 is the only place it survives.
 - **"Dispute" and "flag" were the same thing, and the vocabulary is now collapsed to "flag".** The transcriber consensus failure that "dispute" used to name no longer exists (§10.1), so the sheet's "dispute candidate information" in M10 and the codebase's *flag* were one action and one queue under two names. The sheet's M7 and M10 descriptions were changed to "flag" on 2026-08-15. The word "dispute" should not reappear in a task description, a schema name or a route.
 - **The transcription rows were re-scoped on 2026-08-15.** They had specified `transcription_readings`, `field_disputes`, consensus resolution, a `/curator/disputes` screen, and a unique index enforcing "one transcriber never reads the same affidavit twice" — roughly half a build that no longer exists. 108 now names only `transcription_assignments`, a two-state marker and `corrected_after_check`; 109 is retitled *prioritized* and records that there is deliberately **no** unique index; 112 is the one city-wide flag queue; 113 measures accuracy rather than agreement, derived from the field row now that there is no change log; 115 records that `canEditWard` has no callers left at all. Rows 111 and 114 were deleted.

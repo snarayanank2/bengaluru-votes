@@ -154,7 +154,7 @@ At the (now contingent — `docs/overview.md` §11) target of 25,000 citizens ×
 | 5.5 | **Named spokespeople** with approved quotes | M2 | `/press` | unassigned |
 | 5.6 | **Moderation capacity** — someone works the flag queue near the election | M7 | The correction loop | unassigned |
 | 5.7 | **Transcriber cohort** — **36 Kannada readers, targeting 50** | M8, M11 | Candidate data being checked at all | unassigned |
-| 5.8 | **Oorvani donation URL + 80G/receipt wording** — the destination `/donate` sends people to, and what a donor gets back | M1 | `/donate` | unassigned |
+| 5.8 | **Oorvani donation link** — the footer links directly to https://oorvani.org/support-us in both languages; donation details, including 80G/receipt wording, belong to Oorvani's hosted flow | M1 | Footer Donate link-out (implemented) | unassigned |
 
 **5.7 is the binding constraint on candidate data, and it is not software.** The arithmetic, in full at `docs/overview.md` §11: roughly **4,000 affidavits**, of which about **1,900 need a human read** once AI extraction has settled the high-confidence ones. At ten minutes each and three hours a day across the three-day window, that is **36 volunteers** — or **75** if every affidavit is read rather than only the ones the AI could not settle.
 

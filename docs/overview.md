@@ -200,7 +200,7 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 | Analytics | Visitor and event data is tracked in **Google Analytics**, disclosed in the privacy policy; registration counts come from our own application events. |
 | Public metrics | A Data page publishes our own coverage and integrity figures, plus a city-wide issue picture. Figures, not downloadable datasets. |
 | Legal sequencing | The privacy policy publishes **before the public launch**. Google Analytics is already live, so launching without it is not an option; and Meta gates WhatsApp onboarding on it, so it also gates the comms plan. |
-| Payments | The donation page links out to Oorvani's existing flow. **Nothing is collected on our domain** — no payment vendor, no processor agreement, no card data in this codebase. |
+| Payments | The footer Donate link goes directly to https://oorvani.org/support-us in both languages. **Nothing is collected on our domain** — no payment vendor, no processor agreement, no card data in this codebase. |
 
 ---
 
@@ -246,7 +246,7 @@ Five kinds of line appear below, and the distinction matters more than any singl
 | **Kannada machine translation** | UI strings and editorial pages at build time; curator fields at publish. Text-only and small. | **under ₹5,000 total** | Modelled |
 | **Off-box backup** | Destination not yet chosen; a few dollars a month at this volume | **~₹500/month** | Unquoted |
 | **Monitoring, analytics, reCAPTCHA** | Sentry, healthchecks.io, GA4 — free at the tiers this needs | **₹0** | Decided |
-| **Payments** | The donation page links out to Oorvani's existing flow; nothing is collected on our domain | **₹0** | Decided |
+| **Payments** | The footer Donate link goes directly to https://oorvani.org/support-us; nothing is collected on our domain | **₹0** | Decided |
 | **Paid acquisition** | Ruled out — it costs money the project lacks and undercuts the neutrality claim (§8) | **₹0** | Decided |
 | **Admins** | Two people, internal, not paid from this budget | **₹0** | Decided |
 
@@ -311,7 +311,7 @@ The platform does not launch in one moment. Candidate data cannot exist until th
 
 | # | Milestone | What it puts in front of someone | Size |
 |---|---|---|---|
-| **M1** | Ward discovery | Ward finder, booth lookup by voter ID, ward issues, questions to ask candidates, and the donation page | 5d |
+| **M1** | Ward discovery | Ward finder, booth lookup by voter ID, ward issues, questions to ask candidates, and the footer donation link to https://oorvani.org/support-us | 5d |
 | **M2** | Soft launch readiness | The partner front door, cross-links, and campaign content written and scheduled | 5d |
 | **M3** | Soft launch | The campaigns fire: know your ward, know how to vote | 3d |
 | **M4a** | Email sending | The ability to send email at all — including the codes every operator signs in with | 2d |
