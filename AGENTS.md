@@ -200,6 +200,8 @@ Open questions: `docs/milestones.md` §17 (what the plan and the tracker still d
 
 Treat the user's correcting instructions as authoritative project feedback, not as one-off conversation context. Before starting related work, review this file and apply the relevant lessons. When the user corrects a behavior, design choice, workflow, or verification gap, identify the generalizable rule and record it in this file during the same task so it is not requested again. Preserve specific user wording when it expresses a durable preference, avoid recording secrets or temporary details, and mention the rule that was captured. Never overwrite an existing user change while recording feedback.
 
+**Approval before integration:** Once a requested change is implemented and verified, pause and ask the user once for approval to commit, merge, and push it. That single approval covers all three repository integration steps; do not ask for separate approvals.
+
 ## UI verification
 
 After any UI change, use the `agent-browser` skill/CLI to inspect the live page at desktop and mobile widths. Before the first browser command, run `agent-browser skills get core` (or `agent-browser skills get core --full` when the full command reference is needed). Verify the actual rendered layout—not just the CSS or DOM—including column proportions, spacing, vertical alignment, control heights and widths, text wrapping, hover/focus states, and horizontal overflow. Compare reference-based changes against the reference site at the same viewport size before considering the work complete. Do not use the CUA browser surface for routine project UI verification when `agent-browser` is available.
