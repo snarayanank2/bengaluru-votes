@@ -1,6 +1,6 @@
 /**
  * Public platform metrics (Task 51; PRD §5.14, IA §3.14) — the figures
- * `/data` publishes. "A platform that publishes other people's records
+ * `/press` publishes. "A platform that publishes other people's records
  * should publish its own" (PRD §5.14's opening line). Every figure here is
  * an AGGREGATE COUNT — no user data, no PII, ever (see the module-level
  * note under `citizenSignal` below).
@@ -69,14 +69,14 @@
  * has no per-visitor context to key off of — it returns the English
  * title (falling back to Kannada only when a ward issue was authored
  * Kannada-first and has no English title yet), for both language
- * variants of `/data`. This is a known, accepted simplification for this
+ * variants of `/press`. This is a known, accepted simplification for this
  * release, not an oversight.
  *
  * NO PII: every figure returned is a count, a percentage, or an issue
  * title string a curator authored — never an email, phone, name, or any
  * other user-identifying value. `publicMetrics()` is safe to render on an
  * anonymous, cookie-free, nginx-microcached page (architecture.md §5;
- * `/data` itself computes live — the ~5-minute cache TTL is Task 60's
+ * The metrics compute live — the ~5-minute cache TTL is Task 60's
  * nginx concern, not this module's).
  */
 import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
@@ -326,7 +326,7 @@ async function computeCitizenSignal(): Promise<Metrics['citizenSignal']> {
 }
 
 /**
- * Computes every `/press`/`/data` public figure, live (no caching in this
+ * Computes every `/press` public figure, live (no caching in this
  * module — see the module docstring's note on the nginx TTL being a
  * separate, later concern). Safe to call from a cache-safe, cookie-free
  * page render.

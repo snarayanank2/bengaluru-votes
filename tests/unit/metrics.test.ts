@@ -1,5 +1,5 @@
 /**
- * Task 51 — src/lib/metrics.ts: `publicMetrics()`, the figures `/data` and
+ * Task 51 — src/lib/metrics.ts: `publicMetrics()`, the figures `/press` and
  * `/press` publish (PRD §5.14; IA §3.14).
  *
  * SHARED-DB CAVEAT (same as tests/unit/partners.test.ts's `partnerCoverage`

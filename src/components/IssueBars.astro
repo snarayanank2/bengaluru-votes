@@ -7,9 +7,8 @@
  * number and vote share render in tabular figures (font-variant-numeric:
  * tabular-nums) so digits don't jitter. Issue titles never truncate.
  *
- * The same component renders the city-wide roll-up on /data — that's what
- * `showCounts` is for: default false shows share% only (what every
- * page needs pre-close); when a results item also carries a raw `count`,
+ * `showCounts` defaults to false for share% only; when a results item also
+ * carries a raw `count`,
  * showCounts=true additionally prints it. No result item is required to
  * carry a count — most callers won't have or show one yet.
  *

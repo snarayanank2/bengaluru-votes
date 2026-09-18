@@ -14,7 +14,7 @@
  *     mentions the still-pending response time — never a fabricated
  *     email/phone.
  *   - SHIPS REGARDLESS of `data_page_live` (Phase 1 asset, unlike
- *     `/data`'s Phase-2 gate) — renders identically whether that setting
+ *     the retired metrics-page gate) — renders identically whether that setting
  *     is 'true', 'false', or unset.
  *   - Cache-safe; lang + hreflang.
  */
@@ -28,7 +28,7 @@ vi.mock('../../src/lib/settings', () => ({ getKnownSetting: vi.fn() }));
 import { getKnownSetting } from '../../src/lib/settings';
 import Press from '../../src/features/pages/Press.astro';
 // Reuses the SHARED module-level pool (src/db/client.ts) rather than opening
-// a dedicated connection — same rationale as tests/routes/data.test.ts: this
+// a dedicated connection — this
 // file only needs a `db` handle for the idempotent `migrate()` call and
 // never inserts/deletes fixture rows directly. Never `.end()` this shared
 // client — other test files still need it.

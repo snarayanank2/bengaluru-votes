@@ -2,7 +2,7 @@
 /**
  * Press kit (`/press`, `/kn/press`) — information-architecture.md §3.16,
  * PRD §5.15. "Journalists arrive at the EC notification whether or not
- * anything is ready for them" — unlike `/data` (Phase 2, gated), this
+ * anything is ready for them" — this
  * page SHIPS IN PHASE 1 ALWAYS: it never reads `app_settings
  * .data_page_live` and never gates on it. A press kit assembled at the
  * notification is assembled too late.
@@ -18,9 +18,8 @@
  *   1. "## Key stats" — a small subset of `publicMetrics()`'s live
  *      figures (wards with published data, registered citizens, flags
  *      resolved), with its own "as of" timestamp. This is the one place
- *      `/press` reaches into the SAME metrics `/data` publishes — a
- *      journalist needs a real number today, in Phase 1, even though
- *      `/data` itself doesn't ship until Phase 2 (PRD §5.14/§5.15).
+ *      `/press` reaches into the same live metrics pipeline — a journalist
+ *      needs a real number today.
  *   2. "## Logos and screenshots" — a placeholder note (real asset files
  *      are INPUT NEEDED; never invented).
  *   3. "## Spokesperson" / "## Contact" — placeholder notes (spokesperson
@@ -34,7 +33,7 @@
  * module's docstring); this page adds nothing that could leak one.
  *
  * CACHE-SAFETY (architecture.md §5): no cookie/session read. Computes
- * `publicMetrics()` live on every render, exactly like `/data` — the same
+ * `publicMetrics()` live on every render — the same
  * nginx micro-cache TTL applies to whichever page a visitor requests.
  */
 import Prose from '../../layouts/Prose.astro';

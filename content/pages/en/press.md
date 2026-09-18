@@ -20,11 +20,11 @@ This platform gives Bengaluru citizens trustworthy, ward-level information ahead
 
 **200 words**
 
-<!-- INPUT NEEDED: 200-word boilerplate, expanding on the 100-word version with sourcing methodology, distribution approach (partner-led, unpaid), and current coverage stats drawn from /data. -->
+<!-- INPUT NEEDED: 200-word boilerplate, expanding on the 100-word version with sourcing methodology, distribution approach (partner-led, unpaid), and current coverage stats. -->
 
 ## Key stats
 
-<!-- INPUT NEEDED: current key stats, drawn from /data at time of press use. This platform's public metrics page ships in Phase 2, so early press requests need stats pulled and stated manually until then (PRD §5.14, §5.15). -->
+<!-- INPUT NEEDED: current key stats to state at press time. -->
 
 ## Logos and screenshots
 

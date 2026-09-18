@@ -1,7 +1,7 @@
 /**
  * Issue-vote results (PRD §5.5, §13.1 Phase 1; IA §3.6). This file is the
  * READ side only (Task 20) — the ward issues page's public results and, in
- * time, the `/data` city-wide roll-up both read through `issueResults`.
+ * time, any city-wide roll-up can read through `issueResults`.
  * Task 33 EXTENDS this module with the write path (casting/replacing a
  * vote-set) — do not restructure the read query's shape without checking
  * that task's needs too.
@@ -33,8 +33,8 @@
  *
  * No-raw-counts guarantee (PRD §5.5 "no raw counts on this page"): counts
  * are computed internally to derive rank/share but are NEVER placed on the
- * returned objects — the return type has no `count` field. `/data`'s
- * later, separate total-votes figure is out of scope for this function.
+ * returned objects — the return type has no `count` field. A separate
+ * total-votes figure is out of scope for this function.
  */
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db, type Db, type Tx } from '../db/client';

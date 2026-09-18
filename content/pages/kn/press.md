@@ -3,7 +3,7 @@ title: ಪತ್ರಿಕಾ ಕಿಟ್
 description: >-
   ಜಿಬಿಎ ಚುನಾವಣೆಗಳನ್ನು ವರದಿ ಮಾಡುವ ಪತ್ರಕರ್ತರಿಗಾಗಿ ಬಾಯ್ಲರ್‌ಪ್ಲೇಟ್, ಪ್ರಮುಖ
   ಅಂಕಿಅಂಶಗಳು, ಲೋಗೊಗಳು, ವಕ್ತಾರರ ಸಂಪರ್ಕ, ಮತ್ತು ತಟಸ್ಥತೆಯ ಹೇಳಿಕೆ.
-sourceHash: dad0e22e1c771165d08a48c049cf02c319a5d508a7a9eaf6bbbdc0a63feaf5d3
+sourceHash: 9d8f10dcbb4e044dcb4bffdc4fa59c120ec5ddce0f4eb095c84c181a0ef89ade
 ---
 
 ಜಿಬಿಎ ಚುನಾವಣೆಗಳ ಕುರಿತು ಒಂದು ಸುದ್ದಿ ಬರೆಯುತ್ತಿದ್ದೀರಾ ಮತ್ತು ಉಲ್ಲೇಖಿಸಲು ಅಥವಾ ಸೇರಿಸಲು ಏನಾದರೂ ಬೇಕೇ? ಮೊದಲು ಯಾರನ್ನೂ ಸಂಪರ್ಕಿಸದೆಯೇ ನಿಮಗೆ ಬೇಕಾದದ್ದು ಈ ಪುಟದಲ್ಲಿ ಇದೆ. ನೀವು ಹುಡುಕುತ್ತಿರುವುದು ಸಿಗದಿದ್ದರೆ, ಕೆಳಗಿನ ಸಂಪರ್ಕ ವಿವರಗಳನ್ನು ಬಳಸಿ — ನಾವು ತ್ವರಿತವಾಗಿ ಪ್ರತಿಕ್ರಿಯಿಸಲು ಪ್ರಯತ್ನಿಸುತ್ತೇವೆ.
@@ -23,11 +23,11 @@ sourceHash: dad0e22e1c771165d08a48c049cf02c319a5d508a7a9eaf6bbbdc0a63feaf5d3
 
 **200  ಪದಗಳು**
 
-<!-- INPUT NEEDED: 200-word boilerplate, expanding on the 100-word version with sourcing methodology, distribution approach (partner-led, unpaid), and current coverage stats drawn from /data. -->
+<!-- INPUT NEEDED: 200-word boilerplate, expanding on the 100-word version with sourcing methodology, distribution approach (partner-led, unpaid), and current coverage stats. -->
 
 ## ಪ್ರಮುಖ ಅಂಕಿಅಂಶಗಳು
 
-<!-- INPUT NEEDED: current key stats, drawn from /data at time of press use. This platform's public metrics page ships in Phase 2, so early press requests need stats pulled and stated manually until then (PRD §5.14, §5.15). -->
+<!-- INPUT NEEDED: current key stats to state at press time. -->
 
 ## ಲೋಗೊಗಳು ಮತ್ತು ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳು
 
