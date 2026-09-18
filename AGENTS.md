@@ -63,24 +63,27 @@ Builds from the working tree; runs migrations automatically; seeding is manual (
 
 ### Tests need a database
 
-Every DB-backed test reads `DATABASE_URL` and throws without it — the guard in each file points back here. Tests need a database **separate from the one the local app stack uses**, since they truncate and re-seed freely.
+Every DB-backed test reads `DATABASE_URL` and throws without it — the guard in each file points back here. Tests need a database **separate from the one the local app stack uses**, since they truncate and re-seed freely. Run the suite inside the local Compose app image so the test runner uses the same Node/npm environment as the app:
 
-Start the local Postgres and create the two test databases once:
+Create the test database once:
 
 ```sh
 docker compose -f deploy/compose.local.yml up -d postgres
-createdb -h localhost -p 5433 -U gba bv_test    # password: gba_local_dev
-createdb -h localhost -p 5433 -U gba bv_e2e     # only needed for Playwright
+docker compose -f deploy/compose.local.yml exec postgres \
+  createdb -U gba bv_test    # password: gba_local_dev; ignore "already exists"
+docker compose -f deploy/compose.local.yml exec postgres \
+  createdb -U gba bv_e2e     # only needed for Playwright
 ```
 
-Then, for any test run:
+Then, for any Vitest run:
 
 ```sh
-export DATABASE_URL=postgres://gba:gba_local_dev@localhost:5433/bv_test
-npm test
+docker compose -f deploy/compose.local.yml run --rm --no-deps --build \
+  -e DATABASE_URL=postgres://gba:gba_local_dev@postgres:5432/bv_test \
+  app npm test
 ```
 
-Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`.
+For a single test file or test case, replace `npm test` with the relevant `npx vitest run ...` command from above. Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`. Never point this command at the app's `gba` database.
 
 `vitest.config.ts` sets `fileParallelism: false` and `singleFork` on purpose: all DB-backed tests share one database, and parallel files race (a temporary DDL rule in `audit.test.ts` — until tracker 147 removes it — breaks other files' `INSERT ... RETURNING`; fixture ids collide). Don't re-enable parallelism.
 
