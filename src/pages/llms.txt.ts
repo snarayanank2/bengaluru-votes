@@ -62,7 +62,7 @@ export const GET: APIRoute = async () => {
     '## Candidates',
     `Each candidate has a neutral, sourced report card at ${abs('/candidate/{slug}')} — name, party, ward track record, criminal cases, declared assets, education, and linked news coverage, each field marked with its source. Browse from any ward's candidate list, or see the complete machine-readable index (every ward and candidate URL, with lastmod) at ${abs('/sitemap-en.xml')} (Kannada: ${abs('/sitemap-kn.xml')}).`,
     '',
-    '## About this platform',
+    '## About Bengaluru Votes',
     `- About us, funding & how we source data: ${abs('/about')}`,
     `- Donate to support the platform: ${abs('/donate')}`,
     `- Privacy policy: ${abs('/privacy')}`,

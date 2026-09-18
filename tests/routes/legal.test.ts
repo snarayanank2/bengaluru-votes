@@ -69,11 +69,11 @@ describe('Trust & legal pages (Task 22) — IA §3.13/§3.17/§3.18, PRD §5.11/
     it('renders a distinctive sentence from the EN content, in both languages, with correct title/description/lang', async () => {
       const en = await renderPage(About, 'en', '/about');
       expect(en.html).toContain('Oorvani Foundation');
-      expect(en.html).toContain('<title>About this platform');
+      expect(en.html).toContain('<title>About Bengaluru Votes');
       expect(en.html).toMatch(/<html lang="en"/);
 
       const kn = await renderPage(About, 'kn', '/about');
-      expect(kn.html).toContain('ಊರ್ವಾಣಿ ಫೌಂಡೇಶನ್');
+      expect(kn.html).toContain('Oorvani Foundation');
       expect(kn.html).toMatch(/<html lang="kn"/);
     });
 

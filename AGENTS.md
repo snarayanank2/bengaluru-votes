@@ -35,7 +35,7 @@ npm test                    # vitest, whole suite — requires DATABASE_URL
 npm run typecheck           # astro check && tsc --noEmit
 npm run migrate             # drizzle migrations, forward-only, idempotent
 npm run translate -- --check  # bilingual staleness gate; no API calls, no key needed
-npm run translate           # regenerate stale Kannada via Anthropic API (needs ANTHROPIC_API_KEY)
+npm run translate           # regenerate stale Kannada via the configured translation backend; normally use Codex for translations
 ```
 
 Single test file / single test:
@@ -139,6 +139,8 @@ Client-side code is vanilla TypeScript in `src/islands/` — no UI framework. CS
 
 No layer translates at request time. Regeneration is unconditional — **hand-edits to generated Kannada are overwritten**; corrections belong in translation hints (frontmatter / `__hints`) or `src/i18n/glossary.json`. CI fails on a missing or stale `kn/` file or key.
 
+For editorial or UI translation work, use Codex to author the Kannada translation directly and preserve the generated `sourceHash` / `__hashes` metadata. Use `npm run translate -- --check` as the final staleness and hash gate. Do not depend on the local Claude CLI or an Anthropic API key for routine translation work; the configured translation backend is a fallback for regeneration when explicitly needed.
+
 `t()` throws on a missing key unless *both* `import.meta.env.PROD` and `NODE_ENV=production` agree — so dev and tests surface missing translations loudly.
 
 ### Curator publishing
@@ -185,4 +187,4 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 
 ## UI verification
 
-After any UI change, inspect the live page in the browser at desktop and mobile widths. Verify the actual rendered layout—not just the CSS or DOM—including column proportions, spacing, vertical alignment, control heights and widths, text wrapping, hover/focus states, and horizontal overflow. Compare reference-based changes against the reference site at the same viewport size before considering the work complete.
+After any UI change, use the `agent-browser` skill/CLI to inspect the live page at desktop and mobile widths. Before the first browser command, run `agent-browser skills get core` (or `agent-browser skills get core --full` when the full command reference is needed). Verify the actual rendered layout—not just the CSS or DOM—including column proportions, spacing, vertical alignment, control heights and widths, text wrapping, hover/focus states, and horizontal overflow. Compare reference-based changes against the reference site at the same viewport size before considering the work complete. Do not use the CUA browser surface for routine project UI verification when `agent-browser` is available.
