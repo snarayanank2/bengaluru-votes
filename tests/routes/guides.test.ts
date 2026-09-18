@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -5,6 +6,10 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
 import { localePath, t, type Lang } from '../../src/i18n';
+
+const { JSDOM } = createRequire(import.meta.url)('jsdom') as {
+  JSDOM: new (html: string) => { window: { document: Document } };
+};
 
 /**
  * Task 21 — the six guide/explainer pages (IA §3.7-§3.12, PRD
@@ -85,20 +90,6 @@ function findAnchorTag(html: string, marker: string): string {
     if (match[0].includes(marker)) return match[0];
   }
   throw new Error(`findAnchorTag: no <a> tag containing "${marker}" found`);
-}
-
-/**
- * Extracts each `<li>...</li>` from the VotingGuide `<ol class="step-list">`
- * structural checklist, in document order — lets a test bind a step's
- * label text to ITS OWN href (adjacency), not just assert both appear
- * somewhere on the page (which wouldn't catch a step wired to the wrong
- * link, e.g. all 6 steps accidentally pointing at the same href).
- */
-function extractStepListItems(html: string): string[] {
-  const olMatch = html.match(/<ol class="step-list">([\s\S]*?)<\/ol>/);
-  if (!olMatch) throw new Error('extractStepListItems: no <ol class="step-list"> found');
-  const liRe = /<li>([\s\S]*?)<\/li>/g;
-  return [...olMatch[1].matchAll(liRe)].map((m) => m[1]);
 }
 
 function normalize(html: string): string {
@@ -285,79 +276,30 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       expect(html).not.toContain('PRD §5.6, §5.17');
     });
 
-    it('all 6 checklist steps deep-link to the right EN paths', async () => {
-      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
-      for (const href of [
-        '/voter-faqs',
-        '/voter-faqs#registration',
-        '/voter-faqs#polling-booth',
-        '/voter-faqs#voting-day',
-      ]) {
-        expect(html).toContain(`href="${href}"`);
-      }
-      // Ward-finder AND candidates steps both deep-link to '/'.
-      const rootLinks = html.match(/href="\/"/g) ?? [];
-      expect(rootLinks.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('all 6 checklist steps deep-link to the right kn paths', async () => {
-      const { html } = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
-      for (const href of [
-        '/kn/voter-faqs',
-        '/kn/voter-faqs#registration',
-        '/kn/voter-faqs#polling-booth',
-        '/kn/voter-faqs#voting-day',
-      ]) {
-        expect(html).toContain(`href="${href}"`);
-      }
-      const rootLinks = html.match(/href="\/kn\/"/g) ?? [];
-      expect(rootLinks.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('each step in the structural checklist binds ITS OWN label to ITS OWN href (EN) — not just "both appear somewhere"', async () => {
-      const { html } = await renderPage(VoterFaqs, 'en', '/voter-faqs');
-      const items = extractStepListItems(html);
-      expect(items).toHaveLength(6);
-
-      // Ordered [label, href] pairs matching VotingGuide.astro's `steps` array
-      // exactly (src/i18n/en.json `votingGuide.steps.*`).
-      const expected: Array<[string, string]> = [
-        ["Check you", '/voter-faqs'], // "Check you're on the roll" — split at the apostrophe below.
-        ['Enrol or transfer your registration', '/voter-faqs#registration'],
-        ['Find your ward', '/'],
-        ['Read about the candidates', '/'],
-        ['Find your booth', '/voter-faqs#polling-booth'],
-        ['Vote on election day', '/voter-faqs#voting-day'],
-      ];
-
-      expected.forEach(([label, href], i) => {
-        const li = items[i];
-        expect(li, `step ${i + 1} <li> should contain its own label "${label}"`).toContain(label);
-        expect(li, `step ${i + 1} <li> should link to its own href "${href}"`).toContain(`href="${href}"`);
+    it.each(['en', 'kn'] as const)('links the top %s table of contents to every FAQ heading', async (lang) => {
+      const { html } = await renderPage(VoterFaqs, lang, '/voter-faqs');
+      const document = new JSDOM(html).window.document;
+      const toc = document.querySelector('nav[aria-labelledby="faq-toc-heading"]');
+      expect(toc).not.toBeNull();
+      const headings = [...document.querySelectorAll('.faq-content h2, .faq-content h3')];
+      const links = [...toc!.querySelectorAll('a')];
+      expect(headings).toHaveLength(19);
+      expect(links).toHaveLength(headings.length);
+      expect(toc!.compareDocumentPosition(headings[0]) & 4).toBe(4);
+      links.forEach((link, index) => {
+        expect(link.textContent?.trim()).toBe(headings[index].textContent?.trim());
+        const href = link.getAttribute('href')!;
+        expect(href).toMatch(/^#[^#]+$/);
+        const target = document.getElementById(href.slice(1));
+        expect(target).not.toBeNull();
+        expect(target === headings[index] || headings[index].contains(target)).toBe(true);
+        expect(document.querySelectorAll('[id="' + href.slice(1) + '"]')).toHaveLength(1);
       });
-    });
-
-    it('each step in the structural checklist binds ITS OWN label to ITS OWN href (kn) — not just "both appear somewhere"', async () => {
-      const { html } = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
-      const items = extractStepListItems(html);
-      expect(items).toHaveLength(6);
-
-      // Ordered [label, href] pairs matching VotingGuide.astro's `steps` array
-      // exactly (src/i18n/kn.json `votingGuide.steps.*`).
-      const expected: Array<[string, string]> = [
-        ['ನೀವು ಪಟ್ಟಿಯಲ್ಲಿ ಇದ್ದೀರಾ ಎಂದು ಪರಿಶೀಲಿಸಿ', '/kn/voter-faqs'],
-        ['ನಿಮ್ಮ ನೋಂದಣಿಯನ್ನು ನೋಂದಾಯಿಸಿ ಅಥವಾ ವರ್ಗಾಯಿಸಿ', '/kn/voter-faqs#registration'],
-        ['ನಿಮ್ಮ ವಾರ್ಡ್ ಹುಡುಕಿ', '/kn/'],
-        ['ಅಭ್ಯರ್ಥಿಗಳ ಬಗ್ಗೆ ಓದಿ', '/kn/'],
-        ['ನಿಮ್ಮ ಮತಗಟ್ಟೆ ಹುಡುಕಿ', '/kn/voter-faqs#polling-booth'],
-        ['ಚುನಾವಣೆಯ ದಿನ ಮತ ಚಲಾಯಿಸಿ', '/kn/voter-faqs#voting-day'],
-      ];
-
-      expected.forEach(([label, href], i) => {
-        const li = items[i];
-        expect(li, `step ${i + 1} <li> should contain its own label "${label}"`).toContain(label);
-        expect(li, `step ${i + 1} <li> should link to its own href "${href}"`).toContain(`href="${href}"`);
-      });
+      for (const id of ['registration', 'documents', 'polling-booth', 'voting-day']) {
+        expect(toc!.querySelector('a[href="#' + id + '"]')).not.toBeNull();
+      }
+      expect(document.querySelector('.steps')).toBeNull();
+      expect(document.body.textContent).not.toContain(t(lang, 'votingGuide.steps.heading'));
     });
 
     it('renders DeadlineBanner near the steps when roll_deadline is set in the future', async () => {

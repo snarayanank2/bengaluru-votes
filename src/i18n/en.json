@@ -50,6 +50,7 @@
   "findBooth.result.unavailable": "We couldn't reach the electoral roll just now. Please try again in a little while, or use the official booth finder below.",
   "findBooth.linkOut.heading": "Can't find your booth here?",
   "findBooth.linkOut.label": "Find your booth on the official EC website",
+  "voterFaqs.contents": "Table of contents",
   "votingGuide.steps.heading": "Jump to a step",
   "votingGuide.steps.checkRoll": "Check you're on the roll",
   "votingGuide.steps.enrolOrTransfer": "Enrol or transfer your registration",
