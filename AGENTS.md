@@ -188,6 +188,8 @@ The primary agent is coordinator-only for feature and fix work. It must plan the
 
 Every delegated task must use its own Git worktree and branch. Never have two agents edit the same checkout or branch. Prefer a project-local `.worktrees/<short-task-name>` directory; verify that the directory is ignored before creating it. Use a descriptive branch such as `agent/<short-task-name>`.
 
+When dispatching subagents, use `gpt-6-astra` with low reasoning by default. Raise reasoning to medium only when the task genuinely requires additional design or integration judgment.
+
 Each subagent may edit, test, and commit its work. Commits should be focused and clearly named, and the subagent must report the worktree path, branch, commit hash, tests run, and any known limitations when handing back. Do not push or deploy unless the task explicitly asks for it.
 
 The primary agent owns integration: review each subagent commit and its diff, run the relevant project checks, then cherry-pick or merge the approved commits into the primary branch. Resolve conflicts and cross-feature coordination in the primary worktree; if tasks are not truly independent, delegate them sequentially instead. Coordination-only edits such as updating task notes or resolving a merge conflict are allowed, but implementation changes belong in a subagent worktree.
