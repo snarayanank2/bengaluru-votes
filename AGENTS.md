@@ -182,6 +182,16 @@ A fifth role, **transcriber**, is planned but not built: city-wide, *scopeless*,
 - **Consequence worth holding onto:** `npm test`, `npm run typecheck` and `npm run translate -- --check` no longer gate anything. Run them before deploying — nothing else will.
 - **Staging isolation:** `compose.staging.yml` must never join `back_prod`, and staging must keep `SENDS_DISABLED=true` with vendor keys omitted entirely. Those are two independent guards; keep both.
 
+## Parallel subagent workflow
+
+The primary agent is coordinator-only for feature and fix work. It must plan the work, split it into tasks, delegate implementation to subagents, integrate the returned commits, resolve conflicts, and run verification; it must not implement feature or fix code in the primary checkout. Even a single feature or fix should be assigned to a subagent rather than implemented by the primary agent. Delegation is per task: create agents with task-specific instructions and do not assume a permanent role roster.
+
+Every delegated task must use its own Git worktree and branch. Never have two agents edit the same checkout or branch. Prefer a project-local `.worktrees/<short-task-name>` directory; verify that the directory is ignored before creating it. Use a descriptive branch such as `agent/<short-task-name>`.
+
+Each subagent may edit, test, and commit its work. Commits should be focused and clearly named, and the subagent must report the worktree path, branch, commit hash, tests run, and any known limitations when handing back. Do not push or deploy unless the task explicitly asks for it.
+
+The primary agent owns integration: review each subagent commit and its diff, run the relevant project checks, then cherry-pick or merge the approved commits into the primary branch. Resolve conflicts and cross-feature coordination in the primary worktree; if tasks are not truly independent, delegate them sequentially instead. Coordination-only edits such as updating task notes or resolving a merge conflict are allowed, but implementation changes belong in a subagent worktree.
+
 Open questions: `docs/milestones.md` §17 (what the plan and the tracker still disagree about), `docs/election-timelines.md` §5 (what nobody has confirmed about the calendar), `docs/ksec-data-risk.md` §6 (whether the candidate data can be got at all). The consolidated product open-questions list went with `prd.md` and has not been reconstructed — check the three above before inventing an answer, and ask if it is not there.
 
 ## Learning from corrections
