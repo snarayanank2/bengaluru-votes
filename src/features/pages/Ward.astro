@@ -228,7 +228,14 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
           </section>
         </header>
 
-        <section aria-label={t(lang, 'ward.map.label')}>
+        <nav class="ward-section-nav" aria-label={t(lang, 'ward.nav.label')} data-ward-section-nav>
+          <a href="#ward-overview" data-ward-section-tab="ward-overview" aria-current="page">{t(lang, 'ward.nav.overview')}</a>
+          <a href="#ward-candidates" data-ward-section-tab="ward-candidates">{t(lang, 'ward.nav.candidates')}</a>
+          <a href="#ward-issues" data-ward-section-tab="ward-issues">{t(lang, 'ward.nav.issues')}</a>
+          <a href="#ward-questions" data-ward-section-tab="ward-questions">{t(lang, 'ward.nav.questions')}</a>
+        </nav>
+
+        <section id="ward-overview" class="ward-section" aria-label={t(lang, 'ward.map.label')}>
           {maps.enabled ? (
             <div
               class="map-container"
@@ -260,7 +267,7 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
           </Button>
         </section>
 
-        <section class="ward-candidates" aria-labelledby="ward-candidates-heading">
+        <section id="ward-candidates" class="ward-section ward-candidates" aria-labelledby="ward-candidates-heading">
           <h2 id="ward-candidates-heading">{t(lang, 'ward.links.candidates')}</h2>
           {sortedCandidates.length === 0 ? (
             <p class="candidate-empty">{candidateEmptyFact}</p>
@@ -290,7 +297,8 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
 
         {cityIssues.length > 0 && (
           <section
-            class="issue-vote"
+            id="ward-issues"
+            class="ward-section issue-vote"
             aria-labelledby="issue-vote-heading"
             data-issue-vote-zone
             data-ward-id={wardId}
@@ -316,7 +324,7 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
         )}
 
         {questions.length > 0 && (
-          <section class="candidate-questions" aria-labelledby="candidate-questions-heading">
+          <section id="ward-questions" class="ward-section candidate-questions" aria-labelledby="candidate-questions-heading">
             <h2 id="candidate-questions-heading">{t(lang, 'ward.questions.heading')}</h2>
             <ol>
               {questions.map((question) => (
@@ -337,7 +345,9 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
 
   <script>
     import { initWardMap } from '../../islands/WardMap';
+    import { initWardSectionNav } from '../../islands/WardSectionNav';
     initWardMap();
+    initWardSectionNav();
   </script>
   {recaptchaSiteKey && <script is:inline src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(recaptchaSiteKey)}`} async defer></script>}
 </Base>
@@ -350,6 +360,67 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
+  }
+
+  .ward-section-nav {
+    position: sticky;
+    top: 80px;
+    z-index: 60;
+    display: flex;
+    gap: var(--space-1);
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    margin-top: calc(-1 * var(--space-12));
+    padding: var(--space-2) max(var(--container-pad-x), calc((100vw - var(--container-app)) / 2 + var(--container-pad-x)));
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    background: var(--color-header-bg);
+    isolation: isolate;
+    border-bottom: 1px solid var(--color-border);
+    scrollbar-width: none;
+  }
+
+  .ward-section-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ward-section-nav a {
+    flex: 0 0 auto;
+    position: relative;
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .ward-section-nav a:hover,
+  .ward-section-nav a:focus-visible {
+    color: var(--color-text);
+  }
+
+  .ward-section-nav a[aria-current='page'] {
+    color: var(--color-primary);
+  }
+
+  .ward-section-nav a[aria-current='page']::after {
+    position: absolute;
+    right: 0;
+    bottom: calc(-1 * var(--space-2) - 1px);
+    left: 0;
+    height: 4px;
+    background: var(--color-primary);
+    content: '';
+  }
+
+  .ward-section-nav a:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
+  .ward-section {
+    scroll-margin-top: calc(80px + var(--space-12));
   }
 
   .ward-header h1 {

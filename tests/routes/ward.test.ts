@@ -178,6 +178,27 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
   });
 
   describe('known ward id', () => {
+    it.each(['en', 'kn'] as const)('%s: renders the in-page section navigation after the hero', async (lang) => {
+      const html = normalize(await (await renderWard(lang, WARD.id)).text());
+      const navStart = html.indexOf('class="ward-section-nav"');
+      const mapStart = html.indexOf('data-ward-map');
+
+      expect(navStart).toBeGreaterThan(-1);
+      expect(navStart).toBeGreaterThan(html.indexOf('class="ward-header"'));
+      expect(navStart).toBeLessThan(mapStart);
+      expect(html).toContain(`href="#ward-overview"`);
+      expect(html).toContain(`href="#ward-candidates"`);
+      expect(html).toContain(`href="#ward-issues"`);
+      expect(html).toContain(`href="#ward-questions"`);
+      expect(html).toContain('data-ward-section-nav');
+      expect(html).toContain('data-ward-section-tab="ward-overview"');
+      expect(html).toContain('aria-current="page"');
+      expect(html).toContain(t(lang, 'ward.nav.overview'));
+      expect(html).toContain(t(lang, 'ward.nav.candidates'));
+      expect(html).toContain(t(lang, 'ward.nav.issues'));
+      expect(html).toContain(t(lang, 'ward.nav.questions'));
+    });
+
     it.each(['en', 'kn'] as const)('%s: renders ward name, number, corporation label; status 200', async (lang) => {
       const res = await renderWard(lang, WARD.id);
       expect(res.status).toBe(200);
