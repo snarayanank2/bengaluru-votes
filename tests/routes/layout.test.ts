@@ -163,6 +163,19 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     expect(enHtml.match(/class="footer-link-column footer-link-column--divided"/g)).toHaveLength(2);
   });
 
+  it('puts the donation and legal links under the OpenCity logo in column three', () => {
+    const footer = enHtml.slice(enHtml.indexOf('class="site-footer"'));
+    const thirdColumn = footer.indexOf('aria-label="More footer links"');
+    const thirdColumnHtml = footer.slice(thirdColumn);
+    expect(thirdColumnHtml).toContain('src="/img/opencity-wordmark.png"');
+    expect(thirdColumnHtml.indexOf('src="/img/opencity-wordmark.png"')).toBeLessThan(
+      thirdColumnHtml.indexOf('href="https://oorvani.org/support-us"'),
+    );
+    expect(thirdColumnHtml).toContain('href="/terms">Terms of use<');
+    expect(thirdColumnHtml).toContain('href="/privacy">Privacy policy<');
+    expect(footer.slice(0, thirdColumn)).not.toContain('href="https://oorvani.org/support-us"');
+  });
+
   it('renders the three social links with accessible names and safe rel (§7.2)', () => {
     const accounts: Array<[string, string]> = [
       ['https://x.com/opencity_in', 'X'],

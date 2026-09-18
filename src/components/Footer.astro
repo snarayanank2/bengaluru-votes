@@ -40,6 +40,9 @@ const { lang } = Astro.props;
 const links = [
   { key: 'footer.about', path: '/about' },
   { key: 'footer.voterFaqs', path: '/voter-faqs' },
+] as const;
+
+const utilityLinks = [
   { key: 'footer.donate', path: 'https://oorvani.org/support-us' },
   { key: 'footer.terms', path: '/terms' },
   { key: 'footer.privacy', path: '/privacy' },
@@ -126,9 +129,10 @@ const social = [
       </ul>
     </nav>
     <nav class="footer-link-column footer-link-column--divided" aria-label="More footer links">
+      <img class="opencity-logo" src="/img/opencity-wordmark.png" alt="OpenCity" width="128" height="45" />
       <ul role="list" class="footer-links">
         {
-          links.slice(4).map((link) => (
+          utilityLinks.map((link) => (
             <li>
               <a href={link.path.startsWith('https://') ? link.path : localePath(lang, link.path)}>{t(lang, link.key)}</a>
             </li>
@@ -170,6 +174,13 @@ const social = [
   .footer-links {
     display: grid;
     gap: var(--space-3);
+  }
+
+  .opencity-logo {
+    display: block;
+    width: 128px;
+    height: auto;
+    margin-bottom: var(--space-10);
   }
 
   .footer-links a {
