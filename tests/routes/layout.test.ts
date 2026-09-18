@@ -198,11 +198,11 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     }
   });
 
-  it('renders the Sign in control anonymously with the MeSlot hook', () => {
-    expect(enHtml).toMatch(/data-me-slot[^>]*>Sign in</);
-    expect(enHtml).toContain(`href="${localePath('en', '/login')}"`);
-    expect(knHtml).toContain('data-me-slot');
-    expect(knHtml).toContain(`href="${localePath('kn', '/login')}"`);
+  it('does not render the temporarily removed header sign-in control', () => {
+    expect(enHtml).not.toContain('class="sign-in"');
+    expect(enHtml).not.toContain('data-me-slot');
+    expect(knHtml).not.toContain('class="sign-in"');
+    expect(knHtml).not.toContain('data-me-slot');
   });
 
   it('renders the skip link and a main landmark with matching id', () => {

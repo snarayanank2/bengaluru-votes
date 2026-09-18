@@ -12,13 +12,11 @@
  * (`Astro.site`, sourced from `SITE_ORIGIN` in astro.config.mjs) — NEVER
  * from the request's Host header. This layout also never reads
  * cookies/session, so the HTML it produces is identical for every
- * visitor and safe for nginx's anonymous-page micro-cache. The Sign-in
- * control (in AppBar) always renders the anonymous state; Task 28's
- * MeSlot island swaps it client-side for signed-in visitors.
+ * visitor and safe for nginx's anonymous-page micro-cache.
  *
  * The Register/Login modal (Task 27, IA §7.1) is rendered ONCE here, on
- * every page, so it's always reachable from the AppBar's "Sign in" control
- * and from any ward page's "Register for updates" slot without each of
+ * every page, so it's always reachable from any ward page's "Register for
+ * updates" slot without each of
  * those pages needing to know about it. Its own markup/behavior are
  * self-contained (src/components/RegisterLoginModal.astro,
  * src/islands/RegisterLoginModal.ts); it never changes the server-rendered
@@ -26,8 +24,7 @@
  * this layout's cache-safety.
  *
  * MeSlot (Task 28, src/islands/MeSlot.ts) is mounted ONCE here too, for the
- * same reason: every page has the app-bar Sign-in/Account slot, so every
- * page needs the island that personalizes it. It makes exactly ONE
+ * register-for-updates slots. It makes exactly ONE
  * `/api/me` call per page load and swaps that (and, where present, a ward
  * page's register-for-updates slot / vote-action hint) client-side — never
  * server-side, which is what keeps this layout's HTML cache-safe.
@@ -113,7 +110,7 @@ interface Props {
    * The page's root-relative, UNPREFIXED (English-canonical) route, e.g.
    * `/ward/57` — the same value for both the `/ward/57` and `/kn/ward/57`
    * variants of a page. Every language-specific URL below (canonical, the
-   * two hreflang alternates, AppBar's toggle/logo/sign-in links, Footer's
+   * two hreflang alternates, AppBar's toggle/logo links, Footer's
    * links) is derived by passing this same `path` through
    * `localePath(lang, path)` — never pass an already-`/kn`-prefixed path.
    */

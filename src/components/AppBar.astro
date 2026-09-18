@@ -5,7 +5,7 @@
  * "Bengaluru Votes" text wordmark (the home link) followed by the OpenCity
  * and Janaagraha logos,
  * settling design-system.md §12's open question: wordmark asset, no
- * byline. Right: the EN | ಕನ್ನಡ language toggle and the Sign in control.
+ * byline. Right: the EN | ಕನ್ನಡ language toggle.
  *
  * Both marks show at EVERY width. Tablet and up gets the full wordmark;
  * below 768px it abbreviates to "BV" and the bar's spacing tightens, which
@@ -24,16 +24,10 @@
  * space matches and the sticky bar never shifts while it loads.
  *
  * Cache-safety (architecture.md §5): this component never reads
- * cookies/session — the Sign in control always renders the anonymous
- * state server-side. Task 28's MeSlot island (src/islands/MeSlot.ts) finds
- * it via `data-me-slot` and swaps it client-side to an "Account" link for
- * signed-in visitors, so the server-rendered HTML stays identical for every
- * visitor and safe to cache. `data-msg-account` carries the already-
- * localized label MeSlot uses for that swap (same convention as
- * src/islands/WardLookup.ts's `data-msg-*` attributes — no client-side i18n
- * table import).
+ * cookies/session. The sign-in entry point is intentionally hidden for now;
+ * the login route and modal remain available to other authenticated flows.
  */
-import { t, localePath, type Lang } from '../i18n';
+import { localePath, type Lang } from '../i18n';
 
 interface Props {
   lang: Lang;
@@ -84,9 +78,6 @@ const segments: Array<{ lang: Lang; label: string }> = [
         }
       </div>
 
-      <a class="sign-in" href={localePath(lang, '/login')} data-me-slot data-msg-account={t(lang, 'nav.account')}>
-        {t(lang, 'nav.signIn')}
-      </a>
     </div>
   </div>
 </header>
@@ -196,36 +187,21 @@ const segments: Array<{ lang: Lang; label: string }> = [
     font-weight: 700;
   }
 
-  .sign-in {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: var(--space-2) var(--space-4);
-    color: var(--color-primary);
-    font-weight: 700;
-    text-decoration: none;
-    /* Without this the EN label wraps to "Sign / in" on a 320px phone and
-       the two-line button breaks out of the 56px bar. */
-    white-space: nowrap;
-    border: 1.5px solid var(--color-primary);
-    border-radius: var(--radius-sm);
-  }
-
   /* --- phones (below tokens.css's single 768px breakpoint) ---------------
-     The 56px bar has to carry four things — brand wordmark, Open City mark,
-     language toggle, Sign in — and at desktop spacing they need ~493px. A
+     The 56px bar has to carry three things — brand wordmark, Open City mark,
+     language toggle — and at desktop spacing they need ~493px. A
      360px phone gives us 328px inside the padding, so every one of the
      savings below is load-bearing, not cosmetic:
 
        "Bengaluru Votes" -> "BV"     saves ~120px
        lockup gap + rule tightened    saves ~8px
        controls gap 16 -> 8           saves ~8px
-       segment/Sign in x-padding      saves ~24px
+       segment x-padding              saves ~24px
 
      That lands the whole bar at ~250px, so both marks stay visible down to
      the ~320px floor. Only HORIZONTAL padding shrinks: `min-height` on
-     `.segment` (32px) and `.sign-in` (44px) is untouched, so the touch
-     targets still meet the a11y floor in design-system.md §10.
+     `.segment` (32px) is untouched, so the language control still meets the
+     a11y floor in design-system.md §10.
 
      The abbreviation is presentational only. `.logo`'s aria-label is
      "Bengaluru Votes" at every width and overrides its own text content for
@@ -275,9 +251,6 @@ const segments: Array<{ lang: Lang; label: string }> = [
       padding-inline: 4px;
     }
 
-    .sign-in {
-      padding-inline: var(--space-2);
-    }
   }
 
   /* Keep the complete lockup usable at the 320px floor as well. */
