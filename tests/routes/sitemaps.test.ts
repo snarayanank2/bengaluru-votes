@@ -189,6 +189,7 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
             expect(withoutLocale.startsWith(prefix), `unexpected excluded path "${p}" in ${filename}`).toBe(false);
           }
           expect(withoutLocale === '/login', `unexpected /login path "${p}" in ${filename}`).toBe(false);
+          expect(withoutLocale === '/donate', `unexpected /donate path "${p}" in ${filename}`).toBe(false);
         }
       }
     });

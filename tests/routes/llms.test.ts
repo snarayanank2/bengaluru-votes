@@ -71,4 +71,11 @@ describe('llms.txt (Task 57)', () => {
     const res = await GET({} as any);
     expect(res.headers.get('cache-control')).not.toBe('no-store');
   });
+
+  it('links donations directly to Oorvani instead of the removed public page', async () => {
+    const body = await (await GET({} as any)).text();
+    expect(body).toContain('https://oorvani.org/support-us');
+    expect(body).not.toContain(`${SITE_ORIGIN}/donate`);
+    expect(body).not.toContain(`${SITE_ORIGIN}/kn/donate`);
+  });
 });

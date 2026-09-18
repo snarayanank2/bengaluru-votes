@@ -63,7 +63,7 @@ export const GET: APIRoute = async () => {
     '',
     '## About Bengaluru Votes',
     `- About us, funding & how we source data: ${abs('/about')}`,
-    `- Donate to support the platform: ${abs('/donate')}`,
+    '- Donate to support the platform: https://oorvani.org/support-us',
     `- Privacy policy: ${abs('/privacy')}`,
     `- Terms & conditions: ${abs('/terms')}`,
     '',

@@ -115,7 +115,6 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     const enLinks: Array<[string, string]> = [
       ['/about', 'About Bengaluru Votes'],
       ['/voter-faqs', 'Voter FAQs'],
-      ['/donate', 'Donate'],
       ['/terms', 'Terms of use'],
       ['/privacy', 'Privacy policy'],
     ];
@@ -126,6 +125,15 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     expect(enHtml).not.toContain('href="/data"');
     expect(knHtml).not.toContain('href="/kn/data"');
     expect(enHtml).not.toContain('Our data &amp; sources');
+  });
+
+  it('links Donate directly to Oorvani in both languages, preserving translated labels', () => {
+    expect(enHtml).toContain('href="https://oorvani.org/support-us">Donate<');
+    expect(knHtml).toContain('href="https://oorvani.org/support-us">ದೇಣಿಗೆ ನೀಡಿ<');
+    for (const html of [enHtml, knHtml]) {
+      expect(html).not.toContain('href="/donate"');
+      expect(html).not.toContain('href="/kn/donate"');
+    }
   });
 
   it('brands the partner footer with a prominent platform name, light self-hosted marks, and white social icons', () => {

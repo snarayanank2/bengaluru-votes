@@ -4,7 +4,7 @@
  * background with lime text, matching Open City's own footer
  * (opencity.in serves it as accent-3 on accent-2); the one dark surface in
  * the system. Footer is the only route to the trust/legal pages (About,
- * Voter FAQs, Donate, Terms, Privacy), and carries
+ * Voter FAQs, Terms, Privacy), links directly to Oorvani for donations, and carries
  * the Janaagraha + Oorvani Foundation partner lockup and Open City's
  * social links.
  *
@@ -24,8 +24,8 @@
  * inlined as SVG (an <img> would be a second network hop for 24px of
  * artwork) and drawn in `currentColor`. They are white by default for clear
  * separation from the green platform and navigation text; the lime hover
- * state retains contrast. These are the only external links in the footer;
- * they skip §7.4's external-link glyph because an icon-only link to a
+ * state retains contrast. These social links
+ * skip §7.4's external-link glyph because an icon-only link to a
  * platform's own mark is already unambiguous, and each carries an
  * `aria-label` naming the platform for screen readers.
  */
@@ -40,7 +40,7 @@ const { lang } = Astro.props;
 const links = [
   { key: 'footer.about', path: '/about' },
   { key: 'footer.voterFaqs', path: '/voter-faqs' },
-  { key: 'footer.donate', path: '/donate' },
+  { key: 'footer.donate', path: 'https://oorvani.org/support-us' },
   { key: 'footer.terms', path: '/terms' },
   { key: 'footer.privacy', path: '/privacy' },
 ] as const;
@@ -119,7 +119,7 @@ const social = [
         {
           links.slice(0, 4).map((link) => (
             <li>
-              <a href={localePath(lang, link.path)}>{t(lang, link.key)}</a>
+              <a href={link.path.startsWith('https://') ? link.path : localePath(lang, link.path)}>{t(lang, link.key)}</a>
             </li>
           ))
         }
@@ -130,7 +130,7 @@ const social = [
         {
           links.slice(4).map((link) => (
             <li>
-              <a href={localePath(lang, link.path)}>{t(lang, link.key)}</a>
+              <a href={link.path.startsWith('https://') ? link.path : localePath(lang, link.path)}>{t(lang, link.key)}</a>
             </li>
           ))
         }
