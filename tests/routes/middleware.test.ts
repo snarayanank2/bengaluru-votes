@@ -641,11 +641,6 @@ describe('src/middleware.ts', () => {
       expect(res.headers.get('x-robots-tag')).toBeNull();
     });
 
-    it('/partner-with-us (not /partner/*) does NOT carry X-Robots-Tag', async () => {
-      const ctx = makeContext({ path: '/partner-with-us' });
-      const res = await run(ctx, nextStub(200));
-      expect(res.headers.get('x-robots-tag')).toBeNull();
-    });
   });
 
   // Task 60: the app (not nginx) emits Content-Security-Policy, built from
@@ -688,11 +683,7 @@ describe('src/middleware.ts', () => {
       expect(res1.headers.get('content-security-policy')).not.toBe(res2.headers.get('content-security-policy'));
     });
 
-    it('anonymous-write pages get the reCAPTCHA relaxation; the ward issues page does not', async () => {
-      const partnerCtx = makeContext({ path: '/partner-with-us' });
-      const partnerRes = await run(partnerCtx, nextStub(200));
-      expect(partnerRes.headers.get('content-security-policy')).toContain('www.google.com');
-
+    it('the ward detail page gets the reCAPTCHA relaxation; the ward issues page does not', async () => {
       const wardCtx = makeContext({ path: '/ward/1' });
       const wardRes = await run(wardCtx, nextStub(200));
       expect(wardRes.headers.get('content-security-policy')).toContain('www.google.com');

@@ -14,8 +14,6 @@ const ALL_SLUGS = [
   'terms',
   'privacy',
   'donate',
-  'partner-with-us',
-  'press',
   'home-intro',
 ];
 

@@ -49,9 +49,8 @@ const bodySchema = z.object({
   wardsText: z.string().trim().max(1000).nullable().optional(),
   message: z.string().trim().max(2000).nullable().optional(),
   // Present but NOT required to be non-empty: when RECAPTCHA_SITE_KEY isn't
-  // configured (this repo's dev/CI env), the page's script never obtains a
-  // real token and posts an empty string instead (PartnerWithUs.astro /
-  // src/islands/EoiForm.ts) — src/lib/recaptcha.ts's own no-secret dev-accept
+  // configured (this repo's dev/CI env), callers may post an empty string —
+  // src/lib/recaptcha.ts's own no-secret dev-accept
   // rule is what makes that submission still succeed in dev/CI. Production
   // always has both a site key (real token) and a secret (real
   // verification), so an empty token there fails verification for real.

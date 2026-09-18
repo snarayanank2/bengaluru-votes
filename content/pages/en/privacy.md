@@ -28,7 +28,7 @@ We use **Google Analytics** to understand how visitors use this platform, alongs
 
 ## reCAPTCHA on anonymous submissions
 
-The [partner with us](/partner-with-us) expression-of-interest form and anonymous ward issue voting are protected by **Google reCAPTCHA v3**, which sets its own cookies and sends usage data to Google to keep these no-account submissions safe from automated abuse.
+Anonymous ward issue voting is protected by **Google reCAPTCHA v3**, which sets its own cookies and sends usage data to Google to keep these no-account submissions safe from automated abuse.
 
 ## Who else processes your data?
 

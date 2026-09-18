@@ -10,7 +10,7 @@
  * GUARDS:
  *   1. PUBLIC GET CACHE-INVARIANCE (the core guarantee, architecture §5):
  *      for `/`, `/ward/{id}`, `/candidate/{slug}`, `/voting-guide/how-to-vote`,
- *      `/about`, `/press` — render once with no Cookie header and once with
+ *      `/about` — render once with no Cookie header and once with
  *      a valid `bv_session` cookie for a real logged-in citizen. Assert (a)
  *      neither response sets `Set-Cookie`, and (b) the HTML bodies are
  *      byte-identical (modulo the expected per-request CSP nonce, which is
@@ -54,7 +54,6 @@ import WardPage from '../../src/pages/ward/[id].astro';
 import CandidatePage from '../../src/pages/candidate/[slug].astro';
 import HowToVotePage from '../../src/pages/voting-guide/how-to-vote.astro';
 import AboutPage from '../../src/pages/about.astro';
-import PressPage from '../../src/pages/press.astro';
 import * as WardBoundaryRoute from '../../src/pages/ward/[id]/boundary.json';
 import { loadWardPolygons, wardForPoint } from '../../src/lib/geo';
 
@@ -312,7 +311,6 @@ describe('§12 cache-invariant + security guard suite', () => {
       },
       { name: '/voting-guide/how-to-vote', page: HowToVotePage, path: '/voting-guide/how-to-vote' },
       { name: '/about', page: AboutPage, path: '/about' },
-      { name: '/press', page: PressPage, path: '/press' },
     ];
 
     it.each(pages)(

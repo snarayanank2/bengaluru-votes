@@ -5,13 +5,12 @@ const NONCE = 'test-nonce-abc123==';
 
 // Every script-src exact-match assertion below includes these — the Google
 // Maps hosts (spec §8) live in the BASE script-src, so they appear on every
-// path, partner-with-us included, ahead of the reCAPTCHA hosts that only
-// that one path adds. See the "Google Maps hosts" describe block for the
+// path. See the "Google Maps hosts" describe block for the
 // substring-based coverage of this same fact.
 const MAPS_SCRIPT_SRC = 'https://maps.googleapis.com https://maps.gstatic.com';
 
 describe('src/lib/csp.ts#buildCsp', () => {
-  describe('base policy (non-partner paths)', () => {
+  describe('base policy', () => {
     it.each(['/', '/candidate/some-slug', '/account', '/api/me'])(
       '%s: strict script-src with the exact nonce interpolated, no unsafe-inline',
       (pathname) => {
@@ -59,62 +58,13 @@ describe('src/lib/csp.ts#buildCsp', () => {
     });
 
     it.each(['/account', '/api/me', '/', '/partner/some-slug'])(
-      '%s (non-partner-with-us path) does NOT contain www.google.com in script-src',
+      '%s does NOT contain www.google.com in script-src',
       (pathname) => {
         const csp = buildCsp(NONCE, pathname);
         expect(csp).not.toContain('www.google.com');
         expect(csp).not.toContain('www.gstatic.com');
       },
     );
-  });
-
-  describe('partner-with-us extension (reCAPTCHA v3)', () => {
-    it.each(['/partner-with-us', '/kn/partner-with-us'])(
-      '%s: adds www.google.com and www.gstatic.com to script-src',
-      (pathname) => {
-        const csp = buildCsp(NONCE, pathname);
-        const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
-        expect(scriptSrc).toBe(
-          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC} https://www.google.com https://www.gstatic.com`,
-        );
-      },
-    );
-
-    it.each(['/partner-with-us', '/kn/partner-with-us'])('%s: sets frame-src to www.google.com', (pathname) => {
-      const csp = buildCsp(NONCE, pathname);
-      expect(csp).toContain('frame-src https://www.google.com');
-      expect(csp).not.toContain("frame-src 'none'");
-    });
-
-    it.each(['/partner-with-us/', '/kn/partner-with-us/'])(
-      '%s: trailing-slash variant (Astro trailingSlash: "ignore") still relaxes the CSP',
-      (pathname) => {
-        const csp = buildCsp(NONCE, pathname);
-        const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src'));
-        expect(scriptSrc).toBe(
-          `script-src 'self' 'nonce-${NONCE}' https://www.googletagmanager.com ${MAPS_SCRIPT_SRC} https://www.google.com https://www.gstatic.com`,
-        );
-        expect(csp).toContain('frame-src https://www.google.com');
-      },
-    );
-
-    it('does not relax a path that merely starts with /partner-with-us (e.g. a trailing segment)', () => {
-      const csp = buildCsp(NONCE, '/partner-with-us-extra');
-      expect(csp).not.toContain('www.google.com');
-      expect(csp).toContain("frame-src 'none'");
-    });
-
-    it('does not relax /partner/:slug (a different route than /partner-with-us)', () => {
-      const csp = buildCsp(NONCE, '/partner/some-partner-slug');
-      expect(csp).not.toContain('www.google.com');
-      expect(csp).toContain("frame-src 'none'");
-    });
-
-    it('does not relax a genuine subpath even after trailing-slash normalization', () => {
-      const csp = buildCsp(NONCE, '/partner-with-us/sub');
-      expect(csp).not.toContain('www.google.com');
-      expect(csp).toContain("frame-src 'none'");
-    });
   });
 
   describe('ward detail extension (anonymous-vote reCAPTCHA v3)', () => {
@@ -131,7 +81,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
 
   it('is a pure function: same inputs always produce the same output', () => {
     expect(buildCsp(NONCE, '/ward/57')).toBe(buildCsp(NONCE, '/ward/57'));
-    expect(buildCsp('other-nonce', '/partner-with-us')).toBe(buildCsp('other-nonce', '/partner-with-us'));
+    expect(buildCsp('other-nonce', '/about')).toBe(buildCsp('other-nonce', '/about'));
   });
 
   describe('Google Maps hosts (spec §8)', () => {
@@ -205,13 +155,12 @@ describe('src/lib/csp.ts#buildCsp', () => {
     });
 
     it('keeps the maps hosts on every route, not just the ward page', () => {
-      for (const path of ['/', '/kn/', '/voting-guide', '/partner-with-us']) {
+      for (const path of ['/', '/kn/', '/voting-guide']) {
         expect(buildCsp('n0nce', path)).toContain('https://maps.googleapis.com');
       }
     });
 
-    it('adds the reCAPTCHA hosts on anonymous-write pages only', () => {
-      expect(buildCsp('n0nce', '/partner-with-us')).toContain('https://www.gstatic.com');
+    it('adds the reCAPTCHA hosts on the ward detail page only', () => {
       expect(buildCsp('n0nce', '/ward/1')).toContain('https://www.gstatic.com');
       expect(buildCsp('n0nce', '/ward/1/issues')).not.toContain('https://www.gstatic.com');
     });

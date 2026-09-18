@@ -26,35 +26,12 @@
  * this function.
  */
 
-const PARTNER_PATH = '/partner-with-us';
-
-/**
- * Same locale-prefix-stripping rule as src/middleware.ts#stripLocalePrefix
- * (`/kn/partner-with-us` must match exactly like `/partner-with-us`) — kept
- * as an independent copy rather than an import so this module stays a
- * small, dependency-free pure function directly unit-testable
- * (tests/unit/csp.test.ts) without pulling in astro:middleware.
- */
 function stripLocalePrefix(pathname: string): string {
   return pathname.replace(/^\/kn(?=\/|$)/, '') || '/';
 }
 
-/**
- * Strips a single optional trailing slash (never touches the root `/`
- * itself). Astro's default `trailingSlash: 'ignore'` routes
- * `/partner-with-us/` to the exact same page as `/partner-with-us` — without
- * this normalization `isPartnerWithUsPath` would miss that variant on exact
- * equality and silently fail to relax the CSP for reCAPTCHA there. Applied
- * BEFORE the exact-match comparison (not a prefix match), so
- * `/partner-with-us/sub` still correctly does NOT match (it strips to
- * `/partner-with-us/sub`, not `/partner-with-us`).
- */
 function stripTrailingSlash(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-}
-
-function isPartnerWithUsPath(pathname: string): boolean {
-  return stripTrailingSlash(stripLocalePrefix(pathname)) === PARTNER_PATH;
 }
 
 function isWardDetailPath(pathname: string): boolean {
@@ -97,18 +74,6 @@ function isWardDetailPath(pathname: string): boolean {
  * gates GA to public+indexable pages only; this module doesn't need to
  * know that).
  *
- * PARTNER EXTENSION: on `/partner-with-us` and `/kn/partner-with-us` ONLY
- * (matched the same locale-aware way src/middleware.ts matches every other
- * path prefix — strip a leading `/kn`, compare the rest, THEN strip a single
- * optional trailing slash before the exact-equality check, since Astro's
- * default `trailingSlash: 'ignore'` routes `/partner-with-us/` to the same
- * page and the CSP must relax there too — see `stripTrailingSlash` below),
- * reCAPTCHA v3 (src/features/pages/PartnerWithUs.astro) needs
- * `www.google.com` and `www.gstatic.com` added to `script-src`, and the base
- * `frame-src 'none'` relaxed to `https://www.google.com` (reCAPTCHA injects
- * its challenge iframe from that host). No other path gets these hosts
- * relaxed — in particular a genuine subpath like `/partner-with-us/sub`
- * still does not match after trailing-slash stripping.
  */
 export function buildCsp(nonce: string, pathname: string): string {
   // Google Maps Platform (spec §8): the ward-boundary map
@@ -117,10 +82,7 @@ export function buildCsp(nonce: string, pathname: string): string {
   // src/islands/WardLookup.ts but did not ship — see the deferral note in
   // that area of the codebase — so there is currently exactly one consumer
   // on one route family.) These hosts live in the BASE policy rather than a
-  // path-scoped extension like the reCAPTCHA one below; scoping them to
-  // /ward/* (and /kn/ward/*) the way PARTNER EXTENSION scopes reCAPTCHA is
-  // a viable follow-up now that a second consumer on a different route
-  // didn't materialize — it just hasn't been done.
+  // path-scoped extension; they are used by the ward map and lookup.
   //
   // `script-src`: @googlemaps/js-api-loader injects a <script src=…> at
   // runtime. A script element whose src matches an allowlisted host does
@@ -144,8 +106,7 @@ export function buildCsp(nonce: string, pathname: string): string {
   //
   // These are three DIFFERENT hosts that differ only by subdomain:
   // fonts.gstatic.com (font files), maps.gstatic.com (map assets), and
-  // www.gstatic.com (reCAPTCHA, added only on /partner-with-us below). Do
-  // not collapse them.
+  // www.gstatic.com (reCAPTCHA). Do not collapse them.
   const MAPS_FONT_STYLE_HOST = 'https://fonts.googleapis.com';
   const MAPS_FONT_FILE_HOST = 'https://fonts.gstatic.com';
 
@@ -162,7 +123,7 @@ export function buildCsp(nonce: string, pathname: string): string {
   const scriptSrcHosts = ['https://www.googletagmanager.com', ...MAPS_HOSTS];
   let frameSrc = "'none'";
 
-  if (isPartnerWithUsPath(pathname) || isWardDetailPath(pathname)) {
+  if (isWardDetailPath(pathname)) {
     scriptSrcHosts.push('https://www.google.com', 'https://www.gstatic.com');
     frameSrc = 'https://www.google.com';
   }

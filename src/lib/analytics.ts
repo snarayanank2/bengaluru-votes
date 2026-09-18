@@ -35,8 +35,7 @@
  * (deploy/nginx/snippets/security-headers.conf sets no CSP of its own; see
  * src/lib/csp.ts's docstring for why the app, not nginx, owns this header).
  * These GA hosts are in `buildCsp`'s BASE policy (present on every path),
- * the same precedent as the reCAPTCHA host allowance, which is instead
- * scoped to `/partner-with-us` alone.
+ * the same precedent as the reCAPTCHA host allowance for anonymous writes.
  */
 
 /** The gtag.js loader URL for a given GA4 measurement id. */

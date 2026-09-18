@@ -38,4 +38,4 @@ In short: we don't sell it, and we don't hand it to anyone except the handful of
 
 ## Want to help?
 
-If you'd like to spread the word in your neighbourhood, or take on the accuracy of your ward's data as a curator, see [partner with us](/partner-with-us).
+If you'd like to spread the word in your neighbourhood, or take on the accuracy of your ward's data as a curator, get in touch with the team.

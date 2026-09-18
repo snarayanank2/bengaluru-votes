@@ -116,9 +116,7 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
       ['/about', 'About this project'],
       ['/check-registration', 'Check your registration'],
       ['/voting-guide', 'Voting guide'],
-      ['/partner-with-us', 'Partner with us'],
       ['/donate', 'Donate'],
-      ['/press', 'Press'],
       ['/terms', 'Terms of use'],
       ['/privacy', 'Privacy policy'],
     ];
