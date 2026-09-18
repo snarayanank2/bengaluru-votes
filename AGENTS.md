@@ -186,6 +186,8 @@ A fifth role, **transcriber**, is planned but not built: city-wide, *scopeless*,
 
 Use normal Codex CLI sessions for implementation; do not route work through a mandatory subagent or coordinator workflow. Multiple Codex sessions may work in parallel, but they must never edit the same checkout or branch at the same time.
 
+Every new Codex session must start its own instance of Docker Compose, configured to listen on a different host port from other active sessions. After starting it, present the resulting review URL to the user so they can inspect the changes directly.
+
 For parallel work, create one project-local `.worktrees/<short-task-name>` worktree and one descriptive branch (for example, `codex/<short-task-name>`) per session. Verify `.worktrees/` is ignored before creating it. Each session owns its worktree, keeps its changes focused, and reports its branch, commit, tests, and limitations. Do not use `git reset --hard`, `git checkout --`, or broad cleanup commands in a shared checkout.
 
 Keep the primary checkout for integration and release work. Before merging or cherry-picking another session's commit, inspect its diff and check that the target branch has no unrelated uncommitted changes. Integrate independent commits one at a time, resolve conflicts in the primary checkout, run the relevant verification, and only then push or deploy. If two sessions touch overlapping files, stop one or coordinate explicitly before integration; never rely on concurrent edits resolving themselves.
