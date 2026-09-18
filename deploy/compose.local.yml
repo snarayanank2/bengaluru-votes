@@ -46,14 +46,14 @@
 name: bengaluru-votes-local
 
 services:
-  # Same Dockerfile the deployed images are built from, built here from the
-  # working tree so local edits actually appear. `--build` on `up` to pick
-  # up source changes; the build is a full `npm ci && astro build`, so the
-  # first one takes a few minutes and later ones hit the layer cache.
+  # Same Dockerfile the deployed images are built from, using its development
+  # target. The repository is mounted below, so Astro's dev server watches the
+  # host working tree and reloads source changes without rebuilding the image.
   app:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: development
       args:
         SITE_ORIGIN: http://localhost:${PORT:-4321}
         EXTRA_ALLOWED_ORIGIN: http://localhost:${PORT:-4321}
@@ -63,12 +63,7 @@ services:
     ports:
       - '127.0.0.1:${PORT:-4321}:4321'
     environment:
-      # Kept as `production` (matching the Dockerfile's baked-in ENV) so the
-      # runtime behaves like the deployed one — notably SESSION_SECRET's
-      # fail-closed check. Scripts that refuse to run under production
-      # (scripts/seed-dev.ts) take an explicit per-command override — see the
-      # seeding commands in this file's header.
-      NODE_ENV: production
+      NODE_ENV: development
       DATABASE_URL: postgres://gba:gba_local_dev@postgres:5432/gba
       SITE_ORIGIN: http://localhost:${PORT:-4321}
       # Fixed, public, local-only. Rotating it just logs out your local
@@ -96,17 +91,19 @@ services:
       # 'pending' without ANTHROPIC_API_KEY. Add them to a local override
       # file if you need to exercise those paths.
     volumes:
-      # Production serves /data/gba.geojson off the nginx `static_assets`
-      # volume (populated by the `static-init` one-shot), and the file is not
-      # in public/ — so without this mount the Astro standalone server 404s
-      # it and every ward map renders empty. Mounting it into the client
-      # build output is the no-nginx equivalent of that one-shot.
-      - ../data/gba.geojson:/app/dist/client/data/gba.geojson:ro
+      # Mount the working tree for hot reload. Keep image-installed
+      # node_modules visible inside the container rather than shadowing them
+      # with the host's dependencies.
+      - ..:/app
+      - /app/node_modules
+      # The browser fetches this static boundary data from /data/ while the
+      # development server is running.
+      - ../data:/app/public/data:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:4321/healthz']
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:4321/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5

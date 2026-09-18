@@ -41,6 +41,14 @@ RUN if [ -n "$SITE_ORIGIN" ]; then export SITE_ORIGIN; else unset SITE_ORIGIN; f
     if [ -n "$EXTRA_ALLOWED_ORIGIN" ]; then export EXTRA_ALLOWED_ORIGIN; else unset EXTRA_ALLOWED_ORIGIN; fi; \
     npm run build
 
+# Local development target. It keeps the full dependency set from the build
+# stage so Compose can run Astro's dev server with hot reload.
+FROM build AS development
+ENV HOST=0.0.0.0 \
+    PORT=4321 \
+    NODE_ENV=development
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
 ########################################################################
 # Stage 2: deps-prod — production-only node_modules for the runtime image.
 #
