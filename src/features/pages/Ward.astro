@@ -235,7 +235,8 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
           <a href="#ward-questions" data-ward-section-tab="ward-questions">{t(lang, 'ward.nav.questions')}</a>
         </nav>
 
-        <section id="ward-overview" class="ward-section" aria-label={t(lang, 'ward.map.label')}>
+        <section id="ward-overview" class="ward-section ward-overview-section" aria-label={t(lang, 'ward.map.label')}>
+          <p class="ward-section-eyebrow">{t(lang, 'ward.nav.overview')}</p>
           {maps.enabled ? (
             <div
               class="map-container"
@@ -267,7 +268,8 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
           </Button>
         </section>
 
-        <section id="ward-candidates" class="ward-section ward-candidates" aria-labelledby="ward-candidates-heading">
+        <section id="ward-candidates" class="ward-section ward-candidates ward-candidates-section" aria-labelledby="ward-candidates-heading">
+          <p class="ward-section-eyebrow">{t(lang, 'ward.nav.candidates')}</p>
           <h2 id="ward-candidates-heading">{t(lang, 'ward.links.candidates')}</h2>
           {sortedCandidates.length === 0 ? (
             <p class="candidate-empty">{candidateEmptyFact}</p>
@@ -298,7 +300,7 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
         {cityIssues.length > 0 && (
           <section
             id="ward-issues"
-            class="ward-section issue-vote"
+            class="ward-section issue-vote issue-vote-section"
             aria-labelledby="issue-vote-heading"
             data-issue-vote-zone
             data-ward-id={wardId}
@@ -306,6 +308,7 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
             data-recaptcha-site-key={recaptchaSiteKey}
             data-msg-voted-elsewhere={t(lang, 'ward.vote.votedElsewhere')}
           >
+            <p class="ward-section-eyebrow">{t(lang, 'ward.nav.issues')}</p>
             <h2 id="issue-vote-heading">{t(lang, 'ward.vote.heading')}</h2>
             <p>{t(lang, 'ward.vote.instructions')}</p>
             <div class="issue-vote-actions">
@@ -324,7 +327,8 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
         )}
 
         {questions.length > 0 && (
-          <section id="ward-questions" class="ward-section candidate-questions" aria-labelledby="candidate-questions-heading">
+          <section id="ward-questions" class="ward-section candidate-questions candidate-questions-section" aria-labelledby="candidate-questions-heading">
+            <p class="ward-section-eyebrow">{t(lang, 'ward.nav.questions')}</p>
             <h2 id="candidate-questions-heading">{t(lang, 'ward.questions.heading')}</h2>
             <ol>
               {questions.map((question) => (
@@ -421,6 +425,49 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
 
   .ward-section {
     scroll-margin-top: calc(80px + var(--space-12));
+  }
+
+  .ward-section-eyebrow {
+    margin: 0;
+    color: var(--color-hero-alert);
+    font-family: var(--font-heading);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .ward-overview-section .map-container {
+    margin-top: var(--space-2);
+  }
+
+  /* Major ward sections use the homepage's full-width colour bands. The
+     ward container remains the alignment grid; each band simply stretches
+     to the viewport edge and restores the shared horizontal inset. */
+  .ward-section:not(.ward-overview-section) {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding: var(--space-8) max(var(--container-pad-x), calc((100vw - var(--container-app)) / 2 + var(--container-pad-x)));
+  }
+
+  .ward-overview-section {
+    padding-block: var(--space-8);
+    background: var(--color-bg);
+  }
+
+  .ward-candidates-section {
+    background: var(--color-header-bg);
+    color: var(--color-text);
+  }
+
+  .issue-vote-section {
+    background: var(--color-bg);
+  }
+
+  .candidate-questions-section {
+    background: var(--color-methodology-bg);
+    color: var(--color-methodology-text);
   }
 
   .ward-header h1 {
@@ -611,8 +658,8 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
 
   .ward-candidates h2 {
     font-family: var(--font-heading);
-    font-size: var(--text-2xl);
-    line-height: var(--leading-2xl);
+    font-size: 1.6rem;
+    line-height: 1.2;
   }
 
   .ward-candidates :global(.candidate-row .name) {
@@ -623,6 +670,12 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
   .provisional-marker,
   .status-label {
     color: var(--color-text-muted);
+  }
+
+  .candidate-empty,
+  .provisional-marker {
+    font-size: 0.95rem;
+    line-height: 1.6;
   }
 
   .provisional-marker {
@@ -658,8 +711,8 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
 
   .candidate-questions h2 {
     font-family: var(--font-heading);
-    font-size: var(--text-2xl);
-    line-height: var(--leading-2xl);
+    font-size: 1.6rem;
+    line-height: 1.2;
     margin: 0 0 var(--space-4);
   }
 
@@ -687,11 +740,27 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
 
   .issue-vote h2 {
     font-family: var(--font-heading);
-    font-size: var(--text-2xl);
+    font-size: 1.6rem;
+    line-height: 1.2;
   }
 
   .issue-vote > p {
-    color: var(--color-text-muted);
+    color: var(--color-why-vote-ink);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .issue-vote-section .ward-section-eyebrow {
+    color: var(--color-hero-alert);
+  }
+
+  .issue-vote-section h2,
+  .issue-vote-section > p {
+    color: var(--color-text);
+  }
+
+  .candidate-questions-section .ward-section-eyebrow {
+    margin-bottom: var(--space-2);
   }
 
   .issue-vote-actions {
