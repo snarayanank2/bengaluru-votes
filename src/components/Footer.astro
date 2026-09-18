@@ -11,18 +11,20 @@
  * Three columns at md and up (partners first, then two navigation columns),
  * separated by vertical rules and stacked on mobile.
  *
- * Both partner logos are dark-on-transparent PNGs, so each sits on its own
- * white chip rather than being recolored — a partner's mark is theirs, and
- * inverting it would drop Oorvani's red dot. Self-hosted under
- * `public/img/` (so `/img/janaagraha-logo.png`), never hot-linked: the CSP
- * is `img-src 'self'` (src/lib/csp.ts).
+ * Partner marks are self-hosted under `public/img/`, never hot-linked: the
+ * CSP is `img-src 'self'` (src/lib/csp.ts). Janaagraha's official wordmark
+ * source is https://www.janaagraha.org/wp-content/uploads/2022/11/1.svg;
+ * its published file is dark-only, so the same untouched SVG receives a
+ * faithful white monochrome CSS filter for this black surface. Oorvani's
+ * official light wordmark is
+ * https://oorvani.org/wp-content/uploads/2025/02/white-oorvani-with-tagline.png
+ * and is used unchanged.
  *
  * The social icons are the same marks Open City uses in its own footer,
  * inlined as SVG (an <img> would be a second network hop for 24px of
- * artwork) and drawn in `currentColor` so they inherit the footer's lime.
- * Open City tints them sun-yellow; here yellow is reserved for statutory
- * deadlines and the AI-extracted badge (§7.6), so they take the footer's
- * own text color instead. These are the only external links in the footer;
+ * artwork) and drawn in `currentColor`. They are white by default for clear
+ * separation from the green platform and navigation text; the lime hover
+ * state retains contrast. These are the only external links in the footer;
  * they skip §7.4's external-link glyph because an icon-only link to a
  * platform's own mark is already unambiguous, and each carries an
  * `aria-label` naming the platform for screen readers.
@@ -71,13 +73,26 @@ const social = [
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-partners">
+      <p class="footer-brand">Bengaluru Votes</p>
       <p class="partners-label">{t(lang, 'footer.jointProject')}</p>
       <ul role="list" class="partner-logos">
-        <li class="partner-chip">
-          <img src="/img/janaagraha-logo.png" alt="Janaagraha" width="133" height="22" />
+        <li>
+          <img
+            class="partner-logo partner-logo--janaagraha"
+            src="/img/janaagraha-logo.svg"
+            alt="Janaagraha"
+            width="154"
+            height="26"
+          />
         </li>
-        <li class="partner-chip">
-          <img src="/img/oorvani-logo.png" alt="Oorvani Foundation" width="93" height="26" />
+        <li>
+          <img
+            class="partner-logo partner-logo--oorvani"
+            src="/img/oorvani-logo-white.png"
+            alt="Oorvani Foundation"
+            width="138"
+            height="49"
+          />
         </li>
       </ul>
       <ul role="list" class="social-links" aria-label="Open City on social media">
@@ -179,6 +194,15 @@ const social = [
     margin-bottom: var(--space-3);
   }
 
+  .footer-brand {
+    color: var(--color-on-footer);
+    font-family: var(--font-heading);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    line-height: var(--leading-xl);
+    margin-bottom: var(--space-4);
+  }
+
   .partner-logos {
     display: flex;
     flex-wrap: wrap;
@@ -186,18 +210,16 @@ const social = [
     gap: var(--space-3);
   }
 
-  .partner-chip {
-    display: inline-flex;
-    align-items: center;
-    background: var(--color-bg);
-    border-radius: var(--radius-sm);
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .partner-chip img {
+  .partner-logo {
     display: block;
     height: auto;
     max-width: 100%;
+  }
+
+  .partner-logo--janaagraha {
+    /* The official source file is dark-only; this preserves its geometry
+       while giving the black footer a faithful monochrome treatment. */
+    filter: brightness(0) invert(1);
   }
 
   .social-links {
@@ -218,10 +240,10 @@ const social = [
     /* 44×44 minimum target (§7.3) around a 24px icon. */
     min-width: 44px;
     min-height: 44px;
-    color: var(--color-on-footer);
+    color: var(--color-on-primary);
   }
 
   .social-links a:hover {
-    color: var(--color-bg);
+    color: var(--color-on-footer);
   }
 </style>

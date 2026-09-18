@@ -50,7 +50,7 @@
  */
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4321;
+const PORT = Number(process.env.E2E_PORT ?? 4321);
 const HOST = '127.0.0.1';
 
 // Defaulted here (not just documented) so `npx playwright test` and any

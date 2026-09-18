@@ -128,14 +128,21 @@ describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
     expect(enHtml).not.toContain('Our data &amp; sources');
   });
 
-  it('renders the partner lockup: the joint-project label and both logos, self-hosted (§7.2)', () => {
+  it('brands the partner footer with a prominent platform name, light self-hosted marks, and white social icons', () => {
     for (const html of [enHtml, knHtml]) {
       // Self-hosted under public/img/ — a remote src would be blocked by the
       // app's own `img-src 'self'` CSP (src/lib/csp.ts).
-      expect(html).toContain('src="/img/janaagraha-logo.png"');
-      expect(html).toContain('src="/img/oorvani-logo.png"');
+      expect(html).toContain('src="/img/janaagraha-logo.svg"');
+      expect(html).toContain('src="/img/oorvani-logo-white.png"');
       expect(html).toContain('alt="Janaagraha"');
       expect(html).toContain('alt="Oorvani Foundation"');
+      expect(html).not.toContain('partner-chip');
+
+      const footer = html.slice(html.indexOf('class="site-footer"'));
+      expect(footer).toContain('<p class="footer-brand">Bengaluru Votes</p>');
+      expect(footer.indexOf('class="footer-brand"')).toBeLessThan(
+        footer.indexOf('class="partners-label"'),
+      );
     }
     expect(enHtml).toContain('A joint project by');
   });
