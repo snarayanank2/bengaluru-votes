@@ -6,6 +6,7 @@
  * scrollable, and identical for anonymous and signed-in visitors.
  */
 import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Button from '../../components/Button.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import CandidateRow from '../../components/CandidateRow.astro';
@@ -165,15 +166,87 @@ const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t
     ward ? (
       <div class="compare">
         <header class="page-header">
-          <h1>{wardName}</h1>
-          <p class="subheading">{t(lang, 'compare.pageHeading')}</p>
-          <a class="back-to-ward" href={localePath(lang, `/ward/${wardId}`)}>
-            {t(lang, 'compare.links.backToWard')}
-          </a>
+          <div class="compare-container header-content">
+            <Breadcrumbs lang={lang} items={[
+              { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
+              {
+                label: t(lang, 'nav.ward', { wardNumber: wardId % 1000, wardName: wardName.replace(/^\d+\s*-\s*/, '') }),
+                href: localePath(lang, `/ward/${wardId}`),
+              },
+              { label: t(lang, 'compare.pageHeading') },
+            ]} />
+            <h1>{wardName}</h1>
+          </div>
         </header>
 
-        {compareCandidates.length === 0 ? (
-          <EmptyState fact={emptyFact}>
+        <div class="comparison-band">
+          <div class="compare-container comparison-content">
+            {compareCandidates.length === 0 ? (
+              <EmptyState fact={emptyFact} />
+            ) : (
+              <>
+                {isProvisional && <p class="provisional-marker">{t(lang, 'candidate.provisionalMarker')}</p>}
+
+                <p class="scroll-hint" id="compare-scroll-hint">{t(lang, 'compare.scrollHint')}</p>
+                <div class="compare-scroll" role="region" aria-label={t(lang, 'compare.table.caption')} aria-describedby="compare-scroll-hint" tabindex="0">
+                  <table class="compare-table">
+                    <caption class="sr-only">{t(lang, 'compare.table.caption')}</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col" class="label-col sticky-col">{t(lang, 'compare.details')}</th>
+                        {candidateRowShapes.map((candidate) => (
+                          <th scope="col" class="candidate-col">
+                            <CandidateRow candidate={candidate} lang={lang} />
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {CANDIDATE_PROFILE_FIELD_KEYS.map((key) => (
+                        <tr>
+                          <th scope="row" class="label-col sticky-col">
+                            {t(lang, CANDIDATE_PROFILE_LABEL_KEYS[key])}
+                          </th>
+                          {compareCandidates.map((candidate) => {
+                            const field = candidate.fields[key];
+                            const isNotDeclared = field.notDeclared || !field.value;
+                            return (
+                              <td class="candidate-col">
+                                <div class="cell-value">
+                                  {isNotDeclared ? (
+                                    <p class="field-value field-value--not-declared">{t(lang, 'common.notDeclared')}</p>
+                                  ) : (
+                                    <>
+                                      <p class="field-value">
+                                        {field.valueUrl ? (
+                                          <a href={field.valueUrl} target="_blank" rel="noopener noreferrer">{field.value}</a>
+                                        ) : field.value}
+                                      </p>
+                                      {key !== 'ec_affidavit' && (
+                                        <VerificationLabel aiExtracted={field.aiExtracted} lang={lang} presentation="text" />
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <section class="updates-band" aria-labelledby="updates-heading">
+          <div class="compare-container updates-content">
+            <div class="heading-group">
+              <h2 id="updates-heading">{t(lang, 'compare.updates.heading')}</h2>
+              <p>{t(lang, 'compare.updates.description', { wardName })}</p>
+            </div>
             <Button
               variant="primary"
               href={localePath(lang, '/login')}
@@ -184,74 +257,8 @@ const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t
             >
               {t(lang, 'common.registerForUpdates')}
             </Button>
-          </EmptyState>
-        ) : (
-          <>
-            {isProvisional && <p class="provisional-marker">{t(lang, 'candidate.provisionalMarker')}</p>}
-
-            <div class="compare-scroll">
-              <table class="compare-table">
-                <caption class="sr-only">{t(lang, 'compare.table.caption')}</caption>
-                <thead>
-                  <tr>
-                    <th scope="col" class="label-col sticky-col" />
-                    {candidateRowShapes.map((candidate) => (
-                      <th scope="col" class="candidate-col">
-                        <CandidateRow candidate={candidate} lang={lang} />
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {CANDIDATE_PROFILE_FIELD_KEYS.map((key) => (
-                    <tr>
-                      <th scope="row" class="label-col sticky-col">
-                        {t(lang, CANDIDATE_PROFILE_LABEL_KEYS[key])}
-                      </th>
-                      {compareCandidates.map((candidate) => {
-                        const field = candidate.fields[key];
-                        const isNotDeclared = field.notDeclared || !field.value;
-                        return (
-                          <td class="candidate-col">
-                            <div class="cell-value">
-                              {isNotDeclared ? (
-                                <p class="field-value field-value--not-declared">{t(lang, 'common.notDeclared')}</p>
-                              ) : (
-                                <>
-                                  <p class="field-value">
-                                    {field.valueUrl ? (
-                                      <a href={field.valueUrl} target="_blank" rel="noopener noreferrer">{field.value}</a>
-                                    ) : field.value}
-                                  </p>
-                                  {key !== 'ec_affidavit' && (
-                                    <VerificationLabel aiExtracted={field.aiExtracted} lang={lang} />
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <section class="register-slot">
-              <Button
-                variant="secondary"
-                href={localePath(lang, '/login')}
-                lang={lang}
-                data-register-slot
-                data-ward-id={wardId}
-                data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
-              >
-                {t(lang, 'common.registerForUpdates')}
-              </Button>
-            </section>
-          </>
-        )}
+          </div>
+        </section>
       </div>
     ) : (
       <EmptyState fact={t(lang, 'ward.notFound.fact')} />
@@ -260,43 +267,66 @@ const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t
 </Base>
 
 <style>
-  .compare {
+  .compare-container {
     max-width: var(--container-app);
     margin-inline: auto;
-    padding: var(--space-8) var(--container-pad-x);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
+    padding-inline: var(--container-pad-x);
   }
 
-  .page-header h1 {
-    font-family: var(--font-heading);
+  .page-header {
+    padding-block: var(--space-8);
+    background: var(--color-hero-bg);
+    color: var(--color-on-hero);
+  }
+
+  .updates-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6) var(--space-8);
+  }
+
+  .heading-group {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .header-content {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  h1 {
     font-size: var(--text-3xl);
     line-height: var(--leading-3xl);
-    margin: 0 0 var(--space-2);
+    overflow-wrap: anywhere;
   }
 
-  .subheading {
-    margin: 0 0 var(--space-2);
-    color: var(--color-text-muted);
+  .comparison-band {
+    background: var(--color-header-bg);
+    padding-block: var(--space-8);
+  }
+
+  .comparison-content {
+    display: grid;
+    gap: var(--space-4);
   }
 
   .provisional-marker {
-    margin: 0;
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-surface);
+    color: var(--color-on-accent);
     font-size: var(--text-sm);
-    font-style: italic;
+    line-height: var(--leading-sm);
+  }
+
+  .scroll-hint {
     color: var(--color-text-muted);
-  }
-
-  .back-to-ward {
-    color: var(--color-primary);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .back-to-ward:hover,
-  .back-to-ward:focus-visible {
-    text-decoration: underline;
+    font-size: var(--text-sm);
+    line-height: var(--leading-sm);
   }
 
   .sr-only {
@@ -311,87 +341,118 @@ const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t
     border: 0;
   }
 
-  /* Horizontal-scroll container (PRD §5.3): candidate columns scroll while
-     the field-label column stays pinned via its own `position: sticky`. */
+  /* Keep the document narrow and the row labels visible while comparing.
+     A focusable named region lets keyboard users scroll the same table. */
   .compare-scroll {
+    min-width: 0;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
+    background: var(--color-bg);
   }
 
   .compare-table {
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     width: 100%;
     table-layout: fixed;
   }
 
   .compare-table th,
   .compare-table td {
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4);
     vertical-align: top;
     text-align: left;
     font-weight: normal;
+    border-bottom: 1px solid var(--color-border);
+    overflow-wrap: anywhere;
   }
 
-  .compare-table tr:last-child th,
-  .compare-table tr:last-child td {
+  .compare-table tbody tr:last-child th,
+  .compare-table tbody tr:last-child td {
     border-bottom: none;
   }
 
   .label-col {
-    width: 108px;
-    min-width: 108px;
+    width: 128px;
     font-size: var(--text-sm);
+    line-height: var(--leading-sm);
     color: var(--color-text-muted);
   }
 
-  /* Field-label column pinned (PRD §5.3 "field-label column pinned so rows
-     stay readable mid-scroll"). */
   .sticky-col {
     position: sticky;
     left: 0;
     z-index: 1;
-    background: var(--color-bg);
+    background: var(--color-header-bg);
     border-right: 1px solid var(--color-border);
   }
 
-  /* ~2-up on mobile: each candidate column takes roughly half the viewport
-     so two are visible with the rest reachable by horizontal scroll (no
-     hard cap on candidate count, PRD §5.3). */
   .candidate-col {
-    width: 46vw;
-    min-width: 168px;
+    width: 240px;
   }
 
-  /* Wider screens: more columns fit without scrolling (design-system §2,
-     "Desktop; compare grid widens" at --bp-lg / 1024px). */
-  @media (min-width: 1024px) {
-    .candidate-col {
-      width: 260px;
-      min-width: 260px;
-    }
+  .candidate-col + .candidate-col {
+    border-left: 1px solid var(--color-border);
+  }
+
+  .candidate-col :global(.candidate-row) {
+    align-items: flex-start;
+  }
+
+  .candidate-col :global(.candidate-row:hover .name),
+  .candidate-col :global(.candidate-row:focus-visible .name) {
+    text-decoration: underline;
   }
 
   .cell-value {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-2);
   }
 
   .field-value {
-    margin: 0;
     font-size: var(--text-base);
+    line-height: var(--leading-base);
+    font-variant-numeric: tabular-nums;
     color: var(--color-text);
   }
 
+  .field-value a {
+    color: var(--color-primary);
+    text-underline-offset: 3px;
+  }
+
   .field-value--not-declared {
-    font-style: italic;
     color: var(--color-text-muted);
   }
 
-  .register-slot {
-    display: flex;
+  .updates-band {
+    padding-block: var(--space-8);
+    background: var(--color-methodology-bg);
+    color: var(--color-methodology-text);
+  }
+
+  .updates-content .heading-group {
+    flex: 1 1 320px;
+  }
+
+  h2 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+  }
+
+  @media (min-width: 768px) {
+    .page-header {
+      padding-block: var(--space-12);
+    }
+
+    .label-col {
+      width: 176px;
+    }
+
+    .candidate-col {
+      width: 320px;
+    }
   }
 </style>

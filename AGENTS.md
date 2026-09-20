@@ -206,6 +206,8 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 
 **Button coverage:** Keep every button treatment documented and reusable, including light buttons and icon-only controls. Use shared styles for server-rendered and client-created buttons; page CSS should control placement rather than recreate a variant. Icon-only controls require a localized accessible name and documented sizing and interaction states.
 
+**Hierarchical navigation:** Use shared breadcrumbs above the title on ward and comparison pages instead of a standalone Back to ward button. The ward breadcrumb includes both its citizen-facing number and localized name (for example, “Ward 23 Jogpalya”), never the composite route id. Ancestors are links; the current page is noninteractive. Keep the pattern documented in the design system.
+
 **Approval before integration:** Once a requested change is implemented and verified, pause and ask the user once for approval to commit, merge, and push it. That single approval covers all three repository integration steps; do not ask for separate approvals.
 
 ## UI verification

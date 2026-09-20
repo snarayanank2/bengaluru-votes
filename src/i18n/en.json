@@ -1,4 +1,7 @@
 {
+  "nav.ward": "Ward {wardNumber} {wardName}",
+  "nav.home": "Home",
+  "nav.breadcrumbs": "Breadcrumb",
   "nav.signIn": "Sign in",
   "nav.account": "My account",
   "footer.about": "About Bengaluru Votes",
@@ -193,6 +196,10 @@
   "compare.empty.awaited": "No candidates to compare yet. Register for updates and we'll tell you when they're in.",
   "compare.empty.fact": "No candidates to compare yet. Candidate nominations open on {date}. Register for updates and we'll tell you when they're in.",
   "compare.links.backToWard": "Back to ward",
+  "compare.scrollHint": "Scroll across to compare candidates. Field labels stay in view.",
+  "compare.details": "Details",
+  "compare.updates.heading": "Stay informed about your ward",
+  "compare.updates.description": "Get election updates for {wardName}.",
   "legal.courtesyNote": "This is a courtesy translation. The English version of this page is the legally controlling text.",
   "error.notFound.title": "Page not found",
   "error.notFound.body": "We couldn't find that page. It may have been moved, or the link may be out of date.",

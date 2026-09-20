@@ -1,0 +1,83 @@
+---
+import { t, type Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  items: { label: string; href?: string }[];
+}
+
+const { lang, items } = Astro.props;
+---
+
+<nav class="breadcrumbs" aria-label={t(lang, 'nav.breadcrumbs')}>
+  <ol role="list">
+    {items.map((item, index) => (
+      <li>
+        {index > 0 && <span class="separator" aria-hidden="true">›</span>}
+        {index === items.length - 1 ? (
+          <span class="current" aria-current="page">{item.label}</span>
+        ) : (
+          <a href={item.href}>{item.label}</a>
+        )}
+      </li>
+    ))}
+  </ol>
+</nav>
+
+<style>
+  .breadcrumbs {
+    max-width: 100%;
+    font-size: var(--text-sm);
+    line-height: var(--leading-sm);
+  }
+
+  ol,
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  ol {
+    flex-wrap: wrap;
+  }
+
+  li {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  a,
+  .current {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  a {
+    min-width: 44px;
+    color: var(--color-on-hero);
+    text-decoration: none;
+    text-underline-offset: 3px;
+  }
+
+  a:hover,
+  a:focus-visible {
+    text-decoration: underline;
+  }
+
+  a:focus-visible {
+    outline-color: var(--color-accent);
+  }
+
+  .separator {
+    flex: none;
+  }
+
+  .separator,
+  .current {
+    color: var(--color-hero-muted);
+  }
+</style>

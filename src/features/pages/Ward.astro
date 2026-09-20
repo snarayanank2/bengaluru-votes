@@ -47,6 +47,7 @@
  * to Base.astro's `jsonLd` prop.
  */
 import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Card from '../../components/Card.astro';
 import Button from '../../components/Button.astro';
 import EmptyState from '../../components/EmptyState.astro';
@@ -170,7 +171,10 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     ward ? (
       <div class="ward">
         <header class="ward-header">
-          <p class="ward-number">{t(lang, 'ward.heading.wardNumber', { wardNumber })}</p>
+          <Breadcrumbs lang={lang} items={[
+            { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
+            { label: t(lang, 'nav.ward', { wardNumber, wardName }) },
+          ]} />
           <h1>{wardName}</h1>
           <dl class="ward-details">
             <div>
@@ -495,20 +499,6 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-4);
-  }
-
-  .ward-number {
-    display: inline-flex;
-    align-items: center;
-    min-height: 30px;
-    margin: 0;
-    padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--color-accent);
-    border-radius: var(--radius-full);
-    color: var(--color-accent);
-    font-family: var(--font-heading);
-    font-size: var(--text-xs);
-    font-weight: 700;
   }
 
   .ward-details,

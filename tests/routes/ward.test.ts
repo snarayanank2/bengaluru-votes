@@ -223,7 +223,10 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
 
       const expectedName = lang === 'kn' ? WARD.nameKn : WARD.nameEn;
       expect(html).toContain(expectedName);
-      expect(html).toContain(t(lang, 'ward.heading.wardNumber', { wardNumber: 1 }));
+      const breadcrumbLabel = t(lang, 'nav.ward', { wardNumber: 1, wardName: expectedName });
+      expect(html).toContain(`aria-current="page">${breadcrumbLabel}</span>`);
+      expect(html).toContain(`aria-label="${t(lang, 'nav.breadcrumbs')}"`);
+      expect(html).toContain(`href="${localePath(lang, '/')}"`);
       expect(html).toContain(t(lang, 'ward.detail.corporation'));
       expect(html).toContain(t(lang, 'ward.detail.zone'));
       expect(html).toContain(WARD.zone);

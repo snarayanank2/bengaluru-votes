@@ -116,6 +116,8 @@ A sourced field is a reusable content unit: **label → value → source line**.
 | Curator-compiled | Muted gray on gray surface | Compiled and sourced context |
 | AI-extracted | Ink on sun tint with dotted sun border | Extracted data awaiting confirmation |
 
+`VerificationLabel.astro` supports `presentation="text"` for persistent, noninteractive verification text at 13px in muted ink. Use it where readers need to compare or scan provenance without opening a tooltip. The default icon presentation remains available.
+
 Keep provenance labels distinct from topic pills and action states even when they share palette tokens. Summary fact groups (§7.16) do not automatically need a source line on every item; the product's sourcing requirements determine where to use this component.
 
 ## 4. Neutrality rules
@@ -404,6 +406,8 @@ A compact, full-width notice may appear above the app bar. Use centered 14px bol
 
 **Section navigation:** use a paper strip beneath the app bar, sticky at `top: 80px`. Links are 14px bold with 8px/12px padding and a 44px minimum height; active state is forest text plus a 4px underline and `aria-current`. Use real fragment links with smooth scrolling and update the current section on scroll. Keep the sticky header stable; the content scrolls beneath it. Respect reduced-motion preferences by using immediate scrolling instead. On small screens the strip scrolls horizontally without widening the document. Provide enough scroll margin to keep targets below both sticky layers; the existing composition uses 144px. Only show links whose targets exist. This is navigation, not a tab interface that hides content.
 
+**Breadcrumbs:** use `Breadcrumbs.astro` above the page title in a dark identity band. Pass localized labels and ancestor URLs in hierarchy order. Ancestors are ordinary links; the last item is noninteractive with `aria-current="page"`. The navigation has a localized accessible name and an ordered list; chevron separators are decorative. Use 14px body text, cream ancestor links, muted hero text for the current item and separators, and 8px gaps. Links have a minimum 44×44px target, underline on hover/focus, and a sun focus outline. Wrap whole items onto further lines as needed, allowing long labels to wrap without truncation or page overflow. A place label includes its public number and localized name; internal database/route ids are not public numbers. This hierarchical navigation is separate from in-page section navigation.
+
 **Disclosure/accordion:** use native `details`/`summary`, a clear title, optional number, and trailing chevron. Apply 16px padding, a light border, and 8px between disclosures. Opening reveals body copy and may add the subtle disclosure shadow; rotate the decorative chevron. Multiple items may stay open unless the task calls for an exclusive group. Do not rely on the icon alone to communicate expanded state. Opening the first item initially is optional, not mandatory.
 
 ### 7.16 Fact groups and statistics
@@ -466,7 +470,8 @@ Examples illustrate the patterns; they do not limit where a pattern may be used.
 | Home page: why vote | Gold split explanatory section; prose and topic pills |
 | Home page: election basics | White split explanatory section with numbered disclosures |
 | Home page: booth finder | Sage content/action band with compact lookup |
-| Ward page: identity and local facts | Dark identity band; structured facts; outlined identity pill |
+| Ward page: identity and local facts | Dark identity band; breadcrumbs; structured facts |
+| Comparison page: location and hierarchy | Dark identity band; Home → ward number and name → current page breadcrumbs |
 | Ward page: navigation and boundary | Sticky section navigation; responsive map frame and fallback |
 | Ward page: candidate collection | Paper collection band; compact identity rows; status text and secondary action |
 | Ward page: issue voting | White action band; anonymous primary action; result bars |

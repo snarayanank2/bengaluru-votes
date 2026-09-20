@@ -287,7 +287,12 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       expect(html).toContain(`href="${localePath(lang, '/candidate/compare-test-zainab')}"`);
       expect(html).toContain(`href="${localePath(lang, '/candidate/compare-test-bhavana')}"`);
       expect(html).toContain(`href="${localePath(lang, `/ward/${WARD.id}`)}"`);
-      expect(html).toContain(t(lang, 'compare.links.backToWard'));
+      expect(html).toContain(`href="${localePath(lang, '/')}"`);
+      expect(html).toContain(t(lang, 'nav.home'));
+      expect(html).toContain(t(lang, 'nav.ward', { wardNumber: WARD.id % 1000, wardName: lang === 'kn' ? WARD.nameKn : WARD.nameEn }));
+      expect(html).toContain(`aria-label="${t(lang, 'nav.breadcrumbs')}"`);
+      expect(html).toContain(`aria-current="page">${t(lang, 'compare.pageHeading')}</span>`);
+      expect(html).not.toContain(t(lang, 'compare.links.backToWard'));
     });
 
     it('renders each candidate\'s field values (cases populated, assets not declared)', async () => {

@@ -4,34 +4,46 @@ import { t, type Lang } from '../i18n';
 interface Props {
   aiExtracted: boolean;
   lang: Lang;
+  /** Persistent, noninteractive provenance for reading and comparison surfaces. */
+  presentation?: 'icon' | 'text';
 }
 
-const { aiExtracted, lang } = Astro.props;
+const { aiExtracted, lang, presentation = 'icon' } = Astro.props;
 const label = t(lang, aiExtracted ? 'common.verification.aiExtracted' : 'common.verification.checked');
 ---
 
-<button
-  type="button"
-  class:list={['verification-label', { 'verification-label--checked': !aiExtracted }]}
-  aria-label={label}
-  title={label}
->
-  {
-    aiExtracted ? (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-        <path d="m12 3 1.2 4.1a5 5 0 0 0 3.4 3.4l4.1 1.2-4.1 1.2a5 5 0 0 0-3.4 3.4L12 20.4l-1.2-4.1a5 5 0 0 0-3.4-3.4l-4.1-1.2 4.1-1.2a5 5 0 0 0 3.4-3.4L12 3Z" stroke-linejoin="round" />
-      </svg>
-    ) : (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="m8 12 2.5 2.5L16.5 9" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-    )
-  }
-  <span class="verification-tooltip" role="tooltip">{label}</span>
-</button>
+{presentation === 'text' ? (
+  <span class="verification-text">{label}</span>
+) : (
+  <button
+    type="button"
+    class:list={['verification-label', { 'verification-label--checked': !aiExtracted }]}
+    aria-label={label}
+    title={label}
+  >
+    {
+      aiExtracted ? (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <path d="m12 3 1.2 4.1a5 5 0 0 0 3.4 3.4l4.1 1.2-4.1 1.2a5 5 0 0 0-3.4 3.4L12 20.4l-1.2-4.1a5 5 0 0 0-3.4-3.4l-4.1-1.2 4.1-1.2a5 5 0 0 0 3.4-3.4L12 3Z" stroke-linejoin="round" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="m8 12 2.5 2.5L16.5 9" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      )
+    }
+    <span class="verification-tooltip" role="tooltip">{label}</span>
+  </button>
+)}
 
 <style>
+  .verification-text {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-sm);
+  }
+
   .verification-label {
     position: relative;
     display: flex;
