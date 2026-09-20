@@ -416,6 +416,10 @@ A compact, full-width notice may appear above the app bar. Use centered 14px bol
 
 **Statistics:** use 24px heading-font figures and 13px supporting labels in inset tiles with 16px padding. A two-by-two grid with 12px gaps can remain two-up on mobile if the actual translated content fits. Let height grow with labels; never shrink text to force a fixed tile height. One editorial highlight may use hero-alert, with contrast checked for every foreground. This highlights a fact, not a party or candidate.
 
+### Inline choice forms
+
+Render multi-select voting choices in the content section, using labeled native checkboxes with at least 44px targets. Use two equal columns on desktop and one below 768px. Show checked, disabled, hover, and keyboard-focus states; keep a selected choice available for deselection until submission. Use the shared primary button with a live selection count, enabled only at the required count. Keep errors and persistent success feedback inline and announced accessibly. Receipt state is applied client-side; results remain unavailable until a ballot has been cast, then appear automatically after submission and on return visits. In the completed state, replace selection instructions with a results introduction, show the visitor’s saved choices first, and limit the overall ranking to five non-zero issues. A results-loading failure leaves a retry control without reopening the ballot.
+
 ## 8. Iconography and imagery
 
 Use consistent line icons on a 20/24px grid, approximately 1.5–2px stroke and `currentColor`. Pair action icons with text or an accessible name. Decorative icons are hidden from assistive technology. Icon-only controls still need full-size targets; an image's visible dimensions are not its hit area.

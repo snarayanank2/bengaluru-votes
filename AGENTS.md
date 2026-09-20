@@ -156,7 +156,7 @@ Curator edits **go live immediately** — no approval gate. Every field carries 
 
 **Keep anonymous voting.** Issue voting requires no account or registered home ward: a visitor chooses exactly three issues in one ward, with one immutable ballot per browser receipt and results revealed after voting. Flagging misinformation remains login-gated, works across any ward, and **the original action resumes in place** after auth. Both actions show enabled buttons to anonymous users.
 
-Register/Login (fallback page `/login`), Flag, and Vote are **modals** that overlay without changing the URL. Every other screen is a distinct deep-linkable URL. Don't convert one into the other.
+Register/Login (fallback page `/login`) and Flag are **modals** that overlay without changing the URL. **Issue voting is inline** in the ward’s “What matters most in this ward” section: show the choices, selection count, submission, and feedback in place, without a popup. Keep anonymous voting and the exactly-three limit. After voting, show results immediately in place; also show them automatically on return visits with a valid receipt, without requiring a “Show results” click. In the voted state, replace the voting instructions with a results subtitle, show the receipt’s three choices, then show only the top five overall issues with votes. Keep the original instructions for visitors who have not voted. Every other screen is a distinct deep-linkable URL.
 
 ### Roles
 

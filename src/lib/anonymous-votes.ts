@@ -75,6 +75,18 @@ export async function castAnonymousVote(token: string, wardId: number, issueIds:
   }
 }
 
+/** Read only this receipt's selections in this ward; never expose another ballot. */
+export async function anonymousVoteSelections(token: string, wardId: number): Promise<number[]> {
+  const rows = await db.select({ issueId: anonymousIssueVoteSelections.wardIssueId })
+    .from(anonymousIssueVoteSelections)
+    .innerJoin(anonymousIssueVoteSets, eq(anonymousIssueVoteSelections.setId, anonymousIssueVoteSets.id))
+    .where(and(
+      eq(anonymousIssueVoteSets.voterHash, hashAnonymousVoteToken(token)),
+      eq(anonymousIssueVoteSets.wardId, wardId),
+    ));
+  return rows.map((row) => row.issueId);
+}
+
 /** Percentage is the share of ward ballots that selected an issue; top-3 shares may sum to 300%. */
 export async function anonymousIssueResults(wardId: number): Promise<AnonymousIssueResult[]> {
   const issues = await db.select({

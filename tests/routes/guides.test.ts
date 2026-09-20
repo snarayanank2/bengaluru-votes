@@ -431,18 +431,18 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       expect(kn.html).toContain('action="/kn/voting-guide/find-booth"');
     });
 
-    it('emits its own BoothLookup island script, plus Base.astro\'s global Register/Login, Flag, Vote modal, MeSlot, and ?src attribution scripts (Tasks 27/28/32/33/49) — no others', async () => {
+    it('emits its own BoothLookup island script, plus Base.astro\'s global Register/Login, Flag, MeSlot, and ?src attribution scripts (Tasks 27/28/32/33/49) — no others', async () => {
       const { html } = await renderPage(FindBooth, 'en', '/voting-guide/find-booth');
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // Six scripts: this page's own BoothLookup island, four Base.astro
-      // module scripts (RegisterLoginModal, FlagModal, VoteModal, MeSlot),
+      // Five scripts: this page's own BoothLookup island, three Base.astro
+      // module scripts (RegisterLoginModal, FlagModal, MeSlot),
       // and Base.astro's inline `?src` attribution writer (Task 49,
-      // src/lib/attribution.ts) — never a stray/unexpected seventh script.
-      expect(scriptOpenTags).toHaveLength(6);
+      // src/lib/attribution.ts) — never a stray/unexpected sixth script.
+      expect(scriptOpenTags).toHaveLength(5);
       expect(html).toMatch(/FindBooth\.astro\?astro&type=script/);
       expect(html).toMatch(/RegisterLoginModal\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
-      expect(html).toMatch(/VoteModal\.astro\?astro&type=script/);
+      expect(html).not.toContain('data-vote-modal');
       expect(html).toMatch(/Base\.astro\?astro&type=script/);
       expect(html).toMatch(/bv_src/);
     });

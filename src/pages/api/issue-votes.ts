@@ -6,6 +6,7 @@ import {
   ANONYMOUS_VOTE_COOKIE_MAX_AGE,
   anonymousIssueResults,
   anonymousVoteStatus,
+  anonymousVoteSelections,
   castAnonymousVote,
   newAnonymousVoteToken,
   type AnonymousVoteErrorCode,
@@ -80,5 +81,9 @@ export const GET: APIRoute = async ({ url, cookies }) => {
   const status = await anonymousVoteStatus(token, parsedWardId.data);
   if (url.searchParams.get('results') !== '1') return json(status);
   if (status.status !== 'voted_here') return json({ error: 'vote required' }, 403);
-  return json({ status: status.status, results: await anonymousIssueResults(parsedWardId.data) });
+  const [results, selectedIssueIds] = await Promise.all([
+    anonymousIssueResults(parsedWardId.data),
+    anonymousVoteSelections(token!, parsedWardId.data),
+  ]);
+  return json({ status: status.status, results, selectedIssueIds });
 };

@@ -49,6 +49,7 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Card from '../../components/Card.astro';
+import IssueVote from '../../components/IssueVote.astro';
 import Button from '../../components/Button.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import CandidateRow from '../../components/CandidateRow.astro';
@@ -137,10 +138,10 @@ const [oldWardOverlaps, keyAreas] = ward
         .orderBy(asc(wardKeyAreas.position)),
     ])
   : [[], []];
-const voteIssues = JSON.stringify(cityIssues.map((issue) => ({
+const voteIssues = cityIssues.map((issue) => ({
   id: issue.id,
   title: lang === 'kn' ? (issue.titleKn ?? issue.titleEn ?? '') : (issue.titleEn ?? issue.titleKn ?? ''),
-})));
+}));
 const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY ?? '';
 
 // `wards.id` is a collision-free route/database key: corporation_id * 1000
@@ -311,17 +312,15 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
             aria-labelledby="issue-vote-heading"
             data-issue-vote-zone
             data-ward-id={wardId}
-            data-vote-issues={voteIssues}
             data-recaptcha-site-key={recaptchaSiteKey}
             data-msg-voted-elsewhere={t(lang, 'ward.vote.votedElsewhere')}
           >
             <p class="ward-section-eyebrow eyebrow">{t(lang, 'ward.nav.issues')}</p>
             <h2 id="issue-vote-heading">{t(lang, 'ward.vote.heading')}</h2>
-            <p>{t(lang, 'ward.vote.instructions')}</p>
+            <p data-vote-instructions>{t(lang, 'ward.vote.instructions')}</p>
+            <p data-vote-results-intro hidden>{t(lang, 'ward.vote.resultsIntro')}</p>
+            <IssueVote lang={lang} issues={voteIssues} />
             <div class="issue-vote-actions">
-              <Button variant="primary" type="button" lang={lang} data-vote-action>
-                {t(lang, 'common.voteTop3')}
-              </Button>
               <span data-show-results-wrap hidden>
                 <Button variant="secondary" type="button" lang={lang} data-show-results>
                   {t(lang, 'ward.vote.showResults')}
@@ -329,6 +328,11 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
               </span>
             </div>
             <p data-voted-elsewhere hidden></p>
+            <div class="vote-personal" data-vote-personal hidden>
+              <h3>{t(lang, 'ward.vote.yourChoices')}</h3>
+              <ul data-vote-selections></ul>
+            </div>
+            <h3 class="vote-results-heading" data-vote-results-heading hidden>{t(lang, 'ward.vote.topIssues')}</h3>
             <ol class="issue-vote-results" data-vote-results hidden aria-live="polite"></ol>
           </section>
         )}
@@ -788,6 +792,15 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     margin-bottom: var(--space-2);
   }
 
+  .vote-personal h3, .vote-results-heading {
+    margin: 0;
+    font-size: var(--text-lg);
+  }
+
+  .vote-personal ul { margin: var(--space-2) 0 0; padding-inline-start: var(--space-6); }
+  .vote-personal :global(li) { margin-top: var(--space-1); }
+  .issue-vote-actions:has([data-show-results-wrap][hidden]) { display: none; }
+
   .issue-vote-actions {
     display: flex;
     align-items: center;
@@ -799,7 +812,7 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
     display: contents;
   }
 
-  .issue-vote-results {
+  .issue-vote-results:not([hidden]) {
     list-style: none;
     margin: var(--space-2) 0 0;
     padding: 0;

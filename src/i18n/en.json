@@ -964,5 +964,8 @@
     "press.contact.pendingNote": "Placeholder shown in place of an actual press contact email/phone and stated response time (not yet supplied)."
   },
   "ward.updates.heading": "Stay informed about your ward",
-  "ward.updates.description": "Get election dates, candidate updates and voting reminders for this ward by email or WhatsApp, in English or Kannada — so you can prepare for polling day."
+  "ward.updates.description": "Get election dates, candidate updates and voting reminders for this ward by email or WhatsApp, in English or Kannada — so you can prepare for polling day.",
+  "ward.vote.resultsIntro": "You’ve voted. Here are your choices and the leading issues in this ward.",
+  "ward.vote.yourChoices": "You voted for",
+  "ward.vote.topIssues": "Overall top issues"
 }

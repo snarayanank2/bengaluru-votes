@@ -40,14 +40,6 @@
  * self-contained markup/behavior, dialog always starts closed, never reads
  * cookies/session.
  *
- * The Cast issue vote modal (Task 33, IA §3.6/§7, PRD §5.5) is rendered
- * ONCE here too, same rationale again — Ward.astro's "Vote your top
- * 3" button carries its own `data-vote-action`/`data-ward-id`/
- * `data-vote-issues`, and src/islands/VoteModal.ts's `initVoteModal()`
- * (this component's own script) wires it to this one dialog. Same
- * cache-safety note: self-contained, dialog always starts closed, never
- * reads cookies/session.
- *
  * The `?src` attribution cookie writer (Task 49, architecture §5/§13, PRD
  * §5.12) is rendered ONCE here too, in `<head>`, on every page —
  * `src/lib/attribution.ts#ATTRIBUTION_SCRIPT_SOURCE`, one of exactly two
@@ -96,7 +88,6 @@ import AppBar from '../components/AppBar.astro';
 import Footer from '../components/Footer.astro';
 import RegisterLoginModal from '../components/RegisterLoginModal.astro';
 import FlagModal from '../components/FlagModal.astro';
-import VoteModal from '../components/VoteModal.astro';
 import { localePath, type Lang } from '../i18n';
 import { ATTRIBUTION_SCRIPT_SOURCE } from '../lib/attribution';
 import { gaLoaderSrc, gaConfigScriptSource } from '../lib/analytics';
@@ -257,7 +248,6 @@ const showGa = !noindex && !!gaMeasurementId;
     <Footer lang={lang} />
     <RegisterLoginModal lang={lang} />
     <FlagModal lang={lang} />
-    <VoteModal lang={lang} />
     <script>
       import { initMeSlot } from '../islands/MeSlot';
       initMeSlot();

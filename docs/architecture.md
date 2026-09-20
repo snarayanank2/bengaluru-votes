@@ -50,7 +50,7 @@ The one thing outside the box is **Google Cloud Storage**, holding affidavit PDF
 
 ## 4. Routing & rendering
 
-- Public pages are server-rendered to complete HTML with **zero client JavaScript by default**. Hydrated islands only for: the Register/Login, Flag, and Cast-vote modals; the Google Maps ward-boundary map (`src/islands/WardMap.ts`, rendered only when `mapsConfig().enabled` — `src/lib/maps-config.ts`); the address lookup (with Places Autocomplete); the booth lookup.
+- Public pages are server-rendered to complete HTML with **zero client JavaScript by default**. Hydrated islands only for: the Register/Login and Flag modals; inline issue voting; the Google Maps ward-boundary map (`src/islands/WardMap.ts`, rendered only when `mapsConfig().enabled` — `src/lib/maps-config.ts`); the address lookup (with Places Autocomplete); the booth lookup.
 - **Language:** every public path exists twice — `/ward/57` (EN) and `/kn/ward/57` (KN) — via Astro i18n routing. The app-bar toggle links to the same page in the other language. Every page emits `hreflang` alternates and `x-default`. A cookie remembers the last choice so `/` can offer Kannada on entry — read **client-side** by a small script, like the `?src` writer (§5), because nginx strips cookies on public routes and the cached HTML is identical for everyone; the offer is a client-rendered banner, never a server-side variant. A registered user's saved preference governs notification language only.
 - Curator, admin, and account screens are server-rendered forms with standard POSTs in the same app — no SPA.
 - Modals are progressive enhancements over real routes, so the `/login` no-JS fallback comes free.

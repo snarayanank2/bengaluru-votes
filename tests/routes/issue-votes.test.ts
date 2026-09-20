@@ -77,6 +77,7 @@ describe('anonymous issue vote API', () => {
     const resultsRes = await get(cookies, '&results=1');
     expect(resultsRes.status).toBe(200);
     const body = await resultsRes.json() as any;
+    expect(body.selectedIssueIds.sort((a: number, b: number) => a - b)).toEqual(issueIds.slice(0, 3).sort((a, b) => a - b));
     expect(body.results[0]).toEqual(expect.objectContaining({ count: expect.any(Number), sharePct: expect.any(Number) }));
     expect(body.results.map((r: any) => r.count)).toEqual([...body.results.map((r: any) => r.count)].sort((a, b) => b - a));
   });
@@ -86,4 +87,29 @@ describe('anonymous issue vote API', () => {
     expect((await put(cookies, { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'captcha' })).status).toBe(200);
     expect((await put(cookies, { wardId: WARD_ID, issueIds: issueIds.slice(1, 4), recaptchaToken: 'captcha' })).status).toBe(409);
   });
+  it('adds independent ballots cumulatively without counting duplicate receipts', async () => {
+    const first = jar();
+    const second = jar();
+    const body = { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'captcha' };
+    expect((await put(first, body)).status).toBe(200);
+    const before = (await (await get(first, '&results=1')).json()).results;
+    expect((await put(second, body)).status).toBe(200);
+    expect((await put(second, body)).status).toBe(409);
+    const after = (await (await get(first, '&results=1')).json()).results;
+    for (const id of issueIds.slice(0, 3)) {
+      expect(after.find((r: any) => r.issueId === id).count).toBe(before.find((r: any) => r.issueId === id).count + 1);
+    }
+  });
+
+  it('returns only the selections belonging to the requesting receipt', async () => {
+    const first = jar(); const second = jar();
+    await put(first, { wardId: WARD_ID, issueIds: issueIds.slice(0, 3), recaptchaToken: 'captcha' });
+    await put(second, { wardId: WARD_ID, issueIds: issueIds.slice(1, 4), recaptchaToken: 'captcha' });
+    const firstBody = await (await get(first, '&results=1')).json();
+    const secondBody = await (await get(second, '&results=1')).json();
+    expect(new Set(firstBody.selectedIssueIds)).toEqual(new Set(issueIds.slice(0, 3)));
+    expect(new Set(secondBody.selectedIssueIds)).toEqual(new Set(issueIds.slice(1, 4)));
+    expect((await get(jar(), '&results=1')).status).toBe(403);
+  });
+
 });

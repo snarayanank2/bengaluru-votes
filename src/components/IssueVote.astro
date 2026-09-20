@@ -1,0 +1,44 @@
+---
+import { t, type Lang } from '../i18n';
+import Button from './Button.astro';
+interface Props { lang: Lang; issues: Array<{ id: number; title: string }> }
+const { lang, issues } = Astro.props;
+---
+<div class="inline-vote">
+    <div data-vote-form-wrap>
+      <form data-vote-form novalidate>
+        <div data-vote-issue-options role="group" aria-label={t(lang, 'vote.modal.issuesLabel')}>
+          {issues.map((issue) => <label class="vote-issue-option"><input type="checkbox" value={issue.id} /><span>{issue.title}</span></label>)}
+        </div>
+        <Button type="submit" variant="primary" lang={lang} data-vote-submit disabled>
+          {t(lang, 'vote.modal.submitTemplate').replace('{n}', '0')}
+        </Button>
+      </form>
+    </div>
+  <span hidden data-msg-rate-limit>{t(lang, 'vote.modal.rateLimited')}</span>
+  <span hidden data-msg-generic-error>{t(lang, 'vote.modal.genericError')}</span>
+  <span hidden data-msg-verification-error>{t(lang, 'vote.modal.verificationError')}</span>
+  <span hidden data-msg-submit-template>{t(lang, 'vote.modal.submitTemplate')}</span>
+  <p class="form-error" data-vote-rate-limit-error role="alert" hidden></p>
+  <p class="form-error" data-vote-verification-error role="alert" hidden></p>
+  <p class="form-error" data-vote-generic-error role="alert" hidden></p>
+  <p data-vote-success role="status" tabindex="-1" hidden>{t(lang, 'vote.modal.success')}</p>
+</div>
+<style>
+  .inline-vote { display: contents; }
+  [data-vote-form] { display: grid; gap: var(--space-4); justify-items: start; }
+  [data-vote-issue-options] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); width: 100%; }
+  .vote-issue-option { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; }
+  .vote-issue-option:has(input:checked) { border-color: var(--color-primary); background: var(--color-bg); }
+  .vote-issue-option:hover { border-color: var(--color-primary); }
+  .vote-issue-option:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .vote-issue-option:has(input:disabled:not(:checked)) { opacity: 0.55; cursor: default; }
+  input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--color-primary); }
+  .form-error { color: var(--color-danger); }
+  [data-vote-success] { margin: 0; }
+  @media (max-width: 767px) { [data-vote-issue-options] { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<script>
+  import { initIssueVote } from '../islands/IssueVote';
+  initIssueVote();
+</script>

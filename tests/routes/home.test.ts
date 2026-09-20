@@ -156,29 +156,20 @@ describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
       expect(knHtml).toContain(`<link rel="alternate" hreflang="kn" href="${SITE_ORIGIN}/kn/">`);
     });
 
-    it('emits its own WardLookup island script, plus Base.astro\'s global Register/Login, Flag, Vote modal, MeSlot, and ?src attribution scripts (Tasks 27/28/32/33/49) — no others', async () => {
+    it('emits its own WardLookup island script, plus Base.astro\'s global Register/Login, Flag, MeSlot, and ?src attribution scripts (Tasks 27/28/32/33/49) — no others', async () => {
       const html = await renderHome('en');
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // Every module script must be one of these five globally-expected
-      // sources: this page's own WardLookup island, the Register/Login
-      // modal Base.astro renders on every page (src/components/
-      // RegisterLoginModal.astro), the Flag misinformation modal (Task 32,
-      // src/components/FlagModal.astro), the Cast issue vote modal (Task 33,
-      // src/components/VoteModal.astro), or Base.astro's own MeSlot mount
-      // (Task 28, src/islands/MeSlot.ts) — PLUS Base.astro's inline `?src`
-      // attribution writer (Task 49, src/lib/attribution.ts), which is
-      // deliberately NOT `type="module"` (it's one of the two CSP-allowed
-      // inline scripts, architecture §13) — never a stray/unexpected
-      // seventh script.
-      expect(scriptOpenTags).toHaveLength(6);
+      // Lookup, authentication, flagging, and MeSlot modules plus attribution.
+      // Issue voting is loaded only by the ward's inline form.
+      expect(scriptOpenTags).toHaveLength(5);
       const moduleScripts = scriptOpenTags.filter((tag) => tag.includes('type="module"'));
       const inlineScripts = scriptOpenTags.filter((tag) => !tag.includes('type="module"'));
-      expect(moduleScripts).toHaveLength(5);
+      expect(moduleScripts).toHaveLength(4);
       expect(inlineScripts).toHaveLength(1);
       expect(html).toMatch(/Home\.astro\?astro&type=script/);
       expect(html).toMatch(/RegisterLoginModal\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
-      expect(html).toMatch(/VoteModal\.astro\?astro&type=script/);
+      expect(html).not.toContain('data-vote-modal');
       expect(html).toMatch(/Base\.astro\?astro&type=script/);
       expect(html).toMatch(/bv_src/);
     });

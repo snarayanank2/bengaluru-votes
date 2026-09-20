@@ -328,7 +328,10 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
     it.each(['en', 'kn'] as const)('%s: appears above candidate questions with 20 bilingual choices and hidden results', async (lang) => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
       expect(html.indexOf('data-issue-vote-zone')).toBeLessThan(html.indexOf('id="ward-questions"'));
-      expect(html).toContain(t(lang, 'common.voteTop3'));
+      expect(html).toContain(t(lang, 'vote.modal.submitTemplate').replace('{n}', '0'));
+      const votingHtml = html.slice(html.indexOf('id="ward-issues"'), html.indexOf('id="ward-questions"'));
+      expect(votingHtml.match(/type="checkbox"/g)).toHaveLength(20);
+      expect(html).not.toContain('data-vote-modal');
       expect(html).toContain(t(lang, 'ward.vote.showResults'));
       expect(html).toContain(lang === 'kn' ? CITY_ISSUES[0].titleKn : CITY_ISSUES[0].titleEn);
       expect(html).toContain('data-show-results-wrap hidden');
@@ -352,17 +355,10 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
   });
 
   describe('WardMap island + no-JS fallback', () => {
-    it('emits its own WardMap island script, plus Base.astro\'s global Register/Login, Flag, Vote modal, MeSlot, ?src attribution, and Place JSON-LD scripts (Tasks 27/28/32/33/49/56) — no others', async () => {
+    it('emits its own WardMap island script, plus Base.astro\'s global Register/Login, Flag, inline issue voting, MeSlot, ?src attribution, and Place JSON-LD scripts (Tasks 27/28/32/33/49/56) — no others', async () => {
       const html = normalize(await (await renderWard('en', WARD.id)).text());
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // See tests/routes/home.test.ts's equivalent assertion — every page
-      // now also carries Base.astro's global Register/Login modal, Flag
-      // modal (Task 32, src/components/FlagModal.astro), Vote modal (Task
-      // 33, src/components/VoteModal.astro), MeSlot (Task 28,
-      // src/islands/MeSlot.ts), the inline `?src` attribution writer
-      // (Task 49, src/lib/attribution.ts — deliberately not type="module",
-      // architecture §13), and — since Task 56 — this page's own Place
-      // JSON-LD inline script (also not type="module").
+      // Ward map and inline voting, three global modules, attribution, and JSON-LD.
       expect(scriptOpenTags).toHaveLength(7);
       const moduleScripts = scriptOpenTags.filter((tag) => tag.includes('type="module"'));
       const inlineScripts = scriptOpenTags.filter((tag) => !tag.includes('type="module"'));
@@ -371,7 +367,7 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       expect(html).toMatch(/Ward\.astro\?astro&type=script/);
       expect(html).toMatch(/RegisterLoginModal\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
-      expect(html).toMatch(/VoteModal\.astro\?astro&type=script/);
+      expect(html).toMatch(/IssueVote\.astro\?astro&type=script/);
       expect(html).toMatch(/Base\.astro\?astro&type=script/);
       expect(html).toMatch(/bv_src/);
       expect(html).toMatch(/"@type":"AdministrativeArea"/);
