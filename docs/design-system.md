@@ -93,7 +93,7 @@ Names such as `hero`, `why-vote`, `basics`, and `methodology` are existing imple
 | `--color-methodology-bg` | `--methodology-bg` | Supporting sage band |
 | `--color-methodology-text` | `--methodology-text` | Sage-band text |
 
-Use the matching foreground/background pair. Sun or lime text belongs on a dark surface; never put white text on sun, lime, or leaf. Gold is an explanatory surface, not a warning by itself. Editorial red does not imply a validation error. Pair all statuses with explicit text.
+Use the matching foreground/background pair. For small editorial text on sage, use the darker brick token (`--color-danger`); the brighter hero-alert red does not meet normal-text contrast there. Its section-eyebrow context distinguishes it from an error message. Sun or lime text belongs on a dark surface; never put white text on sun, lime, or leaf. Gold is an explanatory surface, not a warning by itself. Editorial red does not imply a validation error. Pair all statuses with explicit text.
 
 ### 2.3 Contrast
 
@@ -156,19 +156,19 @@ Self-host subset WOFF2 with `font-display: swap`; preserve Kannada conjuncts. Pr
 | `--text-3xl` | 28px / 32px | `--leading-3xl`: 1.2 | Identity headings |
 | `--text-4xl` | 32px / 40px | `--leading-4xl`: 1.1 | Display headings |
 
-Use 16px as the body and input baseline. Existing band compositions also use 1.6rem (25.6px) section headings and 0.95rem (15.2px) supporting prose. These are current CSS overrides, not additional named tokens; use the shared scale for new work until a reusable type variant is formalized. Eyebrows are subordinate to headings, not a second headline.
+Use 16px as the body and input baseline. Existing band compositions also use 1.6rem (25.6px) section headings and 0.95rem (15.2px) supporting prose. These are current CSS overrides, not additional named tokens; use the shared scale for new work until a reusable type variant is formalized. Eyebrows are uppercase, 13px, and subordinate to headings, not a second headline. Use `.eyebrow` for the shared case treatment and 0.04em Latin tracking; Kannada tracking remains normal.
 
 ### 5.3 Kannada
 
 - Body line height increases from 1.5 to 1.7; heading line heights of 1.2–1.3 increase to 1.4. Ensure local CSS does not bypass these rules.
 - Use `letter-spacing: normal`; do not apply Latin tracking to Kannada glyphs.
-- Use sentence case throughout the system. Do not depend on uppercase styling for hierarchy.
+- Eyebrow labels always use uppercase where the script has case, through the shared `.eyebrow` treatment. Kannada has no uppercase form: keep normal letter spacing and retain emphasis through size, weight, and placement. Other text uses sentence case.
 - `--kn-pad` is 0px by default and 2px under `:lang(kn)`; use it for extra vertical padding in compact controls where needed.
 - Allow multi-line labels and taller controls. Do not truncate translated headings, buttons, or form labels to preserve an English-sized box.
 
 ### 5.4 Voice
 
-Use plain language and sentence case. Labels name the content; buttons name the outcome, such as “Find my booth” or “Submit flag”. Explain required formats and errors with a concrete next step. Avoid generic “OK”, unexplained abbreviations, and urgency without a real deadline.
+Use plain language and sentence case, except for uppercase eyebrow labels. Labels name the content; buttons name the outcome, such as “Find my booth” or “Submit flag”. Explain required formats and errors with a concrete next step. Avoid generic “OK”, unexplained abbreviations, and urgency without a real deadline.
 
 ## 6. Layout, spacing, shape
 
@@ -240,7 +240,7 @@ Every section starts with a content hierarchy: optional eyebrow → heading → 
 
 **Surface selection:** dark green establishes identity; gold gives explanatory material emphasis; white supports detailed reading and interaction; paper gently separates a collection or navigation strip; sage supports a related task or resource collection. Use the matching text tokens in §2.2. A surface's meaning does not depend on its position in a particular route.
 
-**Section rhythm:** continuous color bands meet without an extra gap. Separate content regions use the default 32px gap, or 48px for a clear hierarchy change. Do not combine a large outer gap and large internal padding by accident. Restore the shared inset after any full-width breakout.
+**Section rhythm:** continuous color bands meet without an extra gap. Separate content regions use the default 32px gap, or 48px for a clear hierarchy change. The final full-width band meets the footer directly; do not leave container bottom padding or an empty spacer beneath it. Do not combine a large outer gap and large internal padding by accident. Restore the shared inset after any full-width breakout.
 
 ## 7. Components
 
@@ -250,7 +250,7 @@ The global brand/navigation shell is 80px high, sticky at `top: 0`, on paper wit
 
 The current lockup contains “Bengaluru Votes”, a separator, OpenCity, a decorative star, and Janaagraha. At widths below 768px, the visible wordmark becomes “BV”, retaining the full accessible name. Logo heights are 20px/22px on desktop and 13px/14px on mobile; below 360px the separator disappears. Partner images remain outside the home-link accessible-name override.
 
-The language control keeps `EN | ಕನ್ನಡ` in a fixed order. The current language is a noninteractive selected segment; the alternate language is a link to the equivalent content. Selection is forest on forest tint. No account action is currently rendered in this component. The existing 32px segment height falls short of the target in §10.
+The language control keeps `EN | ಕನ್ನಡ` in a fixed order. The current language is a noninteractive selected segment; the alternate language is a link to the equivalent content. Selection is forest on forest tint. No account action is currently rendered in this component. Both language segments have a minimum 44×44px target.
 
 ### 7.2 Footer
 
@@ -331,7 +331,7 @@ Render authentication-gated actions in their enabled style. Activation opens the
 
 ### 7.9 Modals
 
-Use a shared white shell, 8px radius, modal shadow, and `rgba(26,26,26,0.5)` scrim. Below 768px, the existing treatment is a full-width top sheet with rounded top corners. Title uses 24px; content and actions follow the form/spacing rules.
+Use a shared white shell, 8px radius, modal shadow, and `rgba(26,26,26,0.5)` scrim. Below 768px, the existing treatment is a full-width bottom sheet with rounded top corners. Title uses 24px; content and actions follow the form/spacing rules.
 
 Provide an accessible title, explicit Close action, focus trap, Escape dismissal, and return focus to the trigger. Scrim dismissal must not silently lose important work. Keep the underlying context visible and the URL unchanged for modal tasks. Native dialog semantics are preferred. A multi-step form keeps one coherent title/context and preserves input when users move back.
 
@@ -395,7 +395,7 @@ A compact, full-width notice may appear above the app bar. Use centered 14px bol
 
 ### 7.15 Section navigation and disclosures
 
-**Section navigation:** use a paper strip beneath the app bar, sticky at `top: 80px`. Links are 14px bold with 8px/12px padding; active state is forest text plus a 4px underline and `aria-current`. Use real fragment links and update the current section on scroll. On small screens the strip scrolls horizontally without widening the document. Provide enough scroll margin to keep targets below both sticky layers; the existing composition uses 128px. Only show links whose targets exist. This is navigation, not a tab interface that hides content.
+**Section navigation:** use a paper strip beneath the app bar, sticky at `top: 80px`. Links are 14px bold with 8px/12px padding and a 44px minimum height; active state is forest text plus a 4px underline and `aria-current`. Use real fragment links with smooth scrolling and update the current section on scroll. Keep the sticky header stable; the content scrolls beneath it. Respect reduced-motion preferences by using immediate scrolling instead. On small screens the strip scrolls horizontally without widening the document. Provide enough scroll margin to keep targets below both sticky layers; the existing composition uses 144px. Only show links whose targets exist. This is navigation, not a tab interface that hides content.
 
 **Disclosure/accordion:** use native `details`/`summary`, a clear title, optional number, and trailing chevron. Apply 16px padding, a light border, and 8px between disclosures. Opening reveals body copy and may add the subtle disclosure shadow; rotate the decorative chevron. Multiple items may stay open unless the task calls for an exclusive group. Do not rely on the icon alone to communicate expanded state. Opening the first item initially is optional, not mandatory.
 
@@ -462,19 +462,16 @@ Examples illustrate the patterns; they do not limit where a pattern may be used.
 | Ward page: identity and local facts | Dark identity band; structured facts; outlined identity pill |
 | Ward page: navigation and boundary | Sticky section navigation; responsive map frame and fallback |
 | Ward page: candidate collection | Paper collection band; compact identity rows; status text and secondary action |
-| Ward page: issue voting | White action band; gated primary action; result bars |
+| Ward page: issue voting | White action band; anonymous primary action; result bars |
 | Ward page: questions | Sage collection band containing bordered cards |
 
 ## 12. Implementation gaps
 
 These are existing differences between the design standard and the implementation. This documentation revision does not change UI code or claim that the following gaps are resolved.
 
-- Language segments are 32px high; compact navigation and utility links need review against the target-size rules.
 - Muted labels on editorial red and focus indicators on dark green need contrast verification.
-- Some compositions use fixed 1.2 heading line heights, tracked eyebrows, uppercase Latin text, or local font stacks that bypass the Kannada/sentence-case rules.
-- Existing CSS references undeclared `--leading-md` and `--space-10`; local spacing values, an 11px disclosure radius, and a literal translucent divider also remain outside the shared token system.
-- One fact-grid implementation collapses at 760px rather than the shared 768px breakpoint. Use the shared breakpoint for new work unless content warrants a documented exception.
-- Some section-navigation links remain visible when their conditional target is absent.
+- Some compositions still use fixed heading line heights, tracked eyebrows, or local font stacks that bypass the Kannada rules; keep verifying overrides when reusing a pattern.
+- Existing CSS references undeclared `--leading-md`; local spacing values, an 11px disclosure radius, and a literal translucent divider also remain outside the shared token system.
 - The single-line field component generates ids from `name`; repeated instances need an explicit uniqueness strategy. It does not expose every control/state described in §7.10.
 - Button loading markup hides the spinner's nested status text from assistive technology; busy announcements and disabled-link behavior need verification before claiming complete state support.
 - The stock basemap exception remains as described in §8.1. Font-family changes beyond the current stacks remain a separate design decision.

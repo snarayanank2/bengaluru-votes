@@ -173,7 +173,9 @@ const segments: Array<{ lang: Lang; label: string }> = [
   .segment {
     display: inline-flex;
     align-items: center;
-    min-height: 32px;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
     padding: var(--space-1) var(--space-3);
     font-size: var(--text-sm);
     text-decoration: none;
@@ -188,7 +190,7 @@ const segments: Array<{ lang: Lang; label: string }> = [
   }
 
   /* --- phones (below tokens.css's single 768px breakpoint) ---------------
-     The 56px bar has to carry three things — brand wordmark, Open City mark,
+     The 80px bar has to carry three things — brand wordmark, Open City mark,
      language toggle — and at desktop spacing they need ~493px. A
      360px phone gives us 328px inside the padding, so every one of the
      savings below is load-bearing, not cosmetic:
@@ -200,7 +202,7 @@ const segments: Array<{ lang: Lang; label: string }> = [
 
      That lands the whole bar at ~250px, so both marks stay visible down to
      the ~320px floor. Only HORIZONTAL padding shrinks: `min-height` on
-     `.segment` (32px) is untouched, so the language control still meets the
+     `.segment` (44px) is untouched, so the language control still meets the
      a11y floor in design-system.md §10.
 
      The abbreviation is presentational only. `.logo`'s aria-label is
@@ -268,7 +270,7 @@ const segments: Array<{ lang: Lang; label: string }> = [
     }
 
     .header-separator {
-      height: 20px;
+      display: none;
     }
 
     .oc-logo {

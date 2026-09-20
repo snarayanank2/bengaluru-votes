@@ -181,7 +181,7 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
     it.each(['en', 'kn'] as const)('%s: renders the in-page section navigation after the hero', async (lang) => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
       const navStart = html.indexOf('class="ward-section-nav"');
-      const mapStart = html.indexOf('data-ward-map');
+      const mapStart = html.indexOf('id="ward-overview"');
 
       expect(navStart).toBeGreaterThan(-1);
       expect(navStart).toBeGreaterThan(html.indexOf('class="ward-header"'));
@@ -197,6 +197,23 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       expect(html).toContain(t(lang, 'ward.nav.candidates'));
       expect(html).toContain(t(lang, 'ward.nav.issues'));
       expect(html).toContain(t(lang, 'ward.nav.questions'));
+    });
+
+    it('omits navigation links when their optional sections have no content', async () => {
+      await db.delete(schema.wardIssues).where(eq(schema.wardIssues.wardId, WARD.id));
+      await db.delete(schema.wardCandidateQuestions).where(eq(schema.wardCandidateQuestions.wardId, WARD.id));
+      try {
+        const html = normalize(await (await renderWard('en', WARD.id)).text());
+        expect(html).not.toContain('href="#ward-issues"');
+        expect(html).not.toContain('href="#ward-questions"');
+        expect(html).not.toContain('id="ward-issues"');
+        expect(html).not.toContain('id="ward-questions"');
+        expect(html).toContain('href="#ward-overview"');
+        expect(html).toContain('href="#ward-candidates"');
+      } finally {
+        await db.insert(schema.wardIssues).values(CITY_ISSUES);
+        await db.insert(schema.wardCandidateQuestions).values(QUESTIONS);
+      }
     });
 
     it.each(['en', 'kn'] as const)('%s: renders ward name, number, corporation label; status 200', async (lang) => {
@@ -223,7 +240,9 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
 
     it.each(['en', 'kn'] as const)('%s: renders the bilingual ward overview', async (lang) => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
-      expect(html).toContain(t(lang, 'ward.overview.heading'));
+      expect(html).toContain(t(lang, 'ward.overview.reservation'));
+      expect(html).toContain(t(lang, 'ward.overview.oldWards'));
+      expect(html).toContain(t(lang, 'ward.overview.keyAreas'));
       expect(html).toContain(lang === 'kn' ? WARD.assemblyNameKn : WARD.assemblyNameEn);
       expect(html).toContain(lang === 'kn' ? WARD.reservationKn : WARD.reservationEn);
       expect(html).toContain(lang === 'kn' ? OLD_WARD.oldWardNameKn : OLD_WARD.oldWardNameEn);
@@ -289,7 +308,7 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
   describe('questions to ask candidates', () => {
     it.each(['en', 'kn'] as const)('%s: renders five localized question cards below issue voting', async (lang) => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
-      const questionsStart = html.indexOf('class="candidate-questions"');
+      const questionsStart = html.indexOf('id="ward-questions"');
 
       expect(questionsStart).toBeGreaterThan(html.indexOf('data-issue-vote-zone'));
       expect(html).toContain(t(lang, 'ward.questions.heading'));
@@ -305,7 +324,7 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
   describe('anonymous top-three issue vote', () => {
     it.each(['en', 'kn'] as const)('%s: appears above candidate questions with 20 bilingual choices and hidden results', async (lang) => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
-      expect(html.indexOf('data-issue-vote-zone')).toBeLessThan(html.indexOf('class="candidate-questions"'));
+      expect(html.indexOf('data-issue-vote-zone')).toBeLessThan(html.indexOf('id="ward-questions"'));
       expect(html).toContain(t(lang, 'common.voteTop3'));
       expect(html).toContain(t(lang, 'ward.vote.showResults'));
       expect(html).toContain(lang === 'kn' ? CITY_ISSUES[0].titleKn : CITY_ISSUES[0].titleEn);

@@ -55,9 +55,10 @@ const { lang } = Astro.props;
     <form data-rl-form="1" novalidate>
       <div class="form-field">
         <label class="form-label" for="rl-destination">{t(lang, 'auth.step1.contactLabel')}</label>
-        <input id="rl-destination" class="form-input" name="destination" type="text" required />
+        <input id="rl-destination" class="form-input" name="destination" type="text" required aria-describedby="rl-contact-helper rl-contact-error" />
+        <p id="rl-contact-helper" class="rl-helper">{t(lang, 'auth.step1.helper')}</p>
+        <p id="rl-contact-error" class="form-error" data-rl-contact-error role="status" hidden></p>
       </div>
-      <p class="rl-helper">{t(lang, 'auth.step1.helper')}</p>
       <Button type="submit" variant="primary" lang={lang} data-rl-submit>
         {t(lang, 'auth.step1.submit')}
       </Button>
@@ -123,6 +124,7 @@ const { lang } = Astro.props;
     </form>
   </div>
 
+  <span hidden data-msg-contact-required>{t(lang, 'auth.step1.error.required')}</span>
   <span hidden data-msg-whatsapp-nudge>{t(lang, 'auth.step1.whatsappNudge')}</span>
   <span hidden data-msg-send-failed>{t(lang, 'auth.step1.sendFailed')}</span>
   <span hidden data-msg-error-invalid>{t(lang, 'auth.step2.error.invalid')}</span>
@@ -189,6 +191,10 @@ const { lang } = Astro.props;
     gap: var(--space-4);
   }
 
+  [data-rl-form="1"] :global(.btn) {
+    margin-top: var(--space-2);
+  }
+
   .form-field {
     display: flex;
     flex-direction: column;
@@ -215,6 +221,10 @@ const { lang } = Astro.props;
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
     border-color: var(--color-primary);
+  }
+
+  .form-input[aria-invalid="true"] {
+    border-color: var(--color-danger);
   }
 
   .form-error {
@@ -244,7 +254,8 @@ const { lang } = Astro.props;
 
   .rl-checkbox {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    min-height: 44px;
     gap: var(--space-2);
     font-size: var(--text-sm);
   }

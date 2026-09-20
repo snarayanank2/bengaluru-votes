@@ -80,7 +80,7 @@ Two notes that matter more than they look.
 
 | Role | Who they are | Primary job |
 |---|---|---|
-| **Anonymous citizen** | Any visitor, no account | Find & read information; see (but not cast) flags and issue votes |
+| **Anonymous citizen** | Any visitor, no account | Find & read information; cast an anonymous issue ballot; sign in to submit a flag |
 | **Registered citizen** | Signs up with email/WhatsApp + ward + language | Get updates; flag candidate misinformation; vote on ward issues |
 | **Transcriber** | Hired readers, Kannada-literate; no ward of their own | Check the AI-extracted fields on one candidate affidavit at a time |
 | **Data curator** | Trusted, vetted individuals, city-wide | Work the flag queue; correct any candidate field |
@@ -147,8 +147,8 @@ Two notes that matter more than they look.
 
 The correction loop connects citizens and curators. Both flagging and voting happen through **popups** that overlay the current page, so citizens never lose their place.
 
-1. **Notice an error / want to vote** — anyone can tap Flag or Vote. Anonymous users see a sign-up popup first; registered users proceed.
-2. **Submit** — a flag joins the single city-wide curator queue; an issue vote is recorded for the user's home ward.
+1. **Notice an error / want to vote** — anyone can tap Flag or Vote. Voting opens directly without an account. Flagging prompts anonymous users to sign in, then resumes in place.
+2. **Submit** — a flag joins the single city-wide curator queue; an exactly-three issue ballot is recorded for the chosen ward, once per browser receipt.
 3. **Review** — the curator sees the flagged field along with the comment, and either makes the fix or rejects the flag with a reason.
 4. **Record** — the change is published immediately, and the outcome appears on the submitter's own submissions page. A citizen who reports an error finds out what came of it.
 
@@ -186,7 +186,7 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 | Launch phasing | **Fourteen milestones**, replacing a nine-milestone plan on 2026-08-15 (`docs/milestones.md`), with the messaging one split into an email half and a WhatsApp half. **Two launches, not one:** a soft launch on the ward finder and voting guidance at the announcement, and a hard launch on candidates and booths once real data exists. |
 | Staff sessions | **24 hours**, then sign in again. Long enough that nobody re-authenticates mid-shift, short enough that a borrowed laptop or a stale browser stops being a way in by the next day. |
 | Staff access | Staff sign in by email OTP, so the data operation **depends on SendGrid** — and on nothing else. It does not depend on Meta verification, the WhatsApp number, or template approval, which is where the messaging milestone's forty days actually go. |
-| Registered users | Behind the soft launch, so **registration cannot build a list before the election is announced**. Accounts, updates, issue voting and flagging all sit here. |
+| Registered users | Behind the soft launch, so **registration cannot build a list before the election is announced**. Accounts, updates and flagging sit here; issue voting is available without an account. |
 | Messaging | **Abandonable.** WhatsApp and email sending is 40 days of vendor approvals nobody can compress. If it does not land, registered-user support is dropped and the platform ships anonymous-only. |
 | Hard-launch sends | **Two WhatsApp and two email messages per registered user** — *know your candidates* and *find your polling booth* (decided 2026-08-16). At ₹1.50 a WhatsApp message against the 25,000-registration target: 50,000 messages, **₹75,000**, plus about **₹15,000** of login OTPs metered separately (§9.1). The same 50,000 emails cost about **₹3,000** on SendGrid's volume pricing. Nothing else goes out over WhatsApp in the candidate half of the campaign. |
 | Distribution | Partner-led (RWAs, civic orgs, press). **No paid acquisition** — it costs money the project lacks and undercuts the neutrality claim. |

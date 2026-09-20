@@ -133,11 +133,19 @@ h6 {
   font-weight: 700;
 }
 
-/* Sentence case everywhere (§5.4); Kannada has no case, so a design that
-   leans on caps degrades in half the product (§5.3). Never override this
-   per-component. */
+/* Sentence case by default; eyebrow labels are the explicit exception
+   (§5.3–§5.4). Kannada has no case and retains normal letter spacing. */
 * {
   text-transform: none;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.eyebrow:lang(kn) {
+  letter-spacing: normal;
 }
 
 /* -------------------------------------------------------------------------

@@ -22,7 +22,7 @@
  *     or the currently-focused element if omitted) once the dialog closes
  *   - the URL never changes — this module makes no navigation/history call
  *
- * Top-sheet layout (rounded top corners, full-width below md) is pure CSS
+ * Bottom-sheet layout (rounded top corners, full-width below md) is pure CSS
  * owned by each modal's own component, not this behavior module.
  *
  * Testability: the class only touches a small structural slice of

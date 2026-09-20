@@ -22,7 +22,8 @@ function refresh(): void {
   const submit = dialog.querySelector<HTMLButtonElement>('[data-vote-submit]');
   if (submit) {
     submit.disabled = selected !== MAX_SELECTIONS;
-    submit.textContent = text(dialog, '[data-msg-submit-template]').replace('{n}', String(selected));
+    const label = submit.querySelector('.btn-label') ?? submit;
+    label.textContent = text(dialog, '[data-msg-submit-template]').replace('{n}', String(selected));
   }
 }
 function setError(kind: 'rate-limit' | 'verification' | 'generic'): void {

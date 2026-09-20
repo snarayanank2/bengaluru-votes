@@ -83,13 +83,16 @@ describe('tokens.css — primitives (design-system.md §2.1)', () => {
   });
 });
 
-describe('no text-transform: uppercase anywhere under src/', () => {
-  it('contains no uppercase text-transform declaration', () => {
+describe('uppercase is reserved for the shared eyebrow treatment', () => {
+  it('defines uppercase eyebrows without applying uppercase elsewhere', () => {
+    const eyebrowRule = /\.eyebrow\s*\{[^}]*text-transform\s*:\s*uppercase[^}]*\}/;
+    expect(globalCss).toMatch(eyebrowRule);
     const offenders: string[] = [];
-    const re = /text-transform\s*:\s*uppercase/i;
     for (const file of SRC_FILES) {
       const contents = readFileSync(file, 'utf8');
-      if (re.test(contents)) {
+      const remaining = path.relative(ROOT, file) === 'src/styles/global.css'
+        ? contents.replace(eyebrowRule, '') : contents;
+      if (/text-transform\s*:\s*uppercase/i.test(remaining)) {
         offenders.push(path.relative(ROOT, file));
       }
     }

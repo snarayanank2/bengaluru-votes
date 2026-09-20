@@ -54,6 +54,7 @@ interface Elements {
   banner: HTMLElement;
   form1: HTMLFormElement;
   destinationInput: HTMLInputElement;
+  contactError: HTMLElement;
   form2: HTMLFormElement;
   codeInput: HTMLInputElement;
   otpError: HTMLElement;
@@ -65,6 +66,7 @@ interface Elements {
   wardReadonlyValue: HTMLElement;
   languageSelect: HTMLSelectElement;
   futureToolsCheckbox: HTMLInputElement;
+  msgContactRequired: string;
   msgWhatsappNudge: string;
   msgSendFailed: string;
   msgErrorInvalid: string;
@@ -88,6 +90,7 @@ function findElements(root: ParentNode): Elements | null {
   const form2 = dialog?.querySelector<HTMLFormElement>('[data-rl-form="2"]');
   const form3 = dialog?.querySelector<HTMLFormElement>('[data-rl-form="3"]');
   const destinationInput = form1?.querySelector<HTMLInputElement>('input[name="destination"]');
+  const contactError = form1?.querySelector<HTMLElement>('[data-rl-contact-error]');
   const codeInput = form2?.querySelector<HTMLInputElement>('input[name="code"]');
   const banner = dialog?.querySelector<HTMLElement>('[data-rl-banner]');
   const otpError = form2?.querySelector<HTMLElement>('[data-rl-otp-error]');
@@ -105,6 +108,7 @@ function findElements(root: ParentNode): Elements | null {
     !form2 ||
     !form3 ||
     !destinationInput ||
+    !contactError ||
     !codeInput ||
     !banner ||
     !otpError ||
@@ -125,6 +129,7 @@ function findElements(root: ParentNode): Elements | null {
     banner,
     form1,
     destinationInput,
+    contactError,
     form2,
     codeInput,
     otpError,
@@ -136,6 +141,7 @@ function findElements(root: ParentNode): Elements | null {
     wardReadonlyValue,
     languageSelect,
     futureToolsCheckbox,
+    msgContactRequired: text(dialog, '[data-msg-contact-required]'),
     msgWhatsappNudge: text(dialog, '[data-msg-whatsapp-nudge]'),
     msgSendFailed: text(dialog, '[data-msg-send-failed]'),
     msgErrorInvalid: text(dialog, '[data-msg-error-invalid]'),
@@ -166,6 +172,13 @@ function showBanner(message: string): void {
   if (!els) return;
   els.banner.hidden = false;
   els.banner.textContent = message;
+}
+
+function clearContactError(): void {
+  if (!els) return;
+  els.contactError.hidden = true;
+  els.contactError.textContent = '';
+  els.destinationInput.removeAttribute('aria-invalid');
 }
 
 function clearOtpError(): void {
@@ -215,7 +228,14 @@ async function onSubmitContact(event: SubmitEvent): Promise<void> {
   if (!els) return;
 
   const destination = els.destinationInput.value.trim();
-  if (!destination) return; // native `required` handles the empty case
+  clearContactError();
+  if (!destination) {
+    els.contactError.textContent = els.msgContactRequired;
+    els.contactError.hidden = false;
+    els.destinationInput.setAttribute('aria-invalid', 'true');
+    els.destinationInput.focus();
+    return;
+  }
 
   currentDestination = destination;
   const channel = inferChannel(destination);
@@ -303,12 +323,16 @@ function resetToStep1(): void {
   els.form2.reset();
   els.form3.reset();
   clearBanner();
+  clearContactError();
   clearOtpError();
   showStep(1);
 }
 
 function wireForms(e: Elements): void {
   e.form1.addEventListener('submit', onSubmitContact);
+  e.destinationInput.addEventListener('input', () => {
+    if (e.destinationInput.value.trim()) clearContactError();
+  });
   e.form2.addEventListener('submit', onSubmitOtp);
   e.form3.addEventListener('submit', onSubmitRegister);
   e.backTo1.addEventListener('click', () => {

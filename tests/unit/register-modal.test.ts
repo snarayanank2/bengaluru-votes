@@ -27,6 +27,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 type RegisterLoginModalModule = typeof import('../../src/islands/RegisterLoginModal');
 
 const MSGS = {
+  contactRequired: 'Enter an email address or WhatsApp number.',
   whatsappNudge: 'We could not reach you on WhatsApp — try email instead.',
   sendFailed: "We couldn't send a code to that address. Please try again.",
   errorInvalid: 'That code is incorrect. Try again.',
@@ -45,7 +46,9 @@ const MODAL_HTML = `
 
       <form data-rl-form="1" novalidate>
         <label for="rl-destination">Email or WhatsApp number</label>
-        <input id="rl-destination" name="destination" type="text" required />
+        <input id="rl-destination" name="destination" type="text" required aria-describedby="rl-contact-helper rl-contact-error" />
+        <p id="rl-contact-helper">We will send a code.</p>
+        <p id="rl-contact-error" data-rl-contact-error hidden></p>
         <button type="submit" data-rl-submit>Send code</button>
       </form>
 
@@ -77,6 +80,7 @@ const MODAL_HTML = `
       </form>
     </div>
 
+    <span hidden data-msg-contact-required>${MSGS.contactRequired}</span>
     <span hidden data-msg-whatsapp-nudge>${MSGS.whatsappNudge}</span>
     <span hidden data-msg-send-failed>${MSGS.sendFailed}</span>
     <span hidden data-msg-error-invalid>${MSGS.errorInvalid}</span>
@@ -179,6 +183,38 @@ describe('RegisterLoginModal island (src/islands/RegisterLoginModal.ts)', () => 
     const readonly = document.querySelector('[data-rl-ward-readonly]') as HTMLElement;
     expect(editable.hidden).toBe(false);
     expect(readonly.hidden).toBe(true);
+  });
+
+  it.each(['', '   '])('shows and associates an error for empty contact %j without sending a request', async (value) => {
+    openRegisterLogin({});
+    const input = document.querySelector<HTMLInputElement>('#rl-destination')!;
+    input.value = value;
+    submit(formStep(1));
+    await flush();
+    const error = document.querySelector<HTMLElement>('[data-rl-contact-error]')!;
+    expect(error.hidden).toBe(false);
+    expect(error.textContent).toBe(MSGS.contactRequired);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')?.split(' ')).toContain(error.id);
+    expect(document.activeElement).toBe(input);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('clears the contact error when corrected and when the dialog is reopened', async () => {
+    openRegisterLogin({});
+    const input = document.querySelector<HTMLInputElement>('#rl-destination')!;
+    const error = document.querySelector<HTMLElement>('[data-rl-contact-error]')!;
+    submit(formStep(1));
+    expect(error.hidden).toBe(false);
+    input.value = 'citizen@example.com';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(error.hidden).toBe(true);
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+    input.value = '';
+    submit(formStep(1));
+    openRegisterLogin({});
+    expect(error.hidden).toBe(true);
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
   });
 
   describe('step transitions over mocked fetch', () => {

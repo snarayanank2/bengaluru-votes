@@ -19,17 +19,33 @@ export function initWardSectionNav(): void {
     tab.addEventListener('click', () => setActive(tab.dataset.wardSectionTab ?? ''));
   }
 
-  if (!('IntersectionObserver' in window)) return;
+  // Follow the section at the reading edge. Comparing visible areas can
+  // highlight the next section while a short current section is still on top.
+  const syncActive = (): void => {
+    const readingEdge = nav.getBoundingClientRect().bottom + 4;
+    let active = sections[0];
+    for (const section of sections) {
+      if (section.getBoundingClientRect().top > readingEdge) break;
+      active = section;
+    }
+    // A short final section may reach the page bottom before its top can
+    // reach the header's reading edge.
+    if (window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1) {
+      active = sections[sections.length - 1];
+    }
+    setActive(active.id);
+  };
 
-  const observer = new IntersectionObserver(
-    (entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (visible) setActive(visible.target.id);
-    },
-    { rootMargin: '-92px 0px -55% 0px', threshold: [0, 0.25, 0.5, 1] },
-  );
-
-  for (const section of sections) observer.observe(section);
+  let framePending = false;
+  const scheduleSync = (): void => {
+    if (framePending) return;
+    framePending = true;
+    requestAnimationFrame(() => {
+      framePending = false;
+      syncActive();
+    });
+  };
+  window.addEventListener('scroll', scheduleSync, { passive: true });
+  window.addEventListener('resize', scheduleSync);
+  syncActive();
 }

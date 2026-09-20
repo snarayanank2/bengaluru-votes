@@ -122,7 +122,7 @@ Two invariants worth stating outright:
 
 ### The caching invariant
 
-**Public page HTML never varies by session.** nginx strips the `Cookie` header before proxying public routes, so the app cannot see a session there even if it wanted to. Logged-in users get the same cached anonymous markup; the three personalized elements (account control, register slot, already-voted state) are swapped client-side from one `GET /api/me`. The cache key ignores the query string entirely.
+**Public page HTML never varies by session.** nginx strips the `Cookie` header before proxying public routes, so the app cannot see a session there even if it wanted to. Logged-in users get the same cached anonymous markup; account and registration state is swapped client-side from `GET /api/me`; anonymous voting state comes from `GET /api/issue-votes` using an opaque HttpOnly receipt cookie. The cache key ignores the query string entirely.
 
 Anything that would make a public page depend on the viewer breaks this. Personalize through `/api/me` instead.
 
@@ -154,7 +154,7 @@ Curator edits **go live immediately** — no approval gate. Every field carries 
 
 ### Contribution flows
 
-Both citizen contributions — flagging misinformation and issue voting — show their buttons to anonymous users; tapping opens the Register/Login modal, and **the original action resumes in place** after auth. Flagging works across any ward; issue voting is restricted to the user's registered home ward.
+**Keep anonymous voting.** Issue voting requires no account or registered home ward: a visitor chooses exactly three issues in one ward, with one immutable ballot per browser receipt and results revealed after voting. Flagging misinformation remains login-gated, works across any ward, and **the original action resumes in place** after auth. Both actions show enabled buttons to anonymous users.
 
 Register/Login (fallback page `/login`), Flag, and Vote are **modals** that overlay without changing the URL. Every other screen is a distinct deep-linkable URL. Don't convert one into the other.
 
@@ -199,6 +199,8 @@ Open questions: `docs/milestones.md` §17 (what the plan and the tracker still d
 ## Learning from corrections
 
 Treat the user's correcting instructions as authoritative project feedback, not as one-off conversation context. Before starting related work, review this file and apply the relevant lessons. When the user corrects a behavior, design choice, workflow, or verification gap, identify the generalizable rule and record it in this file during the same task so it is not requested again. Preserve specific user wording when it expresses a durable preference, avoid recording secrets or temporary details, and mention the rule that was captured. Never overwrite an existing user change while recording feedback.
+
+**Eyebrow and footer styling:** Eyebrow text should always be caps (uppercase for scripts with case; Kannada keeps normal letter spacing). Use one shared eyebrow treatment. The last full-width section of the ward page must meet the footer directly, with no blank gap. Ward section links should scroll smoothly beneath the sticky header, while respecting reduced-motion preferences.
 
 **Reusable design-system documentation:** The design system should describe generic foundations, section patterns, and components, including form fields, buttons, cards, and their states. It should not mention specific pages except as example usage; do not organize its rules as individual page specifications.
 
