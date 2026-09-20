@@ -840,7 +840,9 @@
     "home.shortcuts.findBooth.description": "996bff8280e9d8578e81ddd0cccc026f9e1744112b996d39c19ba51482eef795",
     "nav.home": "3a78695388b38b5cceefaf6796b0137877514593543b91af2752d5a17e3d736c",
     "nav.breadcrumbs": "2bd873d6c734e63ea80e163a6a643f75bf87a3d24e3164987d176a2e3e5c567e",
-    "nav.ward": "9da74f22c212f4688403e7eca7353a02e8a4729dd92206addda8b8b2a7879c97"
+    "nav.ward": "9da74f22c212f4688403e7eca7353a02e8a4729dd92206addda8b8b2a7879c97",
+    "ward.updates.heading": "9891a030fc205f0edbb494326ce99bdf05823d5fbb787227eda10eb6eb8bf84e",
+    "ward.updates.description": "65dc19a7731cb16690f13fd9497f95c377f937ede3628608908e3ca6cfcf7d97"
   },
   "legal.courtesyNote": "ಇದು ಸೌಜನ್ಯ ಅನುವಾದವಾಗಿದೆ. ಈ ಪುಟದ ಇಂಗ್ಲಿಷ್ ಆವೃತ್ತಿಯು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಯಂತ್ರಿಸುವ ಪಠ್ಯವಾಗಿದೆ.",
   "error.notFound.title": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
@@ -1392,5 +1394,7 @@
   "findBooth.result.wardUnknown": "ಈ ಮತಗಟ್ಟೆಯನ್ನು ನಾವು ಜಿಬಿಎ ವಾರ್ಡ್‌ಗೆ ಹೊಂದಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
   "findBooth.result.notFound": "ಆ ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ ಸಂಖ್ಯೆ ಮತದಾರರ ಪಟ್ಟಿಯಲ್ಲಿ ನಮಗೆ ಕಂಡುಬಂದಿಲ್ಲ. ದಯವಿಟ್ಟು ಸಂಖ್ಯೆಯನ್ನು ನಿಮ್ಮ ಚೀಟಿಯೊಂದಿಗೆ ಪರಿಶೀಲಿಸಿ, ಅಥವಾ ಕೆಳಗಿನ ಅಧಿಕೃತ ಫೈಂಡರ್ ಬಳಸಿ.",
   "home.shortcuts.findBooth.title": "ನಿಮ್ಮ ಮತಗಟ್ಟೆ ಹುಡುಕಿ",
-  "home.shortcuts.findBooth.description": "ನಿಮ್ಮ ಮತಗಟ್ಟೆ, ಪಟ್ಟಿಯಲ್ಲಿನ ನಿಮ್ಮ ಕ್ರಮ ಸಂಖ್ಯೆ, ಮತ್ತು ನಿಮ್ಮ ವಾರ್ಡ್ ಪಡೆಯಲು ನಿಮ್ಮ ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ (EPIC) ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ."
+  "home.shortcuts.findBooth.description": "ನಿಮ್ಮ ಮತಗಟ್ಟೆ, ಪಟ್ಟಿಯಲ್ಲಿನ ನಿಮ್ಮ ಕ್ರಮ ಸಂಖ್ಯೆ, ಮತ್ತು ನಿಮ್ಮ ವಾರ್ಡ್ ಪಡೆಯಲು ನಿಮ್ಮ ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ (EPIC) ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
+  "ward.updates.heading": "ನಿಮ್ಮ ವಾರ್ಡ್‌ನ ಮಾಹಿತಿ ಪಡೆಯಿರಿ",
+  "ward.updates.description": "ಮತದಾನದ ದಿನಕ್ಕೆ ಸಿದ್ಧರಾಗಲು ಈ ವಾರ್ಡ್‌ನ ಚುನಾವಣಾ ದಿನಾಂಕಗಳು, ಅಭ್ಯರ್ಥಿಗಳ ಕುರಿತ ಹೊಸ ಮಾಹಿತಿ ಮತ್ತು ಮತದಾನದ ಜ್ಞಾಪನೆಗಳನ್ನು ಇಮೇಲ್ ಅಥವಾ ವಾಟ್ಸಾಪ್ ಮೂಲಕ ಕನ್ನಡ ಅಥವಾ ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ ಪಡೆಯಿರಿ."
 }

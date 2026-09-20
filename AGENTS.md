@@ -213,3 +213,5 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 ## UI verification
 
 After any UI change, use the `agent-browser` skill/CLI to inspect the live page at desktop and mobile widths. Before the first browser command, run `agent-browser skills get core` (or `agent-browser skills get core --full` when the full command reference is needed). Verify the actual rendered layout—not just the CSS or DOM—including column proportions, spacing, vertical alignment, control heights and widths, text wrapping, hover/focus states, and horizontal overflow. Compare reference-based changes against the reference site at the same viewport size before considering the work complete. Do not use the CUA browser surface for routine project UI verification when `agent-browser` is available.
+
+**Explain registration prompts:** Place a short explanation beside registration calls to action stating what updates citizens receive and why they are useful. Keep it localized and consistent with the signed-in state.

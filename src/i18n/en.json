@@ -962,5 +962,7 @@
     "press.logos.pendingNote": "Placeholder shown in place of actual downloadable logo/screenshot assets (not yet supplied) — same 'coming soon' register as press.spokesperson.pendingNote/press.contact.pendingNote below, not an error or apology.",
     "press.spokesperson.pendingNote": "Placeholder shown in place of an actual spokesperson name/bio/quote (not yet supplied) — PRD §5.15's spokesperson block is still INPUT NEEDED in content/pages/{lang}/press.md.",
     "press.contact.pendingNote": "Placeholder shown in place of an actual press contact email/phone and stated response time (not yet supplied)."
-  }
+  },
+  "ward.updates.heading": "Stay informed about your ward",
+  "ward.updates.description": "Get election dates, candidate updates and voting reminders for this ward by email or WhatsApp, in English or Kannada — so you can prepare for polling day."
 }
