@@ -1,118 +1,131 @@
 # GBA Elections Citizen Platform — Design System
 
-**Status:** Draft v1.1 · **Applies to:** `bengaluruvotes.opencity.in` · **Date:** August 2026
+**Status:** Living reference v2 · **Applies to:** `bengaluruvotes.opencity.in` · **Updated:** 20 September 2026
 
-This document defines the visual language for the platform: tokens, typography, components, and the rules that keep the interface trustworthy and neutral. It is the reference for anyone building or reviewing a page.
+This system defines reusable visual foundations, section patterns, components, and interaction states. Choose a pattern by the information or task it supports. A route does not own a color, layout, or component variant. Specific pages appear only as example usage in §11.2.
 
-The platform is a subdomain of [opencity.in](https://opencity.in/), run by the same operator (Oorvani Foundation). Open City has no formal design system, but its site has a consistent identity — a forest-green and yellow palette, Manrope headings, PT Sans body — and this system extends that identity so the subdomain reads as part of the family. All Open City values below were taken from the live site's theme presets in July 2026.
+The system extends Open City's forest-green identity, Manrope headings, and PT Sans body text with dark-green, gold, paper, and sage section surfaces. Color communicates hierarchy and system state, never political affiliation.
 
----
+**How to read this document:** shared rules describe the design standard; implementation notes distinguish existing component support from guidance that still needs implementation. Token names match `src/styles/tokens.css`; shared styles live in `src/styles/global.css`. Known gaps are recorded in §12 rather than promoted into design rules. Product requirements remain in `overview.md`, `milestones.md`, and `architecture.md`.
 
 ## 1. Principles
 
-1. **Trust is the product.** The visual language must read as civic and institutional, never promotional. Flat surfaces, generous whitespace, visible sources. No marketing gradients, no urgency theatrics — the only countdown that shouts is a real statutory deadline.
-2. **Neutral by construction.** Color never encodes a party, a candidate, or a judgment about either. See §4 — these rules are load-bearing, not stylistic.
-3. **Mobile-first, low-end-first.** The typical session is a WhatsApp-forwarded link opened on a mid-range Android phone. Prefer system-cheap rendering: borders over shadows, solid colors over gradients, minimal motion, small font payloads.
-4. **Bilingual parity.** Kannada is a first-class script, not a translation afterthought. Every type decision is made twice — once for Latin, once for Kannada — and the system encodes both (§5.3).
-5. **One system, four roles.** Citizen, curator, and admin screens share the same tokens and components. Curator/admin screens are denser but not differently branded.
-
----
+1. **Trust and neutrality.** Present facts, sources, and uncertainty clearly. Give comparable people or records equal visual weight. Avoid promotional effects and artificial urgency.
+2. **Mobile-first.** Preserve reading order and usable controls on narrow screens. Prefer solid surfaces, borders, modest font payloads, and minimal motion.
+3. **Bilingual parity.** English and Kannada share hierarchy, functionality, and visual emphasis. Allow translated text to wrap without clipping or truncation.
+4. **One system across roles.** Public and staff interfaces share foundations. Dense workspaces may use compact rows; they do not get a different brand.
+5. **Patterns before exceptions.** Reuse a section or component according to its purpose. Document a reusable variant when an existing pattern cannot express a recurring need.
 
 ## 2. Color
 
 ### 2.1 Primitives
 
-Named hex values. The first six come directly from Open City's palette; grays and tints are derived here.
+Define all hex colors in `src/styles/tokens.css`. Components should consume the semantic layer in §2.2.
 
-| Token | Hex | Origin | Use |
-|---|---|---|---|
-| `--oc-forest` | `#426133` | Open City accent-1 | Primary brand color |
-| `--oc-leaf` | `#5e8b48` | Open City logo green | Decorative/large elements only (fails AA for small text) |
-| `--oc-lime` | `#c8e537` | Open City accent-2 | Accent on dark green surfaces only |
-| `--oc-sun` | `#ffd527` | Open City accent-6 | Highlight chips, deadline banners (always with black text) |
-| `--oc-brick` | `#a62635` | Open City deep red | Error/destructive text and actions |
-| `--oc-rose` | `#d33a4c` | Open City contrast red | Large error accents, icons |
-| `--ink` | `#1a1a1a` | derived | Primary text |
-| `--gray-600` | `#616161` | Open City accent-4 | Secondary text (smallest use: 14px+) |
-| `--gray-300` | `#c1c1c1` | Open City accent-5 | Borders, disabled states |
-| `--gray-100` | `#f0f0f0` | derived | Subtle surfaces, table stripes |
-| `--forest-tint` | `#eef3ea` | derived from forest | Selected states, success surfaces |
-| `--sun-tint` | `#fff8d6` | derived from sun | Deadline/notice surfaces |
-| `--brick-tint` | `#faeceb` | derived from brick | Error surfaces |
-| `--white` | `#ffffff` | — | Page background |
-| `--oc-black` | `#000000` | Open City accent-3 | Footer surface (§7.2) — the one black surface |
+| Primitive | Value | Role |
+|---|---|---|
+| `--oc-forest` | `#426133` | Brand green |
+| `--oc-leaf` | `#5e8b48` | Decorative green; not small text on white |
+| `--oc-lime` | `#c8e537` | Accent on dark surfaces |
+| `--oc-sun` | `#ffd527` | Highlight and deadline accent |
+| `--oc-brick` | `#a62635` | Error/destructive color |
+| `--oc-rose` | `#d33a4c` | Large error accents |
+| `--ink` | `#1a1a1a` | Primary text |
+| `--gray-600` | `#616161` | Muted text |
+| `--gray-300` | `#c1c1c1` | Borders |
+| `--gray-100` | `#f0f0f0` | Subtle surfaces |
+| `--forest-tint` | `#eef3ea` | Selected/success surface |
+| `--sun-tint` | `#fff8d6` | Notice surface |
+| `--brick-tint` | `#faeceb` | Error surface |
+| `--white` | `#ffffff` | Default background |
+| `--oc-black` | `#000000` | Footer background |
+| `--paper` | `#fbfaf6` | Quiet section/navigation surface |
+| `--hero-forest` | `#132010` | Dark identity surface |
+| `--hero-cream` | `#f2ead9` | Text on dark identity surfaces |
+| `--hero-muted` | `#a7b89a` | Secondary text on dark green |
+| `--hero-surface` | `#1b2b16` | Inset surface on dark green |
+| `--hero-alert` | `#c1392b` | Editorial accent |
+| `--hero-button-hover` | `#ece1cb` | Light-action hover |
+| `--hero-button-text` | `#18230f` | Text on light actions |
+| `--why-vote-bg` | `#f0b429` | Gold explanatory surface |
+| `--why-vote-text` | `#6b4a06` | Supporting accents on gold |
+| `--why-vote-ink` | `#18230f` | Primary text on gold/white |
+| `--why-vote-pill` | `rgba(24, 35, 15, 0.1)` | Topic-pill fill |
+| `--basics-muted` | `#57624a` | Disclosure icon color |
+| `--basics-border` | `rgba(24, 35, 15, 0.12)` | Light disclosure border |
+| `--methodology-bg` | `#ccdabd` | Sage supporting surface |
+| `--methodology-text` | `#28371c` | Text on sage |
+
+Names such as `hero`, `why-vote`, `basics`, and `methodology` are existing implementation names. They identify the visual roles below, not route restrictions. This document does not rename tokens or introduce aliases that do not exist.
 
 ### 2.2 Semantic tokens
 
-Components consume semantic tokens, never primitives. This keeps a future dark theme possible without touching components (dark mode is out of scope this release).
-
-| Token | Value | Use |
+| Semantic token | Maps to | Use |
 |---|---|---|
-| `--color-text` | `--ink` | Body text |
-| `--color-text-muted` | `--gray-600` | Captions, timestamps, helper text |
-| `--color-bg` | `--white` | Page background |
-| `--color-surface` | `--gray-100` | Cards on white, zebra rows |
-| `--color-border` | `--gray-300` | Card and input borders, dividers |
-| `--color-primary` | `--oc-forest` | Buttons, links, active nav, focus rings |
-| `--color-primary-surface` | `--forest-tint` | Selected/success backgrounds |
-| `--color-accent` | `--oc-sun` | Deadline banners, highlight chips |
-| `--color-accent-surface` | `--sun-tint` | Notice backgrounds |
-| `--color-danger` | `--oc-brick` | Error text, destructive buttons |
-| `--color-danger-surface` | `--brick-tint` | Error backgrounds |
-| `--color-on-primary` | `--white` | Text on forest |
-| `--color-on-accent` | `--ink` | Text on sun yellow |
-| `--color-footer` | `--oc-black` | Footer background (§7.2) |
-| `--color-on-footer` | `--oc-lime` | Footer text and links |
+| `--color-text` | `--ink` | Primary text |
+| `--color-text-muted` | `--gray-600` | Supporting text |
+| `--color-bg` | `--white` | Default background |
+| `--color-surface` | `--gray-100` | Subtle inset/disabled surface |
+| `--color-border` | `--gray-300` | Borders and dividers |
+| `--color-primary` | `--oc-forest` | Main actions, links, selection |
+| `--color-primary-surface` | `--forest-tint` | Selected/success background |
+| `--color-accent` | `--oc-sun` | Highlight, outline, deadline |
+| `--color-accent-surface` | `--sun-tint` | Notice background |
+| `--color-danger` | `--oc-brick` | Error/destructive text or fill |
+| `--color-danger-surface` | `--brick-tint` | Error background |
+| `--color-on-primary` | `--white` | Text on primary fill |
+| `--color-on-accent` | `--ink` | Text on sun fill |
+| `--color-footer` | `--oc-black` | Footer background |
+| `--color-on-footer` | `--oc-lime` | Footer branding and links |
+| `--color-header-bg` | `--paper` | Quiet bands and navigation |
+| `--color-hero-bg` | `--hero-forest` | Dark identity/hero band |
+| `--color-on-hero` | `--hero-cream` | Prominent text on dark green |
+| `--color-hero-muted` | `--hero-muted` | Supporting text on dark green |
+| `--color-hero-surface` | `--hero-surface` | Dark inset tile or response |
+| `--color-hero-alert` | `--hero-alert` | Editorial eyebrow or highlighted fact |
+| `--color-hero-button-text` | `--hero-button-text` | Light-action text |
+| `--color-why-vote-bg` | `--why-vote-bg` | Explanatory gold band |
+| `--color-why-vote-text` | `--why-vote-text` | Gold-band kicker and icon |
+| `--color-why-vote-ink` | `--why-vote-ink` | Gold-band body text |
+| `--color-why-vote-pill` | `--why-vote-pill` | Noninteractive topic pills |
+| `--color-basics-muted` | `--basics-muted` | Disclosure chevron |
+| `--color-basics-border` | `--basics-border` | Disclosure border |
+| `--color-methodology-bg` | `--methodology-bg` | Supporting sage band |
+| `--color-methodology-text` | `--methodology-text` | Sage-band text |
 
-### 2.3 Contrast (checked, WCAG 2.1)
+Use the matching foreground/background pair. Sun or lime text belongs on a dark surface; never put white text on sun, lime, or leaf. Gold is an explanatory surface, not a warning by itself. Editorial red does not imply a validation error. Pair all statuses with explicit text.
 
-| Pair | Ratio | Verdict |
+### 2.3 Contrast
+
+Target WCAG AA: at least 4.5:1 for normal text and 3:1 for large text; verify control boundaries and focus indicators against their adjacent surfaces. A token being approved does not make every pairing accessible.
+
+Forest, brick, and muted gray on white are the standard text combinations; ink on sun and lime on black are strong-contrast combinations. Leaf on white is restricted to large text or non-text decoration. Validate new pairings, especially muted text on editorial red and focus outlines on dark green. Known gaps are in §12; this document is not a blanket conformance claim.
+
+## 3. Provenance styling
+
+A sourced field is a reusable content unit: **label → value → source line**. It lets a fact retain context when copied, compared, or captured in a screenshot.
+
+- Label: muted 14px; value: regular 16px ink; source line: muted 13px.
+- Keep a shared left edge, 4px between label and value, and 8px before the source.
+- Use a readable source title and link where available. Do not rely on a badge alone to explain provenance.
+- Missing values use explicit copy such as “Not declared”; retain the source context. Do not imply that unknown means zero.
+
+| Badge | Treatment | Meaning |
 |---|---|---|
-| `#426133` forest on white | 7.0:1 | AA + AAA — safe for text at any size |
-| `#a62635` brick on white | 7.1:1 | AA + AAA — safe for error text |
-| `#d33a4c` rose on white | 4.7:1 | AA normal text only — prefer brick for text, rose for ≥19px or icons |
-| `#5e8b48` leaf on white | 4.0:1 | Large text (≥19px bold / 24px) and graphics only |
-| `#616161` gray-600 on white | 5.7:1 | AA — fine for secondary text |
-| `#1a1a1a` ink on `#ffd527` sun | 13.9:1 | AAA — the only text treatment allowed on yellow |
-| `#c8e537` lime on `#426133` forest | 4.9:1 | AA — accent text on dark green panels |
-| `#c8e537` lime on `#000000` black | 15.0:1 | AAA — the footer's text and links (§7.2) |
+| Affidavit | Forest on forest tint | Official affidavit source |
+| Curator-compiled | Muted gray on gray surface | Compiled and sourced context |
+| AI-extracted | Ink on sun tint with dotted sun border | Extracted data awaiting confirmation |
 
-Never place white text on sun, lime, or leaf. Never place lime or sun on white as text.
-
----
-
-## 3. Provenance styling — the signature
-
-Every candidate report-card field carries a visible source (PRD §11). This source treatment is the platform's visual signature: it appears identically on report cards, compare columns, and curator screens, so a screenshot of any candidate field is self-attributing. Summary facts on ward pages do not use field-level source lines.
-
-**Field row anatomy:** label (muted, 14px) → value (ink, 16px) → source line. The source line is one line, 13px, muted, prefixed by a source badge:
-
-| Badge | Style | Meaning |
-|---|---|---|
-| **Affidavit** | Forest text on `--forest-tint`, links to the stored affidavit PDF | Official EC affidavit data |
-| **Curator-compiled** | Gray-600 text on `--gray-100` | Context compiled and sourced by a curator |
-| **AI-extracted** | Ink text on `--sun-tint`, with a dotted `--oc-sun` border | Affidavit data extracted by AI, not yet curator-confirmed (PRD §5.2) |
-
-Rules:
-
-- The badge colors above are reserved. Nothing else on a content page may use `--forest-tint` or `--sun-tint` chips, so a glance always answers "where did this come from."
-- When a curator confirms an AI-extracted field, the badge changes to Affidavit — same position, no layout shift.
-- A field with no data renders as "Not declared" in muted italic with its source line intact. Absence of data is data.
-
----
+Keep provenance labels distinct from topic pills and action states even when they share palette tokens. Summary fact groups (§7.16) do not automatically need a source line on every item; the product's sourcing requirements determine where to use this component.
 
 ## 4. Neutrality rules
 
-These rules exist because Indian party identities are color identities. Violating them turns a layout choice into an endorsement.
-
-1. **Party identity is text plus ECI symbol only.** A candidate's party appears as its name and official symbol image. Never assign a color, tint, or accent to a party or candidate — not in lists, compare columns, charts, or maps.
-2. **No saffron/orange anywhere in the UI.** It cannot appear without reading as partisan. The palette contains no orange; do not add one.
-3. **Identical visual weight for all candidates.** Same card size, same photo treatment, same field order, same type scale. Ordering is alphabetical or as specified by the PRD, never editorially ranked.
-4. **Semantic colors describe system state, not people.** Green means "your action succeeded," red means "this action failed or deletes something." A criminal-cases field or asset figure is set in plain ink like any other value — the data speaks without alarm coloring.
-5. **Issue-vote results use one hue.** Ranked issue bars are all `--oc-forest` at full opacity with a `--gray-100` track. Rank is conveyed by order and number, not by color.
-6. **Photography is documentary.** Candidate photos as submitted/sourced, uncropped beyond a consistent aspect ratio, no filters or duotones.
-
----
+1. Party identity uses text and, where available, an official symbol. Never assign a color to a party or candidate in a list, chart, map, or comparison.
+2. The documented gold explanatory surface is permitted. Do not introduce saffron/orange party accents or additional political color associations.
+3. Comparable records use identical photo treatment, typography, field order, and available actions. Ordering follows the product's deterministic rule, never visual or editorial favoritism.
+4. Error colors describe failed actions, not a person's criminal-case count, assets, or other attributes. Present such values in ordinary ink.
+5. Ranked results use a single forest hue on a gray track; order, labels, and numbers convey rank.
+6. Photography is documentary: consistent crop/aspect ratio, no partisan filters or duotones. Use neutral initials when an identity has no image, never invented photographs.
 
 ## 5. Typography
 
@@ -120,315 +133,348 @@ These rules exist because Indian party identities are color identities. Violatin
 
 | Role | Latin | Kannada | Weights |
 |---|---|---|---|
-| Headings, buttons, data figures | **Manrope** | **Noto Sans Kannada** | 500, 700, 800 |
-| Body, forms, captions | **PT Sans** | **Noto Sans Kannada** | 400, 700 |
-
-Manrope and PT Sans come from Open City; neither contains Kannada glyphs, so Noto Sans Kannada rides in every stack and renders whichever glyphs the Latin face lacks:
+| Headings, buttons, figures | Manrope | Noto Sans Kannada | 500–800 |
+| Body, forms, captions | PT Sans | Noto Sans Kannada | 400, 700 |
 
 ```css
---font-heading: Manrope, "Noto Sans Kannada", system-ui, sans-serif;
---font-body: "PT Sans", "Noto Sans Kannada", system-ui, sans-serif;
+--font-heading: Manrope, 'Noto Sans Kannada', system-ui, sans-serif;
+--font-body: 'PT Sans', 'Noto Sans Kannada', system-ui, sans-serif;
 ```
 
-**Self-host all three as subset woff2** (`font-display: swap`). No Google Fonts CDN — it leaks visitor IPs to a third party, which contradicts the privacy stance (`/privacy`), and adds a cross-origin round trip on slow networks. Kannada subsetting must keep the full conjunct set; test with real ward names, not lorem ipsum.
-
-Use `font-variant-numeric: tabular-nums` (Manrope) for countdowns, vote counts, and the `/data` metrics so digits don't jitter as they change.
+Self-host subset WOFF2 with `font-display: swap`; preserve Kannada conjuncts. Preload only the above-the-fold families required by the active language. Use tabular figures for changing counts and aligned numeric columns.
 
 ### 5.2 Scale
 
-Mobile-first; the two largest steps grow at the `md` breakpoint.
-
-| Token | Size (mobile / ≥md) | Line height | Use |
+| Token | Mobile / ≥768px | Line-height token/value | Use |
 |---|---|---|---|
-| `--text-xs` | 13px | 1.4 | Source lines, timestamps |
-| `--text-sm` | 14px | 1.5 | Field labels, captions, table headers |
-| `--text-base` | 16px | 1.5 | Body, inputs, buttons |
-| `--text-lg` | 18px | 1.5 | Lead paragraphs |
-| `--text-xl` | 20px | 1.3 | Card titles, H3 |
-| `--text-2xl` | 24px | 1.25 | H2, modal titles |
-| `--text-3xl` | 28px / 32px | 1.2 | H1 |
-| `--text-4xl` | 32px / 40px | 1.1 | Home hero, countdown figure |
+| `--text-xs` | 13px | `--leading-xs`: 1.4 | Sources, eyebrows, compact fact labels |
+| `--text-sm` | 14px | `--leading-sm`: 1.5 | Labels, helpers, metadata |
+| `--text-base` | 16px | `--leading-base`: 1.5 | Body, inputs, buttons |
+| `--text-lg` | 18px | `--leading-lg`: 1.5 | Leads, compact identity titles |
+| `--text-xl` | 20px | `--leading-xl`: 1.3 | Card titles |
+| `--text-2xl` | 24px | `--leading-2xl`: 1.25 | Section/modal headings, fact figures |
+| `--text-3xl` | 28px / 32px | `--leading-3xl`: 1.2 | Identity headings |
+| `--text-4xl` | 32px / 40px | `--leading-4xl`: 1.1 | Display headings |
 
-Body text is never below 16px; nothing interactive is below 14px.
+Use 16px as the body and input baseline. Existing band compositions also use 1.6rem (25.6px) section headings and 0.95rem (15.2px) supporting prose. These are current CSS overrides, not additional named tokens; use the shared scale for new work until a reusable type variant is formalized. Eyebrows are subordinate to headings, not a second headline.
 
-### 5.3 Kannada rules
+### 5.3 Kannada
 
-Kannada conjuncts stack vertically and clip at Latin line heights. On every `/kn/` page (`:lang(kn)`):
-
-- Line height increases one step: body 1.5 → 1.7, headings 1.2–1.3 → 1.4.
-- `letter-spacing` is always `normal`. Latin tracking tweaks break Kannada shaping.
-- **No uppercase styling anywhere in the system** — Kannada has no case, so a design that leans on caps degrades in half the product. Emphasis comes from weight and size only.
-- Buttons, chips, and the app bar get ~2px extra vertical padding via a `:lang(kn)` override rather than per-component tweaks.
-- Kannada strings run roughly 10–20% longer than English. Components must tolerate two-line labels: buttons wrap, tabs scroll, nothing truncates a translated label with an ellipsis.
+- Body line height increases from 1.5 to 1.7; heading line heights of 1.2–1.3 increase to 1.4. Ensure local CSS does not bypass these rules.
+- Use `letter-spacing: normal`; do not apply Latin tracking to Kannada glyphs.
+- Use sentence case throughout the system. Do not depend on uppercase styling for hierarchy.
+- `--kn-pad` is 0px by default and 2px under `:lang(kn)`; use it for extra vertical padding in compact controls where needed.
+- Allow multi-line labels and taller controls. Do not truncate translated headings, buttons, or form labels to preserve an English-sized box.
 
 ### 5.4 Voice
 
-Sentence case everywhere: headings, buttons, labels. Buttons name the action's outcome ("Check my registration", "Submit flag"), not the mechanism ("Submit", "OK"). Plain verbs, no civic jargon — "ward" is the only term of art, and `/about-election` explains it.
-
----
+Use plain language and sentence case. Labels name the content; buttons name the outcome, such as “Find my booth” or “Submit flag”. Explain required formats and errors with a concrete next step. Avoid generic “OK”, unexplained abbreviations, and urgency without a real deadline.
 
 ## 6. Layout, spacing, shape
 
 ### 6.1 Spacing
 
-Spacing uses a 4px base scale. These are the complete declared tokens; there are no implied intermediate names.
-
-| Token | Value | Default use |
+| Token | Value | Use |
 |---|---:|---|
-| `--space-1` | 4px | Icon-to-label or other micro-gap |
-| `--space-2` | 8px | Label-to-value, related text lines, adjacent controls |
-| `--space-3` | 12px | Tight item groups and compact action rows |
-| `--space-4` | 16px | Card padding, form-field gaps, card/grid gaps |
-| `--space-6` | 24px | Subsections and separation before a related action group |
-| `--space-8` | 32px | Default gap between page sections |
-| `--space-12` | 48px | Major page regions with a clear hierarchy change |
-| `--space-16` | 64px | Hero or landing-page separation only |
+| `--space-1` | 4px | Field internals, micro-gaps |
+| `--space-2` | 8px | Related text, icons and labels |
+| `--space-3` | 12px | Compact groups |
+| `--space-4` | 16px | Card padding, field/card gaps |
+| `--space-6` | 24px | Content-to-action separation |
+| `--space-8` | 32px | Section padding and ordinary section gaps |
+| `--space-12` | 48px | Major-region gaps, desktop hero padding |
+| `--space-16` | 64px | Exceptional large-region separation |
 
-Use the smallest token that makes the relationship clear. Related content stays close; a change in topic gets more space. Do not use 48px or 64px to repair a component whose internal spacing or alignment is wrong.
+The parent owns gaps between siblings; the component owns its internal padding. Prefer flex/grid `gap`, reset browser margins inside composed components, and avoid adding child padding to compensate for a parent's alignment. Use the smallest gap that expresses the relationship.
 
-Common vertical relationships:
-
-| Relationship | Gap |
-|---|---:|
-| Heading → subtitle or lead | `--space-2` |
-| Paragraph → paragraph | `--space-4` |
-| Section heading → section content | `--space-4` |
-| Field → field or card → card | `--space-4` |
-| Content group → its actions | `--space-6` |
-| Page section → page section | `--space-8` |
-
-These relationships are defaults, not values to add together. For example, a section stack supplies the heading-to-content gap; the first child must not add another top margin.
-
-The parent owns spacing between siblings. Prefer `gap` on a flex or grid parent over margins on each child. Components own their internal padding, not their distance from neighboring components. Reset default heading and paragraph margins inside composed components so browser margins do not combine with token spacing. Do not add container padding again inside a child section or card.
-
-Use only declared tokens in component CSS. If an existing token cannot express a recurring relationship, add and document a token here and in `src/styles/tokens.css`; do not use an arbitrary pixel value or invent a custom-property name locally. Fixed dimensions required by another rule—such as a 44px touch target or 56px app bar—are not spacing values.
+Default relationships: heading to lead 8px; heading to content 16px; paragraphs or fields 16px apart; content to actions 24px; sections 32px apart. Do not add these values together when a parent stack already supplies the gap. Fixed control dimensions are not spacing tokens. Never reference an undeclared custom property.
 
 ### 6.2 Breakpoints and containers
 
-| Token | Width | Notes |
-|---|---|---|
-| `--bp-sm` | 480px | Large phones |
-| `--bp-md` | 768px | Tablet; type scale steps up |
-| `--bp-lg` | 1024px | Desktop; compare grid widens |
+| Token | Value | Role |
+|---|---:|---|
+| `--bp-sm` | 480px | Large-phone adjustments |
+| `--bp-md` | 768px | Main multi-column transition |
+| `--bp-lg` | 1024px | Wide-layout adjustments |
+| `--container-prose` | 42rem | Long-form reading |
+| `--container-app` | 64rem | Structured content and actions |
+| `--container-pad-x` | 16px / 24px ≥md | Shared horizontal inset |
 
-Containers: `--container-prose` 42rem (guides, legal, about pages), `--container-app` 64rem (ward pages, compare, curator/admin tables). Side padding 16px mobile, 24px ≥md. Layouts are single-column below `md`; nothing depends on hover.
+Container widths include their padding under global `border-box`. Full-width backgrounds may extend to viewport edges; their content restores the same container inset. Do not stretch reading text to the viewport width.
 
 ### 6.2.1 Alignment and responsive grids
 
-- A page has one container and one primary left edge. Its heading, lead text, sections, and action rows align to that edge. Full-bleed banners and maps are explicit exceptions.
-- Text and controls are left-aligned by default. Center alignment is reserved for short, self-contained content such as a countdown, confirmation, or empty state; do not center ordinary headings over left-aligned content.
-- Repeated panels share one grid, the same padding, and the same internal anatomy. Let grid items stretch to a common row height when useful, but align their contents to the start. A longer Kannada label must not vertically center its panel beside a shorter English-shaped panel.
-- Use `align-items: start` for cards, field groups, and variable-length content. Use `align-items: center` only for a single-line relationship such as an icon and label, avatar and name, or controls in one action row.
-- Multi-column content collapses to one column below `--bp-md` unless its component specification says otherwise. Preserve DOM order during collapse. Do not use fixed heights or assumed line counts to line up neighboring cards.
-- Use explicit `gap` and grid columns. Do not use `justify-content: space-between` to manufacture spacing between unrelated content; it creates unstable gaps as text wraps.
-- Text columns and their headers align left. Numeric table columns align right and use tabular figures. A column's cells and header always share the same alignment.
-- Form controls in a group share a width and left edge. Their labels, helper text, and errors align with the control, not with the page edge independently.
-- Icon-and-text controls use a fixed-size icon, `--space-2` between icon and label, and centered cross-axis alignment. Icons do not shift when a label wraps.
-- If alignment differs from these defaults, state the reason in the component specification. Responsive convenience alone is not a reason for peer components to use different anatomy.
+- Align headings, content, and actions to a shared left edge. Center only short self-contained states or controls whose role warrants it.
+- Use explicit columns and gaps. Variable-length cards/facts start-align; icon-label pairs and compact control rows center-align across their shared axis.
+- Multi-column sections stack below 768px unless a documented pattern says otherwise. Preserve DOM order.
+- Use `minmax(0, 1fr)` or `min-width: 0` where content needs to shrink. Do not assume equal line counts or use fixed heights to align text blocks.
+- Numeric columns align right with tabular figures. Their headings use the same alignment.
+- Scroll only the component that needs it, such as section navigation or a comparison grid; do not create document-wide horizontal overflow.
 
 ### 6.3 Shape and elevation
 
-- Radius: `--radius-sm` 6px (buttons, inputs), `--radius-md` 8px (cards, modals), `--radius-full` (chips, badges).
-- Elevation is border-first: cards are `1px solid --color-border` on white. Only two shadows exist: `--shadow-sticky` (app bar when scrolled) and `--shadow-modal` (modals, toasts). Nothing else floats.
+| Token | Value / role |
+|---|---|
+| `--radius-sm` | 6px: buttons and inputs |
+| `--radius-md` | 8px: cards, map frames, dialogs |
+| `--radius-full` | 9999px: badges, pills, round identity images |
+| `--shadow-sticky` | `0 2px 4px rgba(26,26,26,0.08)` |
+| `--shadow-modal` | `0 8px 24px rgba(26,26,26,0.16)` |
+| `--shadow-hero-button-hover` | `0 2px 6px rgba(19,32,16,0.08), 0 8px 18px rgba(19,32,16,0.12)` |
 
-### 6.4 First-pass composition rules
+Cards are border-first, without a default shadow. Use the subtle hover shadow for light-action hover and an expanded disclosure, not every surface. Existing disclosures use an 11px radius; this is not a shared radius token (§12).
 
-Tokens and components do not determine a good composition by themselves. Apply these rules before writing page markup:
+### 6.4 Reusable section patterns
 
-1. **List the content groups and rank them.** Decide what is primary, supporting, and metadata. Give each fact one visual role; do not emphasize every value.
-2. **Render peers in parallel form.** Repeated panels use the same container, padding, label element, label size, label weight, and value treatment. Do not mix an H3 in one panel with a muted field label in another. A deliberate exception, such as a large countdown, must be stated in the component specification.
-3. **Choose the layout from real data.** Inspect one sparse record and one dense record before choosing columns, cards, or lists. A three-column layout must still work when one value wraps and when a list contains several items.
-4. **Use only declared tokens.** Before using a CSS custom property, confirm it exists in `src/styles/tokens.css`. An undeclared property can silently invalidate spacing and collapse the layout. Do not invent intermediate token names in component CSS.
-5. **Avoid boxes inside boxes.** Use one enclosing card or a row of peer panels. Add another surface only when it creates a clear level in the information hierarchy.
-6. **Keep metadata subordinate.** Notes, timestamps, and provenance must not compete with the content they qualify. Show them only where the product requires them.
-7. **Design English and Kannada together.** Check real strings in both languages. Labels may wrap, but peer panels must retain the same hierarchy and spacing.
-8. **Define the collapse before desktop styling.** Multi-column groups become one column below `--bp-md` unless a component section specifies otherwise. Never rely on equal text lengths to keep a row aligned.
+Every section starts with a content hierarchy: optional eyebrow → heading → optional lead → content → related actions. Omit unnecessary layers. Use a semantic `section` with an accessible heading when the content forms a distinct topic.
 
-For repeated fact panels, start with this anatomy and change it only through a documented component rule:
+| Pattern | Anatomy and purpose | Desktop | Mobile |
+|---|---|---|---|
+| Dark identity/hero | Eyebrow or identity pill, prominent heading, supporting copy, optional action or facts | Dark-green band; 48px vertical padding | 32px padding; content stacks |
+| Hero with supporting statistics | Main copy/action plus a compact fact grid | Flexible copy + 260px supporting column; 32px gap; center-aligned as a group | One column, 24px gap; facts may stay two-up |
+| Split explanatory section | Heading group beside prose, topic pills, or disclosures | 1:2 columns, 32px gap and vertical padding | One column, 24px gap |
+| Content/action band | Heading, description, one task or content collection | White, paper, or sage; 32px vertical padding | Same hierarchy; controls wrap or stack |
+| Structured fact group | Parallel label/value units with optional lists | Equal columns, start-aligned, 32px gaps | Single column, 16px gaps |
+| Collection section | Heading plus rows, cards, or disclosures | One enclosing band; 16px card gaps or 24px identity-row gaps | Preserve item order and hierarchy |
+| Data/media section | Heading, map/chart/media frame, optional explanatory text | Frame aligned to container | Frame resizes; no page overflow |
 
-```text
-section heading
-└── peer-panel grid
-    ├── panel: muted 14px label → regular 16px value → optional 13px note
-    ├── panel: muted 14px label → regular 16px value → optional 13px note
-    └── panel: muted 14px label → regular 16px value → optional 13px note
-```
+**Surface selection:** dark green establishes identity; gold gives explanatory material emphasis; white supports detailed reading and interaction; paper gently separates a collection or navigation strip; sage supports a related task or resource collection. Use the matching text tokens in §2.2. A surface's meaning does not depend on its position in a particular route.
 
-The panels may differ in content length, but not in typographic rank. If one value deserves stronger emphasis, verify that the emphasis represents product importance rather than the convenience of its data type.
-
----
+**Section rhythm:** continuous color bands meet without an extra gap. Separate content regions use the default 32px gap, or 48px for a clear hierarchy change. Do not combine a large outer gap and large internal padding by accident. Restore the shared inset after any full-width breakout.
 
 ## 7. Components
 
-### 7.1 App bar (global)
+### 7.1 App bar
 
-White, 56px, sticky, `--shadow-sticky` on scroll. Left: Open City-family logo lockup linking to `/`. Right: language toggle and Sign in / Account. Active nav state: 2px `--oc-forest` underline.
+The global brand/navigation shell is 80px high, sticky at `top: 0`, on paper with `--shadow-sticky`. Its inner row uses the app container. Keep branding at the start and language controls at the end.
 
-**Language toggle:** a two-segment control, `EN | ಕನ್ನಡ`, each label always in its own script regardless of current language. Active segment: forest text on `--forest-tint`. It navigates to the same path in the other language (IA §1).
+The current lockup contains “Bengaluru Votes”, a separator, OpenCity, a decorative star, and Janaagraha. At widths below 768px, the visible wordmark becomes “BV”, retaining the full accessible name. Logo heights are 20px/22px on desktop and 13px/14px on mobile; below 360px the separator disappears. Partner images remain outside the home-link accessible-name override.
 
-### 7.2 Footer (global)
+The language control keeps `EN | ಕನ್ನಡ` in a fixed order. The current language is a noninteractive selected segment; the alternate language is a link to the equivalent content. Selection is forest on forest tint. No account action is currently rendered in this component. The existing 32px segment height falls short of the target in §10.
 
-Black (`#000000`) background, lime (`#c8e537`) text — the one dark surface in the system, and the same treatment Open City uses for its own footer. Two columns in a 2:1 split at `md` and up, stacked below it:
+### 7.2 Footer
 
-- **Left (2fr):** the trust links (About, Voting guide, Data, Partner with us, Press, Terms, Privacy), as a list — two sub-columns from `sm` up. Nav links carry no underline until hover/focus (§7.4).
-- **Right (1fr):** "A joint project by" over the Janaagraha and Oorvani Foundation logos, then Open City's X, LinkedIn and Instagram links as icons.
+Use black with lime branding/navigation. At 768px and above, use three equal, start-aligned columns, 32px gaps, and a vertical rule plus 32px inset on subsequent columns. Stack in DOM order on mobile. Group project attribution, resource navigation, and utility/legal navigation rather than mixing them in one undifferentiated list.
 
-Both partner logos are dark-on-transparent, so each sits on a white `--radius-sm` chip rather than being recolored — a partner's mark is theirs to set, and inverting it would drop Oorvani's red dot. The logos sit side by side wherever they fit and stack in the narrower `md` column; they're never scaled below their legible size to avoid it.
+Use self-hosted approved partner assets. The existing Janaagraha SVG uses a white monochrome filter; Oorvani has a white wordmark. Social marks are 24px inside 44px targets, white at rest and lime on hover, with accessible platform names. Text links underline on hover/focus; use sun focus outlines on black. Link destinations are content configuration, not design-system rules.
 
-Social icons are 24px marks in 44×44 targets (§7.3), drawn in the footer's own lime rather than Open City's sun-yellow — here yellow is reserved for statutory deadlines and the AI-extracted badge (§7.6). They're icon-only links, so each carries the platform name as its accessible name instead of §7.4's external-link glyph.
+### 7.3 Buttons and action groups
 
-### 7.3 Buttons
+Use a native `button` for an action and an anchor for navigation. The shared `Button.astro` supports four variants:
 
-| Variant | Style | Use |
+| Variant | Treatment | When to use |
 |---|---|---|
-| Primary | White on `--oc-forest`, radius-sm | One per view: the main action |
-| Secondary | Forest text, 1.5px forest border, white fill | Alternate actions |
-| Tertiary | Forest text, no border, underline on hover/focus | Inline low-stakes actions |
-| Destructive | White on `--oc-brick` | Reject, delete, retire — curator/admin only |
+| Primary | White on forest | Main action within a section or task |
+| Secondary | Forest text, 1.5px forest border, white fill | Supporting or alternative action |
+| Tertiary | Forest text, transparent fill/border; underline on hover/focus | Low-emphasis action |
+| Destructive | White on brick | Delete or another destructive operation |
 
-Minimum target 44×44px; text 16px, Manrope 700. Loading state replaces the label with a spinner but holds the button's width. Disabled: `--gray-300` fill, `--gray-600` text — used only for genuinely unavailable actions, never to hide a gated one (§7.8).
+**Anatomy:** optional icon + outcome label; 44×44px minimum target; 16px Manrope 700; 6px radius; 8px vertical and 24px horizontal padding. Tertiary actions use 8px horizontal padding. Allow labels to wrap and controls to grow vertically. Icon-label gaps are 8px; icons do not shrink.
 
-Buttons in an action row use flex-wrap, `--space-2` between related actions, and start alignment. Keep the primary action first in DOM and visual order. Do not give one button a one-off margin; the action-row parent owns the gap. On narrow screens, allow labels to wrap before making every button full-width. If actions must stack, keep their order and use one consistent width treatment for peer actions.
+| State | Required behavior and appearance |
+|---|---|
+| Default | Variant remains legible on its containing surface |
+| Hover | Preserve the variant's hierarchy; tertiary underlines; light actions use the documented hover fill/shadow |
+| Focus | Visible 2px outline with 2px offset; use a contrasting color on dark surfaces |
+| Pressed | Preserve geometry and readable feedback; do not depend on motion or color alone |
+| Loading | Hold width, show a spinner and accessible busy/status text, prevent duplicate submission at the action layer |
+| Disabled | Gray surface, muted text, unavailable semantics; explain the reason where it is not obvious |
+
+`Button.astro` retains label geometry for loading and has `aria-busy` on native buttons. Loading alone does not disable submission. `aria-disabled` on an anchor does not prevent navigation; callers must handle unavailable links deliberately. Accessible loading feedback needs review (§12).
+
+**Light action treatment:** for lookup forms on colored bands, use a white/light fill, `--color-hero-button-text`, and 48px minimum height. The current treatment uses 0.95rem/600 type and `--hero-button-hover` on hover, with a 1px lift over 180ms. It is a composition-level style, not a fifth supported `Button` variant.
+
+**Action groups:** main action first, start-aligned, flex-wrap enabled; default gap 8px, or 12px in a spacious action row. Place the group 24px after its content. If actions stack, use a consistent width treatment. Avoid per-button compensating margins. Authentication-gated actions remain enabled (§7.8).
 
 ### 7.4 Links
 
-Forest, underlined in body text (color alone fails color-blind users); nav and card-title links may drop the underline when context makes them obvious. External links (EC/CEO Karnataka lookups) get an external-link glyph — the guided link-out on `/check-registration` is a primary-button-styled link with the glyph, so leaving the platform is explicit.
+Body links use forest and an underline. Clear navigation and identity links may omit the underline at rest, restoring it on hover/focus. Match focus styling to the surface. External destinations need an understandable cue; labeled external-link glyphs or recognizable social marks may provide it. Use button styling for navigation only when its prominence warrants it; retain anchor semantics.
 
-### 7.5 Cards and field rows
+### 7.5 Cards, rows, and collections
 
-Cards: white, border, radius-md, `--space-4` padding. A card's direct content stack uses `--space-2` for label/value relationships and `--space-4` between distinct content groups. Card titles have no browser-default margin. A grid of peer cards uses `--space-4` and start-aligns card contents; peer cards do not receive different padding to compensate for different content lengths.
+**Base card:** white fill, 1px `--color-border`, 8px radius, 16px padding, no shadow. `Card.astro` supplies this shell only; it does not automatically supply headings, spacing, click behavior, or accessibility semantics.
 
-The **candidate row** (photo 56px circle, name in `--text-xl` Manrope 700, party name + symbol beneath in `--text-sm`) is identical in ward lists and compare headers. The **field row** with its source line (§3) is the unit of the report card. Its label, value, and source share a left edge, with `--space-1` between label and value and `--space-2` before the source when present. Compare columns repeat the same field-row grid so labels and values line up across candidates (IA §3.5). Compare on mobile: 2-up columns with horizontal scroll and sticky field labels.
+**Content anatomy:** optional eyebrow/icon → title → body or facts → optional metadata → actions. Use 8px for tightly related text and 16px between groups. Place actions 24px after the main content where there is a distinct action area. Let the parent grid own inter-card gaps.
+
+| Treatment | Use and rules |
+|---|---|
+| Bordered card | A self-contained content unit or question; use the base shell |
+| Unboxed content | Content already grouped by a band; remove redundant borders and fill rather than nesting cards |
+| Inset fact tile | A figure and short label on dark green; use dark inset fill, 16px padding, 8px radius |
+| Identity row | 56px circular photo/neutral initials, name, then muted 14px secondary identity text; 16px image-to-text gap |
+| Sourced field row | Label/value/source anatomy from §3 |
+
+Identity titles use 20px Manrope 700, or 18px for a compact collection. Apply the same choice to every peer. Keep status text subordinate and permit long names to wrap. Lists of identities use 24px between rows; card collections use 16px. Empty collections use §7.12 rather than blank cards.
+
+A noninteractive card must not acquire a pointer cursor or misleading hover elevation. For a single destination, use a real link with a clear accessible name. Do not nest controls inside an enclosing link; multi-action cards have separate controls. Equal-height grid shells are acceptable, but their text starts at the top and must not depend on fixed content heights.
 
 ### 7.6 Banners and countdowns
 
-- **Deadline banner** (roll-closure countdown on `/`, `/check-registration`, `/voting-guide/voter-id`): ink on `--oc-sun`, radius-md, countdown figure in tabular Manrope 800. On citizen-facing pages, yellow is reserved for statutory deadlines and the AI-extracted badge — if everything is urgent, nothing is. (Curator screens also use it for the held-ward work state, §7.13.)
-- **Notice banner** (election status, empty-state explainers): ink on `--sun-tint`, no countdown.
-- **Error banner:** brick text on `--brick-tint`.
+| Kind | Treatment | Content |
+|---|---|---|
+| Deadline | Ink on sun; 8px radius; tabular figure | A real, confirmed deadline and its meaning |
+| Notice | Ink on sun tint | Factual context or limitation |
+| Error | Brick on brick tint | What failed and how to recover |
+| Inline response | Surface appropriate to its band | Success, ambiguity, unavailability, or next step |
 
-### 7.7 Badges and chips
+Keep headings, copy, and actions in a readable stack with 16px padding. Use explicit text, not color alone. An empty live region should not paint an empty banner. Announce async responses without moving focus unnecessarily. Countdowns are not a generic device for emphasizing ordinary information.
 
-Radius-full, 13px, 4px 10px padding. Reserved set: the three provenance badges (§3), flag status on `/account/submissions` (pending = gray, accepted = forest on tint, rejected = brick on tint), and ward-readiness state on curator screens (ready = forest, held = sun). Do not invent new chip colors; a new state reuses these or gets a design decision here first.
+### 7.7 Badges and topic pills
 
-### 7.8 Gated actions (flag, issue vote, register-for-updates)
+Badges use 13px text, full radius, and compact padding (existing badge baseline: 4px vertical/10px horizontal). Keep labels short but allow translated text to wrap. Provenance badges follow §3; status badges use neutral gray, forest/tint, or brick/tint with an explicit status label. Held work can use sun tint without implying an error.
 
-Gated actions render in their **full enabled style** for anonymous users — the gate is the Register/Login modal at tap, never a disabled state (core concept: visible-to-all, gated-at-submit). After auth the action resumes in place with no visual reset.
+Noninteractive topic pills use `--color-why-vote-pill` with matching dark ink. Outlined identity/eyebrow pills use sun on dark green with 4px/12px padding. These describe content; they are not filters. A selectable chip is an actual button or checkbox with state semantics and the 44px target, not a clickable decorative span.
+
+### 7.8 Gated actions
+
+Render authentication-gated actions in their enabled style. Activation opens the relevant authentication flow, then resumes the original action in place. Do not confuse “requires login” with disabled or unavailable. Explain eligibility separately from authentication when the product distinguishes them. Personalized states must be applied client-side; public HTML must not vary by session.
 
 ### 7.9 Modals
 
-The three modals (Register/Login, Flag misinformation, Cast issue vote — IA §7) share one shell: white, radius-md (top-sheet, full-width, rounded top corners only below `md`), `--shadow-modal`, scrim `rgba(26,26,26,0.5)`, title in `--text-2xl`, explicit Close button plus scrim-tap and Escape. Focus is trapped inside and returns to the trigger on close. The URL never changes.
+Use a shared white shell, 8px radius, modal shadow, and `rgba(26,26,26,0.5)` scrim. Below 768px, the existing treatment is a full-width top sheet with rounded top corners. Title uses 24px; content and actions follow the form/spacing rules.
 
-- **Register/Login:** single input per step (email/phone → OTP → confirm ward + language). OTP entry is one 6-digit input with `inputmode="numeric" autocomplete="one-time-code"`, not six boxes — six boxes fight low-end keyboards and paste.
-- **Cast issue vote:** checkbox list capped at three; the submit button counts down "Vote (2 of 3 selected)".
+Provide an accessible title, explicit Close action, focus trap, Escape dismissal, and return focus to the trigger. Scrim dismissal must not silently lose important work. Keep the underlying context visible and the URL unchanged for modal tasks. Native dialog semantics are preferred. A multi-step form keeps one coherent title/context and preserves input when users move back.
 
-### 7.10 Forms
+### 7.10 Form fields and form layouts
 
-Labels above inputs, always visible (no placeholder-as-label). Inputs: 16px text (prevents iOS zoom), 44px min height, radius-sm, `--color-border`; focus border `--oc-forest` plus ring. Errors: brick text below the input plus a border change — never color alone. Helper text muted, above the error slot.
+**Field anatomy:** visible label → control → optional helper → error. Stack these with 4px gaps; separate fields by 16px. Labels and controls share a left edge. Use 14px bold labels, 14px muted helpers, and 14px brick errors. Never use a placeholder as the only label.
 
-A field is one vertical stack: label, control, helper text, then error. Use `--space-1` within that stack and `--space-4` between fields. Reserve the error slot only when preventing layout shift materially helps a multi-step flow; do not leave unexplained blank space in ordinary forms. Put form actions `--space-6` after the final field and apply the action-row rules in §7.3. Checkbox and radio controls align to the first line of their label, not the label block's vertical center.
+**Control geometry:** 16px body font, 44px minimum height, 8px vertical/12px horizontal padding, white fill, 1.5px gray border, 6px radius. Use consistent widths within a group and `width: 100%` when the layout calls for a full-width field. Keep input text at least 16px to avoid mobile zoom.
 
-### 7.11 Issue-vote results
+| Control | Rules |
+|---|---|
+| Text, email, telephone, search | Match input type and keyboard to the data; use appropriate autocomplete; keep entered values after validation failure |
+| Numeric/date input | Use native semantics only when they fit the data; identifiers are text, not quantities |
+| Textarea | Same type, fill, border, and focus treatment; allow multiple lines and vertical growth/resizing |
+| Select | Visible label, legible selected value, keyboard access, and the same minimum control height; prefer native behavior |
+| Checkbox | Multiple independent choices; label is clickable; align the control to the first text line |
+| Radio group | One mutually exclusive choice; group with `fieldset`/`legend`; preserve native keyboard navigation |
+| OTP | One input supporting paste, numeric keyboard and one-time-code autocomplete; do not split digits into separate boxes |
 
-Horizontal bars, all `--oc-forest` on a `--gray-100` track (§4 rule 5), rank number and vote share in tabular figures, issue name never truncated. The same component renders the city-wide roll-up on `/data`.
+`FormField.astro` currently implements single-line inputs (`text`, `email`, `tel`, `password`, `number`, `date`, `search`), label, helper, required indicator, and error linkage. The presence of a type in its API does not authorize a new product flow. Selects, textareas, and grouped choices follow these design rules but are not variants currently provided by that component.
 
-### 7.12 Empty states, loading, toasts
+| State | Appearance and semantics |
+|---|---|
+| Empty/default | Visible label; placeholder may show an example format, never essential instructions |
+| Hover | Maintain readable boundary; no layout shift |
+| Focus | Forest border plus 2px forest outline, 2px offset; ensure contrast on the surrounding surface |
+| Filled | Retain label and helpers; do not substitute a success state merely because text exists |
+| Invalid | Brick border and explicit error text; `aria-invalid` and `aria-describedby`; preserve the value |
+| Required | Native required semantics and understandable required indicator; not color alone |
+| Disabled | Muted treatment, native disabled semantics, no misleading action affordance; explanation when needed |
+| Read-only | Value remains readable and selectable; identify the restriction; distinguish from disabled |
+| Loading/result | Preserve control geometry; announce progress/result and prevent duplicate requests |
 
-- **Empty states** state a fact and a next step: pre-nomination candidate list — "Candidate nominations open on {date}. Register for updates and we'll tell you when they're in." Muted illustration optional; no sad-face iconography on civic data.
-- **Loading:** skeleton bars in `--gray-100` for content; spinners only inside buttons.
-- **Toasts:** bottom, ink text on white, forest left-edge for success, brick for failure, auto-dismiss ≥5s, also announced via `aria-live="polite"`.
+Associate label and control with unique ids. Link helpers and errors through `aria-describedby`; ensure a repeated field does not duplicate ids. Validate at an appropriate task boundary rather than interrupting every keystroke. On failed submit, focus the relevant error/field or a linked summary if several fields need attention. Do not reserve large blank error areas by default.
 
-### 7.13 Curator and admin surfaces
+**Form composition:** stack fields for sequential tasks; use columns only for closely related inputs and collapse them on narrow screens. Place actions 24px after the final field. Explain selection limits before the choice group and expose the current count where useful.
 
-Same tokens, denser rhythm: `--text-sm` table default, 8px cell padding, zebra rows in `--gray-100`, sticky header row. Destructive and publish actions get confirmation dialogs stating scope ("Publishes immediately to /ward/57"). The readiness panel is a pass/fail block: forest tint when passing, sun tint with a listed gap-set when held — never red, because "not ready" is a work state, not an error.
+**Compact lookup composition:** a single input plus action may sit inline at 48px height with an 8px gap; an optional location icon gets a 48px target and accessible name. On narrow screens, the input spans the first row, with actions beneath; a simple input/action pair can stack full-width. A visually hidden label is allowed only when persistent surrounding text makes the purpose clear, and the associated label remains accessible. Keep essential helper text visible. Results occupy a separate full-width live region beneath the controls.
 
-### 7.14 Environment banner
+### 7.11 Result bars and comparisons
 
-One line of centered `--text-sm` bold, full-bleed, sitting **above** the app bar and below the skip link. It states which deployment the visitor is on, and it exists only on deployments that need to say so — the signal is the `APP_ENV` runtime variable, set per environment in the compose files, and absent everywhere else, so a developer's laptop and the test suites show nothing.
+Horizontal result bars use forest fill on a gray track, with a visible label and numeric value. Use one hue across all peers, tabular figures, and full labels that wrap. Rank is expressed through order and numbers. Results must remain understandable without perceiving color.
 
-| Environment | Copy (EN) | Surface |
-|---|---|---|
-| staging | "Testing site: Go away!" | `--color-danger-surface` / `--color-danger` |
-| production | "Under construction. Come back on Sep 15!" | `--color-accent-surface` / `--color-text` |
+Comparisons repeat the same field order and alignment across records. On narrow screens, use a contained horizontal scroller when stacking would prevent comparison; preserve row/column labels and keyboard access. Do not convert missing data to zero or visually score a person through color.
 
-Staging is the loud one on purpose: it carries fictional candidate data and is open to anyone with the URL (architecture §14.2), so it must be impossible to mistake for the real site. Production's is informational, not a warning — the site is real, just not open yet — so it shares the sun tint with the §7.6 notice banner rather than borrowing red.
+### 7.12 Empty, loading, and feedback states
 
-Not sticky, and not part of the app bar: it is read once on arrival and should then get out of the way, while the app bar has to stay reachable. Scrolling moves it off-screen and lets the app bar take `top: 0`. That also keeps it out of the 56px bar's very tight width budget (§7.1).
+- **Empty:** state what is absent and a useful next step where one exists. Distinguish not-yet-available data from a failed request; do not invent a date.
+- **Loading:** use neutral skeletons for content and spinners within actions. Preserve layout where possible and announce progress accessibly.
+- **Success:** confirm the outcome with text and the existing action context. A color change alone is insufficient.
+- **Error:** retain user work and give a concrete recovery action. Keep field errors next to fields and task-level failures near the affected action.
+- **Toast:** ink on white with modal shadow; forest or brick accent plus explicit text. Announce nonurgent feedback politely; allow at least five seconds to read it. Persistent or actionable failures need an enduring location as well.
 
-Not dismissible. Per-visitor dismissal needs per-visitor state, and the only server-side way to carry that is a cookie, which would break the caching invariant outright (architecture §5). One line of text does not justify that.
+### 7.13 Dense data and work surfaces
 
-`role="status"`, not `role="alert"` — ambient context should not interrupt a screen reader mid-sentence.
+Use the same tokens with 14px table text, 8px cell padding, optional gray zebra rows, and sticky column headings. Keep text left-aligned and numbers right-aligned. Status blocks distinguish ready, held, and failed through labels as well as color. Confirmation dialogs are for consequential actions and must state scope and effect; they do not introduce an editorial approval gate.
 
----
+### 7.14 Environment notice
+
+A compact, full-width notice may appear above the app bar. Use centered 14px bold text, 8px vertical padding, and `role="status"`. It scrolls away and does not alter the app bar's sticky offset. Testing environments use the error palette; informational availability notices use sun tint. Copy and activation are deployment configuration, not design tokens. The current component is not dismissible; do not introduce per-visitor server-rendered state.
+
+### 7.15 Section navigation and disclosures
+
+**Section navigation:** use a paper strip beneath the app bar, sticky at `top: 80px`. Links are 14px bold with 8px/12px padding; active state is forest text plus a 4px underline and `aria-current`. Use real fragment links and update the current section on scroll. On small screens the strip scrolls horizontally without widening the document. Provide enough scroll margin to keep targets below both sticky layers; the existing composition uses 128px. Only show links whose targets exist. This is navigation, not a tab interface that hides content.
+
+**Disclosure/accordion:** use native `details`/`summary`, a clear title, optional number, and trailing chevron. Apply 16px padding, a light border, and 8px between disclosures. Opening reveals body copy and may add the subtle disclosure shadow; rotate the decorative chevron. Multiple items may stay open unless the task calls for an exclusive group. Do not rely on the icon alone to communicate expanded state. Opening the first item initially is optional, not mandatory.
+
+### 7.16 Fact groups and statistics
+
+**Structured facts:** parallel muted labels above ordinary values, using equal columns and start alignment. Compact labels may be 13px; values are regular 16px. Supporting lists belong under their label. A divider may separate related groups without wrapping each fact in another card. Collapse columns to a single stack when labels or values no longer fit.
+
+**Statistics:** use 24px heading-font figures and 13px supporting labels in inset tiles with 16px padding. A two-by-two grid with 12px gaps can remain two-up on mobile if the actual translated content fits. Let height grow with labels; never shrink text to force a fixed tile height. One editorial highlight may use hero-alert, with contrast checked for every foreground. This highlights a fact, not a party or candidate.
 
 ## 8. Iconography and imagery
 
-Line icons, 1.5px stroke, 20/24px grid, `currentColor` — a single consistent set (e.g. Lucide, self-hosted SVG sprite). Icons never appear without a text label except the close ✕ and external-link glyph, both `aria-label`ed. Maps (ward boundary, booth locator) use a desaturated gray basemap with the boundary in `--oc-forest` at 2px and `--forest-tint` fill at 30% — no red pins, no party-colored anything on maps.
+Use consistent line icons on a 20/24px grid, approximately 1.5–2px stroke and `currentColor`. Pair action icons with text or an accessible name. Decorative icons are hidden from assistive technology. Icon-only controls still need full-size targets; an image's visible dimensions are not its hit area.
 
-### 8.1 Basemap styling — partially unimplemented, decided 2026-08-14
+Identity photos use a consistent crop and neutral placeholder. Partner logos use approved assets with preserved proportions. Maps and charts must not introduce partisan colors or communicate meaning solely through color.
 
-**What actually ships today is a stock Google basemap: full colour, business POIs, and Google's own red place markers.** The paragraph above describes the intended treatment; only the boundary half of it is implemented.
+### 8.1 Map/media frames
 
-What *is* implemented, and stays enforced:
+Use a bordered, 8px-radius frame with a neutral background, overflow contained, and a centered textual fallback. The existing map composition uses 16:10 below 768px and 16:7 above. Retain the frame when content is unavailable so the layout remains understandable.
 
-- The ward boundary is drawn by us, in `--oc-forest` at 2px with `--forest-tint` fill at 30%, read from CSS custom properties at runtime (`readMapColors`, `src/islands/WardMap.ts`). `tests/unit/tokens.test.ts` bans hex literals outside `tokens.css`, so this cannot drift into a hardcoded colour.
-- The platform adds **no markers of its own**, and nothing on the map is keyed to party or candidate data. The island only ever draws one neutral polygon.
-
-What is not:
-
-- The desaturated gray basemap. That requires a cloud map style bound to `GOOGLE_MAPS_MAP_ID` (`docs/gcp.md` §4). A Map ID exists and is required for the map to render at all (`src/lib/maps-config.ts`), but no style is associated with it, so Google serves its defaults.
-- Consequently "no red pins" does not hold. The red markers on a ward map are Google's POI pins — hospitals, businesses — not anything this platform places.
-
-**Why it was left this way:** creating and maintaining a cloud map style is console work outside this repo, unversioned and unreviewable, and it was judged not worth the cost before launch. The decision was made deliberately with the visual consequence on screen, not by oversight.
-
-**If this is revisited,** the fix is entirely console-side and needs no deploy: create a style (start from Silver, drop POI density, disable business POIs, mute road and transit colour) and associate it with the existing Map ID. Cloud styles apply on the next page load.
-
-Treat the paragraph above as the target, not as a description of production. Anyone reading a red pin on a ward map as a bug should read this section first.
-
----
+The app-drawn boundary is forest at 2px, with forest-tint fill at 30%, using CSS tokens. The intended basemap is desaturated and quiet. The current Google basemap remains stock, including colored POIs; the app adds no partisan markers. Cloud styling is managed through the Map ID outside the repository, so the intended neutral basemap must not be described as already implemented. A fallback inspection does not verify a loaded map.
 
 ## 9. Motion
 
-Motion is functional only: modal/toast enter-exit (150–200ms ease-out), accordion expansion, focus transitions. No scroll-triggered reveals, no parallax, no animated numbers except the live countdown flip. Everything honors `prefers-reduced-motion: reduce` by dropping to opacity-only or none.
-
----
+Motion explains state: modal/toast transitions around 150–200ms, disclosure chevrons, and subtle light-action hover feedback. Avoid scroll reveals, parallax, or decorative animated figures. Respect `prefers-reduced-motion` by removing transitions and unnecessary movement; retain textual feedback when an animation stops.
 
 ## 10. Accessibility floor
 
-- WCAG 2.1 AA contrast throughout, per the checked table in §2.3.
-- Visible focus: 2px `--oc-forest` outline, 2px offset, on every interactive element (`:focus-visible`); on the forest footer the outline is `--oc-sun`.
-- Touch targets ≥44×44px; adjacent targets ≥8px apart.
-- Color never carries meaning alone: links underline, errors get text, badges get labels, bars get numbers.
-- Semantic HTML first; modals are `<dialog>` or equivalent with focus trap; `lang` and `hreflang` correct on every page (Kannada pages declare `lang="kn"` so screen readers pick the right voice).
-- Test with TalkBack on Android — that's the field configuration, per §1.
+- Target WCAG AA contrast for text and interactive boundaries; verify actual foreground/background pairs.
+- Provide visible keyboard focus, logical focus order, native semantics, and meaningful accessible names.
+- Targets are at least 44×44px; keep distinct actions sufficiently separated, normally 8px. Inline text links need readable spacing without disrupting prose.
+- Do not use color, icons, position, hover, or motion as the only way to communicate meaning.
+- Use a skip link, landmarks, hierarchical headings, correct document language, and equivalent bilingual navigation.
+- Preserve content at narrow widths and text zoom. Allow wrapping and content growth; isolate necessary horizontal scrolling.
+- Modal focus is trapped and restored. Async updates are announced with an appropriate live region; avoid interruptive alerts for ambient context.
+- Test keyboard interaction and TalkBack on Android, including error recovery and long Kannada text.
 
----
+## 11. Implementation and usage
 
-## 11. Implementation notes
+Tokens live on `:root` in `src/styles/tokens.css`, with Kannada overrides beside them. Components consume existing tokens; add and document a token before referencing a new custom property. Use shared Astro components and vanilla TypeScript behavior; this document does not introduce another UI framework.
 
-- Tokens ship as CSS custom properties on `:root` in one file (e.g. `src/styles/tokens.css`), with `:lang(kn)` overrides beside them. Components consume semantic tokens only (§2.2). This is framework-agnostic: it works with plain scoped Astro styles today and can seed a Tailwind theme later if one is adopted — that choice is not made here.
-- The full font payload (3 families × subset woff2) should stay under ~120KB; preload only the two files above-the-fold pages need per language.
-- Print styles matter for one page: `/partner/{slug}`'s poster block. Everything else can rely on defaults.
+Choose an existing component before writing a visually similar one. Choose a section pattern independently of its content. Preserve public cache safety: personalize through the existing client-side mechanism, not session-dependent public HTML. Keep demo data unmistakably fictional.
 
 ### 11.1 UI completion checklist
 
-A UI change is not complete when it compiles. Before handoff:
+1. Inspect the live rendered UI using the `agent-browser` skill/CLI; load `agent-browser skills get core` before the first browser command.
+2. Check 390px and desktop widths, English and Kannada, plus sparse, dense, and long-text content.
+3. Review section proportions, shared left edges, vertical alignment, control sizes, wrapping, and horizontal overflow.
+4. Exercise keyboard focus, hover, pressed/loading/disabled states, validation, and recovery where applicable.
+5. Confirm parent-owned gaps, component-owned padding, valid token references, and appropriate surface contrast.
+6. Check semantic structure, accessible names, error associations, console output, and representative screenshots at readable scale.
+7. Compare repeated elements for consistent anatomy, hierarchy, and spacing. Do not fix one record using special margins or fixed text heights.
+8. Run checks appropriate to the change, including relevant tests, typecheck, and translation staleness for UI work. Documentation-only revisions need source/diff consistency checks, not unrelated database tests.
 
-1. Open the real route in Chrome DevTools with seeded data; do not judge a component from markup alone.
-2. Inspect at 390px mobile and at the desktop app-container width.
-3. Inspect English and Kannada.
-4. Exercise sparse, typical, dense, and long-text records where the data varies.
-5. Verify the page has one primary left edge. Overlay or measure repeated elements when necessary; do not accept a near match by eye.
-6. Compare repeated elements side by side: labels, weights, padding, alignment, wrapping, and empty states must match.
-7. Confirm parent layouts own sibling gaps and components own only their internal padding. Remove compensating one-off margins.
-8. Check computed styles for any dropped declaration, unresolved `var(...)` value, or spacing value outside the declared scale.
-9. Check the browser console and the accessibility tree.
-10. Capture a screenshot of the changed section and review it at normal scale. Look for collapsed spacing, accidental emphasis, excessive empty space, nested borders, drifting edges, and metadata that draws too much attention.
-11. Run the relevant route/component tests, typecheck, and the Kannada staleness check.
+### 11.2 Example usage
 
-When a first visual pass fails, record the general cause here or in the affected component section. Do not preserve a one-off correction only in page CSS; turn repeated lessons into a rule, token, component, or automated check.
+Examples illustrate the patterns; they do not limit where a pattern may be used.
 
-## 12. Open questions
+| Example | Patterns/components used |
+|---|---|
+| Home page: introduction and ward finder | Dark hero with supporting statistics; compact lookup; outlined eyebrow; inline response |
+| Home page: why vote | Gold split explanatory section; prose and topic pills |
+| Home page: election basics | White split explanatory section with numbered disclosures |
+| Home page: booth finder | Sage content/action band with compact lookup |
+| Ward page: identity and local facts | Dark identity band; structured facts; outlined identity pill |
+| Ward page: navigation and boundary | Sticky section navigation; responsive map frame and fallback |
+| Ward page: candidate collection | Paper collection band; compact identity rows; status text and secondary action |
+| Ward page: issue voting | White action band; gated primary action; result bars |
+| Ward page: questions | Sage collection band containing bordered cards |
 
-- ~~The exact Open City logo lockup for subdomains (wordmark? "An Open City project" byline?) needs an asset from Oorvani — not inventable here.~~ **Settled 2026-08-13:** the wordmark asset, no byline. The AppBar (§7.1) renders "Bengaluru Votes" then a hairline rule then the Open City wordmark (`public/img/opencity-logo.png`). Both marks show at every width: 768px and up gets the full wordmark with the logo at 20px; below 768px the wordmark abbreviates to "BV" and the logo drops to 18px, which is what makes room for both on a phone. Below 360px the hairline rule goes too. The abbreviation is presentational only — the home link's `aria-label` is "Bengaluru Votes" at every width.
-- Whether Anek Kannada (a display-grade Kannada family) should replace Noto Sans Kannada in headings for more personality. Noto is the safe default; revisit after real Kannada pages exist.
-- ~~Ward boundary map styling depends on the mapping library chosen (tracked in `docs/prd.md` §17).~~ **Settled 2026-08-14:** Google Maps JavaScript API, with the basemap styled via a console-managed cloud Map ID (`docs/gcp.md` §4) rather than in code — style changes are no longer visible to code review, so whoever edits the console style should note it in a commit message even though no file changes. The boundary line and fill stay token-driven regardless: `--oc-forest` at 2px, `--forest-tint` at 30%, drawn by the app (§8), not the Map ID.
+## 12. Implementation gaps
+
+These are existing differences between the design standard and the implementation. This documentation revision does not change UI code or claim that the following gaps are resolved.
+
+- Language segments are 32px high; compact navigation and utility links need review against the target-size rules.
+- Muted labels on editorial red and focus indicators on dark green need contrast verification.
+- Some compositions use fixed 1.2 heading line heights, tracked eyebrows, uppercase Latin text, or local font stacks that bypass the Kannada/sentence-case rules.
+- Existing CSS references undeclared `--leading-md` and `--space-10`; local spacing values, an 11px disclosure radius, and a literal translucent divider also remain outside the shared token system.
+- One fact-grid implementation collapses at 760px rather than the shared 768px breakpoint. Use the shared breakpoint for new work unless content warrants a documented exception.
+- Some section-navigation links remain visible when their conditional target is absent.
+- The single-line field component generates ids from `name`; repeated instances need an explicit uniqueness strategy. It does not expose every control/state described in §7.10.
+- Button loading markup hides the spinner's nested status text from assistive technology; busy announcements and disabled-link behavior need verification before claiming complete state support.
+- The stock basemap exception remains as described in §8.1. Font-family changes beyond the current stacks remain a separate design decision.
