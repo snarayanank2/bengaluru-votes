@@ -1,204 +1,206 @@
-# Candidate affidavit data: process, people, timeline and budget
+# Candidate data processing: four stages, people and budget
 
-**For:** Oorvani Foundation Board
+**For:** Oorvani Foundation Board and the team hiring transcribers and curators
 
 **Date:** 20 September 2026
 
-**Status:** Planning proposal for review; staffing, AI timings and budget allowances require validation before commitment.
+**Status:** Operating plan for review. Online availability is an assumption; throughput and costs need a representative pilot.
 
-## 1. The proposal
+Bengaluru Votes will turn approximately **4,000 candidate affidavits across 369 wards** into sourced report cards in English and Kannada. Citizens can compare candidates and open the original affidavit. The operation follows four stages, in this order:
 
-The Bengaluru Votes platform will turn candidate affidavits into readable, sourced report cards in English and Kannada. Citizens will be able to compare candidates and open the original affidavit behind the information shown.
+1. **Siva loads the documents as soon as initial data is available online.**
+2. **AI extracts candidate fields and one confidence percentage per affidavit.** Allow three elapsed days for extraction.
+3. **Transcribers check the affidavits:** missing data first, low confidence next, then the rest. Allow five working days for transcription.
+4. **Curators respond to user flags only**, dismissing incorrect flags or fixing the data. Coverage continues through election day.
 
-**This proposal assumes we can obtain all candidate documents and the nomination list in bulk.** It sets aside the acquisition problem to explain the operation once the data arrives. It does not establish that bulk access has been secured; the separate [acquisition risk assessment](ksec-data-risk.md) still records that dependency.
+The stages can overlap as documents arrive. **We do not wait for a final notification, the final candidate list or the complete bulk set to start loading and processing.** Siva reconciles later candidate-status changes against the official lists. The plan below describes the intended operation; it does not claim that all tools are implemented or change the application's permissions.
 
-For approximately **4,000 candidates across 369 wards**, the recommended working provision is:
+## 1. Bulk loading — Siva
 
-| Item | Proposed provision |
+**Starting assumption: all election affidavits are available online.** This is the scenario used for planning, not a claim that access has been secured. The separate [acquisition risk assessment](ksec-data-risk.md) records the unresolved access dependency.
+
+As soon as the first documents are available, Siva:
+
+- Downloads and loads available affidavits and the accompanying candidate-list data.
+- Matches each document to the correct candidate and ward, checks duplicates and records coverage.
+- Preserves the original affidavit and its source link so citizens can open it from the report card.
+- Sends usable records to AI extraction without waiting for the remaining documents.
+- Loads later arrivals and reconciles rejected or withdrawn candidates as official lists change.
+
+Name, ward, party and gender are expected from the nomination list. Check that assumption against the actual files. If these fields also need reading from scans, or if poor scans need repair, the workload increases. The planned affidavit storage is Google Cloud Storage.
+
+**Time and cost:** loading time depends on the online source and file quality and has not been measured. Siva's loading time and any acquisition charges are not priced in the budget below. The three-day AI allowance starts with usable, matched records; it must not silently absorb unmeasured loading or scan-repair work.
+
+## 2. AI extraction — three elapsed days
+
+For each loaded affidavit, AI produces the following candidate information plus **one confidence percentage for the affidavit as a whole**:
+
+| Field | Information to extract |
 |---|---|
-| AI extraction | Reserve one elapsed day, with one additional day of contingency; benchmark before confirming |
-| Transcribers | **38 people**, each working eight hours a day for three days, targeting one human reading of every affidavit |
-| Curators | **Six people**, each working eight hours a day for the same three days, with continuing correction coverage arranged afterwards |
-| Operational window | Approximately **four days from receipt of usable files**, or five with the AI contingency; software and staff must already be ready |
-| Candidate-data budget | Approximately **₹1.48–₹1.91 lakh before contingency and taxes**; provisionally **₹2.30 lakh including a 20% contingency, before taxes**, subject to the exclusions in §7 |
+| Age | Age declared in the affidavit |
+| Educational qualifications | Qualifications as stated in the source |
+| Total value of assets | Declared total value |
+| Criminal cases | Pending cases and convictions |
 
-The estimates below distinguish existing project decisions from new planning assumptions. They describe the intended operation, not a claim that all the tooling is already implemented. This document does not change the application or approve a vendor switch.
+An explicit **“not declared”** must remain distinguishable from a missing or unreadable extraction. Confidence is a signal for ordering the human queue, not a measured probability that the affidavit is correct. The pilot must determine the low-confidence threshold; this plan does not invent one.
 
-## 2. When the data arrives
+**Publication remains immediate:** extracted values publish with an “AI-extracted” label and a link to the source. Human review follows. Missing data takes queue priority regardless of the affidavit's confidence percentage.
 
-The election plan uses **N** to mean the day the election is announced. The following offsets are assumptions from [the election timeline, §§3–4](election-timelines.md), not confirmed election dates. That document remains the authority if the schedule changes.
+### AI time budget
 
-| Planning point | Expected significance |
-|---|---|
-| Around **N+12** | Nominations close; plan for the complete filed-candidate affidavit set |
-| Around **N+15** | Withdrawals close; the final list of contesting candidates is known |
-| Around **N+21** | The project's candidate-related outbound communications stop for the silence period; the website remains available |
-| Around **N+23** | Polling day |
+**Allow three elapsed days, or 72 hours, for the planned 4,000-affidavit extraction workload.** Begin on the initial usable records and continue as more arrive. This is a processing allowance, not a promise to finish all candidates within three days of the first file appearing if the rest arrive later.
 
-There are roughly eight days between the final list and polling. Bulk availability does not itself guarantee usable scans or correct candidate-to-document matching; those checks are part of ingestion.
+There is no measured processing rate for these Kannada affidavits yet. Retain the earlier planning assumptions of roughly ten scanned pages per affidavit, **two to five minutes per affidavit**, and **25% overhead for ordinary retries and processing**:
 
-**Proposed sequencing:** begin processing the provisional filed-candidate set as soon as it arrives, then reconcile rejected and withdrawn candidates against the final list. This buys time but may involve reading some affidavits for candidates who do not ultimately contest. It is an earlier start than the milestone plan's assumption of waiting for the final list and is a proposal for Board consideration.
-
-## 3. What happens to each affidavit
-
-**Bulk receipt → AI extraction and publication → transcriber check → continuing curator corrections.**
-
-### Step 1 — Import and associate the documents
-
-The operations team imports the candidate list and scanned affidavits, checks coverage and duplicates, and associates each document with the correct candidate and ward. The stored affidavit is publicly accessible from the report card; the planned storage is Google Cloud Storage.
-
-Name, ward, party and gender are expected to come from the nomination list. That split must be checked against the actual files. If these details also need reading from scans, the workload rises.
-
-### Step 2 — AI reads and publishes the affidavit fields
-
-AI extracts four groups of information:
-
-- Age.
-- Educational qualifications.
-- Total value of assets.
-- Criminal cases: pending cases and convictions.
-
-An explicit “not declared” in the source must remain distinguishable from a failed or unreadable extraction. The full affidavit remains available for information beyond these four fields.
-
-**Extracted values publish immediately, labelled “AI-extracted”, with a link to the affidavit.** Publication does not wait for human review. Missing values and low-confidence readings move to the front of the human checking queue. AI confidence is a prioritisation signal, not proof that a value is correct.
-
-The current architecture specifies Anthropic for extraction. For the Codex scenario discussed here, **Codex would build and orchestrate an automated OpenAI API extraction process**. Its processing time and API usage are separate from the time and cost of developing that process; a Codex subscription should not be assumed to cover the API bill.
-
-### Step 3 — Transcribers check the AI reading
-
-Paid, Kannada-reading transcribers compare the original scan with the AI's pre-filled fields, confirming or correcting each reading. They receive one affidavit at a time from a city-wide queue and cannot choose a ward, party or candidate.
-
-The queue serves missing values first, then low-confidence readings, then the remaining affidavits. Abandoned assignments return to the queue so documents are not stranded.
-
-**One transcriber reads each assigned affidavit. Their save publishes immediately and marks the checked fields “checked by a person”.** There is no compulsory second reading, consensus process or curator approval. Any fields not checked remain visibly AI-extracted.
-
-### Step 4 — Curators correct and oversee
-
-The planned curator operation works across the city. Curators examine difficult cases, investigate citizen flags against the affidavit, correct any published field when needed, and reject unsupported flags with a reason. They monitor transcriber performance, including readings subsequently corrected, and track candidate completeness.
-
-Curators provide correction and oversight; they do not routinely perform a second reading of every affidavit. Their edits publish immediately. Completeness is a coverage indicator, not a publication gate.
-
-This model accepts a quality trade-off: a transcriber may accept a confident but wrong pre-filled AI value. Citizen flags, curator intervention and visible checking labels provide ongoing safeguards, but a human-check label is not a guarantee of accuracy. The current plan has no change-history or restore facility; errors are corrected in the current record.
-
-## 4. How long AI extraction could take
-
-**There is no measured Codex/OpenAI processing rate for these affidavits yet.** The following is a capacity model, not a vendor guarantee or benchmark result.
-
-Assume approximately 4,000 affidavits, around ten scanned pages each, with **two to five minutes of processing per affidavit**, and add **25% for processing overhead and retries**. Page count, handwriting, scan quality, model choice and additional reading attempts may change this substantially.
-
-| Simultaneous extraction jobs | Estimated elapsed time for 4,000 affidavits, including the 25% allowance |
+| Simultaneous extraction jobs | Modelled elapsed time for 4,000 affidavits, including 25% overhead |
 |---|---:|
-| One | 167–417 hours |
-| Ten | 17–42 hours |
-| Twenty | 8–21 hours |
+| 1 | 167–417 hours |
+| 6 | 28–69 hours |
+| **10: working provision** | **17–42 hours** |
 
-Calculation: **4,000 × minutes per affidavit ÷ simultaneous jobs ÷ 60 × 1.25**. This assumes jobs can keep running continuously, including overnight; human staff work the agreed eight-hour shifts.
+Calculation: **4,000 × minutes per affidavit ÷ simultaneous jobs ÷ 60 × 1.25**.
 
-Provisionally reserve **24 elapsed hours**, plus another day of contingency, using twenty simultaneous jobs if account limits permit. This covers the extraction run and ordinary retries, not software development, a major outage or extensive repair of unusable source files. The table assumes no material throughput loss from account limits: OpenAI limits requests and tokens, and PDF processing includes page images as well as text. See [official PDF-input guidance](https://developers.openai.com/api/docs/guides/file-inputs) and [rate-limit guidance](https://developers.openai.com/api/docs/guides/rate-limits).
+Ten simultaneous jobs leave approximately 30 hours inside the 72-hour window at the slower assumed pace. Six just fit the modelled range but leave little margin. These calculations assume jobs can run continuously, including overnight, and that account limits support the throughput. The three-day allowance replaces the earlier one-day run plus a separate contingency day; it is not three days plus another day. Software development, major outages and extensive scan repair remain outside it.
 
-Before committing the schedule, run **50–100 representative Kannada affidavits** through the proposed model, including handwriting and poor scans. Measure completion time, tokens and actual cost, retry frequency, candidate-level completeness, and errors found by human readers. Repeat the throughput check at the intended concurrency. Cleaner English affidavits can test the machinery but cannot establish Kannada reading accuracy.
+### AI cost budget
 
-The one-day estimate assumes ordinary concurrent requests. A discounted asynchronous batch service has different scheduling behaviour; its price and turnaround must be evaluated together rather than combining the cheapest batch price with the fastest interactive timing.
+**Provision ₹35,000–₹70,000 for extraction API usage, before taxes and the overall budget contingency.** This includes ordinary retries and remains a provisional reserve pending the pilot. Extending the processing window reduces the concurrency needed; it does not by itself reduce the cost of reading the same 4,000 documents.
 
-## 5. How many people are needed
+The reserve came from approximately doubling the older ₹17,000–₹35,000 allowance, which assumed discounted batch processing with the previously specified provider, about 30,000 input and 500 output tokens for each ten-page affidavit. It is **not an OpenAI quote**. A batch option may reduce cost, but its actual price and turnaround must be tested together before lowering the reserve.
 
-Everyone is scheduled for **eight hours a day for three days: 24 paid working hours**. For staffing, allow **20 productive casework hours per person**, reserving four hours across the engagement for briefing, breaks, handover and coordination. This follows the existing planning method.
+The current architecture specifies Anthropic. The proposed alternative is an automated OpenAI API process that Codex builds and orchestrates. API usage is separate from development cost; a Codex subscription should not be assumed to cover the API bill. No vendor switch is approved by this document.
 
-### Transcribers
+### Pilot before committing the run
 
-At **ten minutes per affidavit**, one person can read 120 affidavits in 20 productive hours. Reading all 4,000 requires approximately **667 person-hours**.
+Use **50–100 representative Kannada affidavits**, including handwriting and poor scans. Measure errors found by readers, candidate completeness, confidence behaviour, processing time, retry frequency, token use and actual cost. Repeat at the intended concurrency and measure human reading time too. Cleaner English samples can test the machinery but cannot establish Kannada reading accuracy.
 
-| Option | Transcribers | Capacity over three days | Transcriber fees at ₹2,000 each |
+## 3. Transcriber queue — five working days
+
+Every loaded and extracted affidavit enters the human queue. Paid, Kannada-reading transcribers receive one affidavit at a time and compare the original scan with the AI-prefilled fields.
+
+**Queue order is mandatory:**
+
+1. Affidavits with missing data.
+2. Affidavits with low confidence, using the affidavit-level confidence percentage.
+3. All remaining affidavits.
+
+The queue is city-wide. Transcribers cannot choose their ward, party or candidate. Abandoned assignments return to the queue. One transcriber confirms or corrects each assigned affidavit. Their save publishes immediately and marks the checked fields **“checked by a person”**; any fields not checked remain AI-labelled. There is no compulsory second reading or curator approval.
+
+A transcriber must not guess an unreadable value. Unresolved readings remain visibly unresolved. They do not automatically enter the curator queue: that queue contains user flags only. Siva handles loading and source-file problems.
+
+### Staffing and pay
+
+Schedule each transcriber for **eight hours a day for five days: 40 paid hours**. Preserve the earlier productive-time ratio of 20 hours out of 24: this gives **33⅓ productive reading hours per person**, with **6⅔ hours** for briefing, breaks, handover and coordination. This is a staffing assumption to validate in the pilot.
+
+At **ten minutes per affidavit**, one person reads **200 affidavits** over five days. The total workload remains approximately **667 person-hours**.
+
+| Staffing option | Readers | Capacity over five days | Fees at ₹3,500 per person |
 |---|---:|---:|---:|
-| Priority cases only | 5 | 600 affidavits | ₹10,000 |
-| Minimum for all 4,000 at the assumed pace | 34 | 4,080 affidavits | ₹68,000 |
-| **Recommended provision** | **38** | **4,560 affidavits** | **₹76,000** |
-| Slower reading: 15 minutes each | 50 | 4,000 affidavits | ₹1,00,000 |
+| Minimum full coverage at ten minutes | 20 | 4,000 affidavits | ₹70,000 |
+| **Recommended provision** | **23** | **4,600 affidavits** | **₹80,500** |
+| Minimum at fifteen minutes per affidavit | 30 | 4,000 affidavits | ₹1,05,000 |
 
-The five-person option relies on AI returning all four fields correctly and confidently for 85% of candidates. **That 85% is an unmeasured assumption.** It would leave approximately 3,400 affidavits without a human reading. If 85% instead describes accuracy per field, four fields compound to only about 52% clean candidates under an independence assumption; approximately 1,912 candidates would need attention, requiring 16 transcribers at ten minutes each.
+**Provision 23 transcribers**, giving a 15% capacity buffer at the assumed ten-minute pace. The agreed planning fee is **₹3,500 per person for the five-day engagement**. This replaces the previous ₹2,000-for-three-days rate; it is not confirmation that staff have been contracted.
 
-The full-coverage proposal avoids depending on that 85% assumption for staffing. Thirty-eight people provide about 14% capacity above the 4,000-document workload, but do not absorb a rise to 15 minutes per document. At the theoretical maximum of 24 uninterrupted productive hours, 28 people suffice; that leaves no allowance for ordinary non-reading time.
+Transcription can start while later AI work continues, once the queue has enough ready work. Schedule the five paid shifts so waiting for files or AI does not consume the budgeted reading hours. Late arrivals may require extending or rescheduling the engagement rather than treating the five days as unlimited availability.
 
-**Rounding correction:** earlier documents refer to 33 people for full coverage. At 120 documents per person, 33 cover 3,960; the minimum must be rounded up to 34.
+Before recruitment closes, confirm Kannada reading ability, equipment, email access for staff OTP login, shift availability, fees and the queue briefing. Staffing targets full human coverage and does not depend on an unmeasured claim that AI gets 85% of candidates right.
 
-### Curators
+## 4. Curator queue — user flags through election day
 
-For sizing, assume **ten minutes of curator attention per escalated candidate case**. Treat this as total handling time per case, including any associated flags, rather than counting flags and escalations twice. Both the frequency and duration are new assumptions to test.
+**Curators respond to user-flagged candidate-data problems only.** When a user flags candidate information as wrong, the flag enters the curator queue. The curator checks the reported issue against the affidavit and chooses one of two outcomes:
 
-| Share of candidates needing curator attention | Cases | Casework hours | Minimum curators at 20 productive hours each |
-|---|---:|---:|---:|
-| 5% | 200 | 33 | 2 |
-| 10% | 400 | 67 | 4 |
-| 15% | 600 | 100 | 5 |
+| Finding | Curator action |
+|---|---|
+| The flag is incorrect or unsupported | Dismiss the flag with a reason |
+| The published data is wrong | Fix the data; the correction publishes immediately |
 
-**Four curators are a reasonable baseline; provision six.** Six provide 120 casework hours, leaving 20 hours beyond the 15% scenario for oversight and harder cases. The original plan has four curators; increasing to six is a proposal. If cases take longer or public flags exceed these assumptions, staffing or duration must increase.
+Curators do not routinely read every affidavit, approve transcriber work, monitor transcriber performance, handle ingestion exceptions or receive unflagged transcription cases. Publication does not depend on their approval.
 
-The three-day shift is the intensive initial operation. Corrections and citizen flags will continue afterwards. A named curator rota through polling and results must be agreed; the cycle fee below does not specify unlimited hours.
+**Curation starts when published data receives user flags and continues through election day.** It can therefore overlap AI extraction and transcription. It is an ongoing rota, not another fixed three-day or five-day production stage.
 
-## 6. The working schedule
+### Workload and provision
 
-Let **D** be the day a usable bulk set becomes available. Preparation must be completed before D: the extraction and review tools, candidate matching, staff accounts and email OTP delivery, model benchmark, recruitment, briefing materials and shift commitments.
+Assume **5% of 4,000 candidates are flagged: about 200 candidate cases** over the period. For planning, retain **ten minutes of total handling per flagged candidate**, including related flags, rather than assuming exactly one flag per candidate or counting duplicates twice.
 
-| Period | AI and operations | Transcribers | Curators |
-|---|---|---|---|
-| D: approximately first 24 hours | Import, match and extract; publish AI-labelled fields progressively | Scheduled reading shifts begin once there is enough ready work | Resolve ingestion exceptions; confirm the review queue is usable |
-| D+1 to D+3: three eight-hour shifts | Finish retries and reconcile candidate status as official lists change | Read the queue in priority order; target every affidavit | Resolve escalations and flags alongside reading; check coverage and quality |
-| After the three shifts | Keep source links and candidate status current | Additional work only if required and resourced | Continue the agreed correction rota |
+| Planning measure | Estimate |
+|---|---:|
+| Candidates with user flags | 200 |
+| Total handling time | Approximately 33⅓ hours |
+| **Recommended curator provision** | **2 people on a rota through election day** |
+| Casework capacity to reserve | 20 productive hours each across the period; 40 hours total |
+| Planning fee | ₹5,000 each for the cycle; **₹10,000 total** |
 
-The conservative staffing calculation assumes the three full reading shifts start **after** the extraction day. Starting some readers earlier can help, but waiting for AI should not consume their budgeted 20 productive hours. Preliminary curator ingestion work must fit within the reserved non-casework allowance or be handled by the operations lead; it is not an assumed fourth eight-hour curator shift.
+Two curators provide shared availability and about 6⅔ hours of casework capacity above the estimate. This headcount is a planning recommendation, not a measured service-level requirement. Confirm daily coverage, handovers and response expectations before hiring. The 40-hour capacity reservation does not imply full-time daily shifts, and the cycle fee does not mean unlimited work.
 
-Under the planning calendar, usable files at N+12 imply a target finish around **N+16**, or N+17 with one extra AI day. Receipt only at the final list around N+15 implies N+19, or N+20 with contingency. These are operational illustrations derived from [the election timeline](election-timelines.md), not launch commitments. Late receipt, a delayed benchmark or unfinished tooling consumes this margin directly. Completing the data operation does not itself complete the wider launch campaign.
+Flags may cluster near polling or take longer than ten minutes. Multiple distinct problems, repeated flags, or unresolved source issues can exceed the allowance. Review actual incoming work and remaining capacity daily. A 20-minute handling average would double casework to about 67 hours and require more provision. Any coverage after election day would need a separate agreement.
 
-## 7. What it could cost
+One human reading can still miss an error. Source links, visible checking labels and the user-flag queue support correction; a “checked by a person” label is not a guarantee of accuracy. The current plan has no change-history or restore facility.
 
-The following is a **candidate-data operation budget**, not the whole platform or election campaign budget. Staff rates come from [the stakeholder overview, §§8–9](overview.md). They are project planning rates, not confirmation that people have been contracted at those rates.
+## 5. Combined schedule and election window
 
-### Recommended provision: 38 transcribers and six curators
+**Start with the initial data as soon as it appears.** Siva keeps loading later arrivals while AI and transcribers work on ready records. Official-list changes update candidate status without delaying the start of processing.
 
-| Item | Basis | Planning amount |
+| Stage | Start | Time allocation |
+|---|---|---|
+| Bulk loading: Siva | First available online data | Rolling as files arrive; duration to measure |
+| AI extraction | First usable, matched records | Three elapsed days of provision for the planned workload |
+| Transcription | Enough AI-processed work for productive shifts | Five eight-hour working days per person |
+| Curation | Users flag published candidate data | Ongoing rota through election day |
+
+**Conservative capacity envelope: three AI days followed by five transcription days, or eight days after a complete usable set is ready for AI.** Actual work overlaps where possible, so early loading can bring checks forward. The eight-day envelope excludes unmeasured bulk-loading time and does not guarantee completion eight days after the first partial release. Arrival timing and the remaining queue determine the finish.
+
+The [election timeline](election-timelines.md) uses **N** for the announcement and contains planning offsets, not confirmed dates:
+
+| Planning event | Implication for this operation |
+|---|---|
+| Initial documents appear, whenever that is | Loading and processing begin immediately |
+| Around N+12: nominations close | If a complete set is ready for AI then, the conservative eight-day finish is around **N+20** |
+| Around N+15: final contesting list | Reconcile rejections/withdrawals. If the complete set is only AI-ready then, the eight-day finish is around **N+23**, with no pre-poll margin |
+| Around N+21: outbound candidate communications stop | The website and user-flag handling remain available |
+| Around N+23: polling | Curator coverage continues through election day |
+
+The N+15 case is a late-data scenario, **not an instruction to wait**. Earlier partial work helps but does not establish a guaranteed completion date. Late files or a slow pilot require an explicit staffing or coverage decision. Data completion also does not itself complete the wider launch campaign.
+
+## 6. Combined cost budget
+
+The budget covers the **candidate-data operation**, not the full platform or election campaign. It uses **23 transcribers for five days at ₹3,500 each**, **two curators at ₹5,000 each through election day**, and the existing non-staff reserves.
+
+| Item, in operational order | Basis | Planning amount |
 |---|---|---:|
-| Transcribers | 38 × ₹2,000 for the three-day engagement | **₹76,000** |
-| Curators | 6 × ₹5,000 for the election cycle, including the intensive three days; subsequent availability to be agreed | **₹30,000** |
-| AI extraction | Provisional reserve for the proposed OpenAI/API run; includes routine retries, pending benchmark and model pricing | **₹35,000–₹70,000** |
-| Affidavit storage and public downloads | Existing cycle allowance; depends on file sizes and readership | **₹2,000–₹10,000** |
-| Kannada translation | Allow up to the existing platform-wide translation estimate; candidate-data share may be smaller | **₹5,000** |
-| **Subtotal** | Before contingency and taxes | **₹1,48,000–₹1,91,000** |
-| Contingency | 20% of subtotal | **₹29,600–₹38,200** |
-| **Planning total** | Before applicable taxes | **₹1,77,600–₹2,29,200** |
+| Bulk loading | Siva; time and any acquisition charges not priced | Excluded |
+| AI extraction | Same 4,000-document workload; provisional API reserve | ₹35,000–₹70,000 |
+| Transcription | 23 × ₹3,500 for five days | ₹80,500 |
+| Curation | 2 × ₹5,000 for the cycle; rota through election day | ₹10,000 |
+| Affidavit storage and downloads | Existing cycle allowance | ₹2,000–₹10,000 |
+| Kannada translation | Up to the existing platform-wide allowance | ₹5,000 |
+| **Subtotal** | Before contingency and taxes | **₹1,32,500–₹1,75,500** |
+| Contingency | 20% of subtotal | ₹26,500–₹35,100 |
+| **Planning total** | Before applicable taxes | **₹1,59,000–₹2,10,600** |
 
-**Proposed provision: ₹2.30 lakh before taxes for the scope above.** This is a conditional budget envelope for Board consideration, not an approved expenditure or a guaranteed cap.
+**Proposed rounded provision: ₹2.11 lakh before taxes.** This remains conditional on the pilot and the scope below; it is not approved spending or a guaranteed cap. Longer AI time does not create an assumed API discount.
 
-**Basis of the AI allowance:** the existing overview models ₹17,000–₹35,000 for 4,000 ten-page affidavits, around 30,000 input and 500 output tokens each, using discounted batch processing in the previously specified provider setup. That is not an OpenAI quote. The ₹35,000–₹70,000 above is a new provisional reserve, approximately twice the older range, to avoid budgeting a fast concurrent run at an assumed batch discount. Doubling an old allowance does not establish the new provider's actual price; the representative pilot must replace it, including retries and tax treatment, before spend is authorised. The older page/token and storage/download allowances also require validation against the received files.
+If reading takes fifteen minutes, the minimum becomes 30 transcribers, without the 15% reading-capacity buffer. At ₹3,500 each, transcription costs ₹1,05,000 and the same budget with two curators becomes **₹1,88,400–₹2,40,000 including 20% contingency, before taxes**. Measure the pace before fixing the team.
 
-For comparison, using the same non-staff allowances:
+**Excluded or shared costs:** Siva's loading time, acquisition charges, software development, the operations lead's time, recruitment/training beyond the engagement, workspace/equipment/travel, shared email/OTP services, wider hosting and backup, legal review, and citizen outreach. Additional curator hours or post-election coverage are not separately priced. Finance should review applicable taxes and foreign-exchange movements and avoid double-counting costs already funded in platform budgets. Storage and translation remain inherited allowances, not refreshed vendor quotations.
 
-| Staffing option | Staff fees | Subtotal before contingency and taxes | With 20% contingency, before taxes |
-|---|---:|---:|---:|
-| 5 transcribers + 4 curators; priority cases only | ₹30,000 | ₹72,000–₹1,15,000 | ₹86,400–₹1,38,000 |
-| 34 transcribers + 4 curators; minimum full-coverage plan | ₹88,000 | ₹1,30,000–₹1,73,000 | ₹1,56,000–₹2,07,600 |
-| **38 transcribers + 6 curators; recommended provision** | **₹1,06,000** | **₹1,48,000–₹1,91,000** | **₹1,77,600–₹2,29,200** |
+## 7. Hiring and readiness decisions
 
-If reading takes 15 minutes, 50 transcribers add ₹24,000 to the recommended team's fees. With six curators and the same other allowances, the total becomes approximately **₹2.06–₹2.58 lakh including 20% contingency, before taxes**. This is why the pilot must measure human reading time as well as AI speed.
-
-**Excluded or shared costs:** bulk-data acquisition charges, software development, the operations lead's time, recruitment/training beyond the stated engagement, workspace/equipment/travel, shared email/OTP services, wider hosting and backup, legal review, and citizen outreach or marketing. No extra curator fee for post-window work is priced here; agree the cycle engagement or budget any additional fee. Applicable taxes and foreign-exchange movements need finance review. Existing platform budgets may already cover shared services and curator fees; allocate them once rather than adding this entire envelope on top of overlapping lines. Storage and translation figures are inherited planning allowances, not refreshed vendor quotations.
-
-## 8. What Oorvani needs to settle before the window opens
-
-1. **Choose the coverage target:** one human reading of all affidavits, with the recommended 38 transcribers and six curators, or a smaller team that knowingly leaves most fields AI-labelled.
-2. **Name an operations lead and budget owner.** Recruit Kannada-reading staff, vet curators, confirm fees, equipment and availability, and agree the post-window correction rota.
-3. **Run the representative pilot.** Confirm the model/provider, extraction accuracy, API limits, elapsed time, human reading pace and actual cost; resize the team and budget if needed.
-4. **Rehearse the complete operation before bulk arrival.** Prove import, matching, source links, publication labels, staff login, assignments and correction handling. Staff email access is a dependency even if citizen messaging is not ready.
-5. **Confirm the calendar and early-start approach.** Reserve staff against the official schedule and decide whether processing may begin on the provisional candidate list. Review the daily count of imported, extracted, human-checked and unresolved records against the remaining capacity.
-
-The proposal is designed to make the first complete human pass achievable within three working days, while giving citizens immediate access to clearly labelled AI readings and the original sources. It remains conditional on a ready pipeline, usable bulk files and a pilot that supports the assumed pace.
+| Decision | What Oorvani needs to confirm |
+|---|---|
+| Bulk loading | Siva's access and loading method, starting with initial online data |
+| AI | Representative pilot, provider/model, ten-job throughput, confidence threshold and actual API cost |
+| Transcribers | Provision 23 Kannada readers, five shifts, ₹3,500 each, equipment and working staff email login |
+| Curators | Provision two vetted people, ₹5,000 each, daily rota and reserved casework hours through polling |
+| Coordination and finance | Named operations lead and budget owner; ₹2.11 lakh provisional envelope before taxes |
+| Rehearsal and daily review | Prove loading, source links, labels, assignments and flag resolution; track imported, extracted, checked, unresolved and flagged records against capacity |
 
 ## References and status of assumptions
 
-- [Stakeholder overview](overview.md), §§3.1, 8, 9 and 11: report-card fields, publication policy, pay rates and original volume/workload assumptions.
-- [Milestone plan](milestones.md), §§9–11 and 13: curator, transcriber, ingestion and real-data workflows. This proposal's earlier provisional-list start, staffing and budget are additions for consideration.
-- [Architecture](architecture.md), §§6–7: storage, assignments and immediate publication. OpenAI extraction is a proposed alternative to the documented Anthropic provider.
-- [Election timeline](election-timelines.md), §§3–4: authoritative planning offsets; no date in this proposal is a confirmed election date.
-- [Acquisition risk assessment](ksec-data-risk.md): the unresolved dependency assumed solved for this scenario.
-- [OpenAI PDF inputs](https://developers.openai.com/api/docs/guides/file-inputs) and [rate limits](https://developers.openai.com/api/docs/guides/rate-limits): technical constraints, consulted 20 September 2026. Neither supplies the affidavit-specific time, accuracy or cost estimates above.
+- [Stakeholder overview](overview.md), §§3.1, 8–9 and 11: report-card scope, publication policy and original fee/workload assumptions. The five-day ₹3,500 transcriber engagement and revised staffing above replace the older operation's figures.
+- [Milestone plan](milestones.md), §§9–11 and 13, and [architecture](architecture.md), §§6–7: implementation context. This operating brief follows the clarified flags-only curator role and immediate initial-data start; older descriptions of broader curator oversight do not define this operation.
+- [Election timeline](election-timelines.md), §§3–4: authority for unconfirmed election offsets.
+- [Acquisition risk assessment](ksec-data-risk.md): the online-access dependency assumed solved for this scenario.
+- [OpenAI PDF inputs](https://developers.openai.com/api/docs/guides/file-inputs) and [rate limits](https://developers.openai.com/api/docs/guides/rate-limits): technical references retained from the earlier proposal, which consulted them on 20 September 2026. They do not establish affidavit-specific time, accuracy or cost.
 
-The 2–5 minute AI time, 25% processing allowance, 5–15% curator case rate, ten-minute curator handling time, 38/6 staffing recommendation, ₹35,000–₹70,000 AI reserve and 20% budget contingency are new planning assumptions. They must not be presented as measured performance, vendor quotes or already approved decisions.
+The four stages, Siva's loading ownership, immediate initial-data start, affidavit-level confidence, three-day AI window, five-day transcription window, 5% flagged-candidate assumption, curation through polling and ₹3,500 transcriber fee reflect the clarified planning brief. The 23-reader/two-curator provision, productive-time ratio, AI and human processing rates, API reserve and contingency remain estimates to validate. None is measured performance or a confirmed staff contract.
