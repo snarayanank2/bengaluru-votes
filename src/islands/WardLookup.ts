@@ -242,7 +242,7 @@ function attachGeolocation(
 
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'ward-locate';
+  button.className = 'btn btn--light btn--icon btn-shared ward-locate';
   button.dataset.wardLocate = '';
   button.setAttribute('aria-label', label);
 
@@ -256,7 +256,7 @@ function attachGeolocation(
   button.append(icon);
 
   const text = document.createElement('span');
-  text.className = 'ward-locate-label';
+  text.className = 'sr-only';
   text.textContent = label;
   button.append(text);
 
@@ -266,6 +266,7 @@ function attachGeolocation(
 
   const settle = (): void => {
     button.disabled = false;
+    button.removeAttribute('aria-busy');
     result.removeAttribute('aria-busy');
   };
 
@@ -293,6 +294,7 @@ function attachGeolocation(
 
   button.addEventListener('click', () => {
     button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
     result.setAttribute('aria-busy', 'true');
     renderMessage(result, msgs.locating ?? '');
 

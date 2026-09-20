@@ -154,7 +154,7 @@ function wardName(ward: WardRow): string {
                 lang={lang}
               />
             </div>
-            <Button type="submit" variant="secondary" lang={lang}>
+            <Button type="submit" variant="light" lang={lang}>
               {t(lang, 'home.form.submit')}
             </Button>
 
@@ -362,51 +362,13 @@ function wardName(ward: WardRow): string {
     border-color: var(--color-bg);
   }
 
-  .hero-form :global(.btn) {
+  .hero-form :global(.btn:not(.ward-locate)) {
     grid-column: 2;
-    min-height: 48px;
-    white-space: nowrap;
-    font-family: Manrope, 'PT Sans', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
-    font-size: 0.95rem;
-    font-weight: 600;
-    line-height: 1.5;
-    color: var(--color-hero-button-text);
-    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.18s, background-color 0.18s, filter 0.18s;
-  }
-
-  .hero-form :global(.btn:hover) {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-hero-button-hover);
-    background: var(--hero-button-hover);
   }
 
   .hero-form :global(.ward-locate) {
     grid-column: 3;
     grid-row: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    min-height: 48px;
-    padding: var(--space-2) var(--space-4);
-    border: 1.5px solid var(--color-bg);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg);
-    color: var(--color-text);
-    font-family: var(--font-heading);
-    font-size: var(--text-base);
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .hero-form :global(.ward-locate-label) {
-    display: none;
-  }
-
-  .hero-form :global(.ward-locate:hover),
-  .hero-form :global(.ward-locate:focus-visible) {
-    background: var(--color-surface);
   }
 
   .hero-form .ward-result {
@@ -698,24 +660,6 @@ function wardName(ward: WardRow): string {
     border-color: var(--color-bg);
   }
 
-  .booth-inner :global(.booth-form .btn) {
-    min-height: 48px;
-    background: var(--color-bg);
-    border-color: var(--color-bg);
-    color: var(--color-hero-button-text);
-    font-family: Manrope, 'PT Sans', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
-    font-size: 0.95rem;
-    font-weight: 600;
-    line-height: 1.5;
-    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.18s, background-color 0.18s, filter 0.18s;
-  }
-
-  .booth-inner :global(.booth-form .btn:hover) {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-hero-button-hover);
-    background: var(--hero-button-hover);
-  }
-
   .subheading {
     color: var(--color-text-muted);
     margin: 0 0 var(--space-4);
@@ -742,36 +686,6 @@ function wardName(ward: WardRow): string {
     padding: var(--space-3) var(--space-4);
     background: var(--color-surface);
     border-radius: var(--radius-md);
-  }
-
-  /* The two elements below are created by WardLookup.ts, not by this
-     template, so they never carry Astro's scope attribute — `:global()` is
-     what lets a scoped stylesheet reach them. Both mirror design-system.md
-     §7.3's tertiary button and muted body text rather than inventing a look;
-     they can't use Button.astro/its classes, since those are scoped too. */
-  .ward-form :global(.ward-locate) {
-    align-self: flex-start;
-    min-height: 44px;
-    padding: var(--space-2);
-    border: 1.5px solid transparent;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-primary);
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: var(--text-base);
-    cursor: pointer;
-  }
-
-  .ward-form :global(.ward-locate:hover),
-  .ward-form :global(.ward-locate:focus-visible) {
-    text-decoration: underline;
-  }
-
-  .ward-form :global(.ward-locate[disabled]) {
-    color: var(--color-text-muted);
-    cursor: not-allowed;
-    text-decoration: none;
   }
 
   .ward-result :global(.ward-note) {
@@ -801,7 +715,7 @@ function wardName(ward: WardRow): string {
       grid-row: auto;
     }
 
-    .hero-form :global(.btn) {
+    .hero-form :global(.btn:not(.ward-locate)) {
       grid-column: 1;
       grid-row: auto;
     }
@@ -811,7 +725,7 @@ function wardName(ward: WardRow): string {
       grid-row: auto;
     }
 
-    .hero-form :global(.btn) {
+    .hero-form :global(.btn:not(.ward-locate)) {
       width: 100%;
     }
 

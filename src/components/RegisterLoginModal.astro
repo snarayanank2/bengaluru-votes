@@ -45,9 +45,9 @@ const { lang } = Astro.props;
 
 <dialog class="rl-modal" data-register-login-modal aria-labelledby="rl-modal-title">
   <div class="rl-modal-inner">
-    <button type="button" class="rl-modal-close" data-modal-close aria-label={t(lang, 'auth.modal.close')}>
-      &times;
-    </button>
+    <Button variant="tertiary" iconOnly label={t(lang, 'auth.modal.close')} lang={lang} data-modal-close>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
+    </Button>
     <h2 id="rl-modal-title">{t(lang, 'auth.modal.title')}</h2>
 
     <p class="rl-banner" data-rl-banner hidden></p>
@@ -162,18 +162,10 @@ const { lang } = Astro.props;
     padding-right: var(--space-8);
   }
 
-  .rl-modal-close {
+  .rl-modal-inner :global([data-modal-close]) {
     position: absolute;
     top: var(--space-4);
     right: var(--space-4);
-    min-width: 44px;
-    min-height: 44px;
-    background: transparent;
-    border: none;
-    font-size: var(--text-2xl);
-    line-height: 1;
-    cursor: pointer;
-    color: var(--color-text);
   }
 
   /*

@@ -364,6 +364,9 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
       expect(button!.textContent).toBe(t('kn', 'home.form.useLocation'));
       expect(button!.querySelector('svg')).not.toBeNull();
       expect(button!.getAttribute('aria-label')).toBe(t('kn', 'home.form.useLocation'));
+      expect(button!.classList.contains('btn-shared')).toBe(true);
+      expect(button!.classList.contains('btn--light')).toBe(true);
+      expect(button!.classList.contains('btn--icon')).toBe(true);
     });
 
     it('posts the position as {lat, lng} and renders the resolved ward', async () => {

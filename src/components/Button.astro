@@ -1,16 +1,17 @@
 ---
 /**
- * Button — design-system.md §7.3. Four variants, min 44x44 target,
+ * Button — design-system.md §7.3. Five variants, min 44x44 target,
  * Manrope 700 16px. Renders an <a> styled as a button when `href` is
  * given (navigation), otherwise a real <button> (in-page action).
  *
  * Loading holds the button's width: the slotted label stays in the
- * layout (visibility: hidden, not removed) while a spinner + sr-only
+ * layout and accessible name (opacity: 0, not removed) while a spinner + sr-only
  * "Loading" text sit on top of it in the same grid cell.
  */
 import { t, type Lang } from '../i18n';
+import '../styles/buttons.css';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'light';
 
 interface Props {
   variant: ButtonVariant;
@@ -23,6 +24,9 @@ interface Props {
   disabled?: boolean;
   loading?: boolean;
   lang: Lang;
+  /** Icon-only controls require a localized accessible label. */
+  iconOnly?: boolean;
+  label?: string;
   /**
    * Arbitrary `data-*` passthrough (e.g. `data-register-slot`,
    * `data-ward-id`) — needed so a later client-side island (WardMap's
@@ -40,11 +44,14 @@ const {
   rel,
   disabled = false,
   loading = false,
+  iconOnly = false,
+  label,
   lang,
   ...rest
 } = Astro.props;
 
-const className = `btn btn--${variant}`;
+if (iconOnly && !label?.trim()) throw new Error('Icon-only buttons require an accessible label');
+const className = `btn btn--${variant} btn-shared${iconOnly ? ' btn--icon' : ''}`;
 ---
 
 {
@@ -54,136 +61,36 @@ const className = `btn btn--${variant}`;
       href={href}
       target={target}
       rel={rel}
+      aria-label={label}
+      aria-busy={loading ? 'true' : undefined}
       aria-disabled={disabled ? 'true' : undefined}
       {...rest}
     >
-      <span class="btn-content" aria-hidden={loading ? 'true' : undefined}>
-        <span class="btn-label" style={loading ? 'visibility:hidden' : undefined}>
+      <span class="btn-content">
+        <span class="btn-label" aria-hidden={iconOnly ? 'true' : undefined} style={loading ? 'opacity:0' : undefined}>
           <slot />
         </span>
         {loading && (
-          <span class="spinner" aria-hidden="true">
-            <span class="sr-only">{t(lang, 'common.loading')}</span>
-          </span>
+          <>
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="sr-only" role="status">{t(lang, 'common.loading')}</span>
+          </>
         )}
       </span>
     </a>
   ) : (
-    <button class={className} type={type} disabled={disabled} aria-busy={loading ? 'true' : undefined} {...rest}>
+    <button class={className} type={type} aria-label={label} disabled={disabled} aria-busy={loading ? 'true' : undefined} {...rest}>
       <span class="btn-content">
-        <span class="btn-label" style={loading ? 'visibility:hidden' : undefined}>
+        <span class="btn-label" aria-hidden={iconOnly ? 'true' : undefined} style={loading ? 'opacity:0' : undefined}>
           <slot />
         </span>
         {loading && (
-          <span class="spinner" aria-hidden="true">
-            <span class="sr-only">{t(lang, 'common.loading')}</span>
-          </span>
+          <>
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="sr-only" role="status">{t(lang, 'common.loading')}</span>
+          </>
         )}
       </span>
     </button>
   )
 }
-
-<style>
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 44px;
-    min-height: 44px;
-    padding: var(--space-2) var(--space-6);
-    border-radius: var(--radius-sm);
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: var(--text-base);
-    text-decoration: none;
-    cursor: pointer;
-    border: 1.5px solid transparent;
-  }
-
-  .btn-content {
-    position: relative;
-    display: inline-grid;
-  }
-
-  .btn-content > * {
-    grid-area: 1 / 1;
-  }
-
-  .btn-label {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .spinner {
-    justify-self: center;
-    align-self: center;
-    width: 18px;
-    height: 18px;
-    border-radius: var(--radius-full);
-    border: 2px solid currentColor;
-    border-top-color: transparent;
-    animation: btn-spin 0.6s linear infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .spinner {
-      animation: none;
-    }
-  }
-
-  @keyframes btn-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .btn--primary {
-    background: var(--color-primary);
-    color: var(--color-on-primary);
-  }
-
-  .btn--secondary {
-    background: var(--color-bg);
-    color: var(--color-primary);
-    border-color: var(--color-primary);
-  }
-
-  .btn--tertiary {
-    background: transparent;
-    color: var(--color-primary);
-    border-color: transparent;
-    padding-inline: var(--space-2);
-  }
-
-  .btn--tertiary:hover,
-  .btn--tertiary:focus-visible {
-    text-decoration: underline;
-  }
-
-  .btn--destructive {
-    background: var(--color-danger);
-    color: var(--color-on-primary);
-  }
-
-  .btn[disabled],
-  .btn[aria-disabled='true'] {
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    border-color: transparent;
-    cursor: not-allowed;
-  }
-</style>

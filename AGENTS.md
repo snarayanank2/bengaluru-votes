@@ -204,6 +204,8 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 
 **Reusable design-system documentation:** The design system should describe generic foundations, section patterns, and components, including form fields, buttons, cards, and their states. It should not mention specific pages except as example usage; do not organize its rules as individual page specifications.
 
+**Button coverage:** Keep every button treatment documented and reusable, including light buttons and icon-only controls. Use shared styles for server-rendered and client-created buttons; page CSS should control placement rather than recreate a variant. Icon-only controls require a localized accessible name and documented sizing and interaction states.
+
 **Approval before integration:** Once a requested change is implemented and verified, pause and ask the user once for approval to commit, merge, and push it. That single approval covers all three repository integration steps; do not ask for separate approvals.
 
 ## UI verification

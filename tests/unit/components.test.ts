@@ -355,7 +355,7 @@ describe('Badge', () => {
 // ---------------------------------------------------------------------------
 
 describe('Button', () => {
-  const variants = ['primary', 'secondary', 'tertiary', 'destructive'] as const;
+  const variants = ['primary', 'secondary', 'tertiary', 'destructive', 'light'] as const;
 
   it.each(variants)('renders the %s variant class', async (variant) => {
     const html = await render(Button, { variant, lang: 'en' }, { default: 'Do the thing' });
@@ -378,6 +378,26 @@ describe('Button', () => {
   it('renders the disabled attribute on a button variant', async () => {
     const html = await render(Button, { variant: 'primary', disabled: true, lang: 'en' }, { default: 'Submit' });
     expect(html).toMatch(/<button[^>]*\bdisabled\b/);
+  });
+
+  it('gives icon-only actions a localized accessible name and hides the decorative icon', async () => {
+    const html = await render(Button, { variant: 'tertiary', iconOnly: true, label: 'ಮುಚ್ಚಿ', lang: 'kn' }, { default: '<svg></svg>' });
+    expect(html).toContain('btn--icon');
+    expect(html).toMatch(/<button[^>]*aria-label="ಮುಚ್ಚಿ"/);
+    expect(html).toMatch(/<span class="btn-label"[^>]*aria-hidden="true"/);
+  });
+
+  it('rejects icon-only actions without an accessible name', async () => {
+    await expect(render(Button, { variant: 'light', iconOnly: true, lang: 'en' }, { default: '<svg></svg>' })).rejects.toThrow('accessible label');
+  });
+
+  it.each([undefined, '/ward/3049'])('preserves the action name and exposes loading status (href=%s)', async (href) => {
+    const html = await render(Button, { variant: 'light', loading: true, href, lang: 'en' }, { default: 'Find ward' });
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('style="opacity:0"');
+    expect(html).not.toContain('visibility:hidden');
+    expect(html).toMatch(/<span class="sr-only" role="status">Loading/);
+    expect(html).toContain('Find ward');
   });
 });
 

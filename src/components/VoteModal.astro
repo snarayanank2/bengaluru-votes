@@ -17,9 +17,9 @@ const { lang } = Astro.props;
 
 <dialog class="vote-modal" data-vote-modal aria-labelledby="vote-modal-title">
   <div class="vote-modal-inner">
-    <button type="button" class="vote-modal-close" data-modal-close aria-label={t(lang, 'vote.modal.close')}>
-      &times;
-    </button>
+    <Button variant="tertiary" iconOnly label={t(lang, 'vote.modal.close')} lang={lang} data-modal-close>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
+    </Button>
     <h2 id="vote-modal-title">{t(lang, 'vote.modal.title')}</h2>
 
     <div data-vote-form-wrap>
@@ -76,18 +76,10 @@ const { lang } = Astro.props;
     padding-right: var(--space-8);
   }
 
-  .vote-modal-close {
+  .vote-modal-inner :global([data-modal-close]) {
     position: absolute;
     top: var(--space-4);
     right: var(--space-4);
-    min-width: 44px;
-    min-height: 44px;
-    background: transparent;
-    border: none;
-    font-size: var(--text-2xl);
-    line-height: 1;
-    cursor: pointer;
-    color: var(--color-text);
   }
 
   .vote-modal-instructions {

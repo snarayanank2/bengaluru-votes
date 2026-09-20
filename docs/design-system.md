@@ -260,7 +260,7 @@ Use self-hosted approved partner assets. The existing Janaagraha SVG uses a whit
 
 ### 7.3 Buttons and action groups
 
-Use a native `button` for an action and an anchor for navigation. The shared `Button.astro` supports four variants:
+Use a native `button` for an action and an anchor for navigation. The shared `Button.astro` supports five visual variants. Icon-only is a shape option on a variant, not a separate level of emphasis.
 
 | Variant | Treatment | When to use |
 |---|---|---|
@@ -268,21 +268,28 @@ Use a native `button` for an action and an anchor for navigation. The shared `Bu
 | Secondary | Forest text, 1.5px forest border, white fill | Supporting or alternative action |
 | Tertiary | Forest text, transparent fill/border; underline on hover/focus | Low-emphasis action |
 | Destructive | White on brick | Delete or another destructive operation |
+| Light | White fill/border, dark text, 48px minimum height | An action on a dark or colored band; pairs with 48px lookup inputs |
 
 **Anatomy:** optional icon + outcome label; 44×44px minimum target; 16px Manrope 700; 6px radius; 8px vertical and 24px horizontal padding. Tertiary actions use 8px horizontal padding. Allow labels to wrap and controls to grow vertically. Icon-label gaps are 8px; icons do not shrink.
 
 | State | Required behavior and appearance |
 |---|---|
 | Default | Variant remains legible on its containing surface |
-| Hover | Preserve the variant's hierarchy; tertiary underlines; light actions use the documented hover fill/shadow |
+| Hover | Preserve the variant's hierarchy; tertiary text underlines; light actions use the documented hover fill/shadow; tertiary icon actions use a gray fill |
 | Focus | Visible 2px outline with 2px offset; use a contrasting color on dark surfaces |
-| Pressed | Preserve geometry and readable feedback; do not depend on motion or color alone |
+| Pressed | Preserve geometry; light actions return from their hover lift to their resting position; tertiary icon actions use a darker gray fill |
 | Loading | Hold width, show a spinner and accessible busy/status text, prevent duplicate submission at the action layer |
 | Disabled | Gray surface, muted text, unavailable semantics; explain the reason where it is not obvious |
 
-`Button.astro` retains label geometry for loading and has `aria-busy` on native buttons. Loading alone does not disable submission. `aria-disabled` on an anchor does not prevent navigation; callers must handle unavailable links deliberately. Accessible loading feedback needs review (§12).
+`Button.astro` retains label geometry and the accessible action name for loading, exposes `aria-busy`, and provides localized status text separately from the decorative spinner. Loading alone does not disable submission. `aria-disabled` on an anchor does not prevent navigation; callers must handle unavailable links deliberately.
 
-**Light action treatment:** for lookup forms on colored bands, use a white/light fill, `--color-hero-button-text`, and 48px minimum height. The current treatment uses 0.95rem/600 type and `--hero-button-hover` on hover, with a 1px lift over 180ms. It is a composition-level style, not a fifth supported `Button` variant.
+**Light variant:** use `variant="light"`, a white fill/border, `--color-hero-button-text`, 48px minimum height, 6px radius, and 0.95rem/600 type in the shared language-aware heading font. Enabled hover uses `--hero-button-hover`, `--shadow-hero-button-hover`, and a 1px lift over 180ms. Keyboard focus uses the forest outline plus a light outer ring so it stays visible on dark bands. Disabled controls retain the shared gray treatment without lift or shadow. Reduced motion removes the lift and transition. Page CSS owns placement and responsive width, not a duplicate of these visual rules.
+
+**Icon-only shape:** use `iconOnly` with a localized `label`, which becomes the accessible name. The component rejects an empty label. Center one decorative 20×20px SVG within a 44×44px target, or 48×48px for the light variant; use zero outer padding, 6px radius, and no shrinking. Keep the accessible name during loading and show the spinner in the same space. Use light on colored bands and tertiary for a low-emphasis utility action on a light surface. Tertiary icon actions use ink, a transparent resting background, gray hover fill, darker gray pressed fill, and a forest focus outline; they do not underline. Hide the icon from assistive technology and never rely on its shape or a hover tooltip as the only name. These are native controls with normal keyboard activation.
+
+**Shared implementation:** `Button.astro` and client-created controls share `src/styles/buttons.css`. The component supplies `btn btn--<variant> btn-shared` and adds `btn--icon` for icon-only controls. A client-created control uses the same classes and supplies its own accessible label, disabled/busy semantics, and event handling; import the shared stylesheet where it is not already supplied by a `Button`. Do not recreate visual styles in a page or island. Text-plus-icon actions use the standard button with an 8px gap and a decorative, non-shrinking icon.
+
+Language segments (§7.1), social icon links (§7.2), section navigation, and disclosure toggles (§7.15) have their own control patterns. Noninteractive pills (§7.7) are not buttons. Loading and disabled are states of a style, not additional variants.
 
 **Action groups:** main action first, start-aligned, flex-wrap enabled; default gap 8px, or 12px in a spacious action row. Place the group 24px after its content. If actions stack, use a consistent width treatment. Avoid per-button compensating margins. Authentication-gated actions remain enabled (§7.8).
 
@@ -465,13 +472,15 @@ Examples illustrate the patterns; they do not limit where a pattern may be used.
 | Ward page: issue voting | White action band; anonymous primary action; result bars |
 | Ward page: questions | Sage collection band containing bordered cards |
 
+Button examples: home-page ward/booth lookup uses light; location uses light + icon-only. Ward registration and voting use primary; comparison and results use secondary. Modal back actions use tertiary text, and modal close uses tertiary + icon-only. Destructive remains available for destructive tasks elsewhere; it is not used in these citizen-facing examples.
+
 ## 12. Implementation gaps
 
-These are existing differences between the design standard and the implementation. This documentation revision does not change UI code or claim that the following gaps are resolved.
+These are remaining differences between the design standard and the implementation.
 
 - Muted labels on editorial red and focus indicators on dark green need contrast verification.
 - Some compositions still use fixed heading line heights, tracked eyebrows, or local font stacks that bypass the Kannada rules; keep verifying overrides when reusing a pattern.
 - Existing CSS references undeclared `--leading-md`; local spacing values, an 11px disclosure radius, and a literal translucent divider also remain outside the shared token system.
 - The single-line field component generates ids from `name`; repeated instances need an explicit uniqueness strategy. It does not expose every control/state described in §7.10.
-- Button loading markup hides the spinner's nested status text from assistive technology; busy announcements and disabled-link behavior need verification before claiming complete state support.
+- Disabled links and prevention of duplicate submissions remain caller responsibilities; shared button state styling alone does not enforce them.
 - The stock basemap exception remains as described in §8.1. Font-family changes beyond the current stacks remain a separate design decision.
