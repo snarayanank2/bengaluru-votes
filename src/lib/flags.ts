@@ -34,7 +34,8 @@
  */
 import { and, eq } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
-import { candidates, flagItems, flagSubmissions, wardIssues, wards } from '../db/schema';
+import { candidates, flagItems, flagSubmissions } from '../db/schema';
+import { FLAGGABLE_FIELD_KEYS } from './candidate-profile';
 import { isUniqueViolation } from './db-errors';
 import { publishCandidateFieldTx, type PublishCandidateFieldInput } from './publish';
 import { translateFieldSoon } from './translate-runtime';
@@ -73,39 +74,20 @@ export class InvalidFlagTargetError extends Error {
  * TARGET, server-side, never from the client. A citizen may flag ANY ward's
  * content (flagging is city-wide), but the resulting queue item MUST land in
  * the TARGET's real ward so the correct (scoped) curator sees and can act on
- * it. Rejects (throws {@link InvalidFlagTargetError}) a malformed targetRef or
- * a target row that doesn't exist.
+ * it.
  *
- *   - candidate_field (`candidate:<id>:<fieldKey>`): the candidate's own
- *     `wardId` (the field being flagged belongs to that candidate).
- *   - ward_field     (`ward:<id>:<fieldKey>`): the ward IS the id in the ref
- *     (verified to exist).
- *   - ward_issue     (`ward_issue:<id>`): the `ward_issues` row's `wardId`.
+ * The one remaining case is `candidate_field` (`candidate:<id>:<fieldKey>`):
+ * the candidate's own `wardId`, provided `<fieldKey>` is one of
+ * {@link FLAGGABLE_FIELD_KEYS} and the candidate exists. Anything else — a
+ * ward_field or ward_issue target, the affidavit document, an unknown field,
+ * a malformed ref — throws {@link InvalidFlagTargetError}. `ward_field` and
+ * `ward_issue` remain in the DB enum only so old rows can still be read.
  */
 export async function deriveTargetWardId(targetType: FlagTargetType, targetRef: string): Promise<number> {
-  if (targetType === 'candidate_field') {
-    const match = /^candidate:(\d+):(.+)$/.exec(targetRef);
-    if (!match) throw new InvalidFlagTargetError();
-    const candidateId = Number(match[1]);
-    const [row] = await db.select({ wardId: candidates.wardId }).from(candidates).where(eq(candidates.id, candidateId));
-    if (!row) throw new InvalidFlagTargetError();
-    return row.wardId;
-  }
-
-  if (targetType === 'ward_field') {
-    const match = /^ward:(\d+):(.+)$/.exec(targetRef);
-    if (!match) throw new InvalidFlagTargetError();
-    const wardId = Number(match[1]);
-    const [row] = await db.select({ id: wards.id }).from(wards).where(eq(wards.id, wardId));
-    if (!row) throw new InvalidFlagTargetError();
-    return row.id;
-  }
-
-  // ward_issue
-  const match = /^ward_issue:(\d+)$/.exec(targetRef);
-  if (!match) throw new InvalidFlagTargetError();
-  const issueId = Number(match[1]);
-  const [row] = await db.select({ wardId: wardIssues.wardId }).from(wardIssues).where(eq(wardIssues.id, issueId));
+  if (targetType !== 'candidate_field') throw new InvalidFlagTargetError();
+  const match = /^candidate:(\d+):(.+)$/.exec(targetRef);
+  if (!match || !(FLAGGABLE_FIELD_KEYS as readonly string[]).includes(match[2]!)) throw new InvalidFlagTargetError();
+  const [row] = await db.select({ wardId: candidates.wardId }).from(candidates).where(eq(candidates.id, Number(match[1])));
   if (!row) throw new InvalidFlagTargetError();
   return row.wardId;
 }

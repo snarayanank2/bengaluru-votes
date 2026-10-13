@@ -9,6 +9,10 @@
  * here afterwards (PRD's core-concept #2), this route itself only ever
  * sees an authenticated request.
  *
+ * Only a `candidate_field` flag on one of the eight flaggable profile
+ * fields is accepted (`FLAGGABLE_FIELD_KEYS`); ward-field and ward-issue
+ * flags, and the affidavit document, are refused with a 400.
+ *
  * `sourceUrl`, when present, MUST be an http(s) URL (architecture §13 —
  * kills `javascript:`/`data:`/etc. links from ever being stored and later
  * rendered as a clickable source).
@@ -47,7 +51,7 @@ function isHttpUrl(value: string): boolean {
 
 const bodySchema = z.object({
   wardId: z.number().int().positive(),
-  targetType: z.enum(['candidate_field', 'ward_field', 'ward_issue']),
+  targetType: z.literal('candidate_field'),
   targetRef: z.string().trim().min(1),
   detail: z.string().trim().min(1),
   suggestedValue: z.string().trim().min(1).nullable().optional(),

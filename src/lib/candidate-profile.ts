@@ -14,6 +14,10 @@ export const CANDIDATE_PROFILE_FIELD_KEYS = [
 
 export type CandidateProfileFieldKey = (typeof CANDIDATE_PROFILE_FIELD_KEYS)[number];
 
+/** What a citizen may flag: every profile field but the affidavit document itself, which no one can correct from a flag. */
+export const FLAGGABLE_FIELD_KEYS = ['full_name', 'ward', 'party', 'gender', 'age', 'education', 'assets', 'cases'] as const satisfies readonly CandidateProfileFieldKey[];
+export type FlaggableFieldKey = (typeof FLAGGABLE_FIELD_KEYS)[number];
+
 export const CANDIDATE_PROFILE_LABEL_KEYS: Record<CandidateProfileFieldKey, string> = {
   full_name: 'candidate.field.fullName',
   ward: 'candidate.field.ward',

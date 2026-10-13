@@ -408,6 +408,8 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       expect(html).toContain(`data-ward-id="${WARD.id}"`);
       expect(html).toContain(`candidate:${mainCandidateId}:full_name`);
       expect(html).toContain(`candidate:${mainCandidateId}:cases`);
+      expect(html).toContain(`candidate:${mainCandidateId}:ward`);
+      expect(html).not.toContain(`candidate:${mainCandidateId}:ec_affidavit`);
     });
 
     it('cache-safety: markup is byte-identical whether or not the request carries a session cookie', async () => {

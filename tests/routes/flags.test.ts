@@ -146,7 +146,7 @@ describe('POST /api/flags (Task 31)', () => {
 
   it('valid submission -> 200 {ok:true, flagItemId}, no-store', async () => {
     vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-    const targetRef = targetRefFor('valid_check');
+    const targetRef = targetRefFor('full_name');
 
     const res = await flagsPOST({
       request: req({
@@ -170,9 +170,44 @@ describe('POST /api/flags (Task 31)', () => {
     expect(items[0]!.id).toBe(body.flagItemId);
   });
 
+  it.each([
+    ['ward_field', (c: number, w: number) => `ward:${w}:name`],
+    ['ward_issue', () => 'ward_issue:1'],
+    ['candidate_field', (c: number) => `candidate:${c}:ec_affidavit`],
+    ['candidate_field', (c: number) => `candidate:${c}:track_record`],
+  ] as const)('refuses a %s flag on a target outside the eight candidate fields', async (targetType, ref) => {
+    vi.mocked(checkDefaultLimit).mockResolvedValue(true);
+    const targetRef = ref(candidateId, WARD_ID);
+
+    const res = await flagsPOST({
+      request: req({ wardId: WARD_ID, targetType, targetRef, detail: 'wrong' }),
+      locals: { session: { userId, role: 'citizen' } },
+    } as any);
+
+    expect(res.status).toBe(400);
+    const rows = await db.select().from(schema.flagItems).where(eq(schema.flagItems.targetRef, targetRef));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("still accepts a flag on the candidate's ward", async () => {
+    vi.mocked(checkDefaultLimit).mockResolvedValue(true);
+
+    const res = await flagsPOST({
+      request: req({
+        wardId: WARD_ID,
+        targetType: 'candidate_field',
+        targetRef: targetRefFor('ward'),
+        detail: 'This candidate is in ward 12',
+      }),
+      locals: { session: { userId, role: 'citizen' } },
+    } as any);
+
+    expect(res.status).toBe(200);
+  });
+
   it('accepts a plain http:// sourceUrl too (not just https)', async () => {
     vi.mocked(checkDefaultLimit).mockResolvedValue(true);
-    const targetRef = targetRefFor('http_ok_check');
+    const targetRef = targetRefFor('party');
 
     const res = await flagsPOST({
       request: req({
@@ -199,7 +234,7 @@ describe('POST /api/flags (Task 31)', () => {
         request: req({
           wardId: WARD_ID,
           targetType: 'candidate_field',
-          targetRef: targetRefFor('privacy_check'),
+          targetRef: targetRefFor('gender'),
           detail: secretDetail,
           sourceUrl: secretSourceUrl,
         }),

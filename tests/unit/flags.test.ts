@@ -42,6 +42,19 @@ function targetRefFor(fieldKey: string): string {
   return `candidate:${candidateId}:${fieldKey}`;
 }
 
+/**
+ * A flag target on a brand-new candidate in WARD_ID. Only eight field keys are
+ * flaggable, so a test that needs a pending item no other test has touched
+ * takes its own candidate rather than an invented field key.
+ */
+async function freshTargetRef(fieldKey = 'age'): Promise<string> {
+  const [row] = await db
+    .insert(schema.candidates)
+    .values({ slug: `flags-test-fresh-${randomUUID()}`, wardId: WARD_ID, nameEn: 'Flags Test Fresh Candidate', partyEn: 'Independent' })
+    .returning({ id: schema.candidates.id });
+  return `candidate:${row!.id}:${fieldKey}`;
+}
+
 describe('flags.ts — deduped flag queue + transactional resolution (Task 31)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
@@ -163,7 +176,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('resolveFlag ACCEPT: publishes the candidate field AND marks the item accepted; both submitters see the same accepted status', async () => {
-    const targetRef = targetRefFor('track_record');
+    const targetRef = targetRefFor('age');
 
     const first = await submitFlag(submitterAId, {
       wardId: WARD_ID,
@@ -305,7 +318,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('race: pre-inserted pending item is FOUND, not duplicated (deterministic loser-path)', async () => {
-    const targetRef = targetRefFor('race_predetermined');
+    const targetRef = await freshTargetRef();
 
     const [preInserted] = await db
       .insert(schema.flagItems)
@@ -326,7 +339,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('race: two CONCURRENT submitFlag calls for a brand-new targetRef still collapse onto ONE item (23505 re-select path)', async () => {
-    const targetRef = targetRefFor('race_concurrent');
+    const targetRef = await freshTargetRef();
 
     const [a, b] = await Promise.all([
       submitFlag(raceUserAId, {
@@ -356,7 +369,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('flag -> reject -> flag -> reject (TWO full reject cycles on the same targetRef) does not 23505 (partial index fix)', async () => {
-    const targetRef = targetRefFor('double_reject_cycle');
+    const targetRef = await freshTargetRef();
 
     const round1 = await submitFlag(submitterAId, {
       wardId: WARD_ID,
@@ -398,7 +411,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('double resolveFlag ACCEPT on the same item: the second call throws and does NOT publish a second time', async () => {
-    const targetRef = targetRefFor('double_accept');
+    const targetRef = await freshTargetRef();
 
     const { flagItemId } = await submitFlag(submitterAId, {
       wardId: WARD_ID,
@@ -427,7 +440,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('resolveFlag on an already-rejected item throws and does not change state', async () => {
-    const targetRef = targetRefFor('resolve_after_reject');
+    const targetRef = await freshTargetRef();
 
     const { flagItemId } = await submitFlag(submitterAId, {
       wardId: WARD_ID,
@@ -454,7 +467,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('resolveFlag ACCEPT calls translateFieldSoon({table:"candidate_fields", id}) after the transaction commits', async () => {
-    const targetRef = targetRefFor('translate_parity');
+    const targetRef = await freshTargetRef();
 
     const { flagItemId } = await submitFlag(submitterAId, {
       wardId: WARD_ID,
@@ -491,7 +504,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('resolveFlag ACCEPT manual-suppression: normal accept fires translate once (pending); a later accept that only changes the OTHER language (authored unchanged) resolves to manual and does NOT fire translate (Fix 3, Task 40 review)', async () => {
-    const targetRef = targetRefFor('manual_suppression');
+    const targetRef = await freshTargetRef();
     const fieldKey = 'manual_suppression_field';
 
     // --- First accept: brand-new field, no existing row -> decideTranslationStatus
@@ -609,7 +622,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('a curator (city-wide, no ward assignment) CAN accept/publish a flag whose target candidate is in a different ward', async () => {
-    const targetRef = `candidate:${candidateBId}:track_record`;
+    const targetRef = `candidate:${candidateBId}:age`;
 
     const { flagItemId } = await submitFlag(submitterAId, {
       targetType: 'candidate_field',

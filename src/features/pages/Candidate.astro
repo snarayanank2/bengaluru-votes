@@ -19,6 +19,7 @@ import { desc, eq } from 'drizzle-orm';
 import {
   CANDIDATE_PROFILE_FIELD_KEYS,
   CANDIDATE_PROFILE_LABEL_KEYS,
+  FLAGGABLE_FIELD_KEYS,
   pickCandidateValue,
 } from '../../lib/candidate-profile';
 import { getKnownSetting } from '../../lib/settings';
@@ -117,12 +118,13 @@ const description = row
   ? t(lang, 'candidate.meta.description', { name: candidateName, party: partyName, wardName })
   : t(lang, 'candidate.notFound.fact');
 
-// Flag misinformation — all nine profile fields are flaggable targets. The
+// Flag misinformation — eight of the nine profile fields are flaggable targets;
+// the affidavit document is not. The
 // same anonymous-safe markup renders for every visitor; the client island
 // applies the authentication gate when the action is used.
 const flagTargets = row
   ? JSON.stringify(
-      CANDIDATE_PROFILE_FIELD_KEYS.map((key) => ({
+      FLAGGABLE_FIELD_KEYS.map((key) => ({
         targetType: 'candidate_field',
         targetRef: `candidate:${row.id}:${key}`,
         label: t(lang, CANDIDATE_PROFILE_LABEL_KEYS[key]),
