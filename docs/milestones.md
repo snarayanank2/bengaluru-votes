@@ -52,7 +52,7 @@ Two consequences run through everything below:
 | **M6** | Admin functionality | Admins | 3d | M4a | — (SendGrid arrives via M4a) |
 | **M7** | Curator functionality | Curators | 3d | M4a, M6 | Curator cohort |
 | **M8** | Transcriber functionality | Transcribers | 3d | M4a, M6 | Transcriber cohort |
-| **M9** | Bulk upload readiness | — (pipeline) | 3d | — | Anthropic / OpenRouter account; a Google Cloud Storage bucket (§11) |
+| **M9** | Bulk upload readiness | — (pipeline) | 3d | — | Anthropic account (§11) |
 | **M10** | Registered User Functionality | Citizens with accounts | 3d | M3, M4a | — |
 | **M11** | Real Candidate data available | Every visitor | 2d | — | **Bulk affidavit download from KSEC** |
 | **M12** | GTM Hard Launch Readiness | Partners, press | 5d | — | — |
@@ -352,9 +352,11 @@ Curators work the citizen flag queue, on demo data, before a real affidavit exis
 
 ## 10. M8 — Transcriber functionality
 
-**Effort:** 3 days · **dummy data only**
+**Effort:** 3 days · **dummy data only** · **built 2026-10-13** (`docs/superpowers/specs/2026-10-13-transcriber-design.md`)
 
 A transcriber reads one affidavit at a time from a prioritized city-wide queue and confirms or corrects the AI-extracted fields.
+
+**As built:** `/transcribe` has the single Start control; `/transcribe/{assignment-id}` shows the scan beside a form pre-filled with the AI values; `/transcribe/guide` is the onboarding page. **Desktop only**: the scan and the form must be side by side, so there is no phone layout. A hold on an affidavit lasts **45 minutes**. Only the fields the transcriber ticks are saved; the rest keep the AI label. Besides confirming or correcting a value they can mark a field *not declared* or *cannot read*; the last shows publicly as "Could not be read from the affidavit" and is not counted as checked. They also confirm the **name, party and gender** the AI read, since identity now comes from the affidavit (§11). They cannot change the ward: "wrong ward or wrong document" sends the affidavit to the admin's matching list with a note.
 
 ### 10.1 One reading, published immediately
 
@@ -390,7 +392,7 @@ Three database-level invariants (`docs/architecture.md` §6, tracker 109): the d
 
 ### 10.3 What else ships
 
-- The `transcriber` role and its tables. `roleEnum` is `citizen | curator | admin` today; this adds the role, `transcription_assignments`, and a two-state check marker plus an extraction-confidence field on `candidate_fields` (tracker 108).
+- The `transcriber` role and its tables: `transcription_assignments`, the two-state check marker with `checked_by`, `checked_at` and `confirmed_ai` on `candidate_fields`, and the affidavit's extraction confidence on `candidate_affidavits` (tracker 108). The low-confidence line is the `low_confidence_threshold` setting, default 70, a placeholder until the Kannada pilot.
 - A transcriber onboarding page.
 
 **Testable when** an invited transcriber can log in, be handed an affidavit they did not choose, confirm and correct fields, see the change on the public report card immediately with its marker changed, and be handed the next one — and when the queue hands out a missing-value candidate before a low-confidence one, and a low-confidence one before a clean one.
@@ -414,16 +416,16 @@ Three database-level invariants (`docs/architecture.md` §6, tracker 109): the d
 
 ## 11. M9 — Bulk upload readiness
 
-**Effort:** 3 days · **dummy data only**
+**Effort:** 3 days · **dummy data only** · **built 2026-10-13** (`docs/superpowers/specs/2026-10-13-affidavit-pipeline-design.md`)
 
 The affidavit pipeline, end to end, running on stand-in documents.
 
 **What ships**
 
-- **Bulk download and upload of EC affidavits into Google Cloud Storage.**
+- **Bulk upload of affidavit PDFs**, on `/admin/affidavits` and with `npm run upload:affidavits -- <dir> --as <admin email>`. The same PDF is only ever stored once.
+- **AI extraction from a queue**, by the `extract-worker` container: age, education, assets, criminal cases, one confidence figure, **and the candidate's name, ward, party and gender**. A failed call is retried three times and never published as *not declared*.
+- **Matching, by the AI's reading of the affidavit** (tracker 122). If the AI-read ward resolves to exactly one ward and nobody of that name is already there, the candidate is created and published at once with AI labels. Everything else waits on the admin's needs-matching list, where an admin picks the ward and confirms the name and party. There is no nomination-list import; if one arrives, reconciling it against these candidates is still to design.
 - **The affidavit shown on the candidate page**, linked from the report card.
-- **AI extraction enqueued** per affidavit, populating cases, assets and education, including *not declared* where the affidavit says so.
-- *(proposed)* **matching** — each affidavit tied to the right candidate record, which is its own problem when the nomination list and the affidavit set arrive separately and spell names differently (tracker 122). Not named on the sheet; it does not happen by itself.
 
 **Testable when** a batch of stand-in affidavits can be ingested end to end and a visitor on a demo candidate's page sees affidavit-sourced fields with the *AI-extracted* marker and a link to the stored document.
 
@@ -431,21 +433,14 @@ The affidavit pipeline, end to end, running on stand-in documents.
 
 | | |
 |---|---|
-| Anthropic or OpenRouter account with credits — reconcile which | tracker 20; `project-dependencies.md` §6.6 |
-| **A Google Cloud Storage bucket in `asia-south1`, and its credentials** | `project-dependencies.md` §6.19 |
-| Test affidavits to run the pipeline against | `ksec-data-risk.md` §5 Option D |
+| Anthropic account with credits | tracker 20; `project-dependencies.md` §6.6 |
+| Test affidavits to run the pipeline against | `tests/fixtures/affidavits/`; `ksec-data-risk.md` §5 Option D |
 
-**Google Cloud Storage was a change of architecture, and it has now been made deliberately.** The sheet's M9 said "google cloud storage" while `docs/architecture.md` stored all media as `bytea` in Postgres — a real contradiction, resolved on 2026-08-15 **in favour of GCS**, with `architecture.md` §2/§6/§7/§10/§13 rewritten to match rather than left to be discovered.
+**Affidavit PDFs are stored in Postgres, not Google Cloud Storage.** The sheet's M9 said "google cloud storage", and on 2026-08-15 the architecture was rewritten to match; on 2026-10-13, before any of it was built, that was reversed. One store keeps one validation path and one backup, and removes the bucket, its credential and its unquoted egress bill from the list of things that must exist before the nomination window.
 
-What that decision actually commits to, so M9 is not estimated as if it were a config change:
+What that costs: roughly 4,000 PDFs of up to 20 MB each on the box's disk and in every nightly dump (`architecture.md` §6, §10). It does not change the off-box backup hole (tracker 55, `project-dependencies.md` §6.9): affidavits are now inside it with everything else.
 
-- **Only affidavit PDFs move.** Candidate photos stay `bytea`; the platform now has two media stores, and that split is the design, not an oversight.
-- **The bucket is the backup.** Affidavits leave the `pg_dump` umbrella, so their durability is bucket object versioning plus a lifecycle policy — not a second restic repository. The consequence to hold: a database restore no longer restores the affidavits with it, because `candidate_affidavits` rows hold object keys. **Never lifecycle-delete an object a live row points at.**
-- **`asia-south1` (Mumbai), for the same DPDP reason** the off-box database backup carries (`architecture.md` §13).
-- **Public read, content-hashed keys.** An affidavit is the public source behind a published claim, so a signed-URL scheme would break the "open the affidavit behind any value" promise to buy secrecy the data does not need.
-- **A new metered service that public traffic reaches.** Egress scales with citizens opening affidavits, which is the point of the platform. No quote has been taken, and `project-dependencies.md` §6.11's running-cost total was written before this existed.
-
-This does not fix the off-box backup hole. There is still no destination for the nightly database dump (tracker 55, `project-dependencies.md` §6.9); moving affidavits out of it makes the dump smaller, not safer.
+**Two risks this design accepts.** A wrong AI-read ward is public until a person reads that affidavit. And the identity fields have only nine fixtures behind them, none naming a ward, because the fixtures are Assembly affidavits.
 
 **Use the ECI/MyNeta corpus to build against now.** Karnataka Assembly 2023 and Lok Sabha 2024 affidavits are structured and available today (`ksec-data-risk.md` §5, Option D). They are the wrong election type and English rather than Kannada, so they will flatter the extraction accuracy — but they let M9 be genuinely finished months before N, which is the whole point of a dummy-data milestone.
 
@@ -638,7 +633,7 @@ Several things this plan depends on have no home on disk right now and are not r
 - **Row 58 was re-scoped on 2026-10-13, and a budget row now exists.** Row 58 reads "hire 23 transcribers and enrol 2 curators" (`docs/overview.md` §8, §11): 23 hired readers for five days at ₹3,500 a head, and 2 curators at ₹5,000 each; it still covers both roles in one row, though they are recruited separately. **Row 166 tracks the ₹80,500 transcription and ₹10,000 curator budget**, beside 140 (the ₹3L WhatsApp spend), and it gates M8 having anyone to use it. Row 113 (the transcriber performance view) is closed as dropped, and row 115 records that the curator half of the authorization change is done.
 - **"Mark candidate complete" fed a ward readiness gate that no longer exists**, and its row (114) was deleted on 2026-08-15. The gate's code — the sign-off panel, the held-wards override, the `ward_readiness` table — was removed on 2026-10-13, together with candidate news links. If the `/data` page is still to publish coverage figures (`docs/overview.md` §8, "Public metrics"), something has to compute them — that is now untracked.
 - **M11's blocker on M10 was deleted on 2026-08-15**, on the sheet and here (§13). It had put the project's central deliverable behind a milestone the sheet elsewhere contemplates dropping. It was slack rather than a real constraint, so nothing in §16's arithmetic moves.
-- **The sheet's M9 said Google Cloud Storage while `architecture.md` said Postgres `bytea`.** Resolved 2026-08-15 in favour of GCS; `architecture.md` was rewritten to match and §11 records what that commits to. **Tracker 123 was re-scoped on 2026-08-15** from Postgres dump size to bucket throughput and egress cost, and row **135** was added to provision the bucket itself (`project-dependencies.md` §6.19).
+- **The sheet's M9 says Google Cloud Storage; the platform stores affidavits in Postgres.** Resolved 2026-08-15 in favour of GCS, then reversed on 2026-10-13 before anything was built on it (§11). **The sheet still says GCS**, tracker 123 is back to being about Postgres dump size, and row **135** (provision the bucket) should be closed as dropped.
 - **Row 106 ("generate a sign-in link") contradicted a locked decision** and the sheet's M6 description carried it. The description was corrected on 2026-08-15 — staff sign in by email OTP, and there are no sign-in links (§8, `docs/overview.md` §8) — and the row was deleted from the Tasks tab rather than built.
 
 ---

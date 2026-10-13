@@ -83,7 +83,7 @@ docker compose -f deploy/compose.local.yml run --rm --no-deps --build \
   app npm test
 ```
 
-For a single test file or test case, replace `npm test` with the relevant `npx vitest run ...` command from above. Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`. Never point this command at the app's `gba` database.
+For a single test file or test case, replace `npm test` with the relevant `npx vitest run ...` command from above. Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`. Never point this command at the app's `gba` database. Two environment values the local image sets make a handful of tests fail unless overridden for the run: pass `-e SITE_ORIGIN=https://bengaluruvotes.opencity.in` (candidate JSON-LD tests) and pass the master password variable empty (the `/api/otp` middleware test, which otherwise sees password mode).
 
 `vitest.config.ts` sets `fileParallelism: false` and `singleFork` on purpose: all DB-backed tests share one database, and parallel files race (a temporary DDL rule in `audit.test.ts` — until tracker 147 removes it — breaks other files' `INSERT ... RETURNING`; fixture ids collide). Don't re-enable parallelism.
 
@@ -101,7 +101,7 @@ E2E uses a dedicated `bv_e2e` database, never `bv_test`: `seed-e2e` picks wards 
 
 ## Architecture
 
-Astro SSR monolith (TypeScript, `output: 'server'`, `@astrojs/node` standalone) + Postgres via Drizzle + an nginx micro-cache + a `jobs` cron container, on single-VM Docker Compose. No other frameworks or services without asking.
+Astro SSR monolith (TypeScript, `output: 'server'`, `@astrojs/node` standalone) + Postgres via Drizzle + an nginx micro-cache + a `jobs` cron container + an `extract-worker` container that reads queued affidavits, on single-VM Docker Compose. No other frameworks or services without asking.
 
 ### Route twins (bilingual)
 
@@ -152,6 +152,14 @@ Curator edits **go live immediately** — no approval gate. Every field carries 
 
 **The audit log was removed on 2026-08-19** (tracker 147; `docs/architecture.md` §6, §7, §13) — no change history, no `/admin/audit`, and no restore action. Migration `0008_remove_audit_log.sql` drops the legacy table; `0001_audit_append_only.sql` remains only as immutable migration history.
 
+### Affidavits: queue, extraction, matching
+
+`candidate_affidavits` is the extraction queue (`src/lib/affidavit-queue.ts`): `queued → extracting → published | needs_matching | failed`. PDFs are stored in Postgres (`media`), not Google Cloud Storage. The `extract-worker` container (`jobs/extract-affidavits.ts`) claims rows under a lease and reads each with a Claude model, which also returns the candidate's name, ward, party and gender. A ward that resolves to exactly one ward creates and publishes the candidate with AI labels; anything else waits on `/admin/affidavits`. **A failed extraction is never published as "not declared".**
+
+`src/lib/affidavit-publish.ts` is the only writer of structured values: `candidate_fields.value_data` and the rendered `value_en` are written together, along with `checked_by`, `checked_at` and `confirmed_ai`. A curator's free-text edit clears `value_data`. A field nobody could read is `unreadable`, which the public pages show as "Could not be read from the affidavit", never as "Not declared".
+
+Every model call is paid (about $0.20 per affidavit on Opus 5.5). The local `extract-worker` takes its Anthropic key from the shell that starts it and exits without one. Tests never call a model: `processOne` takes the extractor.
+
 ### Contribution flows
 
 **Keep anonymous voting.** Issue voting requires no account or registered home ward: a visitor chooses exactly three issues in one ward, with one immutable ballot per browser receipt and results revealed after voting. Flagging misinformation remains login-gated, works across any ward, and **the original action resumes in place** after auth. Both actions show enabled buttons to anonymous users.
@@ -162,7 +170,7 @@ Register/Login (fallback page `/login`) and Flag are **modals** that overlay wit
 
 Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Transcriber · Data curator (**city-wide**, no ward or zone assignment) · Admin (city-wide). `roleEnum` in the schema is the authority on what exists today; `src/middleware.ts` is the authority on what each can do. There is no written permissions matrix at present.
 
-**Transcriber** exists in `roleEnum` and can be assigned (2026-10-13), but has no routes yet: it can sign in and reach `/account` only. Its screens and its assignment-based authorization are still to build. It is city-wide, and authorized by assignment rather than by role alone — "does an open assignment for this affidavit belong to this caller". That is a change to the enforcement model, not a new row in a table — see `docs/milestones.md` §10 before implementing it.
+**Transcriber** has its own area, `/transcribe` (built 2026-10-13; `docs/milestones.md` §10, `src/lib/transcribe.ts`). The middleware admits a transcriber or an admin to it; a curator gets 403. Beyond that it is authorized by assignment rather than by role: every read and write checks "does an open, unexpired assignment with this id belong to this caller", and anything else is a 404, for an admin too. There is one Start control and no list: do not add search, filters or any way to choose an affidavit. A hold lasts 45 minutes. **Admins** also own `/admin/affidavits`: bulk upload, the needs-matching list and the failed list.
 
 ## Gotchas that bite silently
 

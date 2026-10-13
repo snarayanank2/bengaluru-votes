@@ -5,8 +5,8 @@
 Dependency register reference: `docs/project-dependencies.md` §6.2 (Cloud
 project + billing), §6.3 (Geocoding key), §6.4 (Maps Platform terms), §6.5
 (geocoding budget + quota alerts), §6.10 (secrets custody), §6.12 (GA
-property), §6.13 (reCAPTCHA keys), §6.19 (Cloud Storage bucket for affidavit
-PDFs — added 2026-08-15, provisioning not yet written up here). Operational
+property), §6.13 (reCAPTCHA keys). (§6.19, a Cloud Storage bucket for affidavit
+PDFs, was dropped on 2026-10-13: affidavits are stored in Postgres.) Operational
 context: `deploy/runbook.md` §"Required environment variables" — the table
 there is the authority on what each variable does at runtime; this document
 is how the values in it are obtained.

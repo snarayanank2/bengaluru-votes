@@ -27,7 +27,7 @@ As soon as the first documents are available, Siva:
 - Sends usable records to AI extraction without waiting for the remaining documents.
 - Loads later arrivals and reconciles rejected or withdrawn candidates as official lists change.
 
-Name, ward, party and gender are expected from the nomination list. Check that assumption against the actual files. If these fields also need reading from scans, or if poor scans need repair, the workload increases. The planned affidavit storage is Google Cloud Storage.
+Name, ward, party and gender were expected from the nomination list. **As built (2026-10-13), the AI reads them from the affidavit itself**, and Siva handles only the affidavits whose ward the AI could not place (`/admin/affidavits`, "Needs matching"). A wrong AI-read ward is public until a person reads that affidavit, so transcribers confirm name, party and gender as part of each reading. If a nomination list arrives, reconciling it against these candidates is still to design. Poor scans that need repair still increase the workload. Affidavits are stored in the platform's own database (decided 2026-10-13; Google Cloud Storage was dropped).
 
 **Time and cost:** loading time depends on the online source and file quality and has not been measured. Siva's loading time and any acquisition charges are not priced in the budget below. The three-day AI allowance starts with usable, matched records; it must not silently absorb unmeasured loading or scan-repair work.
 
