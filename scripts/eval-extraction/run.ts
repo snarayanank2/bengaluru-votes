@@ -7,6 +7,7 @@
  *   npm run eval:extraction -- --pilot               # 1 affidavit x 3 models
  *   npm run eval:extraction -- --full --out <dir>    # every pending pair
  *   npm run eval:extraction -- --regrade <dir>       # rescore, no API call
+ *   add --model <id> to a pilot or full run to use one model only
  *
  * Needs ANTHROPIC_API_KEY in the environment for --pilot and --full.
  */
@@ -14,7 +15,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, write
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
-import { EXTRACTION_MODELS, extractAffidavit } from '../../src/lib/affidavit-extraction';
+import { EXTRACTION_MODELS, extractAffidavit, type ExtractionModel } from '../../src/lib/affidavit-extraction';
 import { expectedFileSchema, grade } from './grade';
 import { costUsd, disagreements, pendingPairs, summarize, type ErrorRow, type Pair, type ResultRow } from './report';
 
@@ -108,6 +109,13 @@ async function main(): Promise<void> {
   };
   const files = fixtureFiles();
 
+  // --model <id> restricts a pilot, a full run or the plan to one model.
+  const modelArg = valueOf('--model');
+  if (modelArg && !(EXTRACTION_MODELS as readonly string[]).includes(modelArg)) {
+    throw new Error(`--model must be one of: ${EXTRACTION_MODELS.join(', ')}`);
+  }
+  const models: readonly ExtractionModel[] = modelArg ? [modelArg as ExtractionModel] : EXTRACTION_MODELS;
+
   if (args.includes('--regrade')) {
     const dir = valueOf('--regrade');
     if (!dir) throw new Error('--regrade needs a run directory');
@@ -128,7 +136,7 @@ async function main(): Promise<void> {
     requireKey();
     const outDir = valueOf('--out') ?? path.join(repoRoot, 'eval-runs', `pilot-${new Date().toISOString().replace(/[:.]/g, '-')}`);
     const existing = readJsonl<ResultRow>(path.join(outDir, 'results.jsonl'));
-    const pending = pendingPairs([files[0]], EXTRACTION_MODELS, existing);
+    const pending = pendingPairs([files[0]], models, existing);
     let hadError = false;
     if (pending.length === 0) console.log(`Pilot already complete in ${outDir}.`);
     else hadError = await runPairs(pending, outDir);
@@ -142,7 +150,7 @@ async function main(): Promise<void> {
       total += projected;
       console.log(`  ${row.model}: pilot $${row.costUsd.toFixed(3)} (${row.usage.inputTokens} in / ${row.usage.outputTokens} out, ${(row.usage.elapsedMs / 1000).toFixed(0)}s); remaining about $${projected.toFixed(2)}`);
     }
-    for (const model of EXTRACTION_MODELS) {
+    for (const model of models) {
       if (!rows.some((row) => row.model === model)) {
         console.log(`  ${model}: no pilot result (see errors.jsonl); not included in the total`);
       }
@@ -161,7 +169,7 @@ async function main(): Promise<void> {
     const outDir = valueOf('--out');
     if (!outDir) throw new Error('--full needs --out <dir>');
     const done = readJsonl<ResultRow>(path.join(outDir, 'results.jsonl'));
-    const pending = pendingPairs(files, EXTRACTION_MODELS, done);
+    const pending = pendingPairs(files, models, done);
     console.log(`${done.length} results already saved; running ${pending.length} calls.`);
     const hadError = await runPairs(pending, outDir);
     writeReports(outDir);
@@ -172,8 +180,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const pairs = pendingPairs(files, EXTRACTION_MODELS, []);
-  console.log(`Plan: ${files.length} affidavits x ${EXTRACTION_MODELS.length} models = ${pairs.length} calls. No API call made.`);
+  const pairs = pendingPairs(files, models, []);
+  console.log(`Plan: ${files.length} affidavits x ${models.length} models = ${pairs.length} calls. No API call made.`);
   for (const { file, model } of pairs) console.log(`  ${model}  ${file}`);
   console.log('\nRun with --pilot to make the first three calls.');
 }

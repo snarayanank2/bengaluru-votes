@@ -15,10 +15,16 @@ function good(): AffidavitExtraction {
   return {
     age: { status: 'value', years: 52 },
     education: { status: 'value', level: 'Graduate', stated: 'B.Com, Bangalore University, 1994' },
-    assets: { status: 'value', totalInr: 123456789, note: 'Movable 23456789; immovable 100000000' },
+    assets: { status: 'value', movableInr: 23456789, immovableInr: 100000000, totalInr: 123456789, note: 'Movable 23456789; immovable 100000000' },
     cases: { status: 'value', pending: 0, convictions: 0, note: 'Affidavit states nil' },
     confidence: 85,
   };
+}
+
+/** The JSON the model returns: everything except the code-computed total. */
+function wire(e: AffidavitExtraction) {
+  const { totalInr: _computed, ...assets } = e.assets;
+  return { ...e, assets };
 }
 
 function message(text: string, stopReason: string = 'end_turn'): Anthropic.Message {
@@ -63,7 +69,7 @@ describe('checkExtraction', () => {
 
   it('rejects a value present when status is unreadable', () => {
     const e = good();
-    e.assets = { status: 'unreadable', totalInr: 5, note: null };
+    e.assets = { status: 'unreadable', movableInr: 5, immovableInr: null, totalInr: null, note: null };
     expect(checkExtraction(e)).toMatch(/assets/);
   });
 
@@ -75,7 +81,7 @@ describe('checkExtraction', () => {
 
   it.each([
     ['confidence above 100', (e: AffidavitExtraction) => { e.confidence = 140; }],
-    ['negative assets', (e: AffidavitExtraction) => { e.assets.totalInr = -1; }],
+    ['negative assets', (e: AffidavitExtraction) => { e.assets.movableInr = -1; }],
     ['age of zero', (e: AffidavitExtraction) => { e.age.years = 0; }],
     ['negative case count', (e: AffidavitExtraction) => { e.cases.pending = -2; }],
   ])('rejects %s', (_name, mutate) => {
@@ -87,7 +93,7 @@ describe('checkExtraction', () => {
 
 describe('extractAffidavit', () => {
   it('returns the extraction and usage on a valid response', async () => {
-    const { client, create } = fakeClient(message(JSON.stringify(good())));
+    const { client, create } = fakeClient(message(JSON.stringify(wire(good()))));
     const outcome = await extractAffidavit(PDF, 'claude-haiku-5-5', client);
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
@@ -114,6 +120,33 @@ describe('extractAffidavit', () => {
     expect(content[1].type).toBe('text');
   });
 
+  it('computes the assets total in code from the two subtotals', async () => {
+    const e = good();
+    e.assets.movableInr = 1256;
+    e.assets.immovableInr = 9200;
+    const { client } = fakeClient(message(JSON.stringify(wire(e))));
+    const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.extraction.assets.totalInr).toBe(10456);
+  });
+
+  it('rejects a total supplied by the model', async () => {
+    const { client } = fakeClient(message(JSON.stringify(good())));
+    const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
+    expect(outcome).toMatchObject({ ok: false, failure: 'invalid_output' });
+  });
+
+  it('leaves the total null when assets are not a value', async () => {
+    const e = good();
+    e.assets = { status: 'unreadable', movableInr: null, immovableInr: null, totalInr: null, note: 'faint' };
+    const { client } = fakeClient(message(JSON.stringify(wire(e))));
+    const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.extraction.assets.totalInr).toBeNull();
+  });
+
   it('reports a refusal', async () => {
     const { client } = fakeClient(message('', 'refusal'));
     const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
@@ -127,7 +160,7 @@ describe('extractAffidavit', () => {
   });
 
   it('rejects a stop_reason other than end_turn even when the text is valid JSON', async () => {
-    const { client } = fakeClient(message(JSON.stringify(good()), 'pause_turn'));
+    const { client } = fakeClient(message(JSON.stringify(wire(good())), 'pause_turn'));
     const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
     expect(outcome).toMatchObject({
       ok: false,
@@ -152,13 +185,13 @@ describe('extractAffidavit', () => {
 
   it('reports a missing field as invalid_output', async () => {
     const { confidence: _dropped, ...partial } = good();
-    const { client } = fakeClient(message(JSON.stringify(partial)));
+    const { client } = fakeClient(message(JSON.stringify(wire(partial as AffidavitExtraction))));
     const outcome = await extractAffidavit(PDF, 'claude-sonnet-5-5', client);
     expect(outcome).toMatchObject({ ok: false, failure: 'invalid_output' });
   });
 
   it('reports an extra field as invalid_output', async () => {
-    const { client } = fakeClient(message(JSON.stringify({ ...good(), party: 'XYZ' })));
+    const { client } = fakeClient(message(JSON.stringify({ ...wire(good()), party: 'XYZ' })));
     const outcome = await extractAffidavit(PDF, 'claude-sonnet-5-5', client);
     expect(outcome).toMatchObject({ ok: false, failure: 'invalid_output' });
   });
@@ -166,7 +199,7 @@ describe('extractAffidavit', () => {
   it('reports a status/value mismatch as invalid_output', async () => {
     const e = good();
     e.cases = { status: 'value', pending: null, convictions: 0, note: null };
-    const { client } = fakeClient(message(JSON.stringify(e)));
+    const { client } = fakeClient(message(JSON.stringify(wire(e))));
     const outcome = await extractAffidavit(PDF, 'claude-sonnet-5-5', client);
     expect(outcome).toMatchObject({ ok: false, failure: 'invalid_output' });
   });
@@ -181,7 +214,7 @@ describe('extractAffidavit', () => {
   });
 
   it('throws on an empty buffer', async () => {
-    const { client } = fakeClient(message(JSON.stringify(good())));
+    const { client } = fakeClient(message(JSON.stringify(wire(good()))));
     await expect(extractAffidavit(Buffer.alloc(0), 'claude-haiku-5-5', client)).rejects.toThrow(/empty/);
   });
 

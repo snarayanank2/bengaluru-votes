@@ -42,15 +42,18 @@ Every field carries a `status` of `value`, `not_declared` or `unreadable`. The v
 |---|---|---|
 | `age` | Whole number of years, as declared | none |
 | `education` | `level` from the fixed list below, and `stated`: the qualification as written, in English | none |
-| `assets` | `totalInr`: whole rupees | One line giving the movable and immovable subtotals |
+| `assets` | `movableInr` and `immovableInr`: whole rupees, from the model. `totalInr`: their sum, computed in code and never requested from the model | One line giving each person's movable and immovable figures |
 | `cases` | `pending` and `convictions`: whole numbers | One line, for example the sections cited |
 | `confidence` | Whole number 0–100 for the affidavit as a whole. Always present | none |
 
 Definitions the prompt states explicitly:
 
 - **Assets total** is movable plus immovable assets for the candidate, spouse, dependents and HUF added together, gross of liabilities. This is how MyNeta totals it.
-- **Cases:** an affidavit that states "nil" or "none" is `status: value` with `pending: 0` and `convictions: 0`. `not_declared` means the section is blank or absent.
-- **Education levels:** Illiterate, Literate, 5th Pass, 8th Pass, 10th Pass, 12th Pass, Graduate, Graduate Professional, Post Graduate, Doctorate, Others. These are MyNeta's categories.
+  - The model returns the movable and immovable totals separately and the module adds them (changed 2026-10-13 after the first run, where models returned correct subtotals with a wrong sum or a dropped digit).
+  - The model uses totals the affidavit prints and does not re-add line items. Where the Part B summary and a total printed in the detailed tables disagree, the detailed table wins.
+  - A stated value is taken at face value, including for a fractional share of a property; if it is unclear whether the value is for the whole property or the share, the model says so in the note and lowers its confidence.
+- **Cases:** an affidavit that states "nil" or "none" is `status: value` with `pending: 0` and `convictions: 0`. `not_declared` means the section is blank or absent. A case with a conviction is counted only under convictions, never under pending, even when an appeal is pending.
+- **Education levels:** Illiterate, Literate, 5th Pass, 8th Pass, 10th Pass, 12th Pass, Graduate, Graduate Professional, Post Graduate, Doctorate, Others. These are MyNeta's categories. PUC, pre-university, intermediate and 10+2 map to 12th Pass; SSLC, matriculation and high school map to 10th Pass.
 - **`unreadable`** means the model could not read the value from the scan. It must not guess.
 - **Language:** every value and note is written in English, including from Kannada scans.
 

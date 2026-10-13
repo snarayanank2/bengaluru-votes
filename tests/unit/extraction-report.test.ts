@@ -17,7 +17,7 @@ const EN = 'test-affidavit-ka2023-english-inc-kr-pura-dk-mohan.pdf';
 const extraction: AffidavitExtraction = {
   age: { status: 'value', years: 25 },
   education: { status: 'value', level: 'Graduate', stated: 'B.Com' },
-  assets: { status: 'unreadable', totalInr: null, note: 'Page 14 is too faint' },
+  assets: { status: 'unreadable', movableInr: null, immovableInr: null, totalInr: null, note: 'Page 14 is too faint' },
   cases: { status: 'value', pending: 0, convictions: 0, note: 'States nil' },
   confidence: 60,
 };

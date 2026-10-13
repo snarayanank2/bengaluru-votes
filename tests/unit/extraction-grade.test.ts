@@ -9,7 +9,7 @@ function extraction(): AffidavitExtraction {
   return {
     age: { status: 'value', years: 52 },
     education: { status: 'value', level: 'Graduate', stated: 'B.Com' },
-    assets: { status: 'value', totalInr: 1000000, note: null },
+    assets: { status: 'value', movableInr: 0, immovableInr: 1000000, totalInr: 1000000, note: null },
     cases: { status: 'value', pending: 2, convictions: 0, note: null },
     confidence: 80,
   };
@@ -51,7 +51,7 @@ describe('grade', () => {
 
   it('marks unreadable as abstained', () => {
     const e = extraction();
-    e.assets = { status: 'unreadable', totalInr: null, note: null };
+    e.assets = { status: 'unreadable', movableInr: null, immovableInr: null, totalInr: null, note: null };
     const result = grade(e, expected());
     expect(result.scores.assetsTotalInr.outcome).toBe('abstained');
     expect(result.assetsWithin1Percent).toBeNull();

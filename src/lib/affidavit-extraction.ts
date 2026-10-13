@@ -50,7 +50,12 @@ export const extractionSchema = z.strictObject({
     level: z.enum(EDUCATION_LEVELS).nullable(),
     stated: z.string().nullable(),
   }),
-  assets: z.strictObject({ status, totalInr: z.number().int().nullable(), note: z.string().nullable() }),
+  assets: z.strictObject({
+    status,
+    movableInr: z.number().int().nullable(),
+    immovableInr: z.number().int().nullable(),
+    note: z.string().nullable(),
+  }),
   cases: z.strictObject({
     status,
     pending: z.number().int().nullable(),
@@ -59,7 +64,17 @@ export const extractionSchema = z.strictObject({
   }),
   confidence: z.number().int(),
 });
-export type AffidavitExtraction = z.infer<typeof extractionSchema>;
+type ModelExtraction = z.infer<typeof extractionSchema>;
+
+/**
+ * What callers get: the model's answer plus `assets.totalInr`, which this
+ * module computes as movable + immovable. The model is never asked for the
+ * total: in the first evaluation run it returned correct subtotals with a
+ * wrong sum or a dropped digit often enough to matter.
+ */
+export type AffidavitExtraction = Omit<ModelExtraction, 'assets'> & {
+  assets: ModelExtraction['assets'] & { totalInr: number | null };
+};
 
 /**
  * Rules the JSON schema cannot express. Returns a description of the first
@@ -69,7 +84,7 @@ export function checkExtraction(e: AffidavitExtraction): string | null {
   const fields: Array<[string, string, Record<string, number | string | null>]> = [
     ['age', e.age.status, { years: e.age.years }],
     ['education', e.education.status, { level: e.education.level, stated: e.education.stated }],
-    ['assets', e.assets.status, { totalInr: e.assets.totalInr }],
+    ['assets', e.assets.status, { movableInr: e.assets.movableInr, immovableInr: e.assets.immovableInr, totalInr: e.assets.totalInr }],
     ['cases', e.cases.status, { pending: e.cases.pending, convictions: e.cases.convictions }],
   ];
   for (const [name, fieldStatus, values] of fields) {
@@ -79,7 +94,8 @@ export function checkExtraction(e: AffidavitExtraction): string | null {
     }
   }
   if (e.age.years !== null && (e.age.years < 1 || e.age.years > 120)) return 'age.years is out of range';
-  if (e.assets.totalInr !== null && e.assets.totalInr < 0) return 'assets.totalInr is negative';
+  if (e.assets.movableInr !== null && e.assets.movableInr < 0) return 'assets.movableInr is negative';
+  if (e.assets.immovableInr !== null && e.assets.immovableInr < 0) return 'assets.immovableInr is negative';
   if (e.cases.pending !== null && e.cases.pending < 0) return 'cases.pending is negative';
   if (e.cases.convictions !== null && e.cases.convictions < 0) return 'cases.convictions is negative';
   if (e.confidence < 0 || e.confidence > 100) return 'confidence is out of range';
@@ -122,9 +138,9 @@ For each field set "status" to exactly one of:
 
 Fields:
 - age: the candidate's age in whole years, as declared.
-- education: "stated" is the highest qualification as the affidavit states it, written in English. "level" is the closest of: Illiterate, Literate, 5th Pass, 8th Pass, 10th Pass, 12th Pass, Graduate, Graduate Professional, Post Graduate, Doctorate, Others. Use "Graduate Professional" for professional degrees such as LLB, MBBS, BE or CA.
-- assets: "totalInr" is the total value in whole rupees of movable plus immovable assets, added together for the candidate, spouse, dependents and HUF. Do not subtract liabilities. Use the totals the affidavit states where it gives them. "note" is one line giving the movable subtotal and the immovable subtotal you used.
-- cases: "pending" is the number of pending criminal cases and "convictions" is the number of cases with a conviction. If the affidavit says nil, none or not applicable, that is status "value" with 0 and 0. "note" is one line, for example the sections cited, or that the affidavit states nil.
+- education: "stated" is the highest qualification as the affidavit states it, written in English. "level" is the closest of: Illiterate, Literate, 5th Pass, 8th Pass, 10th Pass, 12th Pass, Graduate, Graduate Professional, Post Graduate, Doctorate, Others. Use "Graduate Professional" for professional degrees such as LLB, MBBS, BE or CA. PUC, pre-university, intermediate and 10+2 are "12th Pass"; SSLC, matriculation and high school are "10th Pass".
+- assets: "movableInr" and "immovableInr" are the total values in whole rupees of movable assets and of immovable assets, each added together for the candidate, spouse, dependents and HUF. Do not subtract liabilities and do not add the two together. Use the totals the affidavit itself prints; do not re-add individual line items yourself. Where the summary page (Part B) and a total printed in the detailed tables disagree, use the total printed in the detailed tables and say so in the note. Take each stated value at face value: where a person holds only a share of a property, use the value the affidavit gives without scaling it, and if it is unclear whether that value is for the whole property or for the share, say so in the note and lower your confidence. "note" is one line giving each person's movable and immovable figures you used.
+- cases: "pending" is the number of pending criminal cases and "convictions" is the number of cases with a conviction. Count a case with a conviction only under "convictions", never under "pending", even when an appeal against it is pending. If the affidavit says nil, none or not applicable, that is status "value" with 0 and 0. "note" is one line, for example the sections cited, or that the affidavit states nil.
 - confidence: one whole number from 0 to 100 for how confident you are that every value above is correct for this document.
 
 Write every value and note in English, converting Kannada text and numerals.`;
@@ -203,10 +219,18 @@ export async function extractAffidavit(
   if (!parsed.success) {
     return { ok: false, failure: 'invalid_output', detail: parsed.error.message, usage };
   }
-  const violation = checkExtraction(parsed.data);
+  const { movableInr, immovableInr } = parsed.data.assets;
+  const extraction: AffidavitExtraction = {
+    ...parsed.data,
+    assets: {
+      ...parsed.data.assets,
+      totalInr: movableInr !== null && immovableInr !== null ? movableInr + immovableInr : null,
+    },
+  };
+  const violation = checkExtraction(extraction);
   if (violation) {
     return { ok: false, failure: 'invalid_output', detail: violation, usage };
   }
 
-  return { ok: true, extraction: parsed.data, usage };
+  return { ok: true, extraction, usage };
 }
