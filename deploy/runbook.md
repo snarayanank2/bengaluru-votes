@@ -439,7 +439,7 @@ here in the same PR.
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | yes | Read by the `postgres:16` image itself to initialize, and by its healthcheck (`pg_isready -U ... -d ...`). Keep in sync with `DATABASE_URL`. |
 | `SITE_ORIGIN` | yes | `https://bengaluruvotes.opencity.in` — same-origin check in `src/middleware.ts` for unsafe methods, and CSP/absolute-URL building. |
 | `SESSION_SECRET` | yes | 32+ random bytes (e.g. `openssl rand -hex 32`). HMACs session cookies and peppers OTP code hashes (`src/lib/session.ts`, `src/lib/otp.ts`). App refuses to start without it when `NODE_ENV=production`. |
-| `MASTER_PASSWORD` | **temporary** — set until email works for OTP | `src/lib/master-login.ts`. When set (16+ characters, else the app throws on every request), `/login` becomes an email-or-phone plus password form, anyone holding the password can sign in as **any existing active account**, `/api/otp/*` answers 404 and citizen registration is hidden. Unset it to return to OTP. Generate with `openssl rand -hex 16`; avoid `#`, `$` and quotes, which env files can mangle. Shared by everyone who has it: removing one person means rotating it for all. |
+| `MASTER_PASSWORD` | **temporary** — set until email works for OTP | `src/lib/master-login.ts`. When set (16+ characters, else the app throws on every request), `/login` becomes an email-or-phone plus password form, anyone holding the password can sign in as **any existing active account**, `/api/otp/*` answers 404 and citizen registration is hidden. Unset it to return to OTP. Generate with `openssl rand -hex 16`; avoid `#`, `$` and quotes, which env files can mangle. Shared by everyone who has it: removing one person means rotating it for all. **A value shorter than 16 characters makes EVERY page fail, public pages and `/healthz` included.** The only ways to turn the mechanism off are to delete the line or leave the value empty; `false`, `0` and `off` are all just (too short) passwords. Sign-in posts are limited to 5 a minute per client, and the excess gets a 429. |
 | `SENDGRID_API_KEY` | yes (real sends) | Email OTP + campaign sends (`src/lib/send/sendgrid.ts`). |
 | `SENDGRID_FROM_EMAIL` | yes (real sends) | Verified sender address for SendGrid. |
 | `SENDGRID_WEBHOOK_PUBLIC_KEY` | yes (real sends) | Verifies SendGrid's event-webhook signature (`src/pages/api/webhooks/sendgrid.ts`). |
@@ -485,12 +485,30 @@ The master password exists only until email works for OTP.
 Rotate (also how you remove one person's access):
 
 1. `openssl rand -hex 16`, and put the new value in `MASTER_PASSWORD` in `.env.production`.
-2. Restart the app: `docker compose -f deploy/compose.production.yml up -d app`.
-3. Share the new value out of band. Existing sessions stay valid for up to an hour of activity; to end them now, ban and reactivate the account at `/admin/users`, or rotate `SESSION_SECRET`, which signs everyone out.
+2. Restart the app:
 
-Remove (when email OTP works): delete the `MASTER_PASSWORD` line, restart the app, and confirm `/login` asks for a code again.
+   ```sh
+   cd /root/src/bengaluru-votes-production
+   export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
+   COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
+   $COMPOSE up -d app
+   ```
 
-First admin on a fresh box: `docker compose run --rm app npm run seed:admin -- <email>`, then sign in at `/login` with that email and the master password.
+3. Verify: `curl -fsS https://bengaluruvotes.opencity.in/healthz`. A value shorter than 16 characters makes EVERY page fail, public pages and `/healthz` included, and `up -d app` does not check health for you. If the check fails, fix the line and repeat step 2.
+4. Share the new value out of band. Existing sessions stay valid for up to an hour of activity; to end them now, ban and reactivate the account at `/admin/users`, or rotate `SESSION_SECRET`, which signs everyone out.
+
+Remove (when email OTP works): delete the `MASTER_PASSWORD` line (or leave the value empty; `false`, `0` and `off` do NOT turn it off, they are just too-short passwords that take the whole site down), run the step 2 commands above, check `curl -fsS https://bengaluruvotes.opencity.in/healthz`, and confirm `/login` asks for a code again.
+
+First admin on a fresh box (same preamble as step 2 above):
+
+```sh
+cd /root/src/bengaluru-votes-production
+export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
+COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
+$COMPOSE run --rm app npm run seed:admin -- <email>
+```
+
+Then sign in at `/login` with that email and the master password.
 
 ---
 
