@@ -501,7 +501,7 @@
     "curator.candidateEdit.affidavit.viewPdf": "546f08fa7709508317522814b3de90efff81d2d1ec54d3df3345f5dd90fbd996",
     "curator.candidateEdit.affidavit.sourceUpload": "6ea7cd822fabf45d576e86e58a12c8f04e725e2b81aa4bd3709e08aa0dfe31c2",
     "curator.candidateEdit.affidavit.sourceEcLink": "bbcdf9dfd790b2db2cc0554925fc0238808639c0f11fdf5ba507b9099fd844c2",
-    "curator.candidateEdit.affidavit.status.pending": "9b499acacb500367eabb39cb0c87817864a06d487bc7d03c480c7bd3b4c5ff8f",
+    "curator.candidateEdit.affidavit.status.pending": "25a54d0267549efda97a37e1de1ba7122cdbb7ed902fbc6a4d5c31329f86b648",
     "curator.candidateEdit.affidavit.status.done": "0c177ef44bfe44e44c0aabf0a3fda16afbf6866bd1c9a21848f156845f5b4812",
     "curator.candidateEdit.affidavit.status.failed": "d0f59880051b35b53c79a3d1919c5655e7f9db4f08d3e638f7cd35c098d8dc6c",
     "curator.candidateEdit.affidavit.uploadHeading": "1230913d49b1d1d65bcffdde8ee2d30d54568b101619868f7ff7bd9b933a05b8",
@@ -805,7 +805,8 @@
     "admin.users.notice.erased": "1acca2294d5bffc093d5db05049388cea21670dd05c02239368c907c59331756",
     "admin.users.error.confirmAdminRequired": "b70987ec6a9eb9f80e6db41ab2e8ddfd215e4a42927ec8df8301918bc7d6fe8b",
     "admin.users.error.cannotRevokeSelf": "99004192509516fa9211b7f9783af0393ecfb98c57893ec6bdab63a1ce9e7b81",
-    "admin.users.error.cannotRevokeLastAdmin": "b5ee930c010d6287b7310a2f8a2df7669f1358b574dcc4dcff680b76f05fa347"
+    "admin.users.error.cannotRevokeLastAdmin": "b5ee930c010d6287b7310a2f8a2df7669f1358b574dcc4dcff680b76f05fa347",
+    "curator.candidateEdit.error.affidavitDuplicate": "b0a4282cad98efefc2824e03fab14238e1fc0ce93e318fb3104a1208286eb323"
   },
   "legal.courtesyNote": "ಇದು ಸೌಜನ್ಯ ಅನುವಾದವಾಗಿದೆ. ಈ ಪುಟದ ಇಂಗ್ಲಿಷ್ ಆವೃತ್ತಿಯು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಯಂತ್ರಿಸುವ ಪಠ್ಯವಾಗಿದೆ.",
   "error.notFound.title": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
@@ -1034,7 +1035,7 @@
   "curator.candidateEdit.affidavit.viewPdf": "PDF ನೋಡಿ",
   "curator.candidateEdit.affidavit.sourceUpload": "ನೇರವಾಗಿ ಅಪ್‌ಲೋಡ್ ಮಾಡಲಾಗಿದೆ",
   "curator.candidateEdit.affidavit.sourceEcLink": "EC ಲಿಂಕ್‌ನಿಂದ ಪಡೆಯಲಾಗಿದೆ:",
-  "curator.candidateEdit.affidavit.status.pending": "ಹೊರತೆಗೆಯುವಿಕೆ ಬಾಕಿಯಿದೆ",
+  "curator.candidateEdit.affidavit.status.pending": "ಹೊರತೆಗೆಯುವಿಕೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ",
   "curator.candidateEdit.affidavit.status.done": "ಹೊರತೆಗೆಯುವಿಕೆ ಪೂರ್ಣಗೊಂಡಿದೆ",
   "curator.candidateEdit.affidavit.status.failed": "ಹೊರತೆಗೆಯುವಿಕೆ ವಿಫಲವಾಗಿದೆ — ಕ್ಷೇತ್ರಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಭರ್ತಿ ಮಾಡಲಾಗಿಲ್ಲ",
   "curator.candidateEdit.affidavit.uploadHeading": "ಅಫಿಡವಿಟ್ PDF ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
@@ -1326,5 +1327,6 @@
   "admin.users.notice.erased": "ಖಾತೆ #{id} ಅನ್ನು ಅಳಿಸಲಾಗಿದೆ.",
   "admin.users.error.confirmAdminRequired": "ಅಡ್ಮಿನ್ ಅನ್ನು ಸೇರಿಸಲು ಬಯಸುವಿರಿ ಎಂದು ದೃಢೀಕರಿಸಲು ಪೆಟ್ಟಿಗೆಯನ್ನು ಗುರುತಿಸಿ.",
   "admin.users.error.cannotRevokeSelf": "ನೀವು ನಿಮ್ಮ ಸ್ವಂತ ಅಡ್ಮಿನ್ ಪ್ರವೇಶವನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಿಲ್ಲ. ಇದನ್ನು ಮಾಡಲು ಇನ್ನೊಬ್ಬ ಅಡ್ಮಿನ್‌ಗೆ ಕೇಳಿ.",
-  "admin.users.error.cannotRevokeLastAdmin": "ನೀವು ಕೊನೆಯ ಅಡ್ಮಿನ್ ಅನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಿಲ್ಲ. ಮೊದಲು ಇನ್ನೊಬ್ಬ ಅಡ್ಮಿನ್ ಅನ್ನು ಸೇರಿಸಿ."
+  "admin.users.error.cannotRevokeLastAdmin": "ನೀವು ಕೊನೆಯ ಅಡ್ಮಿನ್ ಅನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಿಲ್ಲ. ಮೊದಲು ಇನ್ನೊಬ್ಬ ಅಡ್ಮಿನ್ ಅನ್ನು ಸೇರಿಸಿ.",
+  "curator.candidateEdit.error.affidavitDuplicate": "ಆ PDF ಈಗಾಗಲೇ ಸಂಗ್ರಹವಾಗಿದೆ. ಪ್ರತಿ ಅಫಿಡವಿಟ್ ಫೈಲ್ ಅನ್ನು ಒಮ್ಮೆ ಮಾತ್ರ ಸೇರಿಸಬಹುದು."
 }

@@ -3,19 +3,20 @@
  * information-architecture.md §5.4; PRD §5.2; architecture §6/§7/§13).
  * Drives every request through the REAL middleware + the real page twin,
  * same technique as tests/routes/curator-candidate.test.ts, but isolated in
- * its own file/ward-id range so mocking `src/lib/extract` and
+ * its own file/ward-id range so mocking
  * `src/lib/affidavit-fetch` here can't leak into that suite's real-behavior
  * coverage of the core/field/photo forms.
  *
- * `extractAffidavitFields` and `fetchAffidavitFromEc` are both MOCKED —
- * this suite is about the ROUTE WIRING (upload vs. EC-link dispatch,
- * CSRF), not the SSRF hardening (tests/unit/affidavit-fetch.test.ts)
- * or the extraction pipeline (tests/unit/extract.test.ts) themselves.
+ * `fetchAffidavitFromEc` is MOCKED — this suite is about the ROUTE WIRING
+ * (upload vs. EC-link dispatch, CSRF), not the SSRF hardening
+ * (tests/unit/affidavit-fetch.test.ts). Nothing is extracted in-request
+ * any more: the upload is queued for the worker
+ * (tests/unit/affidavit-queue.test.ts).
  *
  * COVERAGE MAP:
  *   - upload path: POSTing a PDF file stores it, creates a
- *     `candidate_affidavits` row with `originUrl: null`, and calls
- *     `extractAffidavitFields`.
+ *     `candidate_affidavits` row with `originUrl: null`, queued for the
+ *     worker with this candidate attached; the same PDF again -> 400.
  *   - EC-link path: POSTing `ecUrl` calls `fetchAffidavitFromEc` with that
  *     URL, stores its returned bytes, and creates a `candidate_affidavits`
  *     row with `originUrl` set to the pasted link.
@@ -28,15 +29,11 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { and, eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
 import { onRequest } from '../../src/middleware';
-
-vi.mock('../../src/lib/extract', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/lib/extract')>();
-  return { ...actual, extractAffidavitFields: vi.fn(async () => {}) };
-});
 
 vi.mock('../../src/lib/affidavit-fetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/lib/affidavit-fetch')>();
@@ -44,7 +41,6 @@ vi.mock('../../src/lib/affidavit-fetch', async (importOriginal) => {
 });
 
 import CandidateEditRoute from '../../src/pages/curator/candidate/[id].astro';
-import { extractAffidavitFields } from '../../src/lib/extract';
 import { fetchAffidavitFromEc } from '../../src/lib/affidavit-fetch';
 
 if (!process.env.DATABASE_URL) {
@@ -69,7 +65,8 @@ const WARD_A = {
   zone: 'Zone Y',
   boundaryRef: 'affidavit-test-ward-a',
 };
-const PDF_BYTES = Buffer.from('%PDF-1.4\nfake-affidavit-body-for-route-test\n%%EOF');
+// Unique per run: an affidavit's bytes can be stored only once, and an earlier run may have left its row behind.
+const PDF_BYTES = Buffer.from(`%PDF-1.4\nfake-affidavit-body-for-route-test ${randomUUID()}\n%%EOF`);
 
 async function makeContainer() {
   return AstroContainer.create({
@@ -175,11 +172,7 @@ describe('/curator/candidate/{id} — affidavit ingestion (Task 37)', () => {
     await client.end();
   });
 
-  it('upload path: stores the PDF, creates a candidate_affidavits row (originUrl null), triggers extraction', async () => {
-    const extractMock = vi.mocked(extractAffidavitFields);
-    extractMock.mockClear();
-    extractMock.mockResolvedValueOnce(undefined);
-
+  it('upload path: stores the PDF and queues it for the worker with this candidate attached', async () => {
     const fd = affidavitForm({}, curatorAuth.token);
     fd.set('affidavitFile', new File([PDF_BYTES], 'affidavit.pdf', { type: 'application/pdf' }));
 
@@ -189,22 +182,30 @@ describe('/curator/candidate/{id} — affidavit ingestion (Task 37)', () => {
     const [affidavitRow] = await db.select().from(schema.candidateAffidavits).where(eq(schema.candidateAffidavits.candidateId, candidateA));
     expect(affidavitRow).toBeDefined();
     expect(affidavitRow!.originUrl).toBeNull();
-    expect(affidavitRow!.extractionStatus).toBe('pending'); // route inserts pending; extraction outcome mocked separately
+    expect(affidavitRow).toMatchObject({ state: 'queued', attempts: 0, candidateId: candidateA });
+    expect(affidavitRow!.sha256).toMatch(/^[0-9a-f]{64}$/);
 
     const [mediaRow] = await db.select().from(schema.media).where(eq(schema.media.id, affidavitRow!.mediaId));
     expect(mediaRow!.contentType).toBe('application/pdf');
 
-    expect(extractMock).toHaveBeenCalledTimes(1);
-    expect(extractMock).toHaveBeenCalledWith(affidavitRow!.mediaId, candidateA, { userId: curatorId });
+  });
+
+  it('the same PDF again -> 400, and no second row', async () => {
+    const fd = affidavitForm({}, curatorAuth.token);
+    fd.set('affidavitFile', new File([PDF_BYTES], 'affidavit.pdf', { type: 'application/pdf' }));
+
+    const res = await run(`/curator/candidate/${candidateA}`, { cookieValue: curatorAuth.cookieValue, params: { id: String(candidateA) }, form: fd });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain('already stored');
+
+    const rows = await db.select().from(schema.candidateAffidavits).where(eq(schema.candidateAffidavits.candidateId, candidateA));
+    expect(rows).toHaveLength(1);
   });
 
   it('EC-link path: calls fetchAffidavitFromEc with the pasted URL, stores its result, originUrl set to the link', async () => {
     const fetchMock = vi.mocked(fetchAffidavitFromEc);
     fetchMock.mockClear();
-    fetchMock.mockResolvedValueOnce(PDF_BYTES);
-    const extractMock = vi.mocked(extractAffidavitFields);
-    extractMock.mockClear();
-    extractMock.mockResolvedValueOnce(undefined);
+    fetchMock.mockResolvedValueOnce(Buffer.concat([PDF_BYTES, Buffer.from(' fetched from the EC link')]));
 
     const ecUrl = 'https://eci.gov.in/affidavit-route-test.pdf';
     const fd = affidavitForm({ ecUrl }, curatorAuth.token);

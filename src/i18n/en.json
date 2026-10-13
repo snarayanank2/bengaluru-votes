@@ -416,7 +416,7 @@
   "curator.candidateEdit.affidavit.viewPdf": "View PDF",
   "curator.candidateEdit.affidavit.sourceUpload": "Uploaded directly",
   "curator.candidateEdit.affidavit.sourceEcLink": "Fetched from EC link:",
-  "curator.candidateEdit.affidavit.status.pending": "Extraction pending",
+  "curator.candidateEdit.affidavit.status.pending": "Waiting for extraction",
   "curator.candidateEdit.affidavit.status.done": "Extraction done",
   "curator.candidateEdit.affidavit.status.failed": "Extraction failed — fields were not auto-filled",
   "curator.candidateEdit.affidavit.uploadHeading": "Upload affidavit PDF",
@@ -659,6 +659,7 @@
   "ward.vote.resultsIntro": "You’ve voted. Here are your choices and the leading issues in this ward.",
   "ward.vote.yourChoices": "You voted for",
   "ward.vote.topIssues": "Overall top issues",
+  "curator.candidateEdit.error.affidavitDuplicate": "That PDF is already stored. Each affidavit file can be added only once.",
   "__hints": {
     "footer.jointProject": "Footer label (design-system §7.2) introducing the two partner logos that follow it — Janaagraha and Oorvani Foundation. A sentence fragment ending in 'by', not a complete sentence: the logo images finish it. Keep it short; Kannada should read naturally as the lead-in to two organisation names shown as images.",
     "banner.production": "Site-wide banner shown above the app bar on the PRODUCTION site until launch (design-system §7.14). Informational and friendly, NOT a warning — the site is real, just not open yet. 'Nov 1' is a calendar date: render it as a date in Kannada convention (November 1), never translate it as a word or change the day/month.",
@@ -943,6 +944,8 @@
     "admin.users.notice.erased": "Confirmation banner on /admin/users after the DPDP erasure routine; {id} is the numeric account id, the only identifier left.",
     "admin.users.error.confirmAdminRequired": "Error banner on /admin/users when the add-user form is submitted with the Admin role but without its confirmation checkbox.",
     "admin.users.error.cannotRevokeSelf": "Lockout-prevention guard: shown on /admin/users when an admin tries to change their OWN role away from admin.",
-    "admin.users.error.cannotRevokeLastAdmin": "Lockout-prevention guard: shown on /admin/users when a role change would leave no active admin."
+    "admin.users.error.cannotRevokeLastAdmin": "Lockout-prevention guard: shown on /admin/users when a role change would leave no active admin.",
+    "curator.candidateEdit.error.affidavitDuplicate": "Error on the curator candidate editor when the uploaded affidavit PDF is byte-identical to one already in the system.",
+    "curator.candidateEdit.affidavit.status.pending": "Status badge beside a stored affidavit on the curator candidate editor: the PDF is queued and the AI has not read it yet."
   }
 }

@@ -98,7 +98,8 @@ const affidavitRows =
     : [];
 const affidavitByCandidate = new Map<number, string>();
 for (const affidavit of affidavitRows) {
-  if (!affidavitByCandidate.has(affidavit.candidateId)) {
+  // Rows not yet matched to a candidate cannot be in this result; the check is for the type.
+  if (affidavit.candidateId !== null && !affidavitByCandidate.has(affidavit.candidateId)) {
     affidavitByCandidate.set(affidavit.candidateId, `/media/${affidavit.mediaId}/${affidavit.sha256.slice(0, 16)}`);
   }
 }

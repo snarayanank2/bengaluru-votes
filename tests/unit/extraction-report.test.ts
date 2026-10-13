@@ -19,8 +19,20 @@ const extraction: AffidavitExtraction = {
   education: { status: 'value', level: 'Graduate', stated: 'B.Com' },
   assets: { status: 'unreadable', movableInr: null, immovableInr: null, totalInr: null, note: 'Page 14 is too faint' },
   cases: { status: 'value', pending: 0, convictions: 0, note: 'States nil' },
+  identity: {
+    name: { status: 'value', text: 'Govindaraj C' },
+    ward: { status: 'not_declared', number: null, name: null, corporation: null },
+    party: { status: 'value', text: 'JD(S)' },
+    gender: { status: 'not_declared', gender: null },
+  },
   confidence: 60,
 };
+
+const unscoredIdentity = {
+  name: { outcome: 'unscored', got: 'Govindaraj C', expected: null },
+  party: { outcome: 'unscored', got: 'JD(S)', expected: null },
+  gender: { outcome: 'unscored', got: null, expected: null },
+} as const;
 
 const gradeResult: GradeResult = {
   scores: {
@@ -29,6 +41,7 @@ const gradeResult: GradeResult = {
     assetsTotalInr: { outcome: 'abstained', got: null, expected: 1000000 },
     casesPending: { outcome: 'correct', got: 0, expected: 0 },
     casesConvictions: { outcome: 'correct', got: 0, expected: 0 },
+    ...unscoredIdentity,
   },
   assetsWithin1Percent: null,
 };
@@ -88,14 +101,14 @@ describe('summarize', () => {
 
   it('has a row per model with outcome counts and failures', () => {
     // Haiku: 2 affidavits x (3 correct, 1 wrong, 1 abstained); 0 failed attempts, 0 pairs still failing.
-    expect(text).toMatch(/\| claude-haiku-5-5 \| 2 \| 6 \| 2 \| 2 \| 0 \| 0 \| 0 \|/);
+    expect(text).toMatch(/\| claude-haiku-5-5 \| 2 \| 6 \| 2 \| 2 \| 6 \| 0 \| 0 \|/);
     // Opus: 1 affidavit scored, 1 failed attempt, 1 pair still failing.
-    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 1 \|/);
+    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 3 \| 1 \| 1 \|/);
   });
 
   it('has sections by language and per affidavit', () => {
     expect(text).toContain('## By language');
-    expect(text).toMatch(/\| kannada \| claude-haiku-5-5 \| 3 \| 1 \| 1 \| 0 \| 70000 \| 0\.01 \| 42 \|/);
+    expect(text).toMatch(/\| kannada \| claude-haiku-5-5 \| 3 \| 1 \| 1 \| 3 \| 70000 \| 0\.01 \| 42 \|/);
     expect(text).toContain('## Per affidavit');
     expect(text).toContain('FAILED: truncated');
   });
@@ -118,7 +131,7 @@ describe('summarize with failed calls that reported usage', () => {
 
   it('adds the failed call tokens and cost to the model totals, but not to the seconds mean', () => {
     // Result row: 70000 in, 1000 out, $0.30. Failed call: 50000 in, 16000 out, $0.52.
-    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 1 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
+    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 3 \| 1 \| 1 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
   });
 
   it('shows the failed call tokens and cost on its per-affidavit row', () => {
@@ -134,7 +147,7 @@ describe('summarize with retries', () => {
       { file: KN, model: 'claude-opus-5-5', failure: 'truncated', detail: 'x', usage },
     ]);
     expect(text).toContain('| Failed attempts | Pairs still failing |');
-    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 0 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
+    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 3 \| 1 \| 0 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
     expect(text).not.toContain('FAILED');
   });
 
@@ -201,6 +214,7 @@ describe('disagreements', () => {
         assetsTotalInr: { outcome: 'correct', got: 1, expected: 1 },
         casesPending: { outcome: 'correct', got: 0, expected: 0 },
         casesConvictions: { outcome: 'correct', got: 0, expected: 0 },
+        ...unscoredIdentity,
       },
       assetsWithin1Percent: true,
     } };

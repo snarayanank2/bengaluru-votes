@@ -38,6 +38,7 @@ import {
 import { resolveFlag } from './flags';
 import { createCandidate, publishCandidateCore, publishCandidateField } from './publish';
 import { storeMedia, type MediaStoreErrorCode } from './media';
+import { enqueueAffidavit } from './affidavit-queue';
 import { checkDefaultLimit } from './rate-limit';
 import { fetchAffidavitFromEc, type AffidavitFetchErrorCode } from './affidavit-fetch';
 import type { Lang } from '../i18n';
@@ -665,13 +666,13 @@ export async function handleCandidateFieldPublish(
 // Either path lands the same way from here on: `storeMedia(kind:'affidavit')`
 // (magic-byte + size validation, identical for both paths — architecture
 // §7's "fetched bytes pass the same validation as a direct upload"), a new
-// `candidate_affidavits` row, then AI extraction
-// (src/lib/extract.ts) run in-request so the editor can surface a failure
-// immediately rather than leaving the curator wondering.
+// `candidate_affidavits` row queued for the extraction worker
+// (src/lib/affidavit-queue.ts), which publishes the AI-read values onto this
+// candidate when it gets to it.
 // ---------------------------------------------------------------------------
 
 export type CandidateAffidavitOutcome =
-  | { kind: 'saved'; extractionFailed: boolean }
+  | { kind: 'saved' }
   | { kind: 'validation_error'; key: string };
 
 /** Error key for a `fetchAffidavitFromEc` throw — every SSRF rejection reads to the curator as "that's not a link this platform can fetch"; the size cap gets its own (shared with storeMedia's) message. */
@@ -697,13 +698,10 @@ function affidavitStoreErrorKey(err: unknown): string {
  * or a pasted EC link (`ecUrl`) must be present. Shares the same per-account
  * `upload` rate limit as the core photo upload (both write `media` rows).
  *
- * Extraction runs in-request (`await`ed): a failure there does NOT fail this
- * whole publish — the affidavit is still stored and the
- * `candidate_affidavits` row still lands (`extractionStatus: 'failed'`,
- * written by `extractAffidavitFields` itself); the caller surfaces
- * `extractionFailed: true` as a notice rather than a hard error, since the
- * curator can still see/re-trigger extraction later (a jobs-based retry is
- * a later concern per the task brief).
+ * The PDF is queued for the extraction worker with this candidate
+ * attached, so the worker publishes onto this candidate instead of reading
+ * an identity from the affidavit. A PDF that is already stored, for this or
+ * any other candidate, is refused rather than queued twice.
  */
 export async function handleCandidateAffidavitPublish(
   actor: CuratorActor,
@@ -737,29 +735,15 @@ export async function handleCandidateAffidavitPublish(
     bytes = Buffer.from(await (fileField as File).arrayBuffer());
   }
 
-  let mediaId: number;
-  try {
-    const stored = await storeMedia(actor, { bytes }, 'affidavit');
-    mediaId = stored.id;
-  } catch (err) {
-    return { kind: 'validation_error', key: affidavitStoreErrorKey(err) };
+  const result = await enqueueAffidavit(bytes, { uploadedBy: actor.userId, originUrl: ecUrl || null, candidateId });
+  if (result.kind === 'rejected') {
+    return { kind: 'validation_error', key: affidavitStoreErrorKey(new Error(result.reason)) };
+  }
+  if (result.kind === 'duplicate') {
+    return { kind: 'validation_error', key: 'curator.candidateEdit.error.affidavitDuplicate' };
   }
 
-  await db.insert(candidateAffidavits).values({
-    candidateId,
-    mediaId,
-    originUrl: ecUrl || null,
-    extractionStatus: 'pending',
-  });
-
-  let extractionFailed = false;
-  try {
-    await extractAffidavitFields(mediaId, candidateId, { userId: actor.userId });
-  } catch {
-    extractionFailed = true;
-  }
-
-  return { kind: 'saved', extractionFailed };
+  return { kind: 'saved' };
 }
 
 // ---------------------------------------------------------------------------
