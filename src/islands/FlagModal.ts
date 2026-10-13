@@ -267,10 +267,8 @@ async function submitFlagState(state: FlagFormState): Promise<void> {
   }
 
   if (res.status === 401) {
-    window.bvOpenRegisterLogin?.({
-      onSuccess: () => {
-        void submitFlagState(state);
-      },
+    requireLogin(() => {
+      void submitFlagState(state);
     });
     return;
   }
@@ -363,6 +361,19 @@ export function loginRedirectUrl(pathname: string, search: string): string {
 }
 
 /**
+ * The one place that decides how an unauthenticated person signs in: open
+ * the Register/Login modal (resuming via `onSuccess`) when it is on the
+ * page, otherwise — TEMPORARY master-password mode — navigate to /login.
+ */
+function requireLogin(onSuccess: () => void): void {
+  if (window.bvOpenRegisterLogin) {
+    window.bvOpenRegisterLogin({ onSuccess });
+  } else {
+    location.assign(loginRedirectUrl(location.pathname, location.search));
+  }
+}
+
+/**
  * Opens the Flag misinformation modal (IA §7.2). Anonymous visitors are
  * shown Register/Login FIRST — this function itself re-runs as that
  * flow's `onSuccess`, so `opts` (the SAME targets/wardId) is preserved
@@ -378,13 +389,7 @@ export function openFlagModal(opts: OpenFlagModalOptions, opener?: FocusTarget |
 
   void fetchMe().then((me) => {
     if (!me || me.anonymous) {
-      if (window.bvOpenRegisterLogin) {
-        window.bvOpenRegisterLogin({
-          onSuccess: () => openFlagModal(opts, opener),
-        });
-      } else {
-        location.assign(loginRedirectUrl(location.pathname, location.search));
-      }
+      requireLogin(() => openFlagModal(opts, opener));
       return;
     }
 

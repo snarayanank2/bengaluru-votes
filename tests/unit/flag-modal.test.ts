@@ -389,13 +389,35 @@ describe('FlagModal island (src/islands/FlagModal.ts)', () => {
       expect(loginRedirectUrl('/knowledge', '')).toBe(`/login?next=${encodeURIComponent('/knowledge')}`);
     });
 
-    it('ANONYMOUS with no bvOpenRegisterLogin: the flag form does not open', async () => {
-      delete (window as { bvOpenRegisterLogin?: unknown }).bvOpenRegisterLogin;
-      fetchMock.mockResolvedValueOnce(jsonResponse({ anonymous: true }));
-      openFlagModal({ wardId: 1, targets: SINGLE_TARGET });
-      await flush();
-      expect(dialog().open).toBe(false);
-      expect(registerLoginSpy).not.toHaveBeenCalled();
+    describe('with no bvOpenRegisterLogin, sign-in falls back to /login', () => {
+      let assignSpy: ReturnType<typeof vi.fn>;
+
+      beforeEach(() => {
+        delete (window as { bvOpenRegisterLogin?: unknown }).bvOpenRegisterLogin;
+        assignSpy = vi.fn();
+        vi.stubGlobal('location', { pathname: '/ward/12', search: '?a=1', href: initialHref, assign: assignSpy });
+      });
+
+      it('ANONYMOUS on open: the flag form does not open and the person is sent to /login', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({ anonymous: true }));
+        openFlagModal({ wardId: 1, targets: SINGLE_TARGET });
+        await flush();
+        expect(dialog().open).toBe(false);
+        expect(registerLoginSpy).not.toHaveBeenCalled();
+        expect(assignSpy).toHaveBeenCalledExactlyOnceWith(`/login?next=${encodeURIComponent('/ward/12?a=1')}`);
+      });
+
+      it('401 on submit: the person is sent to /login instead of a dead click', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({ anonymous: false, userId: 1, role: 'citizen' }));
+        openFlagModal({ wardId: WARD_ID, targets: SINGLE_TARGET });
+        await flush();
+        fillForm({ detail: 'The road repair status is stale.' });
+        fetchMock.mockResolvedValueOnce(jsonResponse({ error: 'authentication required' }, 401));
+        submit(form());
+        await flush();
+        expect(registerLoginSpy).not.toHaveBeenCalled();
+        expect(assignSpy).toHaveBeenCalledExactlyOnceWith(`/login?next=${encodeURIComponent('/ward/12?a=1')}`);
+      });
     });
   });
 });

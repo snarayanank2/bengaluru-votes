@@ -56,11 +56,15 @@ const passwordMode = state.passwordMode === true;
   <div class="login-page">
     <h1>{t(lang, passwordMode ? 'auth.password.heading' : 'auth.modal.title')}</h1>
 
-    {errorText && (
-      <Banner kind="error" lang={lang}>
-        {errorText}
-      </Banner>
-    )}
+    {
+      errorText && (
+        <div class="login-banner">
+          <Banner kind="error" lang={lang}>
+            {errorText}
+          </Banner>
+        </div>
+      )
+    }
 
     {
       passwordMode && (
@@ -202,6 +206,12 @@ const passwordMode = state.passwordMode === true;
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);
     margin: 0 0 var(--space-6);
+  }
+
+  /* Same width as the form beneath it, with the field-to-field gap below. */
+  .login-banner {
+    max-width: 24rem;
+    margin-block-end: var(--space-4);
   }
 
   form {

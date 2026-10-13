@@ -180,7 +180,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // evaluated on EVERY request so a too-short MASTER_PASSWORD throws at
   // once, health check included, instead of running with a guessable
   // password. In password mode the OTP endpoints do not exist.
-  const passwordMode = masterLoginEnabled();
+  // A misconfigured value is reported to Sentry before the rethrow, since
+  // this call sits outside the try/catch around `next()` below.
+  let passwordMode: boolean;
+  try {
+    passwordMode = masterLoginEnabled();
+  } catch (err) {
+    captureException(err);
+    throw err;
+  }
   if (passwordMode && isUnder(pathname, '/api/otp')) {
     return respond(new Response('Not found', { status: 404 }));
   }

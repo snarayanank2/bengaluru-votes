@@ -74,6 +74,11 @@ if (Astro.request.method === 'POST') {
           },
         });
       } catch (err) {
+        // Only the two failures addUser reports on purpose become a message;
+        // anything else (database down, ...) is rethrown so the middleware
+        // reports it instead of blaming the email address.
+        const msg = err instanceof Error ? err.message : '';
+        if (msg !== 'invalid_email' && msg !== 'user_exists') throw err;
         message = { kind: 'error', key: errorKey(err, 'admin.users.error.invalidEmail') };
         responseStatus = 400;
       }

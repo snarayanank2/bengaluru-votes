@@ -28,10 +28,14 @@ const EMAILS = {
   banned: 'master-login-test-banned@example.com',
 };
 const CITIZEN_PHONE = '+919900055501';
+// An erased account normally has a null contact; this fixture keeps one so the
+// lookup FINDS the row and the status check is what rejects it.
+const ERASED_PHONE = '+919900055502';
 
 let adminId: number;
 let bannedId: number;
 let phoneCitizenId: number;
+let erasedId: number;
 
 async function sessionCount(userId: number): Promise<number> {
   const rows = await db.select({ id: schema.sessions.id }).from(schema.sessions).where(inArray(schema.sessions.userId, [userId]));
@@ -52,15 +56,16 @@ describe('src/lib/master-login.ts (temporary)', () => {
     adminId = await upsert({ email: EMAILS.admin, role: 'admin', status: 'active' }, 'email');
     bannedId = await upsert({ email: EMAILS.banned, role: 'curator', status: 'banned' }, 'email');
     phoneCitizenId = await upsert({ phone: CITIZEN_PHONE, role: 'citizen', status: 'active' }, 'phone');
+    erasedId = await upsert({ phone: ERASED_PHONE, role: 'citizen', status: 'erased' }, 'phone');
   });
 
   afterEach(async () => {
     delete process.env.MASTER_PASSWORD;
-    await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, bannedId, phoneCitizenId]));
+    await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, bannedId, phoneCitizenId, erasedId]));
   });
 
   afterAll(async () => {
-    await db.delete(schema.users).where(inArray(schema.users.id, [adminId, bannedId, phoneCitizenId]));
+    await db.delete(schema.users).where(inArray(schema.users.id, [adminId, bannedId, phoneCitizenId, erasedId]));
     await client.end();
   });
 
@@ -120,12 +125,14 @@ describe('src/lib/master-login.ts (temporary)', () => {
       ['an unknown contact', 'master-login-test-nobody@example.com', PASSWORD],
       ['an empty contact', '', PASSWORD],
       ['a banned account', EMAILS.banned, PASSWORD],
+      ['an erased account', ERASED_PHONE, PASSWORD],
     ])('%s -> ok:false and no session', async (_label, destination, password) => {
       process.env.MASTER_PASSWORD = PASSWORD;
       const result = await loginWithMasterPassword(destination, password);
       expect(result).toEqual({ ok: false });
       expect(await sessionCount(adminId)).toBe(0);
       expect(await sessionCount(bannedId)).toBe(0);
+      expect(await sessionCount(erasedId)).toBe(0);
     });
   });
 });
