@@ -36,6 +36,8 @@
  *  - /api/otp/*: NOT exempt from the Origin/Sec-Fetch-Site check (still
  *    enforced), but exempt from the synchronizer-token requirement (no
  *    session exists yet to bind one to).
+ *    TEMPORARY: while MASTER_PASSWORD is set (src/lib/master-login.ts)
+ *    this whole class answers 404 — sign-in is the password form on /login.
  *  - every other /api/*: Origin/Sec-Fetch-Site check applies; no
  *    synchronizer token requirement (JSON APIs rely on Origin check +
  *    SameSite cookies + their own session check, not a form-embedded
@@ -58,6 +60,7 @@ import { issueCsrfToken, checkCsrfToken, CSRF_FIELD_NAME } from './lib/csrf';
 import { isSameOriginRelative } from './lib/authz';
 import { buildCsp } from './lib/csp';
 import { captureException } from './lib/logger';
+import { masterLoginEnabled } from './lib/master-login';
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 
@@ -172,6 +175,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   };
+
+  // TEMPORARY (until email works for OTP — src/lib/master-login.ts):
+  // evaluated on EVERY request so a too-short MASTER_PASSWORD throws at
+  // once, health check included, instead of running with a guessable
+  // password. In password mode the OTP endpoints do not exist.
+  const passwordMode = masterLoginEnabled();
+  if (passwordMode && isUnder(pathname, '/api/otp')) {
+    return respond(new Response('Not found', { status: 404 }));
+  }
 
   const isWebhook = isUnder(pathname, '/api/webhooks');
 

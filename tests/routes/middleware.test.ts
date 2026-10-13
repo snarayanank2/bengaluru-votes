@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -672,6 +672,47 @@ describe('src/middleware.ts', () => {
       const res = await run(ctx, nextStub());
       expect(res.status).toBe(302);
       expect(res.headers.get('content-security-policy')).toBeTruthy();
+    });
+  });
+
+  describe('temporary master-password mode', () => {
+    afterEach(() => {
+      delete process.env.MASTER_PASSWORD;
+    });
+
+    it.each(['/api/otp/request', '/api/otp/verify'])('POST %s -> 404 in password mode, route never runs', async (path) => {
+      process.env.MASTER_PASSWORD = 'middleware-test-master-password';
+      const next = nextStub();
+      const ctx = makeContext({
+        method: 'POST',
+        path,
+        headers: { 'sec-fetch-site': 'same-origin' },
+        body: JSON.stringify({ destination: 'x@example.com' }),
+        contentType: 'application/json',
+      });
+      const res = await run(ctx, next);
+      expect(res.status).toBe(404);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('POST /api/otp/request passes through when MASTER_PASSWORD is unset', async () => {
+      const next = nextStub();
+      const ctx = makeContext({
+        method: 'POST',
+        path: '/api/otp/request',
+        headers: { 'sec-fetch-site': 'same-origin' },
+        body: JSON.stringify({ destination: 'x@example.com' }),
+        contentType: 'application/json',
+      });
+      const res = await run(ctx, next);
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('a too-short MASTER_PASSWORD rejects every request, public pages included', async () => {
+      process.env.MASTER_PASSWORD = 'too-short';
+      const ctx = makeContext({ path: '/' });
+      await expect(run(ctx, nextStub())).rejects.toThrow('MASTER_PASSWORD must be at least 16 characters');
     });
   });
 });
