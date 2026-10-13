@@ -6,8 +6,7 @@ const EN = JSON.parse(readFileSync(new URL('../../src/i18n/en.json', import.meta
 const KN = JSON.parse(readFileSync(new URL('../../src/i18n/kn.json', import.meta.url), 'utf8'));
 
 describe('src/lib/env-banner.ts#resolveEnvBanner', () => {
-  it('maps the two deployed environments to their own banner', () => {
-    expect(resolveEnvBanner('staging')).toBe('staging');
+  it('maps the deployed environment to its banner', () => {
     expect(resolveEnvBanner('production')).toBe('production');
   });
 
@@ -17,17 +16,16 @@ describe('src/lib/env-banner.ts#resolveEnvBanner', () => {
   });
 
   // These come from hand-edited YAML, so they arrive however someone typed them.
-  it.each(['  staging  ', 'STAGING', 'Production', '\tproduction\n'])(
+  it.each(['  production  ', 'PRODUCTION', 'Production', '\tproduction\n'])(
     'tolerates surrounding whitespace and casing: %j',
     (raw) => {
       expect(resolveEnvBanner(raw)).not.toBeNull();
     },
   );
 
-  // The failure that would actually hurt is a typo resolving to the WRONG
-  // environment — e.g. showing "Testing site: Go away!" to real citizens on
-  // production. Degrading to no banner is the safe direction.
-  it.each(['stage', 'prod', 'preview', 'local', 'true', 'staging-2'])(
+  // An unrecognised value (including the retired 'staging') degrades to no
+  // banner rather than guessing.
+  it.each(['stage', 'staging', 'prod', 'preview', 'local', 'true', 'production-2'])(
     'falls back to no banner rather than guessing: %j',
     (raw) => {
       expect(resolveEnvBanner(raw)).toBeNull();
@@ -36,7 +34,7 @@ describe('src/lib/env-banner.ts#resolveEnvBanner', () => {
 });
 
 describe('src/lib/env-banner.ts#envBannerKey', () => {
-  const variants: EnvBanner[] = ['staging', 'production'];
+  const variants: EnvBanner[] = ['production'];
 
   it.each(variants)('%s resolves to a key that exists in BOTH languages', (variant) => {
     const key = envBannerKey(variant);

@@ -182,7 +182,7 @@ The transcriber pitch is also genuinely different from the curator pitch, and ru
 
 | # | Dependency | Milestone | Blocks | Owner |
 |---|---|---|---|---|
-| 6.1 | **Cloud hosting account + billing** — decided: a Hostinger VPS in Mumbai (4 vCPU / 16 GB) running Docker Compose, staging and production on the one box; revised 2026-08-13 from a DigitalOcean Droplet that was never provisioned (`docs/architecture.md` §14) | M1 | Any deployment | unassigned |
+| 6.1 | **Cloud hosting account + billing** — decided: a Hostinger VPS in Mumbai (4 vCPU / 16 GB) running Docker Compose, production only (staging retired 2026-09-18); revised 2026-08-13 from a DigitalOcean Droplet that was never provisioned (`docs/architecture.md` §14) | M1 | Any deployment | unassigned |
 | 6.2 | **Google Cloud project + billing account** (card on file) | M1 ✓ | 6.3, 6.4, 6.19 | unassigned |
 | 6.3 | **Geocoding API enabled + key**, restricted to the server | M1 ✓ | Address→ward lookup | unassigned |
 | 6.4 | **Google Maps Platform terms review** — **resolved 2026-08-14**, see below | — | Was: whether the geocoding architecture was licensed at all. Now: nothing — closed | resolved |

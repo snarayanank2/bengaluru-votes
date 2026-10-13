@@ -1,11 +1,9 @@
 # Production Compose stack (Task 61; architecture.md §14.2-§14.5).
 #
-# Topology: nginx is the SHARED TLS terminator — it owns the `front` network
-# and is the only thing in this file staging (compose.staging.yml) ever
-# touches, by joining `front` as an EXTERNAL network. Everything else here
-# (app, postgres, jobs, certbot, static-init) lives on `back_prod`, which
-# staging never joins — that absence is the whole network-isolation
-# guarantee (verified live; see task-61-report.md).
+# Topology: nginx is the TLS terminator on the `front` network. Everything
+# else here (app, postgres, jobs, certbot, static-init) lives on
+# `back_prod`. (A separate staging stack used to join `front` as an external
+# network; it was retired on 2026-09-18.)
 #
 # IMAGE: built ON THE BOX from this checkout (architecture §14.3, revised
 # 2026-08-13) — there is no registry and nothing is pulled. `app` carries
@@ -48,9 +46,7 @@
 
 # Compose project name, pinned rather than inferred. Without this, Compose
 # derives the project from the directory holding this file — `deploy/` —
-# which is identical in the staging checkout (architecture §14.3's
-# per-environment trees), so both stacks would share one project namespace
-# and each `up -d` would treat the other's containers as orphans. It also
+# which any other checkout of this repo on the box would share. It also
 # fixes the volume prefix: `bengaluru-votes-production_pg_data_prod`.
 # NEVER change this value on a live box — a new project name means a new,
 # empty pg_data volume, which reads as "the database vanished".
@@ -81,14 +77,6 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/snippets:/etc/nginx/snippets:ro
-      # NB: no staging htpasswd mount here any more — staging basic auth was
-      # removed on 2026-08-13 (architecture §14.2). Restoring it means
-      # re-adding BOTH this bind mount and `auth_basic` in
-      # conf.d/site.conf's staging block; the mount alone does nothing, and
-      # `auth_basic` alone fails nginx's config load. If you re-add it, the
-      # host path must already exist as a FILE (deploy/runbook.md step 5b) —
-      # bind-mounting a path that does not exist yet silently creates an
-      # empty DIRECTORY there instead, which nginx then rejects.
       - certs:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot:ro
       - static_assets:/srv/static:ro
@@ -174,8 +162,8 @@ services:
       # construction" notice EVERY citizen sees, so treat changing or
       # removing it as a product decision, not a config tweak. Read at
       # REQUEST time, hence a runtime var rather than a build arg like
-      # SITE_ORIGIN above. See compose.staging.yml's copy of this comment for
-      # why it lives here rather than in the box's .env file.
+      # SITE_ORIGIN above. It lives here rather than in the box's .env file
+      # so the value is versioned with the stack that depends on it.
       APP_ENV: production
     networks:
       - front
@@ -214,8 +202,8 @@ services:
 
   # ---------------------------------------------------------------------
   # Production Postgres. `back_prod` ONLY — never `front` — is the entire
-  # isolation guarantee: nothing outside this stack's own back network,
-  # including every staging container, has a route here.
+  # isolation guarantee: nothing outside this stack's own back network has
+  # a route here.
   # ---------------------------------------------------------------------
   postgres:
     image: postgres:16
@@ -266,8 +254,7 @@ services:
       options: { max-size: 10m, max-file: '5' }
 
 networks:
-  # Declared here (not `external: true`) because THIS stack owns it;
-  # compose.staging.yml joins it as `external: true` under the same name.
+  # Declared here (not `external: true`) because THIS stack owns it.
   front:
     name: gba_front
   back_prod:

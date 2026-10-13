@@ -59,7 +59,7 @@ npm run seed:admin -- <email>   # idempotent; the ONLY place a user becomes 'adm
 docker compose -f deploy/compose.local.yml up --build -d   # http://localhost:4321
 ```
 
-Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). The other two Compose files (`compose.staging.yml`, `compose.production.yml`) target the VPS — they build the same Dockerfile but add TLS nginx, certbot and the jobs container, and expect real credentials, so they won't come up on a laptop.
+Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). The other Compose file (`compose.production.yml`) targets the VPS — it builds the same Dockerfile but add TLS nginx, certbot and the jobs container, and expect real credentials, so they won't come up on a laptop.
 
 ### Tests need a database
 
@@ -178,9 +178,9 @@ A fifth role, **transcriber**, is planned but not built: city-wide, and authoriz
 - **Auth:** one email / WhatsApp OTP mechanism for *all* roles. No passwords, no 2FA, no sign-in links. **Staff (admin, curator, transcriber) are email-only**; only citizens get the WhatsApp channel. **Sessions: 24h for staff, 1h sliding idle for citizens.** `npm run seed:admin` bootstraps the first admin. Consequence worth holding: **SendGrid gates the entire curator/transcriber operation**, not just the campaign sends — but Meta/WhatsApp does not, so the 40-day queue is not in that path.
 - **Curator publish:** trusted; immediate, no approval gate.
 - **Bilingual:** EN at root, KN under `/kn/`, each with its own URL.
-- **Deployment:** one Hostinger VPS (Mumbai, 4 vCPU / 16 GB) runs production Compose, from `/root/src/bengaluru-votes-production`. The staging site/stack was intentionally retired on 2026-09-18 and may be recreated later. **There is no CI and no registry** (removed 2026-08-13): images are built on the box, and production deploys are run by hand with `deploy/deploy.sh production <tag>`. In conversation, “deploy to VPS” means production directly; do not deploy staging unless explicitly requested. Nothing fires on push, merge or release. `deploy/runbook.md` ("Deploying") is the procedure; `architecture.md` §14.3/§14.4 is the design. Moved off the never-provisioned DigitalOcean Droplet on 2026-08-13.
+- **Deployment:** one Hostinger VPS (Mumbai, 4 vCPU / 16 GB) runs production Compose, from `/root/src/bengaluru-votes-production`. The staging site/stack was retired on 2026-09-18 and removed from the repo on 2026-10-13; production is the only environment. **There is no CI and no registry** (removed 2026-08-13): images are built on the box, and production deploys are run by hand with `deploy/deploy.sh production <tag>`. “Deploy” means production; there is no staging step. Nothing fires on push, merge or release. `deploy/runbook.md` ("Deploying") is the procedure; `architecture.md` §14.3/§14.4 is the design. Moved off the never-provisioned DigitalOcean Droplet on 2026-08-13.
 - **Consequence worth holding onto:** `npm test`, `npm run typecheck` and `npm run translate -- --check` no longer gate anything. Run them before deploying — nothing else will.
-- **Staging isolation:** `compose.staging.yml` must never join `back_prod`, and staging must keep `SENDS_DISABLED=true` with vendor keys omitted entirely. Those are two independent guards; keep both.
+- **`SENDS_DISABLED` is a local-only guard:** the local stack sets it so nothing there can message a real person. Never set it on production.
 
 ## Parallel Codex sessions
 

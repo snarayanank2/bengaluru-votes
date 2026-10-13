@@ -30,7 +30,7 @@
  * before the call is what stops a correctly-typed voter ID reading as a
  * missing one.
  *
- * `ELECTORAL_API_ORIGIN` overrides the host (tests, staging). Unset, it is
+ * `ELECTORAL_API_ORIGIN` overrides the host (tests, local). Unset, it is
  * the live one — this is a public read-only endpoint with no credential to
  * omit, so there is no "unset key degrades to a no-op" case here; the
  * documented degradation is the timeout below.

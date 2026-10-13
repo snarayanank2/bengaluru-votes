@@ -9,7 +9,7 @@
  * it would silently show the production "under construction" copy on every
  * developer's laptop and in every test run. `APP_ENV` is read at REQUEST
  * time from the container's environment, is set explicitly per environment
- * in deploy/compose.staging.yml and deploy/compose.production.yml, and is
+ * in deploy/compose.production.yml, and is
  * absent everywhere else, which is exactly the "no banner" default we want
  * locally.
  *
@@ -20,13 +20,12 @@
  * this to read anything request-scoped.
  *
  * Unknown values return `null` rather than throwing or guessing. A typo in
- * a compose file should degrade to "no banner", never to "show a staging
- * warning on production" — the failure that would actually hurt. The
- * inverse risk (banner silently missing) is covered at deploy time:
+ * a compose file should degrade to "no banner". The
+ * risk of that (banner silently missing) is covered at deploy time:
  * deploy/deploy.sh asserts the `data-env-banner` element is present.
  */
 
-export type EnvBanner = 'staging' | 'production';
+export type EnvBanner = 'production';
 
 /**
  * Maps a raw `APP_ENV` value to a banner variant. Trimmed and lowercased
@@ -34,8 +33,6 @@ export type EnvBanner = 'staging' | 'production';
  */
 export function resolveEnvBanner(appEnv: string | undefined): EnvBanner | null {
   switch (appEnv?.trim().toLowerCase()) {
-    case 'staging':
-      return 'staging';
     case 'production':
       return 'production';
     default:

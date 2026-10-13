@@ -37,13 +37,13 @@
  *      time, not read per-request; without `E2E_ALLOWED_HOST=127.0.0.1
  *      E2E_ALLOWED_PORT=4321` set for THIS build, the Node standalone
  *      adapter refuses to trust the direct `Host: 127.0.0.1:4321` header
- *      (it only trusts the two real prod/staging hostnames), falls back to
+ *      (it only trusts the real production hostname), falls back to
  *      computing its own request origin as `http://localhost`, and every
  *      form-urlencoded POST (curator accept/reject, the no-JS ward-lookup
  *      fallback) then fails Astro's OWN built-in same-origin check with
  *      "Cross-site POST form submissions are forbidden" — found by
  *      flag.spec.ts. `E2E_ALLOWED_HOST`/`_PORT` must NEVER be set for a real
- *      prod/staging build (see astro.config.mjs's own comment).
+ *      production build (see astro.config.mjs's own comment).
  *   2. `DATABASE_URL=.../bv_e2e npm run seed:e2e`  (migrate + seed + writes
  *      tests/e2e/.fixtures.json)
  *   3. `npx playwright test`                (this config)
@@ -97,7 +97,7 @@ export default defineConfig({
       DATABASE_URL: process.env.DATABASE_URL,
       // The enabler (Task 64 brief): requestOtp additionally writes the
       // plaintext code to otp_test_codes (src/lib/otp.ts) ONLY when this is
-      // exactly 'true'. Never set in any committed prod/staging env.
+      // exactly 'true'. Never set in any production env.
       OTP_TEST_SINK: 'true',
       SESSION_SECRET,
       // Belt-and-braces: guards src/lib/send/send.ts's campaign-send path

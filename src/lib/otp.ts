@@ -188,7 +188,7 @@ export async function requestOtp(
   }
   if (!sendOk) return 'send_failed';
 
-  // TEST ONLY — OTP_TEST_SINK must NEVER be set in production (or staging).
+  // TEST ONLY — OTP_TEST_SINK must NEVER be set in production.
   // It exists solely so the Playwright e2e suite (Task 64), which drives the
   // app through a real browser talking to a SEPARATE server process, can
   // read the plaintext code a request generated (it has no in-process

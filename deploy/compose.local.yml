@@ -1,7 +1,7 @@
 # Local development stack — `docker compose -f deploy/compose.local.yml up`.
 #
-# NOT a deployment. compose.production.yml / compose.staging.yml also build
-# the Dockerfile now (architecture §14.3), but they front it with a TLS
+# NOT a deployment. compose.production.yml also builds
+# the Dockerfile (architecture §14.3), but it fronts it with a TLS
 # nginx, run certbot and the jobs container, and expect real vendor
 # credentials. This file exposes the Astro server directly on
 # http://localhost:4321 with none of that — no nginx, no certbot, no jobs
@@ -73,7 +73,7 @@ services:
       # sessions. `openssl rand -hex 32` for anything that isn't this.
       SESSION_SECRET: local_dev_only_not_a_secret_0000000000000000000000000000000000
       # No vendor keys are set below, so nothing can reach a real person
-      # even by accident. This is the same explicit guard staging carries.
+      # even by accident.
       SENDS_DISABLED: 'true'
       # Writes each generated OTP in plaintext to `otp_test_codes` so you can
       # read it back over the psql URL in this file's header. NOTE:

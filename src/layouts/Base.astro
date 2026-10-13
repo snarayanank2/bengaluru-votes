@@ -239,7 +239,7 @@ const showGa = !noindex && !!gaMeasurementId;
     <SkipLink lang={lang} />
     {/* Above the AppBar, below the skip link — the skip link must stay the
         first focusable thing on the page (design-system §10). Renders
-        nothing outside staging/production; see EnvBanner.astro. */}
+        nothing outside production; see EnvBanner.astro. */}
     <EnvBanner lang={lang} />
     <AppBar lang={lang} path={path} />
     <main id="main-content">

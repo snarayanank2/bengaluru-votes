@@ -188,8 +188,8 @@ export const users = pgTable('users', {
 
 /**
  * TEST ONLY — written to exclusively when `OTP_TEST_SINK === 'true'`
- * (src/lib/otp.ts's `requestOtp`), which must NEVER be set in production or
- * staging (it defeats the hashed-storage protection `otp_codes.code_hash`
+ * (src/lib/otp.ts's `requestOtp`), which must NEVER be set in production
+ * (it defeats the hashed-storage protection `otp_codes.code_hash`
  * exists for by additionally persisting the plaintext code). This table
  * exists purely so the Playwright e2e suite (Task 64) — a real browser
  * driving the app as a separate process — can read the OTP code a request

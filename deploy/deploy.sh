@@ -2,10 +2,11 @@
 #
 # Deploy bengaluru-votes to the Hostinger VPS (architecture.md §14.4).
 #
-#   deploy/deploy.sh staging                  # build+deploy origin/main
 #   deploy/deploy.sh production v2026.08.14   # build+deploy that annotated tag
-#   deploy/deploy.sh staging    --rollback    # retag :previous and restart
-#   deploy/deploy.sh production --rollback
+#   deploy/deploy.sh production --rollback    # retag :previous and restart
+#
+# Production is the only environment. Staging was retired on 2026-09-18 and
+# removed from the repo on 2026-10-13.
 #
 # Runs entirely over SSH against the box; nothing is built locally. The
 # environment's checkout on the box is what gets built, so the ref this
@@ -13,11 +14,6 @@
 #
 # Env overrides:
 #   VPS_SSH_ALIAS   ssh host/alias to deploy to        (default: vps)
-#
-# Staging needs no credentials: its basic auth was removed on 2026-08-13
-# (architecture §14.2). It is reachable by anyone with the URL, and the only
-# thing keeping it out of search results is `X-Robots-Tag: noindex`, which
-# verify() below asserts on every staging deploy.
 #
 # THE ONE THING THAT BREAKS SILENTLY: astro.config.mjs resolves `site` and
 # `security.allowedDomains` at BUILD time. An image built without the right
@@ -46,17 +42,6 @@ ENV_NAME=${1:-}
 ARG2=${2:-}
 
 case "$ENV_NAME" in
-  staging)
-    TREE=/root/src/bengaluru-votes-staging
-    COMPOSE_FILE=deploy/compose.staging.yml
-    PROJECT=bengaluru-votes-staging
-    APP_SERVICE=app-staging
-    IMAGE=bengaluru-votes-staging:latest
-    PREV=bengaluru-votes-staging:previous
-    ORIGIN=https://staging-bengaluruvotes.opencity.in
-    ENV_VAR="STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging"
-    HAS_STATIC_INIT=no
-    ;;
   production)
     TREE=/root/src/bengaluru-votes-production
     COMPOSE_FILE=deploy/compose.production.yml
@@ -66,7 +51,6 @@ case "$ENV_NAME" in
     PREV=bengaluru-votes:previous
     ORIGIN=https://bengaluruvotes.opencity.in
     ENV_VAR="PROD_ENV_FILE=/etc/bengaluru-votes/.env.production"
-    HAS_STATIC_INIT=yes
     ;;
   *)
     usage
@@ -82,7 +66,7 @@ COMPOSE="export $ENV_VAR; cd $TREE && docker compose -p $PROJECT -f $COMPOSE_FIL
 # --- Verification ----------------------------------------------------------
 
 verify() {
-  local code asset robots
+  local code asset
 
   say "Verifying $ORIGIN"
 
@@ -92,28 +76,10 @@ verify() {
     printf '  GET %-10s 200\n' "$path"
   done
 
-  # Staging has been open to anyone since 2026-08-13 (architecture §14.2), so
-  # this header is the ONLY thing keeping it out of search results — and it is
-  # one `add_header` in conf.d/site.conf away from being dropped by accident,
-  # silently, with staging looking perfectly healthy. Assert it on every
-  # staging deploy. NB: nginx's `add_header` is all-or-nothing per location, so
-  # a future location block that adds any header of its own loses this one.
-  if [ "$ENV_NAME" = staging ]; then
-    robots=$(curl -fsSI "$ORIGIN/" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-robots-tag"{print tolower($2)}')
-    case "$robots" in
-      *noindex*) echo "  X-Robots-Tag: $robots" ;;
-      *) fail "staging did not send 'X-Robots-Tag: noindex' (got '${robots:-<absent>}').
-Staging has no basic auth any more — that header is the only thing keeping
-fictional candidate data out of search results. Fix conf.d/site.conf." ;;
-    esac
-  fi
-
-  # Both environments carry a site-wide banner above the app bar, selected by
-  # the APP_ENV runtime var in the compose file (src/lib/env-banner.ts). A
-  # missing or misspelled APP_ENV degrades to NO banner — deliberately, since
-  # showing staging's "Testing site: Go away!" to real citizens would be far
-  # worse than showing nothing. That safe default is also silent, which is why
-  # it is asserted here. Matches the element, not the copy, so rewording the
+  # Production carries a site-wide banner above the app bar, selected by the
+  # APP_ENV runtime var in the compose file (src/lib/env-banner.ts). A missing
+  # or misspelled APP_ENV degrades to NO banner, silently, which is why it is
+  # asserted here. Matches the element, not the copy, so rewording the
   # banner never breaks the deploy.
   if ! curl -fsS "$ORIGIN/" | grep -q "data-env-banner=\"$ENV_NAME\""; then
     fail "no data-env-banner=\"$ENV_NAME\" in the homepage HTML — APP_ENV is
@@ -162,12 +128,18 @@ restart_and_verify() {
   # ALWAYS, unconditionally: `up -d` does NOT re-run a one-shot service that
   # has already completed successfully, so without this the new image's
   # hashed /_astro/* assets never reach the volume nginx serves and every
-  # page 404s its own CSS and JS. Staging has no static-init (it proxies
-  # everything to Node), hence the guard.
-  if [ "$HAS_STATIC_INIT" = yes ]; then
-    say "Re-populating static assets"
-    remote "$COMPOSE run --rm static-init"
-  fi
+  # page 404s its own CSS and JS.
+  say "Re-populating static assets"
+  remote "$COMPOSE run --rm static-init"
+
+  # nginx's config is bind-mounted from this checkout, and `up -d` does not
+  # restart nginx when only those files changed, so a config change in this
+  # release would otherwise never load. Test first: a reload with a broken
+  # config is refused by nginx and the old config keeps serving, but failing
+  # here says so instead of leaving it silent.
+  say "Reloading nginx config"
+  remote "$COMPOSE exec -T nginx nginx -t" 2>&1 | tail -2 || fail "nginx -t rejected the new config; the old config is still serving"
+  remote "$COMPOSE exec -T nginx nginx -s reload"
 
   verify
 }
@@ -188,12 +160,8 @@ fi
 
 # --- Deploy ----------------------------------------------------------------
 
-if [ "$ENV_NAME" = production ]; then
-  REF=$ARG2
-  [ -n "$REF" ] || fail "production deploys take an explicit tag: deploy/deploy.sh production v2026.08.14"
-else
-  REF=${ARG2:-main}
-fi
+REF=$ARG2
+[ -n "$REF" ] || fail "production deploys take an explicit tag: deploy/deploy.sh production v2026.08.14"
 
 say "Preflight"
 remote true || fail "cannot ssh to '$SSH_ALIAS' (override with VPS_SSH_ALIAS)"
@@ -214,13 +182,9 @@ say "Tagging the running image as $PREV"
 remote "docker image inspect $IMAGE >/dev/null 2>&1 && docker image tag $IMAGE $PREV || echo '  (no current image — first deploy, skipping)'"
 
 say "Updating $TREE to $REF"
-if [ "$ENV_NAME" = production ]; then
-  # Detached on an immutable tag: `git log -1` in this tree is then an honest
-  # answer to "what is production running".
-  remote "cd $TREE && git fetch --prune --tags origin && git checkout '$REF' && git log --oneline -1"
-else
-  remote "cd $TREE && git fetch --prune origin && git checkout -B '$REF' 'origin/$REF' && git log --oneline -1"
-fi
+# Detached on an immutable tag: `git log -1` in this tree is then an honest
+# answer to "what is production running".
+remote "cd $TREE && git fetch --prune --tags origin && git checkout '$REF' && git log --oneline -1"
 
 say "Building $IMAGE"
 remote "$COMPOSE build" 2>&1 | tail -5

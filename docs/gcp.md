@@ -47,7 +47,7 @@ calls, and Places metering is actually incurred, not merely anticipated.
 |---|---|---|---|---|
 | A | Server key — Geocoding | Cloud | `GOOGLE_GEOCODING_API_KEY` | existing |
 | B | Browser key — production | Cloud | `GOOGLE_MAPS_BROWSER_KEY` | **new** |
-| C | Browser key — staging | Cloud | `GOOGLE_MAPS_BROWSER_KEY` (staging env file) | **new** |
+| C | ~~Browser key — staging~~ | Cloud | retired with staging 2026-09-18 — revoke it | — |
 | D | Server key — Custom Search | Cloud | `GOOGLE_SEARCH_API_KEY` | existing |
 | — | Map ID (cloud styling) | Cloud | `GOOGLE_MAPS_MAP_ID` | **new** |
 | — | Programmable Search engine ID | PSE | `GOOGLE_SEARCH_CX` | existing |
@@ -101,7 +101,7 @@ authorisation errors that read like key misconfiguration.
 IP restriction and browser calls need an HTTP referrer restriction, so a
 single key cannot serve both. Hence four keys, not one.
 
-Get the box's egress IP first — staging and production share it:
+Get the box's egress IP first:
 
 ```sh
 ssh root@<vps> 'curl -s ifconfig.me'
@@ -124,23 +124,12 @@ key that anyone who obtains it can spend against your card.
   Static API** if step 2 enabled it)
 - → `GOOGLE_MAPS_BROWSER_KEY` in the production env file
 
-### Key C — `bv-staging-browser`
+### Key C — `bv-staging-browser` — **retired**
 
-- Application restriction: **HTTP referrers** →
-  `https://staging-bengaluruvotes.opencity.in/*`, `http://localhost:4321/*`
-- API restriction: same as Key B
-- → `GOOGLE_MAPS_BROWSER_KEY` in the staging env file
-
-Staging gets its own key deliberately. Commit `7782078` removed staging's
-basic auth, so staging is publicly reachable and its browser key is
-scrapeable by anyone who loads the page. A separate key can be revoked or
-quota-capped without touching production.
-
-This does **not** conflict with the staging-isolation rule in `CLAUDE.md`
-("staging must keep `SENDS_DISABLED=true` with vendor keys omitted
-entirely"). That rule is about messaging vendors — anything that can reach a
-real citizen's phone or inbox. A maps key sends nothing; it bills. Keep
-`SENDS_DISABLED=true` and keep Twilio/SendGrid omitted.
+Staging was retired on 2026-09-18 and removed from the repo on 2026-10-13.
+Its browser key was restricted to the staging hostname and `localhost`; if it
+still exists in the Cloud console, revoke it. For local development use a
+separate key restricted to `http://localhost:4321/*`.
 
 ### Key D — `bv-prod-search`
 
@@ -181,7 +170,7 @@ without hardcoding color, and `mapId` is required for a style to apply.
 3. Record the Map ID → `GOOGLE_MAPS_MAP_ID`. It is not a secret; it ships to
    the browser next to the key.
 
-Create a second Map ID for staging if you want to iterate on the style
+Create a second Map ID for local use if you want to iterate on the style
 without changing production mid-campaign.
 
 **Trade-off worth recording.** `buildBaseStyle()` — the MapLibre-era
@@ -231,8 +220,8 @@ keys do not verify against that endpoint, and the failure looks like an
 invalid secret.
 
 `google.com/recaptcha/admin` → **+** → **reCAPTCHA v3** → domains:
-`bengaluruvotes.opencity.in`, `staging-bengaluruvotes.opencity.in`,
-`localhost` → yields `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY`.
+`bengaluruvotes.opencity.in`, `localhost` (and remove the retired
+`staging-bengaluruvotes.opencity.in` if it is still listed) → yields `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY`.
 
 Used on exactly one route: the anonymous `POST /api/eoi` behind
 `/partner-with-us`. Disclose it in `/privacy` before it ships.
@@ -246,7 +235,7 @@ for `https://bengaluruvotes.opencity.in` → copy the **Measurement ID**
 **Done 2026-08-14** — the property exists and production runs
 `GA_MEASUREMENT_ID=G-PZQJ1ZSCN0`.
 
-Leave it unset on staging. Per the runbook table, unset means GA is simply
+Leave it unset locally. Per the runbook table, unset means GA is simply
 absent — no error, no script tag.
 
 §6.12 requires the tracker disclosed in `/privacy` before it ships, alongside
@@ -269,10 +258,9 @@ shift under anything citing it.
 
 | Where | File | Mode |
 |---|---|---|
-| Production | `/etc/bengaluru-votes/.env.production` (outside both checkouts) | 600 |
-| Staging | `deploy/.env.staging` | 600 |
+| Production | `/etc/bengaluru-votes/.env.production` (outside the checkout) | 600 |
 
-`.gitignore`'s `.env.*` rule keeps both out of the repo. Nothing in this
+`.gitignore`'s `.env.*` rule keeps it out of the repo. Nothing in this
 document's key values belongs in a commit, a task description, or a chat log.
 
 Record, somewhere durable and outside this repo: who holds the Google account

@@ -194,7 +194,7 @@ initSentry();
 /**
  * Reports `err` to Sentry (scrubbed, no-op if Sentry never initialized)
  * and always logs it via pino, so the Compose log stream carries every
- * captured error even when Sentry isn't configured (dev/staging without a
+ * captured error even when Sentry isn't configured (dev without a
  * DSN). `context` is extra structured data (opaque fields only, same
  * convention as `logEvent`) attached to both the log line and the Sentry
  * event's `extra` — scrubbed either way.

@@ -11,7 +11,7 @@
  *      high proportion of cached-page responses are cache HITs.
  *
  * This file is the REAL VALIDATION IS DEFERRED artifact: the run itself
- * happens off-box, against staging, before election week (see the "Run
+ * happens off-box, before election week (see the "Run
  * procedure" section added to deploy/runbook.md). This file only needs to
  * be correct and realistic; it is not executed automatically or by the app
  * test suite.
@@ -66,15 +66,11 @@
  * location already inherits, so nothing regresses). See that file's own
  * comment for the reasoning.
  *
- * KNOWN GAP: staging's nginx location (`deploy/nginx/conf.d/site.conf`,
- * the block commented "No cache anywhere on staging") deliberately does
- * NOT set `proxy_cache` — every request goes straight to app-staging. That
- * means $upstream_cache_status (and therefore this header) will read empty
- * on staging AS CURRENTLY CONFIGURED, and the cache-HIT-ratio assertion
- * cannot be satisfied by pointing BASE_URL at staging until that's
- * addressed. See deploy/runbook.md's "k6 election-day load test" section
- * for the two remediation options and why this script still defaults to
- * targeting staging for the RPS/429 assertions regardless.
+ * TARGET: there is no default. Staging was retired on 2026-09-18, so
+ * BASE_URL must be given explicitly — a temporary copy of the production
+ * stack, or production itself in an off-peak window. See deploy/runbook.md's
+ * "k6 election-day load test" section. The cache-HIT assertion only means
+ * something against a target that carries the production cache config.
  *
  * ─────────────────────────────────────────────────────────────────────────
  * CANDIDATE SLUGS
@@ -96,7 +92,10 @@ import { Counter, Rate } from 'k6/metrics';
 // Keep these here, not buried in scenario logic, so they're easy to tune
 // from the box after seeing the first real run's numbers.
 
-const BASE_URL = (__ENV.BASE_URL || 'https://staging-bengaluruvotes.opencity.in').replace(/\/$/, '');
+if (!__ENV.BASE_URL) {
+  throw new Error('BASE_URL is required — there is no default target (staging was retired). See deploy/runbook.md.');
+}
+const BASE_URL = __ENV.BASE_URL.replace(/\/$/, '');
 
 // Peak sustained arrival rate (requests/sec) for the cached-page scenario.
 // See the big comment above for the justification. Override with
@@ -131,10 +130,8 @@ const CANDIDATE_SLUGS = (__ENV.CANDIDATE_SLUGS || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
-// Optional basic-auth. Vestigial as of 2026-08-13: staging's `auth_basic` was
-// removed (architecture §14.2), so neither target needs credentials and both
-// of these stay unset in practice. Kept because it costs nothing and is what
-// you would reach for if staging is ever put back behind a password.
+// Optional basic-auth, for a temporary target that sits behind a password.
+// Unset in practice. (The env var names predate staging's retirement.)
 const STAGING_USER = __ENV.STAGING_USER || '';
 const STAGING_PASS = __ENV.STAGING_PASS || '';
 const AUTH_HEADERS = STAGING_USER
@@ -325,9 +322,8 @@ export const options = {
     // Assertion 3: the micro-cache, not the origin, absorbs the load.
     // Requires deploy/nginx/snippets/security-headers.conf's
     // X-Cache-Status header (added in this change) to actually reach the
-    // target. See the KNOWN GAP note in the file header: this threshold
-    // will report "no data"/fail against staging as currently configured,
-    // because staging's nginx location has no proxy_cache at all.
+    // target. See the TARGET note in the file header: this threshold only
+    // means something against a target with the production cache config.
     cache_hit_rate: ['rate>0.9'],
   },
 };

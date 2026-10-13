@@ -27,14 +27,13 @@
  *      otherwise eligible for.
  *   4. Render + send.
  *
- * SENDS_DISABLED (architecture.md §14.2, the staging guard): when
+ * SENDS_DISABLED (architecture.md §14.2, the local-stack guard): when
  * `process.env.SENDS_DISABLED === 'true'`, no transport is called at all —
  * this function logs the code/userId/channel and writes the ledger row as
  * `'sent'` anyway. This is a deliberate choice, not an oversight: the
  * send-once ledger's whole job is "never send the same code to the same
- * user twice", and that guarantee has to hold in staging too (where jobs
- * run on the same cron schedule against real, non-disposable ward data) —
- * a distinct "disabled" status would make every staging run resend forever
+ * user twice", and that guarantee has to hold with sends disabled too —
+ * a distinct "disabled" status would make every disabled run resend forever
  * once SENDS_DISABLED flips off. The disabled-ness is legible from the log
  * line, not from the ledger.
  *

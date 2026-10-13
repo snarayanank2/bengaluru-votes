@@ -24,7 +24,7 @@ This document records the production architecture for the platform described in 
 | Spike strategy | nginx micro-cache (~60 s TTL on pages) — no purge machinery; CDN slots in front later unchanged |
 | Geo | Ward polygons as static GeoJSON; the Google Maps JS island fetches one ward's Feature from `GET /ward/<id>/boundary.json` (`src/pages/ward/[id]/boundary.json.ts`, `src/lib/geo.ts`'s `wardBoundaryFeature()`) — deliberately not under `/api/`, so it lands in nginx's cached, cookie-stripped public route rather than the uncached, rate-limited `/api/` one — plus in-memory point-in-polygon (Turf.js) for the address lookup; **no PostGIS** |
 | Client JS | Zero by default; islands only for modals, maps, and lookup forms |
-| Deployment | **Hostinger VPS (Mumbai)**; staging + production on one box; images built on the box from a checkout; deploys run by hand (§14) |
+| Deployment | **Hostinger VPS (Mumbai)**; production only (staging retired 2026-09-18); images built on the box from a checkout; deploys run by hand (§14) |
 | Migrations | **Drizzle SQL migrations**, forward-only and backward-compatible; run as an explicit deploy step before restart (§14.7) |
 | Media | **Two stores, by size and volume.** Candidate photos stay **bytea in Postgres**, served at immutable content-hashed URLs. **Affidavit PDFs go to Google Cloud Storage** (`asia-south1`, Mumbai), served at immutable content-hashed object URLs — decided 2026-08-15, because ~4,000 PDFs arriving in one nomination-window burst would otherwise sit on a 193 GB disk and inflate every nightly dump thereafter. The cost is that affidavits leave the `pg_dump` umbrella and need their own durability story (§6, §7, §10) |
 | Monitoring | **Unresolved** (uptime/SSL-expiry checks lost with DigitalOcean, no replacement chosen) + server-side Sentry + email budget alarms — external and minimal, nothing new on the VM (§10) |
@@ -231,7 +231,7 @@ Decided 2026-07-17 after a security review of this design. The per-mechanism det
   - Staff sessions run 24 hours against a citizen's 1-hour idle timeout — a deliberate trade for operators working a shift, and the widest window an unattended browser gives an attacker; no session revocation on role change, no login notifications for privileged accounts — the short timeout carries the weight.
   - Backup isolation is currently moot: there is no off-box backup (§10). The prior decision — India residency for the DPDP-regulated dump beating disaster isolation, accepting that a region-wide provider failure would take the site and its backups together — stands as the rule for whatever storage is chosen next, but nothing satisfies it today. Provider snapshots, if enabled, share the box's provider and region too.
   - Backups are nightly only: up to 24 hours of registrations, issue votes and flags are lost if the box's disk dies (decided 2026-07-19). Affidavit PDFs are outside that window entirely since 2026-08-15 (§6) — they are in GCS, not in the dump — but the rows that reference them are not, so a 24-hour loss can still orphan a day's worth of ingested objects. WAL archiving would shrink the window to minutes and was rejected as a second backup mechanism to operate and rehearse — even election-week write volume was judged worth less than that operational load. Recovery targets: §10. Both of these describe the intended steady state; §10 records what is actually in place as of 2026-08-13.
-  - Whoever deploys holds the keys to the box: deploys run as `root` (§14.4), so a compromised deploy key is full compromise of both stacks, production included (§14.2 shares the host). Accepted for a single-VM project; the mitigations are key-only SSH and ordinary key custody. Revised 2026-08-13 — this exposure was previously larger and automated (a CI system held the key and the staging deploy fired on every push to `main` with no approval gate, so a compromised Actions workflow or a malicious merge reached production). Removing CI (§14.4) removed that path; the trade is that nothing now gates a deploy except the person running it.
+  - Whoever deploys holds the keys to the box: deploys run as `root` (§14.4), so a compromised deploy key is full compromise of production (§14.2). Accepted for a single-VM project; the mitigations are key-only SSH and ordinary key custody. Revised 2026-08-13 — this exposure was previously larger and automated (a CI system held the key and the staging deploy fired on every push to `main` with no approval gate, so a compromised Actions workflow or a malicious merge reached production). Removing CI (§14.4) removed that path; the trade is that nothing now gates a deploy except the person running it.
   - **Deploys run as `root` on the box** (§14.4). The prior design specified a dedicated key-only `deploy` user, but that user had to be in the `docker` group, which is root-equivalent on the host — so it read as privilege separation while providing none. Root SSH stays key-only with password authentication disabled. The real control is key custody, and it is worth saying that outright rather than implying an isolation boundary that never existed.
 
 ## 14. Deployment (Hostinger VPS)
@@ -244,19 +244,17 @@ One Hostinger VPS, **4 vCPU / 16 GB / 193 GB**, in **Mumbai** — the audience i
 
 **There is no Reserved-IP equivalent.** DNS points straight at the VPS's own address (`76.13.244.198`), so rebuilding or replacing the box requires a DNS change and a propagation wait — a real regression against the prior design, accepted because the alternative is a floating-IP product not offered at this tier. Keep record TTLs at 300 during any cutover. The box also has a global IPv6 address (`2a02:4780:12:4759::1`); `AAAA` records are published only once its public reachability is confirmed, because Let's Encrypt prefers `AAAA` when present and fails issuance if it cannot reach it.
 
-### 14.2 Two environments, one box
+### 14.2 One environment
 
-Production and staging run as **two Compose projects** side by side:
+**Production is the only environment.** One Compose project (`deploy/compose.production.yml`) runs nginx, `app`, `postgres`, `jobs`, certbot and the one-shot `static-init`; nginx terminates TLS for `bengaluruvotes.opencity.in` on the `front` network and everything else sits on `back_prod`.
 
-- **One shared nginx container** (owned by the production stack; staging joins its network) terminates TLS for `bengaluruvotes.opencity.in` and `staging-bengaluruvotes.opencity.in` and proxies to the per-environment `app` containers.
-- Staging has its **own `app`, `postgres`, and `jobs`** — nothing shared below nginx. Staging containers join only nginx's front network: **no route from any staging container to production Postgres**, so less-tested staging code cannot reach production data laterally. Staging Postgres is disposable: not backed up, safe to reset.
-- **Staging `jobs` cannot message real people.** Its `.env` carries no production Twilio/SendGrid keys, and a `SENDS_DISABLED` flag makes the campaign runner log instead of send. Both guards, deliberately.
-- **Staging is open to anyone with the URL** (changed 2026-08-13). Its server block sends `X-Robots-Tag: noindex` and nothing else — the `auth_basic` htpasswd that used to sit alongside it was removed on request, so what was a two-mechanism guard is now one, and that one binds only crawlers that choose to honour it. `deploy/deploy.sh` asserts the header on every staging deploy, because losing it is silent.
+**Staging was retired on 2026-09-18 and removed from the repo on 2026-10-13.** It ran as a second Compose project on the same box, sharing nginx. Its compose file, nginx server block, deploy path and "Testing site" banner are gone, and the old staging hostname is rejected by nginx's default server.
 
-  **What is therefore public, stated plainly:** staging is seeded with `seed:dev` — 6 fictional candidates carrying "Demo Party A" / "(FICTIONAL)" labels, attached to the real 369 ward names — and it tracks `main`, so work merged but not yet released to production is visible there too. The on-page labels are what make the fixture data safe, and a cropped screenshot does not carry them; the platform's own distribution channel is WhatsApp forwards. Accepted knowingly as the cost of frictionless tester access. What staging still does **not** expose is unchanged and load-bearing: no real citizen data (369 wards is public data, 0 real candidates), no ability to message anyone (`SENDS_DISABLED=true` plus vendor keys omitted entirely), and no route to production Postgres.
+What that costs, stated plainly:
 
-  **Partly mitigated since:** staging carries a permanent full-bleed banner above the app bar reading "Testing site: Go away!" (design-system §7.14, `src/components/EnvBanner.astro`, selected by the `APP_ENV` runtime var in `deploy/compose.staging.yml`), so a screenshot of a staging page is no longer ambiguous unless it is cropped past the banner *and* the "(FICTIONAL)" label. Remaining mitigations in rough order of cost: dropping `seed:dev` from staging; an IP allowlist; or restoring `auth_basic` (needs the directive in `deploy/nginx/conf.d/site.conf`, the htpasswd bind mount in `deploy/compose.production.yml`, and step 5b of `deploy/runbook.md` — all three, or nginx fails its config load).
-- Accepted trade (chosen over a second box): staging shares CPU and disk with production — and the kernel, Docker daemon, and deploying account (root, §14.4), which is the blast-radius limitation recorded in §13. Note that image builds now land on the box too (§14.3): a build is the heaviest thing that runs there, and it competes with live production traffic. Deploy off-peak, and never during election week without a reason. The 4 vCPU / 16 GB box (§14.1) makes this contention less acute than the 2 vCPU Droplet would have — not harmless.
+- **Nothing exercises a migration before production does.** The deploy sequence still migrates before any container restarts (§14.7), and migrations must stay forward-only and backward-compatible, but the first real run of each one is against production data. Rehearse a risky migration against a restored backup first.
+- **There is no public place to look at unreleased work.** The local Compose stack (`deploy/compose.local.yml`) is the only preview.
+- **`SENDS_DISABLED` survives as a local guard**, set in the local stack so nothing there can message a real person. It must never be set on production.
 
 ### 14.3 Images & registry
 
@@ -272,18 +270,16 @@ What the change costs, stated plainly:
 
 Retagging is what makes rollback work: before each deploy the current image is tagged `:previous`, so the last-known-good is still resolvable after the new build overwrites `:latest`. Docker's image cache is the only store, so `docker image prune` is not safe to run blindly (§10's disk budget).
 
-**Two checkouts, one per environment** (added 2026-08-13). Each stack builds from its own tree, so no ref juggling is needed and `git log -1` in either directory is an honest answer to "what is running here" — which a single shared checkout cannot give:
+**One checkout, detached on the release tag.** `git log -1` in it is an honest answer to "what is running here":
 
 ```
-/root/src/bengaluru-votes-staging       tracks origin/main
 /root/src/bengaluru-votes-production    detached on an annotated tag vYYYY.MM.DD
-/etc/bengaluru-votes/.env.staging       mode 600, outside both trees
-/etc/bengaluru-votes/.env.production    mode 600, outside both trees
+/etc/bengaluru-votes/.env.production    mode 600, outside the tree
 ```
 
-The Compose project name is **pinned in each compose file** (`bengaluru-votes-production`, `bengaluru-votes-staging`). Compose would otherwise infer it from the directory holding the file — `deploy/` in both trees — merging the two stacks into one project namespace. Those names must never change on a live box: a new project name means a new, empty `pg_data` volume, which presents as the database having vanished.
+The Compose project name is **pinned in the compose file** (`bengaluru-votes-production`). Compose would otherwise infer it from the directory holding the file. It must never change on a live box: a new project name means a new, empty `pg_data` volume, which presents as the database having vanished.
 
-**Promotion is a rebuild, never an image copy.** `astro.config.mjs` resolves `site` and `security.allowedDomains` at *build* time, so the staging and production images differ even at an identical commit. There is no promoting a verified staging artifact — production always rebuilds from the tag. This is also why the two stacks use distinct local tags (`bengaluru-votes-staging:*` vs `bengaluru-votes:*`): a shared tag would mean deploying staging silently swaps the image production restarts onto.
+**Every release is a rebuild on the box.** `astro.config.mjs` resolves `site` and `security.allowedDomains` at *build* time, so an image is only correct for the origin it was built for; production always rebuilds from the tag.
 
 ### 14.4 Release flow
 
@@ -292,15 +288,14 @@ Revised 2026-08-13: deploys are **manual**. There is no `.github/workflows/`; no
 `deploy/deploy.sh` (committed) runs the whole sequence and verifies it:
 
 ```sh
-deploy/deploy.sh staging                  # build+deploy origin/main
 deploy/deploy.sh production v2026.08.14   # build+deploy that annotated tag
-deploy/deploy.sh <env> --rollback         # retag :previous, restart, re-verify
+deploy/deploy.sh production --rollback    # retag :previous, restart, re-verify
 ```
 
-What it does, per stack: preflight (ssh, tree exists and is clean, env file present) → tag the current image `:previous` **before** the build overwrites `:latest` → update that environment's tree to its ref → build with that environment's `SITE_ORIGIN` → migrate (§14.7) → `up -d` → **production only:** re-run `static-init` unconditionally → verify.
+What it does: preflight (ssh, tree exists and is clean, env file present) → tag the current image `:previous` **before** the build overwrites `:latest` → check the tree out on the tag → build with production's `SITE_ORIGIN` → migrate (§14.7) → `up -d` → re-run `static-init` unconditionally → test and reload nginx's config → verify.
 
-- **Branch policy:** **Staging is `origin/main`; production is a tag.** After staging verifies a commit, that exact commit is tagged `vYYYY.MM.DD` (`.2` for a second same-day release) and pushed; production checks it out detached. Tagging is the human judgement in the loop — nothing automates the decision that a commit is production-worthy.
-- **Staging first.** With no pipeline enforcing it, "staging exercises every migration before production" (§14.7) is now a discipline rather than a property of the system. Deploy staging, check it, then production.
+- **Branch policy:** **production is a tag.** A commit on `main` that has passed `npm test`, `npm run typecheck` and `npm run translate -- --check` locally is tagged `vYYYY.MM.DD` (`.2` for a second same-day release) and pushed; production checks it out detached. Tagging is the human judgement in the loop — nothing automates the decision that a commit is production-worthy.
+- **No staging step.** Staging was retired (§14.2), so those local checks and the deploy script's own verification are the only gates.
 - **Versioning is date-based:** `vYYYY.MM.DD`, with `.2` appended for a second same-day release — the tag is not decoration: it is the ref production is checked out on.
 - **Rollback:** `docker image tag <image>:previous <image>:latest` and `up -d` again. Never a schema step, because migrations are backward-compatible (§14.7) — `deploy/deploy.sh <env> --rollback` does this, restarts, and re-verifies.
 - **Access:** SSH to the box as `root`, key-only, password authentication disabled. The prior design's dedicated `deploy` user is dropped — see §13 for why it was ceremony rather than privilege separation.
@@ -314,14 +309,14 @@ Inbound 22, 80, 443 only, enforced by **`ufw` on the box** (the prior design use
 
 No Terraform — one box doesn't justify it. Provisioning is `deploy/runbook.md`:
 
-1. Point DNS for both hostnames at the VPS's IPv4 (`A` only at first; `AAAA` after IPv6 reachability is confirmed — §14.1).
+1. Point DNS for the hostname at the VPS's IPv4 (`A` only at first; `AAAA` after IPv6 reachability is confirmed — §14.1).
 2. Harden the host: `ufw` allowing 22/80/443, SSH key-only, no password auth.
 3. Install Docker Engine + Compose plugin.
-4. Clone the repo twice (§14.3's per-environment trees); write the two `.env` files (mode 600, outside both checkouts — §13).
-5. Bootstrap self-signed certs so nginx can start; bring production up; issue real certs; bring staging up. (No staging htpasswd step any more — basic auth was removed 2026-08-13, §14.2.)
-6. **Run migrations on both databases** (`docker compose run --rm app npm run migrate`, and the staging equivalent) — neither compose file migrates on `up -d`, so skipping this leaves both databases schema-less and step 7's ward seed fails outright. This is first-provisioning-only; §14.7 covers migrations as an ongoing deploy step.
-7. Seed wards on both, the first admin on production, demo content on staging.
-8. Verify both hostnames **including a real POST** (§14.4), then retire the interim preview stack.
+4. Clone the repo (§14.3); write the `.env.production` file (mode 600, outside the checkout — §13).
+5. Bootstrap self-signed certs so nginx can start; bring production up; issue real certs.
+6. **Run migrations** (`docker compose run --rm app npm run migrate`) — the compose file does not migrate on `up -d`, so skipping this leaves the database schema-less and step 7's ward seed fails outright. This is first-provisioning-only; §14.7 covers migrations as an ongoing deploy step.
+7. Seed wards and the first admin.
+8. Verify the hostname **including a real POST** (§14.4), then retire the interim preview stack.
 9. Initialize the restic repository and rehearse a restore — **blocked**: no backup target has been chosen (§10, dependency register §6.9).
 
 Step 7's admin seed is the root of the authorization chain: a one-time CLI (`docker compose run --rm app npm run seed:admin -- <address>`) inserts the named admin identity, since OTP-only auth means role is nothing but a DB field. Every later role grant is an admin action in `/admin`; role is never inferred from the authenticating address.
@@ -331,7 +326,7 @@ Step 7's admin seed is the root of the authorization chain: a one-time CLI (`doc
 Decided 2026-07-19.
 
 - **Drizzle Kit generates SQL migration files**, committed and reviewed like any other code.
-- The deploy sequence (§14.4) runs migrations as an explicit step between build and restart: `docker compose run --rm app npm run migrate`, using the just-built image. Deploying staging first therefore exercises every migration before production — a discipline now, not a property of the system, since no pipeline enforces the order.
+- The deploy sequence (§14.4) runs migrations as an explicit step between build and restart: `docker compose run --rm app npm run migrate`, using the just-built image. With staging retired (§14.2), production is the first place each migration runs; the migrate step failing aborts the deploy before any container restarts.
 - **Migrations are forward-only and backward-compatible** — expand, backfill, contract in a later release. The previous app image must run correctly against the new schema, so §14.4 rollback stays a pull-and-restart, never a schema downgrade.
 - A failed migration aborts the deploy before any container restarts; the running version continues against the unchanged schema.
 

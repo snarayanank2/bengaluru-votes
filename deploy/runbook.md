@@ -10,6 +10,11 @@ needs, and the handful of admin actions that only make sense against a live
 deployment (OTP cooldown-clear, rollback, restore rehearsal). Exact
 commands, not prose — copy-paste, adjusting the bracketed placeholders.
 
+**Production is the only environment.** Staging was retired on 2026-09-18 and
+removed from the repo on 2026-10-13 (`docs/architecture.md` §14.2). The
+"Current state" record at the end still describes the 2026-08-13 cutover,
+when staging existed; it is history, not instruction.
+
 ---
 
 ## 0. Prerequisites
@@ -17,7 +22,7 @@ commands, not prose — copy-paste, adjusting the bracketed placeholders.
 - SSH access to the Hostinger VPS as `root` (key-only). `76.13.244.198`;
   the box is `srv1408795.hstgr.cloud` until DNS is cut over.
 - Ownership/delegation of the `opencity.in` DNS zone (Oorvani's domain) —
-  you need to create two `A` records under it.
+  you need to create one `A` record under it.
 - **A GitHub credential ON THE BOX, before step 4 below.** §4's
   `git clone git@github.com:…` runs from a fresh hardened root shell that
   has never talked to GitHub — with nothing set up it fails on `Permission
@@ -113,12 +118,11 @@ not.
 
 ## 2. DNS
 
-Point both hostnames at the VPS (dependency register §6.8 — under Oorvani's
+Point the hostname at the VPS (dependency register §6.8 — under Oorvani's
 `opencity.in` zone):
 
 ```
 bengaluruvotes.opencity.in.          300  IN  A  76.13.244.198
-staging-bengaluruvotes.opencity.in.  300  IN  A  76.13.244.198
 ```
 
 **`A` only, deliberately.** The box has a global IPv6 address
@@ -133,7 +137,6 @@ step 5 below (certbot's HTTP-01 challenge fails otherwise):
 
 ```sh
 dig +short bengaluruvotes.opencity.in
-dig +short staging-bengaluruvotes.opencity.in
 ```
 
 ---
@@ -152,25 +155,22 @@ while providing none. Architecture §13 records that trade.
 
 ---
 
-## 4. Two checkouts and the `.env` files
+## 4. The checkout and the `.env` file
 
-One tree per environment (`docs/architecture.md` §14.3). These are not just
-a source of Compose files — since images are built on the box, each tree is
-what its stack builds *from*, so the ref it sits on is the version that
-ships.
+One tree (`docs/architecture.md` §14.3). It is not just a source of Compose
+files — since images are built on the box, the tree is what the stack
+builds *from*, so the ref it sits on is the version that ships.
 
 At first provisioning there is no release tag yet — leave the production
-tree on `main` too, same as staging. `deploy/deploy.sh production
+tree on `main`. `deploy/deploy.sh production
 <vYYYY.MM.DD>` checks out the real tag (detached) at the first actual
 production deploy (see "Deploying" below and the plan's Task 7 step 3); this
 step just needs a working tree to build from for §5's first boot.
 
 ```sh
 mkdir -p /root/src
-git clone git@github.com:snarayanank2/bengaluru-votes.git /root/src/bengaluru-votes-staging
 git clone git@github.com:snarayanank2/bengaluru-votes.git /root/src/bengaluru-votes-production
 
-cd /root/src/bengaluru-votes-staging    && git checkout main
 cd /root/src/bengaluru-votes-production && git checkout main
 ```
 
@@ -179,7 +179,7 @@ so a checkout can be deleted and re-cloned without touching secrets:
 
 ```sh
 mkdir -p /etc/bengaluru-votes
-touch /etc/bengaluru-votes/.env.production /etc/bengaluru-votes/.env.staging
+touch /etc/bengaluru-votes/.env.production
 chmod 600 /etc/bengaluru-votes/.env.*
 ```
 
@@ -191,8 +191,8 @@ openssl rand -hex 32     # SESSION_SECRET — a DIFFERENT value per environment
 openssl rand -hex 24     # POSTGRES_PASSWORD — likewise
 ```
 
-The Compose files read these paths through `PROD_ENV_FILE` /
-`STAGING_ENV_FILE`. `deploy/deploy.sh` exports them inline on every remote
+The Compose file reads this path through `PROD_ENV_FILE`.
+`deploy/deploy.sh` exports it inline on every remote
 command — deliberately, because `ssh host 'cmd'` is a non-interactive shell
 that does not source `~/.bashrc`, so a profile export would silently not
 apply and Compose would fall back to a `./.env.<env>` that does not exist.
@@ -200,7 +200,6 @@ When running Compose by hand, export them yourself:
 
 ```sh
 export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
-export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
 ```
 
 ---
@@ -223,7 +222,7 @@ COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.producti
 # --- 5a. Throwaway self-signed certs so nginx can start at all ----------
 $COMPOSE run --rm --entrypoint sh certbot -c '
   set -e
-  for host in bengaluruvotes.opencity.in staging-bengaluruvotes.opencity.in; do
+  for host in bengaluruvotes.opencity.in; do
     mkdir -p /etc/letsencrypt/live/$host
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
       -keyout /etc/letsencrypt/live/$host/privkey.pem \
@@ -231,33 +230,6 @@ $COMPOSE run --rm --entrypoint sh certbot -c '
       -subj "/CN=$host"
   done
 '
-
-# --- 5b. (removed) Staging basic-auth htpasswd -------------------------
-# Nothing to do here any more. Staging basic auth was removed on 2026-08-13
-# (architecture §14.2): staging is reachable by anyone with the URL, and
-# `X-Robots-Tag: noindex` is the only thing keeping it out of search results.
-# deploy/deploy.sh asserts that header on every staging deploy.
-#
-# If you ever restore it, all three of these move together or nginx will not
-# start: the `auth_basic` + `auth_basic_user_file` directives in
-# deploy/nginx/conf.d/site.conf, the htpasswd bind mount in
-# deploy/compose.production.yml, and generating the file here. Two traps that
-# cost real time in the 2026-08-13 cutover and would cost it again:
-#
-#   - It must exist as a real FILE before the first `up`. Docker turns a
-#     bind-mount of a non-existent host path into an empty DIRECTORY, which
-#     then fails nginx's `auth_basic_user_file` load.
-#   - It must be WORLD-READABLE (644). nginx's master starts as root but its
-#     WORKERS drop to the unprivileged `nginx` user (nginx.conf's `user`
-#     directive), and the worker is what opens the file per request. Mode 600
-#     gives every staging request a 500 with `open() ".../staging.htpasswd"
-#     failed (13: Permission denied)` in the nginx error log and nothing
-#     wrong anywhere else — app-staging stays healthy, so it reads as an app
-#     fault. 644 is not a leak: the file holds a bcrypt hash, mounted ro.
-#
-#   docker run --rm httpd:2-alpine htpasswd -Bbn <user> '<pass>' \
-#     > /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
-#   chmod 644 /root/src/bengaluru-votes-production/deploy/nginx/staging.htpasswd
 
 # --- Port contention with the interim stack, MUST run before 5c --------
 # The old /root/vps-deploy stack also binds 80. `up -d` below fails to bind
@@ -281,7 +253,7 @@ $COMPOSE up -d
 # safe — nginx has nothing to lose access to in between.
 $COMPOSE run --rm --entrypoint sh certbot -c '
   set -e
-  for h in bengaluruvotes.opencity.in staging-bengaluruvotes.opencity.in; do
+  for h in bengaluruvotes.opencity.in; do
     rm -rf /etc/letsencrypt/live/$h /etc/letsencrypt/archive/$h /etc/letsencrypt/renewal/$h.conf
   done
 '
@@ -297,29 +269,20 @@ $COMPOSE run --rm --entrypoint sh certbot -c '
 # already gets this right with `--entrypoint sh`; match that pattern.
 $COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
   -d bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
-$COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
-  -d staging-bengaluruvotes.opencity.in --email ops@opencity.in --agree-tos --non-interactive
 
 $COMPOSE exec nginx nginx -s reload
-
-# --- 5e. Staging up (joins gba_front, which now exists) ----------------
-cd /root/src/bengaluru-votes-staging
-export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
-docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml up -d
 ```
 
-The interim stack's volumes stay in place until **both**
-`https://bengaluruvotes.opencity.in` **and**
-`https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
+The interim stack's volumes stay in place until
+`https://bengaluruvotes.opencity.in` has served a `200` on `GET /`
 and a non-`403` on `POST /api/ward-lookup` — the same checks
 `deploy/deploy.sh` runs (see "Deploying" below). Step 8 below retires it once
 that gate holds.
 
-Verify both hostnames serve real certs:
+Verify the hostname serves a real cert:
 
 ```sh
 curl -fsSI https://bengaluruvotes.opencity.in/healthz
-curl -fsSI -u <tester-username>:<tester-password> https://staging-bengaluruvotes.opencity.in/healthz
 ```
 
 ---
@@ -373,12 +336,6 @@ cd /root/src/bengaluru-votes-production
 export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
 COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
 $COMPOSE run --rm app npm run migrate
-
-# Staging
-cd /root/src/bengaluru-votes-staging
-export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
-COMPOSE_S="docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml"
-$COMPOSE_S run --rm app-staging npm run migrate
 ```
 
 Wards first — everything else depends on them. `seed:wards` also upserts the
@@ -391,16 +348,6 @@ export PROD_ENV_FILE=/etc/bengaluru-votes/.env.production
 COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.production.yml"
 $COMPOSE run --rm app npm run seed:wards
 $COMPOSE run --rm app npm run seed:admin -- <admin-email>
-
-# Staging: wards, plus the deliberately-fictional demo content. seed:dev
-# refuses to run under NODE_ENV=production and staging's .env sets exactly
-# that, so the override is explicit and knowing — never copy this to
-# production.
-cd /root/src/bengaluru-votes-staging
-export STAGING_ENV_FILE=/etc/bengaluru-votes/.env.staging
-COMPOSE_S="docker compose -p bengaluru-votes-staging -f deploy/compose.staging.yml"
-$COMPOSE_S run --rm app-staging npm run seed:wards
-$COMPOSE_S run --rm -e NODE_ENV=development app-staging npm run seed:dev
 ```
 
 `scripts/seed-admin.ts` upserts a `users` row with `role='admin'` for that
@@ -413,8 +360,7 @@ anywhere else in this app.
 
 ## 8. Retire the interim stack
 
-**Only after** both `https://bengaluruvotes.opencity.in` **and**
-`https://staging-bengaluruvotes.opencity.in` have served a `200` on `GET /`
+**Only after** `https://bengaluruvotes.opencity.in` has served a `200` on `GET /`
 and a non-`403` on `POST /api/ward-lookup` — the same condition step 5
 above holds you to before touching the interim stack's volumes, and what
 `deploy/deploy.sh` verifies on every deploy. This closes out architecture
@@ -439,7 +385,7 @@ destroy the production Postgres volume, and per §6 there is currently no
 off-box backup to restore it from — this would be unrecoverable data loss
 on a live election platform. The name printed here must be the interim
 stack's own project (whatever `/root/vps-deploy`'s compose file calls
-itself), never `bengaluru-votes-production` or `bengaluru-votes-staging`.
+itself), never `bengaluru-votes-production`.
 
 ```sh
 docker compose down -v
@@ -472,9 +418,8 @@ later point** — `:previous` is the only rollback anchor either new stack
 has (there is no registry — architecture §14.3), and pruning "unused"
 images is exactly how a rollback stops being possible.
 
-**Leave the new stacks' running images alone too.** Do not touch
-`bengaluru-votes:latest` or `bengaluru-votes-staging:latest` — production
-and staging are running those right now.
+**Leave the running image alone too.** Do not touch
+`bengaluru-votes:latest` — production is running it right now.
 
 ---
 
@@ -511,7 +456,7 @@ here in the same PR.
 | `ANTHROPIC_API_KEY` | yes (Kannada MT/extraction) | Curator-publish-triggered translation/extraction calls; unset means those calls no-op to `'pending'` and `jobs/translate-retry.ts` keeps retrying. |
 | `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | yes (anonymous writes) | reCAPTCHA v3 on `POST /api/eoi` and `PUT /api/issue-votes`; tokens are bound to distinct actions. |
 | `ANONYMOUS_VOTE_DAILY_BUDGET` | recommended (default `50000`) | City-wide daily circuit breaker for anonymous issue ballots, in addition to the per-IP nginx limit. Exhaustion pauses new ballots until the next UTC day. |
-| `GA_MEASUREMENT_ID` | production only — `G-PZQJ1ZSCN0` | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). Set on production 2026-08-14; **deliberately omitted from `.env.staging`** so staging traffic never enters the property. The id is public (it ships in the HTML), so it lives here rather than in a credential store. Read at request time — changing it needs a container recreate, not a rebuild. |
+| `GA_MEASUREMENT_ID` | production only — `G-PZQJ1ZSCN0` | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). Set on production 2026-08-14; set only in `.env.production`, so local traffic never enters the property. The id is public (it ships in the HTML), so it lives here rather than in a credential store. Read at request time — changing it needs a container recreate, not a rebuild. |
 | `OTP_DAILY_SEND_BUDGET` | recommended (default `5000`) | Global daily OTP-send budget across all destinations (architecture §13). |
 | `OTP_TEST_SINK` | **must NOT be set** | `src/lib/otp.ts` — when exactly `'true'`, writes every plaintext OTP code to a `otp_test_codes` table so the Playwright e2e suite can read codes without in-process access. The source comment is explicit: this must NEVER be set in production or staging. Leave unset in both `.env` files. |
 | `RETENTION_ENABLED` | yes — **must be `false`** | DPDP retention enforcement (`jobs/retention.ts`) ships disabled pending PRD §17 legal sign-off on the retention period. Do not flip to `true` without that sign-off. |
@@ -524,23 +469,13 @@ here in the same PR.
 | `SENTRY_DSN` | recommended | Server-side error reporting (`src/lib/logger.ts`) — **unset means Sentry is a clean no-op**, not a broken deploy; set it once the free-tier project exists. |
 | `IMAGE_TAG` | optional, not stored in the `.env` file | Selects which **local** image tag the stack runs (`deploy/compose.production.yml`'s `${IMAGE_TAG:-latest}`). Left unset for a normal deploy; it exists so a rollback can point the stack at `:previous` without rebuilding. |
 
-### `.env.staging`
+### `SENDS_DISABLED` — never on production
 
-Same shape as production **with two deliberate differences that are the
-whole point of the staging guard** (architecture §14.2):
-
-| Variable | Value | Why |
-|---|---|---|
-| `SENDS_DISABLED` | **`true`** | The campaign runner (`src/lib/send/calendar.ts`) logs instead of sending when this is set — "staging jobs cannot message real people," guard #1. |
-| `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_WEBHOOK_PUBLIC_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_OTP_TEMPLATE_SID` | **omit entirely** | Guard #2, independent of guard #1 — even if `SENDS_DISABLED` were ever accidentally unset, there is no real vendor key present to send with. Email OTP on staging will fail closed (`send_failed`); that's expected — staging testers use WhatsApp-disabled/email-disabled paths or a curator-seeded session instead. |
-
-Everything else (`DATABASE_URL` pointing at `postgres-staging`,
-`SITE_ORIGIN=https://staging-bengaluruvotes.opencity.in`,
-`SESSION_SECRET` — **a different value than production's**,
-`RETENTION_ENABLED=false`, `GOOGLE_*`/`ANTHROPIC_API_KEY`/`RECAPTCHA_*` if
-you want staging to exercise those integrations against sandbox/test
-vendor accounts) follows the same names as the production table. Staging
-Postgres is disposable — no restic vars needed for it.
+`SENDS_DISABLED=true` makes the campaign runner (`src/lib/send/calendar.ts`)
+log instead of sending. It exists for the local stack
+(`deploy/compose.local.yml`), where it guarantees nothing can message a real
+person. It must not be set in `.env.production`. (The staging environment
+that used to carry it, with vendor keys omitted, was retired on 2026-09-18.)
 
 ---
 
@@ -568,63 +503,47 @@ file. Any other missing or stale target still blocks the deploy. Once a real
 key is available, regenerate and review the privacy translation, commit it,
 and remove this exception.
 
-### Staging
+### Production
 
-Staging is whatever is on `main`. Push, then:
+There is no staging step: production is the only environment. Before tagging,
+run the checks nothing else will run for you, on the commit you intend to
+ship:
+
+```sh
+npm run typecheck
+npm run translate -- --check
+# the Vitest suite, inside the local app image (see AGENTS.md, "Tests need a database")
+```
+
+Then tag that commit and deploy the tag:
 
 ```sh
 git push origin main
-deploy/deploy.sh staging
-```
-
-Then **look at it in a browser**. That is the point of staging. No credentials
-— staging basic auth was removed 2026-08-13 (architecture §14.2); the URL is
-all anyone needs, testers and strangers alike.
-
-### Production
-
-Tag the exact commit staging verified, then deploy that tag:
-
-```sh
 git tag -a v2026.08.14 -m "release" origin/main
 git push origin v2026.08.14
 deploy/deploy.sh production v2026.08.14
 ```
 
-**Deploy staging first, always.** No pipeline enforces the order any more,
-and staging-before-production is the only thing that exercises a migration
-before it touches real citizen data (architecture §14.7).
+**Each migration's first real run is against production.** The script
+migrates before any container restarts, and a failed migration aborts the
+deploy with the old version still serving — but a migration that succeeds
+and is wrong is live. For anything that drops or rewrites data, take a
+`pg_dump` on the box first and rehearse against a restored copy.
 
-### The one exception: changes under `deploy/nginx/`
+### Changes under `deploy/nginx/`
 
-**nginx config changes take effect on a PRODUCTION deploy, including the ones
-that only affect staging.** The single nginx container is owned by the
-production stack and bind-mounts its config from the *production* checkout
-(`compose.production.yml`), so a staging deploy updates the staging checkout
-and changes nothing about how any request is routed or authorized. Deploying
-staging first here does nothing at all; worse, a staging deploy can fail its
-own verification because the nginx behaviour it asserts has not shipped yet.
-
-For an nginx-only change the order inverts: **production first, then
-staging.** And because both hostnames are behind that one container, a config
-error takes production down with it — validate before you deploy, from the
-box, against the real certs and network:
+nginx bind-mounts its config from the production checkout, so a config change
+arrives on disk when the deploy checks out the new tag. `deploy.sh` then runs
+`nginx -t` and, only if that passes, `nginx -s reload`. A config that fails
+the test is not loaded and the old one keeps serving — but a config that
+passes the test and is wrong takes production with it, so validate a risky
+change beforehand, from the box, against the real certs and network:
 
 ```sh
-# on the box, after the production checkout is on the new ref
-docker compose -p bengaluru-votes-production -f deploy/compose.production.yml \
-  exec nginx nginx -t
-```
-
-The mount is live, so the running container already sees the checkout's
-current files — and `nginx -t` only tests them, it does not load them. To
-check *before* touching the production checkout at all, run the same test in a
-throwaway container with the candidate config mounted over `conf.d`:
-
-```sh
+# candidate config copied to /tmp/nginxcheck/ on the box
 docker run --rm --network gba_front \
   -v /tmp/nginxcheck/conf.d:/etc/nginx/conf.d:ro \
-  -v /root/src/bengaluru-votes-production/deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
+  -v /tmp/nginxcheck/nginx.conf:/etc/nginx/nginx.conf:ro \
   -v /root/src/bengaluru-votes-production/deploy/nginx/snippets:/etc/nginx/snippets:ro \
   -v bengaluru-votes-production_certs:/etc/letsencrypt:ro \
   nginx:stable nginx -t
@@ -643,9 +562,8 @@ tells you nothing about your actual change.
 2. **Tag `:previous`** — before the build, because the build overwrites
    `:latest`. There is no registry; this image on this box is the entire
    rollback story.
-3. **Update the tree** to `origin/main` (staging) or the tag (production,
-   detached).
-4. **Build** with that environment's `SITE_ORIGIN`.
+3. **Update the tree** to the tag (detached).
+4. **Build** with production's `SITE_ORIGIN`.
 5. **Migrate** — forward-only and idempotent; a failure aborts before
    anything restarts, so the running version continues against the
    unchanged schema.
@@ -664,12 +582,6 @@ curl -sS -X POST https://<host>/api/ward-lookup \
   -H 'content-type: application/json' -H 'Origin: https://<host>' \
   -d '{"address":"MG Road, Bengaluru"}'   # 403 here means rebuild
 ```
-
-### Cold boot ordering
-
-Production comes up before staging. Production owns the `gba_front` network;
-staging joins it as `external: true` and its `up` fails outright if that
-network does not exist yet.
 
 ---
 
@@ -727,29 +639,15 @@ script itself lives at
 design rationale (peak-RPS assumption, ward-id space, page mix, the
 `X-Cache-Status` dependency).
 
-**WHEN:** run this against **staging**, before election week — not on every
-deploy, and never against production (staging is disposable; production
-isn't). Re-run it any time the VPS size, nginx cache config, or rate
-limits change.
+**WHEN:** before election week — not on every deploy. Re-run it any time the
+VPS size, nginx cache config, or rate limits change.
 
-**Prerequisite — staging currently has no cache to measure.** As shipped,
-`deploy/nginx/conf.d/site.conf`'s staging server block deliberately sets
-**no** `proxy_cache` on any location ("No cache anywhere on staging — every
-request reaches app-staging directly", by design, so staging tests real
-app behavior rather than nginx's cache a second time). That means the
-script's cache-HIT-ratio assertion (`cache_hit_rate`) and the
-cache-absorbs-the-load story behind the p95 assertion **cannot be
-validated by pointing `BASE_URL` at staging as configured today** — every
-request will MISS (or show an empty `X-Cache-Status`), because there's
-nothing to hit. Before the real run, do ONE of:
+**There is no staging to aim it at** (retired 2026-09-18), so there are two
+ways to run it:
 
-1. **(Recommended)** Temporarily add the production `/` location's
-   `proxy_cache pages; proxy_cache_key "$scheme$host$uri"; proxy_cache_valid
-   200 60s;` (plus the matching `ward/[^/]+/issues|data` 5m-TTL location) to
-   the staging server block for the duration of the test window, then
-   revert — a scoped, reviewed, temporary config change, not a permanent
-   fork of staging's behavior.
-2. Run this specific k6 test against the **production** hostname during a
+1. Stand up a temporary copy of the production stack on another host, with
+   the production nginx cache config, and point `BASE_URL` at that.
+2. Run it against the **production** hostname during a
    pre-announcement or off-peak window (before public traffic exists, or
    late night), accepting the small residual risk. The script never touches
    OTP, votes, flags, or media endpoints, which keeps most of its traffic
@@ -790,12 +688,11 @@ echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.i
 sudo apt-get update && sudo apt-get install k6
 ```
 
-**Run it** (no credentials — staging basic auth was removed 2026-08-13, step
-5b above):
+**Run it** (`BASE_URL` is required; the script has no default target):
 
 ```sh
 k6 run \
-  -e BASE_URL=https://staging-bengaluruvotes.opencity.in \
+  -e BASE_URL=https://<target-host> \
   -e CANDIDATE_SLUGS=<comma-separated-real-slugs-if-any-are-seeded> \
   tests/load/k6-election-day.js
 ```
@@ -812,7 +709,7 @@ four must show ✓:**
 | `http_req_duration{scenario:cached}`: `p(95)<500` | Cached public pages stay fast at election-day volume. |
 | `http_req_failed`: `rate<0.01` | No broad breakage under load. |
 | `rate_limited_429`: `count==0` | Legitimate ward-lookup/browsing traffic never trips the CGNAT-sized `api` zone (architecture §7). |
-| `cache_hit_rate`: `rate>0.9` | The micro-cache — not the app origin — is absorbing the load (requires the staging prerequisite above to be addressed first). |
+| `cache_hit_rate`: `rate>0.9` | The micro-cache — not the app origin — is absorbing the load (needs a target with the production cache config). |
 
 A ✗ on any threshold fails the acceptance test for the current VPS
 size/config.
@@ -903,6 +800,11 @@ is deliberately not rewritten. What has changed since:
   to `main` but not yet released.
 - **2026-08-13 — production advanced to `v2026.08.13.2`** (Open City logo in
   the header lockup), from `v2026.08.13`.
+- **2026-09-18 — staging retired.** Its stack, checkout and image were
+  removed from the box. Every staging line above is now history.
+- **2026-10-13 — staging removed from the repo**: `compose.staging.yml`, the
+  nginx server block, the staging path in `deploy/deploy.sh` and the staging
+  banner. `deploy.sh` now tests and reloads nginx's config on every deploy.
 
 ### Outstanding, both recorded as unresolved dependencies
 

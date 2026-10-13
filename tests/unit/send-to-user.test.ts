@@ -187,7 +187,7 @@ describe('src/lib/send/send.ts sendToUser', () => {
     expect(rows).toHaveLength(2); // one per channel, never duplicated — send_once_uq holds
   });
 
-  it('SENDS_DISABLED="true": no transport is invoked, but a campaign_sends row is still written as "sent" (send-once ledger holds in staging too)', async () => {
+  it('SENDS_DISABLED="true": no transport is invoked, but a campaign_sends row is still written as "sent" (send-once ledger holds with sends disabled)', async () => {
     process.env.SENDS_DISABLED = 'true';
     const user = await makeUser(FIXTURES.disabled);
 

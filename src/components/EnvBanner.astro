@@ -3,7 +3,7 @@
  * EnvBanner — the one-line, site-wide environment notice that sits ABOVE
  * the AppBar (design-system.md §7.14, information-architecture.md §1).
  * Renders nothing at all unless `APP_ENV` names an environment that has a
- * banner, which today means staging and production only; a developer's
+ * banner, which today means production only; a developer's
  * laptop and the test suites see no banner. See src/lib/env-banner.ts for
  * why the signal is `APP_ENV` and not `SITE_ORIGIN`.
  *
@@ -60,14 +60,6 @@ const variant = resolveEnvBanner(process.env.APP_ENV);
   .env-banner p {
     max-width: var(--container-app);
     margin-inline: auto;
-  }
-
-  /* Staging: the loud one. It is aimed at whoever wandered in, and staging
-     carries fictional candidate data (architecture §14.2), so it should be
-     impossible to mistake for the real site. */
-  .env-banner--staging {
-    background: var(--color-danger-surface);
-    color: var(--color-danger);
   }
 
   /* Production: informational, not alarming — this is the real site, just

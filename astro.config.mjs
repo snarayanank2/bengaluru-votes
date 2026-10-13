@@ -53,11 +53,10 @@ export default defineConfig({
     // default) always computes the server-side origin as `http://localhost`
     // and 403s every real POST, including the no-JS ward-lookup form
     // fallback (Home.astro) submitted from a real browser on either of this
-    // platform's two locked-in hostnames (architecture.md §14: production +
-    // staging on one VPS, both behind the shared nginx).
+    // platform's one locked-in hostname (architecture.md §14: production,
+    // behind nginx on the VPS).
     allowedDomains: [
       { hostname: 'bengaluruvotes.opencity.in', protocol: 'https' },
-      { hostname: 'staging-bengaluruvotes.opencity.in', protocol: 'https' },
       // Task 64's Playwright smoke suite hits the SAME Node standalone
       // adapter directly (no nginx in front) at http://127.0.0.1:4321 —
       // without its own allowedDomains entry, EVERY form-urlencoded POST
@@ -69,14 +68,14 @@ export default defineConfig({
       // set at BUILD time (this whole `security` block, like `site` above,
       // is resolved once at build time, not read per-request) — the e2e
       // build step is the only place that ever sets it; it must never be
-      // set for a real prod/staging build.
+      // set for a real production build.
       ...(process.env.E2E_ALLOWED_HOST
         ? [{ hostname: process.env.E2E_ALLOWED_HOST, protocol: 'http', port: process.env.E2E_ALLOWED_PORT }]
         : []),
       // One escape hatch for a TEMPORARY deployment on a hostname that
       // isn't either of the two above — a preview box, or the VPS's own
       // `*.hstgr.cloud` name before DNS is cut over. Not used by a normal
-      // staging or production build (architecture §14).
+      // production build (architecture §14).
       // This whole block is resolved once at BUILD time (same as `site`
       // above), so a build served from any other origin rejects EVERY
       // unsafe-method request with 403 — including `POST /api/ward-lookup`,
@@ -85,7 +84,7 @@ export default defineConfig({
       // Playwright suite's, is http-only and port-pinned, and its own
       // comment says it must never be set for a non-e2e build.
       // Set to a full origin (`http://host[:port]`). Unset — the normal
-      // case, and every CI/staging/production build — this is a no-op.
+      // case, and every production build — this is a no-op.
       ...(process.env.EXTRA_ALLOWED_ORIGIN ? [extraAllowedDomain(process.env.EXTRA_ALLOWED_ORIGIN)] : []),
     ],
   },
