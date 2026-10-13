@@ -14,11 +14,9 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../src/db/schema';
 import type { Db } from '../src/db/client';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isValidEmail } from '../src/lib/email';
 
-export function isValidEmail(email: string): boolean {
-  return EMAIL_RE.test(email.trim());
-}
+export { isValidEmail };
 
 /** Upsert a users row with role='admin' for the given email. Returns the user id. */
 export async function seedAdmin(db: Db, email: string): Promise<number> {

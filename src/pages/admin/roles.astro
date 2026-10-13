@@ -12,7 +12,7 @@
  * in depth, not something this route expects to ever trip.
  */
 import Roles from '../../features/pages/admin/Roles.astro';
-import { findUserIdByLookup, grantRole, listCuratorsAndAdmins, revokeRole, type AdminActor } from '../../lib/admin';
+import { findUserIdByLookup, grantRole, listStaff, revokeRole, type AdminActor } from '../../lib/admin';
 import { loadCuratorLang } from '../../lib/curator';
 
 const session = Astro.locals.session!;
@@ -82,7 +82,7 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const [rows, lang] = await Promise.all([listCuratorsAndAdmins(), loadCuratorLang(session.userId)]);
+const [rows, lang] = await Promise.all([listStaff(), loadCuratorLang(session.userId)]);
 Astro.response.headers.set('cache-control', 'no-store');
 Astro.response.status = responseStatus;
 ---

@@ -12,7 +12,7 @@
  *   - revokeRole: a curator -> role 'citizen'.
  *   - ADMIN-ONLY: every mutator rejects a non-admin actor before touching
  *     the DB.
- *   - listCuratorsAndAdmins / findUserIdByLookup: the small read helpers
+ *   - listStaff / findUserIdByLookup: the small read helpers
  *     the Roles page renders from.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -30,10 +30,13 @@ if (!process.env.DATABASE_URL) {
 }
 
 import {
+  addUser,
   grantRole,
   revokeRole,
-  listCuratorsAndAdmins,
+  listStaff,
+  loadConsoleStats,
   findUserIdByLookup,
+  isStaffRole,
   type AdminActor,
 } from '../../src/lib/admin';
 
@@ -45,7 +48,7 @@ const EMAILS = {
   citizen: 'admin-lib-test-citizen@example.com',
   // A second, never-promoted citizen — `citizen` above IS promoted to
   // curator by the grantRole test, so it can't also serve as "still a
-  // citizen" fixture for the listCuratorsAndAdmins exclusion check below.
+  // citizen" fixture for the listStaff exclusion check below.
   plainCitizen: 'admin-lib-test-plain-citizen@example.com',
   curatorA: 'admin-lib-test-curator-a@example.com',
   curatorB: 'admin-lib-test-curator-b@example.com',
@@ -57,9 +60,14 @@ const EMAILS = {
   extraAdmin: 'admin-lib-test-extra-admin@example.com',
   bannedAdmin: 'admin-lib-test-banned-admin@example.com',
   bannedAdmin2: 'admin-lib-test-banned-admin-2@example.com',
+  addTranscriber: 'admin-lib-test-add-transcriber@example.com',
+  addCurator: 'admin-lib-test-add-curator@example.com',
+  addAdmin: 'admin-lib-test-add-admin@example.com',
+  addExistingCitizen: 'admin-lib-test-add-existing-citizen@example.com',
+  grantTranscriber: 'admin-lib-test-grant-transcriber@example.com',
 };
 
-async function upsertUser(email: string, role: 'citizen' | 'curator' | 'admin'): Promise<number> {
+async function upsertUser(email: string, role: 'citizen' | 'transcriber' | 'curator' | 'admin'): Promise<number> {
   const [row] = await db
     .insert(schema.users)
     .values({ email: email.toLowerCase(), role, status: 'active' })
@@ -142,8 +150,8 @@ describe('src/lib/admin.ts (Task 44)', () => {
   });
 
   describe('read helpers', () => {
-    it('listCuratorsAndAdmins includes curator/admin users, excludes citizens', async () => {
-      const rows = await listCuratorsAndAdmins();
+    it('listStaff includes curator/admin users, excludes citizens', async () => {
+      const rows = await listStaff();
 
       const curatorRow = rows.find((r) => r.id === curatorBId);
       expect(curatorRow).toBeDefined();
@@ -246,6 +254,87 @@ describe('src/lib/admin.ts (Task 44)', () => {
 
       const [row] = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, adminId));
       expect(row?.role).toBe('admin');
+    });
+  });
+
+  describe('addUser', () => {
+    const ADDED = [EMAILS.addTranscriber, EMAILS.addCurator, EMAILS.addAdmin, EMAILS.addExistingCitizen];
+
+    afterAll(async () => {
+      await db.delete(schema.users).where(inArray(schema.users.email, ADDED));
+    });
+
+    it.each([
+      ['transcriber', EMAILS.addTranscriber],
+      ['curator', EMAILS.addCurator],
+      ['admin', EMAILS.addAdmin],
+    ] as const)('creates an active %s and returns its id', async (role, email) => {
+      const id = await addUser(admin, email, role);
+      const [row] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+      expect(row?.email).toBe(email);
+      expect(row?.role).toBe(role);
+      expect(row?.status).toBe('active');
+      expect(row?.phone).toBeNull();
+    });
+
+    it('trims and lower-cases the email before storing it', async () => {
+      await db.delete(schema.users).where(eq(schema.users.email, EMAILS.addCurator));
+      const id = await addUser(admin, '  Admin-Lib-Test-Add-Curator@Example.COM  ', 'curator');
+      const [row] = await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, id));
+      expect(row?.email).toBe(EMAILS.addCurator);
+    });
+
+    it.each(['', 'not-an-email', 'two@@example.com', 'has space@example.com', `${'a'.repeat(250)}@example.com`])(
+      'rejects %j with invalid_email and writes nothing',
+      async (bad) => {
+        await expect(addUser(admin, bad, 'curator')).rejects.toThrow('invalid_email');
+      },
+    );
+
+    it('an email that already exists (as a citizen, typed in different case) -> user_exists, role untouched', async () => {
+      const existingId = await upsertUser(EMAILS.addExistingCitizen, 'citizen');
+      await expect(addUser(admin, EMAILS.addExistingCitizen.toUpperCase(), 'admin')).rejects.toThrow('user_exists');
+      const [row] = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, existingId));
+      expect(row?.role).toBe('citizen');
+    });
+
+    it('rejects a non-admin actor and creates nothing', async () => {
+      const curatorActor = { userId: curatorBId, role: 'curator' } as unknown as AdminActor;
+      const email = 'admin-lib-test-add-by-non-admin@example.com';
+      await expect(addUser(curatorActor, email, 'transcriber')).rejects.toThrow('admin_only');
+      const rows = await db.select().from(schema.users).where(eq(schema.users.email, email));
+      expect(rows).toHaveLength(0);
+    });
+  });
+
+  describe('transcriber as a staff role', () => {
+    let transcriberId: number;
+
+    beforeAll(async () => {
+      transcriberId = await upsertUser(EMAILS.grantTranscriber, 'citizen');
+      extraFixtureIds.push(transcriberId);
+    });
+
+    it('isStaffRole accepts the three staff roles and nothing else', () => {
+      expect(['transcriber', 'curator', 'admin'].every(isStaffRole)).toBe(true);
+      expect(['citizen', '', 'ADMIN', 'superuser'].some(isStaffRole)).toBe(false);
+    });
+
+    it('grantRole promotes a citizen to transcriber', async () => {
+      await grantRole(admin, transcriberId, 'transcriber');
+      const [row] = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, transcriberId));
+      expect(row?.role).toBe('transcriber');
+    });
+
+    it('listStaff includes the transcriber and still excludes citizens', async () => {
+      const rows = await listStaff();
+      expect(rows.find((r) => r.id === transcriberId)?.role).toBe('transcriber');
+      expect(rows.find((r) => r.id === plainCitizenId)).toBeUndefined();
+    });
+
+    it('loadConsoleStats counts transcribers', async () => {
+      const stats = await loadConsoleStats();
+      expect(stats.transcriberCount).toBeGreaterThanOrEqual(1);
     });
   });
 });

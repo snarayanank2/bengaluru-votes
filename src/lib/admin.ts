@@ -22,9 +22,23 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
 import { eoiSubmissions, users } from '../db/schema';
+import { isUniqueViolation } from './db-errors';
+import { isValidEmail } from './email';
 
 /** The actor shape every mutator below requires — same session shape `src/middleware.ts` puts on `locals.session`, narrowed to admin. */
 export type AdminActor = { userId: number; role: 'admin' };
+
+/** Every role that is not `citizen`. Staff are email-only (docs/architecture.md §7). */
+export type StaffRole = 'transcriber' | 'curator' | 'admin';
+
+export const STAFF_ROLES: readonly StaffRole[] = ['transcriber', 'curator', 'admin'];
+
+export function isStaffRole(value: string): value is StaffRole {
+  return (STAFF_ROLES as readonly string[]).includes(value);
+}
+
+/** RFC 5321's practical ceiling on a whole address. */
+const MAX_EMAIL_LENGTH = 254;
 
 /**
  * Re-asserts admin, throwing `'admin_only'` otherwise. Every exported
@@ -93,14 +107,37 @@ async function assertNotSelfOrLastAdmin(
 }
 
 /**
- * Sets `targetUserId`'s role (citizen → curator/admin, or a lateral
- * curator ↔ admin move). Either role is city-wide the moment it is
- * granted.
+ * Creates a NEW staff account by email. Throws `'invalid_email'`, or
+ * `'user_exists'` when the address already has an account — it never
+ * changes an existing account's role; that stays an explicit action on
+ * /admin/roles (`grantRole`).
+ */
+export async function addUser(actor: AdminActor, emailRaw: string, role: StaffRole): Promise<number> {
+  assertAdmin(actor);
+
+  const email = emailRaw.trim().toLowerCase();
+  if (email.length > MAX_EMAIL_LENGTH || !isValidEmail(email)) {
+    throw new Error('invalid_email');
+  }
+
+  try {
+    const [row] = await db.insert(users).values({ email, role }).returning({ id: users.id });
+    return row!.id;
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new Error('user_exists');
+    throw err;
+  }
+}
+
+/**
+ * Sets `targetUserId`'s role (citizen → a staff role, or a lateral
+ * move between staff roles). Curator and admin are city-wide the moment
+ * they are granted.
  *
- * DEMOTE-AN-ADMIN GUARD (Task 44 review): `role`'s only two values mean
- * this function's only possible DEMOTION is an existing admin set to
- * `'curator'` — every other combination (citizen/curator → curator/admin,
- * or a same-role no-op) elevates or holds steady and is never a lockout
+ * DEMOTE-AN-ADMIN GUARD (Task 44 review): a staff `role` means
+ * this function's only possible DEMOTION is an existing admin set to a
+ * non-admin staff role — every other combination (an elevation, a lateral
+ * move among non-admins, or a same-role no-op) elevates or holds steady and is never a lockout
  * risk. That one demote path runs through the exact same
  * `assertNotSelfOrLastAdmin` guard `revokeRole` uses, so a self-demote or a
  * last-admin demotion via `grantRole` is rejected exactly like it would be
@@ -110,7 +147,7 @@ async function assertNotSelfOrLastAdmin(
  * Throws `'cannot_revoke_self'` / `'cannot_revoke_last_admin'` for the
  * demote-an-admin case described above — see `assertNotSelfOrLastAdmin`.
  */
-export async function grantRole(actor: AdminActor, targetUserId: number, role: 'curator' | 'admin'): Promise<void> {
+export async function grantRole(actor: AdminActor, targetUserId: number, role: StaffRole): Promise<void> {
   assertAdmin(actor);
 
   await db.transaction(async (tx) => {
@@ -156,34 +193,35 @@ export async function revokeRole(actor: AdminActor, targetUserId: number): Promi
 export interface StaffRow {
   id: number;
   email: string | null;
-  role: 'curator' | 'admin';
+  role: StaffRole;
   status: string;
 }
 
-/** Every curator/admin user. Feeds the Roles page's list (IA §6.2). */
-export async function listCuratorsAndAdmins(): Promise<StaffRow[]> {
+/** Every staff user (transcriber, curator, admin). Feeds the Roles page's list (IA §6.2). */
+export async function listStaff(): Promise<StaffRow[]> {
   const userRows = await db
     .select({ id: users.id, email: users.email, role: users.role, status: users.status })
     .from(users)
-    .where(inArray(users.role, ['curator', 'admin']))
+    .where(inArray(users.role, [...STAFF_ROLES]))
     .orderBy(users.id);
 
-  return userRows.filter((row): row is typeof row & { role: 'curator' | 'admin' } => row.role === 'curator' || row.role === 'admin');
+  return userRows.filter((row): row is typeof row & { role: StaffRole } => isStaffRole(row.role));
 }
 
 export interface ConsoleStats {
+  transcriberCount: number;
   curatorCount: number;
   adminCount: number;
   pendingEoiCount: number;
 }
 
-/** The `/admin` console home's small overview line (IA §6.1) — deliberately just three counts; the console is mostly navigation, not a dashboard. */
+/** The `/admin` console home's small overview line (IA §6.1) — deliberately just a few counts; the console is mostly navigation, not a dashboard. */
 export async function loadConsoleStats(): Promise<ConsoleStats> {
   const [roleCounts, [eoiRow]] = await Promise.all([
     db
       .select({ role: users.role, count: sql<number>`count(*)::int` })
       .from(users)
-      .where(inArray(users.role, ['curator', 'admin']))
+      .where(inArray(users.role, [...STAFF_ROLES]))
       .groupBy(users.role),
     db
       .select({ count: sql<number>`count(*)::int` })
@@ -191,10 +229,14 @@ export async function loadConsoleStats(): Promise<ConsoleStats> {
       .where(eq(eoiSubmissions.status, 'new')),
   ]);
 
-  const curatorCount = roleCounts.find((r) => r.role === 'curator')?.count ?? 0;
-  const adminCount = roleCounts.find((r) => r.role === 'admin')?.count ?? 0;
+  const countFor = (role: StaffRole): number => Number(roleCounts.find((r) => r.role === role)?.count ?? 0);
 
-  return { curatorCount: Number(curatorCount), adminCount: Number(adminCount), pendingEoiCount: Number(eoiRow?.count ?? 0) };
+  return {
+    transcriberCount: countFor('transcriber'),
+    curatorCount: countFor('curator'),
+    adminCount: countFor('admin'),
+    pendingEoiCount: Number(eoiRow?.count ?? 0),
+  };
 }
 
 /**
