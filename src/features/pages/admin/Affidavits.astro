@@ -1,0 +1,408 @@
+---
+/**
+ * `/admin/affidavits`: where affidavit PDFs enter the platform, and where
+ * the ones the extraction worker could not finish wait for a person.
+ *
+ * Three parts: how many affidavits are in each state, the bulk upload, and
+ * two work lists. NEEDS MATCHING holds affidavits the AI read but could not
+ * tie to a ward (or that look like a candidate already here, or that a
+ * transcriber sent back): the admin compares the AI-read identity with the
+ * PDF, picks the ward and confirms. FAILED holds the ones the model could
+ * not read at all: retry or discard.
+ *
+ * Desktop tooling: the lists are tables of forms and are not laid out for
+ * a phone. Discard is the one irreversible action and the only one behind a
+ * confirmation tick (design-system.md §7.13).
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Card from '../../../components/Card.astro';
+import Banner from '../../../components/Banner.astro';
+import Button from '../../../components/Button.astro';
+import { t, type Lang } from '../../../i18n';
+import { CSRF_FIELD_NAME } from '../../../lib/csrf';
+import type { AffidavitAdminData, AffidavitState } from '../../../lib/affidavit-queue';
+
+interface Props {
+  lang: Lang;
+  csrfToken: string;
+  data: AffidavitAdminData;
+  wards: Array<{ id: number; nameEn: string; corporation: string }>;
+  message?: { kind: 'notice' | 'error'; key: string; params?: Record<string, string | number> };
+}
+
+const { lang, csrfToken, data, wards, message } = Astro.props;
+
+const STATES: AffidavitState[] = ['queued', 'extracting', 'needs_matching', 'published', 'failed'];
+
+function wardLabel(ward: { id: number; nameEn: string; corporation: string }): string {
+  const corporation = ward.corporation[0].toUpperCase() + ward.corporation.slice(1);
+  return `${corporation} ${ward.id % 1000} · ${ward.nameEn}`;
+}
+---
+
+<AdminLayout lang={lang} title={t(lang, 'admin.affidavits.meta.title')} description={t(lang, 'admin.affidavits.meta.description')}>
+  <div class="admin-page">
+    <p><a href="/admin">{t(lang, 'admin.affidavits.backToConsole')}</a></p>
+    <h1>{t(lang, 'admin.affidavits.heading')}</h1>
+
+    {
+      message && (
+        <Banner kind={message.kind} lang={lang}>
+          {t(lang, message.key, message.params)}
+        </Banner>
+      )
+    }
+
+    <Card>
+      <h2>{t(lang, 'admin.affidavits.counts.heading')}</h2>
+      <dl class="counts">
+        {STATES.map((state) => (
+          <div class={`count count--${state}`}>
+            <dt>{t(lang, `admin.affidavits.state.${state}`)}</dt>
+            <dd>{data.counts[state]}</dd>
+          </div>
+        ))}
+      </dl>
+      <p class="note">{t(lang, 'admin.affidavits.counts.note')}</p>
+    </Card>
+
+    <Card>
+      <h2>{t(lang, 'admin.affidavits.upload.heading')}</h2>
+      <form method="post" action="/admin/affidavits" enctype="multipart/form-data" class="upload-form">
+        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+        <input type="hidden" name="formAction" value="upload" />
+        <div class="form-field">
+          <label class="form-label" for="affidavit-files">{t(lang, 'admin.affidavits.upload.label')}</label>
+          <input id="affidavit-files" class="form-input" type="file" name="files" accept="application/pdf" multiple required />
+          <p class="note">{t(lang, 'admin.affidavits.upload.helper')}</p>
+        </div>
+        <Button type="submit" variant="primary" lang={lang}>
+          {t(lang, 'admin.affidavits.upload.submit')}
+        </Button>
+      </form>
+    </Card>
+
+    <Card>
+      <h2>{t(lang, 'admin.affidavits.match.heading')}</h2>
+      <p class="note">{t(lang, 'admin.affidavits.match.intro')}</p>
+      {
+        data.needsMatching.length === 0 ? (
+          <p class="placeholder-note">{t(lang, 'admin.affidavits.match.none')}</p>
+        ) : (
+          <ul class="work-list">
+            {data.needsMatching.map((row) => (
+              <li class="work-item">
+                <div class="work-facts">
+                  <p class="work-title">
+                    <a href={row.pdfUrl} target="_blank" rel="noopener noreferrer">
+                      {t(lang, 'admin.affidavits.viewPdf', { id: row.id })}
+                    </a>
+                    <span class={`tag tag--${row.reason}`}>{t(lang, `admin.affidavits.reason.${row.reason}`)}</span>
+                  </p>
+                  <dl class="read">
+                    <div>
+                      <dt>{t(lang, 'admin.affidavits.match.wardRead')}</dt>
+                      <dd>{row.wardRead ?? t(lang, 'admin.affidavits.match.wardNotRead')}</dd>
+                    </div>
+                    <div>
+                      <dt>{t(lang, 'admin.affidavits.match.gender')}</dt>
+                      <dd>{row.gender ?? '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>{t(lang, 'admin.affidavits.match.confidence')}</dt>
+                      <dd>{row.confidence === null ? '—' : `${row.confidence}%`}</dd>
+                    </div>
+                  </dl>
+                  {row.note && (
+                    <p class="work-note">
+                      <strong>{t(lang, 'admin.affidavits.match.transcriberNote')}</strong> {row.note}
+                    </p>
+                  )}
+                </div>
+
+                <form method="post" action="/admin/affidavits" class="match-form">
+                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                  <input type="hidden" name="formAction" value="match" />
+                  <input type="hidden" name="affidavitId" value={row.id} />
+                  <div class="form-field">
+                    <label class="form-label" for={`name-${row.id}`}>{t(lang, 'admin.affidavits.match.name')}</label>
+                    <input id={`name-${row.id}`} class="form-input" type="text" name="name" value={row.name} required />
+                  </div>
+                  <div class="form-field">
+                    <label class="form-label" for={`party-${row.id}`}>{t(lang, 'admin.affidavits.match.party')}</label>
+                    <input id={`party-${row.id}`} class="form-input" type="text" name="party" value={row.party} required />
+                  </div>
+                  <div class="form-field">
+                    <label class="form-label" for={`ward-${row.id}`}>{t(lang, 'admin.affidavits.match.ward')}</label>
+                    <select id={`ward-${row.id}`} class="form-input" name="wardId" required>
+                      <option value="">{t(lang, 'admin.affidavits.match.wardChoose')}</option>
+                      {wards.map((ward) => (
+                        <option value={ward.id}>{wardLabel(ward)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {row.candidateId === null && row.sameName.length > 0 && (
+                    <div class="form-field">
+                      <label class="form-label" for={`attach-${row.id}`}>{t(lang, 'admin.affidavits.match.attach')}</label>
+                      <select id={`attach-${row.id}`} class="form-input" name="attachToCandidateId">
+                        <option value="">{t(lang, 'admin.affidavits.match.attachNew')}</option>
+                        {row.sameName.map((c) => (
+                          <option value={c.id}>{t(lang, 'admin.affidavits.match.attachExisting', { name: c.nameEn, id: c.id })}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <Button type="submit" variant="primary" lang={lang}>
+                    {t(lang, row.candidateId === null ? 'admin.affidavits.match.submit' : 'admin.affidavits.match.submitCorrection')}
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </Card>
+
+    <Card>
+      <h2>{t(lang, 'admin.affidavits.failed.heading')}</h2>
+      {
+        data.failed.length === 0 ? (
+          <p class="placeholder-note">{t(lang, 'admin.affidavits.failed.none')}</p>
+        ) : (
+          <ul class="work-list">
+            {data.failed.map((row) => (
+              <li class="work-item work-item--failed">
+                <div class="work-facts">
+                  <p class="work-title">
+                    <a href={row.pdfUrl} target="_blank" rel="noopener noreferrer">
+                      {t(lang, 'admin.affidavits.viewPdf', { id: row.id })}
+                    </a>
+                  </p>
+                  <p class="work-note">{row.failure}</p>
+                  <p class="note">{t(lang, 'admin.affidavits.failed.attempts', { attempts: row.attempts })}</p>
+                </div>
+                <div class="failed-actions">
+                  <form method="post" action="/admin/affidavits">
+                    <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                    <input type="hidden" name="formAction" value="retry" />
+                    <input type="hidden" name="affidavitId" value={row.id} />
+                    <Button type="submit" variant="secondary" lang={lang}>
+                      {t(lang, 'admin.affidavits.failed.retry')}
+                    </Button>
+                  </form>
+                  {row.canDiscard && (
+                    <form method="post" action="/admin/affidavits" class="discard-form">
+                      <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                      <input type="hidden" name="formAction" value="discard" />
+                      <input type="hidden" name="affidavitId" value={row.id} />
+                      <label class="checkbox">
+                        <input type="checkbox" name="confirm" required />
+                        {t(lang, 'admin.affidavits.failed.discardConfirm')}
+                      </label>
+                      <Button type="submit" variant="destructive" lang={lang}>
+                        {t(lang, 'admin.affidavits.failed.discard')}
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </Card>
+  </div>
+</AdminLayout>
+
+<style>
+  .admin-page {
+    max-width: var(--container-app);
+    margin-inline: auto;
+    padding-block: var(--space-8);
+    padding-inline: var(--container-pad-x);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .admin-page h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: 0;
+  }
+
+  .admin-page h2 {
+    font-size: var(--text-lg);
+    margin: 0 0 var(--space-3);
+  }
+
+  .note {
+    margin: var(--space-2) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .placeholder-note {
+    margin: var(--space-3) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-style: italic;
+  }
+
+  .counts {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  .count {
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .count dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .count dd {
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .upload-form {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .form-label {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .form-input {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    max-width: 100%;
+  }
+
+  .form-input:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+    border-color: var(--color-primary);
+  }
+
+  .work-list {
+    list-style: none;
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .work-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--space-4);
+    padding-block: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .work-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .work-note {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .read {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+  }
+
+  .read div {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .read dt {
+    color: var(--color-text-muted);
+  }
+
+  .read dd {
+    margin: 0;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 700;
+  }
+
+  .match-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    gap: var(--space-3);
+    align-items: end;
+  }
+
+  .failed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: var(--space-4);
+  }
+
+  .discard-form {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .checkbox input {
+    margin-top: 0.2em;
+    flex: none;
+  }
+</style>

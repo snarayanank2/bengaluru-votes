@@ -92,6 +92,13 @@
       "when": 1791900000000,
       "tag": "0012_affidavit_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791900100000,
+      "tag": "0013_transcription",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ export const userStatusEnum = pgEnum('user_status', ['active', 'banned', 'erased
 export const candidateStatusEnum = pgEnum('candidate_status', ['filed', 'contesting', 'rejected', 'withdrawn']);
 export const sourceTypeEnum = pgEnum('source_type', ['official', 'curator']);
 export const translationStatusEnum = pgEnum('translation_status', ['pending', 'done', 'manual']);
+export const assignmentStateEnum = pgEnum('assignment_state', ['open', 'submitted', 'abandoned']);
 export const affidavitStateEnum = pgEnum('affidavit_state', ['queued', 'extracting', 'needs_matching', 'published', 'failed']);
 export const channelEnum = pgEnum('channel', ['email', 'whatsapp']);
 export const otpPurposeEnum = pgEnum('otp_purpose', ['auth', 'add_contact']);
@@ -125,6 +126,11 @@ export const candidateFields = pgTable('candidate_fields', {
   // Null once a curator edits the text by hand.
   valueData: jsonb('value_data'),
   unreadable: boolean('unreadable').notNull().default(false),     // nobody could read it from the scan; shown as unresolved
+  // Written only by the transaction that publishes a value a person checked
+  // against the affidavit (src/lib/affidavit-publish.ts); never set on their own.
+  checkedBy: integer('checked_by'),
+  checkedAt: timestamp('checked_at'),
+  confirmedAi: boolean('confirmed_ai'),                           // true: the person kept the AI's value; false: they changed it
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [uniqueIndex('candidate_field_uq').on(t.candidateId, t.fieldKey)]);
 
@@ -144,10 +150,27 @@ export const candidateAffidavits = pgTable('candidate_affidavits', {
   failure: text('failure'),
   matchReason: text('match_reason'),                    // 'ward_unresolved' | 'possible_duplicate' | 'reported_by_transcriber'
   sha256: text('sha256'),                               // of the PDF; unique, so a re-upload is a no-op. Null on pre-queue rows.
+  transcribedAt: timestamp('transcribed_at'),           // a transcriber submitted a reading; never drawn again
+  matchNote: text('match_note'),                        // a transcriber's note when they sent it back as the wrong ward or document
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('candidate_affidavits_sha256_uq').on(t.sha256),
   index('candidate_affidavits_state_idx').on(t.state),
+]);
+
+// A transcriber's hold on one affidavit (src/lib/transcribe.ts). Held, not
+// owned: past `expires_at` the affidavit is anyone's to draw again.
+export const transcriptionAssignments = pgTable('transcription_assignments', {
+  id: serial('id').primaryKey(),
+  affidavitId: integer('affidavit_id').notNull().references(() => candidateAffidavits.id, { onDelete: 'cascade' }),
+  transcriberId: integer('transcriber_id').notNull().references(() => users.id),
+  state: assignmentStateEnum('state').notNull().default('open'),
+  drawnAt: timestamp('drawn_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+  closedAt: timestamp('closed_at'),
+}, (t) => [
+  uniqueIndex('transcription_open_affidavit_uq').on(t.affidavitId).where(sql`state = 'open'`),
+  index('transcription_transcriber_idx').on(t.transcriberId, t.state),
 ]);
 
 export const wardIssues = pgTable('ward_issues', {

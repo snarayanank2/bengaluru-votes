@@ -307,3 +307,214 @@ export async function processOne(extractor: Extractor): Promise<boolean> {
   }
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// /admin/affidavits: what waits on a person, and what an admin can do about it.
+// ---------------------------------------------------------------------------
+
+export type AffidavitState = (typeof candidateAffidavits.$inferSelect)['state'];
+
+export interface MatchRow {
+  id: number;
+  pdfUrl: string;
+  reason: MatchReason;
+  /** A transcriber's note when they sent the affidavit back (`reported_by_transcriber`). */
+  note: string | null;
+  confidence: number | null;
+  name: string;
+  party: string;
+  gender: string | null;
+  /** The ward as the AI read it, for the admin to compare against the PDF; null when it read none. */
+  wardRead: string | null;
+  /** The candidate this affidavit is already published on, when a transcriber sent it back. */
+  candidateId: number | null;
+  /** Candidates of the same name, for a possible duplicate. */
+  sameName: Array<{ id: number; nameEn: string; wardId: number }>;
+}
+
+export interface FailedRow {
+  id: number;
+  pdfUrl: string;
+  failure: string;
+  attempts: number;
+  canDiscard: boolean;
+}
+
+export interface AffidavitAdminData {
+  counts: Record<AffidavitState, number>;
+  needsMatching: MatchRow[];
+  failed: FailedRow[];
+}
+
+function wardReadText(ward: AffidavitExtraction['identity']['ward'] | undefined): string | null {
+  if (!ward || ward.status !== 'value') return null;
+  return [ward.number, ward.name, ward.corporation].filter((part) => part !== null).join(' · ');
+}
+
+export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
+  const counts: Record<AffidavitState, number> = { queued: 0, extracting: 0, needs_matching: 0, published: 0, failed: 0 };
+  const countRows = await db
+    .select({ state: candidateAffidavits.state, n: sql<number>`count(*)::int` })
+    .from(candidateAffidavits)
+    .groupBy(candidateAffidavits.state);
+  for (const row of countRows) counts[row.state] = row.n;
+
+  const waiting = await db
+    .select({
+      id: candidateAffidavits.id,
+      mediaId: candidateAffidavits.mediaId,
+      sha256: media.sha256,
+      state: candidateAffidavits.state,
+      matchReason: candidateAffidavits.matchReason,
+      matchNote: candidateAffidavits.matchNote,
+      confidence: candidateAffidavits.confidence,
+      extraction: candidateAffidavits.extraction,
+      failure: candidateAffidavits.failure,
+      attempts: candidateAffidavits.attempts,
+      candidateId: candidateAffidavits.candidateId,
+    })
+    .from(candidateAffidavits)
+    .innerJoin(media, eq(media.id, candidateAffidavits.mediaId))
+    .where(sql`${candidateAffidavits.state} IN ('needs_matching', 'failed')`)
+    .orderBy(candidateAffidavits.id);
+
+  const needsMatching: MatchRow[] = [];
+  const failed: FailedRow[] = [];
+  for (const row of waiting) {
+    const pdfUrl = sourceUrlOf(row.mediaId, row.sha256);
+    if (row.state === 'failed') {
+      failed.push({ id: row.id, pdfUrl, failure: row.failure ?? '', attempts: row.attempts, canDiscard: row.candidateId === null });
+      continue;
+    }
+    const identity = (row.extraction as AffidavitExtraction | null)?.identity;
+    const name = identity?.name.text ?? '';
+    const sameName =
+      name === ''
+        ? []
+        : (await db.select({ id: candidates.id, nameEn: candidates.nameEn, wardId: candidates.wardId }).from(candidates)).filter(
+            (c) => c.id !== row.candidateId && normalizeForMatch(c.nameEn) === normalizeForMatch(name),
+          );
+    needsMatching.push({
+      id: row.id,
+      pdfUrl,
+      reason: (row.matchReason as MatchReason | null) ?? 'ward_unresolved',
+      note: row.matchNote,
+      confidence: row.confidence,
+      name,
+      party: identity?.party.text ?? '',
+      gender: identity?.gender.gender ?? null,
+      wardRead: wardReadText(identity?.ward),
+      candidateId: row.candidateId,
+      sameName,
+    });
+  }
+
+  return { counts, needsMatching, failed };
+}
+
+export type AdminActionError = 'not_waiting' | 'unknown_ward' | 'name_required' | 'party_required' | 'unknown_candidate' | 'attached' | 'not_failed';
+
+export interface ConfirmMatchInput {
+  wardId: number;
+  name: string;
+  party: string;
+  /** Publish onto this existing candidate instead of creating one: the admin judged it the same person. */
+  attachToCandidateId?: number;
+}
+
+/**
+ * An admin's answer for an affidavit the worker could not place: which ward,
+ * and the name and party as they should read. Creates the candidate and
+ * publishes the stored extraction — identity as checked by a person, the
+ * affidavit's values still AI-labelled. Throws an `AdminActionError` code.
+ *
+ * For an affidavit a transcriber sent back, the candidate already exists:
+ * it is moved to the chosen ward and renamed, and its values are left alone.
+ */
+export async function confirmMatch(actor: { userId: number }, id: number, input: ConfirmMatchInput): Promise<{ candidateId: number }> {
+  const name = input.name.trim();
+  const party = input.party.trim();
+  if (name === '') throw new Error('name_required' satisfies AdminActionError);
+  if (party === '') throw new Error('party_required' satisfies AdminActionError);
+  const [ward] = Number.isInteger(input.wardId) ? await db.select({ id: wards.id }).from(wards).where(eq(wards.id, input.wardId)) : [];
+  if (!ward) throw new Error('unknown_ward' satisfies AdminActionError);
+
+  const result = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        id: candidateAffidavits.id,
+        mediaId: candidateAffidavits.mediaId,
+        sha256: media.sha256,
+        state: candidateAffidavits.state,
+        extraction: candidateAffidavits.extraction,
+        candidateId: candidateAffidavits.candidateId,
+      })
+      .from(candidateAffidavits)
+      .innerJoin(media, eq(media.id, candidateAffidavits.mediaId))
+      .where(eq(candidateAffidavits.id, id))
+      .for('update', { of: candidateAffidavits });
+    if (!row || row.state !== 'needs_matching' || row.extraction === null) throw new Error('not_waiting' satisfies AdminActionError);
+    const extraction = row.extraction as AffidavitExtraction;
+    const sourceUrl = sourceUrlOf(row.mediaId, row.sha256);
+
+    if (row.candidateId !== null) {
+      // Sent back by a transcriber: correct who and where, keep the values.
+      await tx.update(candidates).set({ wardId: ward.id, updatedAt: new Date() }).where(eq(candidates.id, row.candidateId));
+      const translate = await publishAffidavitFields(
+        tx,
+        { userId: actor.userId, role: 'admin' },
+        row.candidateId,
+        [
+          { key: 'full_name', status: 'value', text: name },
+          { key: 'party', status: 'value', text: party },
+        ],
+        { sourceUrl, checked: true },
+      );
+      await publishWardLabel(tx, row.candidateId, { sourceUrl, aiExtracted: false });
+      await tx.update(candidateAffidavits).set({ state: 'published', matchReason: null, matchNote: null }).where(eq(candidateAffidavits.id, id));
+      return { candidateId: row.candidateId, translate };
+    }
+
+    if (input.attachToCandidateId !== undefined) {
+      const [existing] = await tx.select({ id: candidates.id }).from(candidates).where(eq(candidates.id, input.attachToCandidateId));
+      if (!existing) throw new Error('unknown_candidate' satisfies AdminActionError);
+      return publishExtractionTx(tx, row, extraction, { kind: 'existing', candidateId: existing.id, identity: false });
+    }
+
+    return publishExtractionTx(tx, row, extraction, { kind: 'new', wardId: ward.id, name, party, confirmedBy: actor.userId });
+  });
+
+  for (const fieldId of result.translate) translateFieldSoon({ table: 'candidate_fields', id: fieldId });
+  logEvent('affidavit_matched', { affidavitId: id, by: actor.userId });
+  return { candidateId: result.candidateId };
+}
+
+/** Puts a failed affidavit back in the queue with a fresh set of attempts. */
+export async function retryAffidavit(id: number): Promise<void> {
+  const rows = await db
+    .update(candidateAffidavits)
+    .set({ state: 'queued', attempts: 0, failure: null, leaseExpiresAt: null })
+    .where(and(eq(candidateAffidavits.id, id), eq(candidateAffidavits.state, 'failed')))
+    .returning({ id: candidateAffidavits.id });
+  if (rows.length === 0) throw new Error('not_failed' satisfies AdminActionError);
+}
+
+/**
+ * Deletes an affidavit nobody could use, and its stored PDF. Refused once a
+ * candidate is attached: the PDF is then the public source behind that
+ * candidate's values.
+ */
+export async function discardAffidavit(id: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ mediaId: candidateAffidavits.mediaId, state: candidateAffidavits.state, candidateId: candidateAffidavits.candidateId })
+      .from(candidateAffidavits)
+      .where(eq(candidateAffidavits.id, id))
+      .for('update');
+    if (!row || (row.state !== 'failed' && row.state !== 'needs_matching')) throw new Error('not_waiting' satisfies AdminActionError);
+    if (row.candidateId !== null) throw new Error('attached' satisfies AdminActionError);
+    await tx.delete(candidateAffidavits).where(eq(candidateAffidavits.id, id));
+    await tx.delete(media).where(eq(media.id, row.mediaId));
+  });
+  logEvent('affidavit_discarded', { affidavitId: id });
+}

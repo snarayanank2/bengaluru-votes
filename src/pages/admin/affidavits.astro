@@ -1,0 +1,140 @@
+---
+/**
+ * `/admin/affidavits` — see src/features/pages/admin/Affidavits.astro for
+ * the presentational side. This route twin owns the HTTP concerns: the four
+ * POST form actions (`upload`, `match`, `retry`, `discard`), all handled by
+ * src/lib/affidavit-queue.ts, and no-store on every response.
+ *
+ * src/middleware.ts has already refused any non-admin session and checked
+ * the CSRF token before this runs.
+ *
+ * AFTER A POST: a success redirects back here with `?notice=`, looked up
+ * from a fixed list so a hand-edited URL can only show one of these
+ * sentences; a refusal re-renders in place with a 400 and the reason.
+ */
+import Affidavits from '../../features/pages/admin/Affidavits.astro';
+import {
+  confirmMatch,
+  discardAffidavit,
+  enqueueAffidavit,
+  loadAffidavitAdmin,
+  retryAffidavit,
+  type AdminActionError,
+} from '../../lib/affidavit-queue';
+import { loadCuratorLang } from '../../lib/curator';
+import { db } from '../../db/client';
+import { wards } from '../../db/schema';
+
+const session = Astro.locals.session!;
+const actor = { userId: session.userId };
+
+const NOTICE_KINDS = ['uploaded', 'matched', 'retried', 'discarded'] as const;
+
+const ERROR_KEYS: Record<AdminActionError, string> = {
+  not_waiting: 'admin.affidavits.error.notWaiting',
+  unknown_ward: 'admin.affidavits.error.unknownWard',
+  name_required: 'admin.affidavits.error.nameRequired',
+  party_required: 'admin.affidavits.error.partyRequired',
+  unknown_candidate: 'admin.affidavits.error.unknownCandidate',
+  attached: 'admin.affidavits.error.attached',
+  not_failed: 'admin.affidavits.error.notFailed',
+};
+
+interface Message {
+  kind: 'notice' | 'error';
+  key: string;
+  params?: Record<string, string | number>;
+}
+
+function redirect(query: string): Response {
+  return new Response(null, { status: 302, headers: { Location: `/admin/affidavits?${query}`, 'cache-control': 'no-store' } });
+}
+
+function count(raw: string | null): number {
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+let message: Message | undefined;
+let responseStatus = 200;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const formAction = String(form.get('formAction') ?? '');
+
+  if (formAction === 'upload') {
+    const files = form.getAll('files').filter((f): f is File => f instanceof File && f.size > 0);
+    if (files.length === 0) {
+      message = { kind: 'error', key: 'admin.affidavits.error.noFiles' };
+      responseStatus = 400;
+    } else {
+      const tally = { queued: 0, duplicate: 0, rejected: 0 };
+      for (const file of files) {
+        const result = await enqueueAffidavit(Buffer.from(await file.arrayBuffer()), { uploadedBy: actor.userId });
+        tally[result.kind] += 1;
+      }
+      return redirect(`notice=uploaded&queued=${tally.queued}&duplicate=${tally.duplicate}&rejected=${tally.rejected}`);
+    }
+  } else if (formAction === 'match' || formAction === 'retry' || formAction === 'discard') {
+    const affidavitId = Number(form.get('affidavitId'));
+    if (!Number.isInteger(affidavitId)) {
+      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+    }
+    try {
+      if (formAction === 'match') {
+        const attachRaw = String(form.get('attachToCandidateId') ?? '');
+        await confirmMatch(actor, affidavitId, {
+          wardId: Number(form.get('wardId') || NaN),
+          name: String(form.get('name') ?? ''),
+          party: String(form.get('party') ?? ''),
+          attachToCandidateId: attachRaw === '' ? undefined : Number(attachRaw),
+        });
+        return redirect('notice=matched');
+      }
+      if (formAction === 'retry') {
+        await retryAffidavit(affidavitId);
+        return redirect('notice=retried');
+      }
+      if (form.get('confirm') == null) {
+        message = { kind: 'error', key: 'admin.affidavits.error.confirmRequired' };
+        responseStatus = 400;
+      } else {
+        await discardAffidavit(affidavitId);
+        return redirect('notice=discarded');
+      }
+    } catch (err) {
+      // Only the refusals the library reports on purpose become a message;
+      // anything else is rethrown for the middleware to report.
+      const key = ERROR_KEYS[(err instanceof Error ? err.message : '') as AdminActionError];
+      if (!key) throw err;
+      message = { kind: 'error', key };
+      responseStatus = 400;
+    }
+  } else {
+    return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+  }
+} else {
+  const params = Astro.url.searchParams;
+  const notice = NOTICE_KINDS.find((kind) => kind === params.get('notice'));
+  if (notice === 'uploaded') {
+    message = {
+      kind: 'notice',
+      key: 'admin.affidavits.notice.uploaded',
+      params: { queued: count(params.get('queued')), duplicate: count(params.get('duplicate')), rejected: count(params.get('rejected')) },
+    };
+  } else if (notice) {
+    message = { kind: 'notice', key: `admin.affidavits.notice.${notice}` };
+  }
+}
+
+const [data, lang, wardRows] = await Promise.all([
+  loadAffidavitAdmin(),
+  loadCuratorLang(session.userId),
+  db.select({ id: wards.id, nameEn: wards.nameEn, corporation: wards.corporation }).from(wards).orderBy(wards.corporation, wards.id),
+]);
+
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.status = responseStatus;
+---
+
+<Affidavits lang={lang} csrfToken={Astro.locals.csrfToken} data={data} wards={wardRows} message={message} />
