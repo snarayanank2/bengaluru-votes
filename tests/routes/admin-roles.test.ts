@@ -188,6 +188,14 @@ describe('/admin, /admin/roles (Task 44)', () => {
     });
   });
 
+  describe('transcriber', () => {
+    it('the grant select offers transcriber', async () => {
+      const res = await run(RolesRoute, '/admin/roles', { cookieValue: adminAuth.cookieValue });
+      const html = normalize(await res.text());
+      expect(html).toContain('<option value="transcriber">');
+    });
+  });
+
   describe('console', () => {
     it('renders the nav links as admin', async () => {
       const res = await run(ConsoleRoute, '/admin', { cookieValue: adminAuth.cookieValue });

@@ -37,13 +37,16 @@ interface Props {
   query: string;
   results: UserSearchRow[];
   message?: { kind: 'notice' | 'error'; key: string };
+  /** Email typed into the add-user form, echoed back after a rejected submit. */
+  addEmail?: string;
 }
 
-const { lang, csrfToken, query, results, message } = Astro.props;
+const { lang, csrfToken, query, results, message, addEmail = '' } = Astro.props;
 const messageText = message ? t(lang, message.key) : undefined;
 
 const roleLabelKeys: Record<string, string> = {
   citizen: 'admin.users.results.roleCitizen',
+  transcriber: 'admin.users.results.roleTranscriber',
   curator: 'admin.users.results.roleCurator',
   admin: 'admin.users.results.roleAdmin',
 };
@@ -70,6 +73,32 @@ function userIdentifier(row: UserSearchRow): string {
         </Banner>
       )
     }
+
+    <Card>
+      <h2>{t(lang, 'admin.users.add.heading')}</h2>
+      <form method="post" action="/admin/users" class="add-form">
+        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+        <input type="hidden" name="formAction" value="add" />
+        <FormField label={t(lang, 'admin.users.add.emailLabel')} name="email" type="email" value={addEmail} required lang={lang} />
+        <div class="form-field">
+          <label class="form-label" for="add-role">
+            {t(lang, 'admin.users.add.roleLabel')}
+          </label>
+          <select id="add-role" class="form-input" name="role">
+            <option value="transcriber">{t(lang, 'admin.users.add.roleTranscriber')}</option>
+            <option value="curator">{t(lang, 'admin.users.add.roleCurator')}</option>
+            <option value="admin">{t(lang, 'admin.users.add.roleAdmin')}</option>
+          </select>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" name="confirm" required />
+          {t(lang, 'admin.users.add.confirmLabel')}
+        </label>
+        <Button type="submit" variant="primary" lang={lang}>
+          {t(lang, 'admin.users.add.submit')}
+        </Button>
+      </form>
+    </Card>
 
     <Card>
       <h2>{t(lang, 'admin.users.search.heading')}</h2>
@@ -222,11 +251,34 @@ function userIdentifier(row: UserSearchRow): string {
     font-style: italic;
   }
 
+  .add-form,
   .search-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
     max-width: 32rem;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .form-label {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .form-input {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   .checkbox {

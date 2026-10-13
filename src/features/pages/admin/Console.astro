@@ -33,6 +33,10 @@ const { lang, stats } = Astro.props;
       <h2>{t(lang, 'admin.console.overview.heading')}</h2>
       <dl class="stat-list">
         <div>
+          <dt>{t(lang, 'admin.console.overview.transcribers')}</dt>
+          <dd>{stats.transcriberCount}</dd>
+        </div>
+        <div>
           <dt>{t(lang, 'admin.console.overview.curators')}</dt>
           <dd>{stats.curatorCount}</dd>
         </div>

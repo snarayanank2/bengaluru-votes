@@ -32,6 +32,12 @@ interface Props {
 
 const { lang, csrfToken, rows, message } = Astro.props;
 const messageText = message ? t(lang, message.key) : undefined;
+
+const roleLabelKey: Record<string, string> = {
+  transcriber: 'admin.roles.list.roleTranscriber',
+  curator: 'admin.roles.list.roleCurator',
+  admin: 'admin.roles.list.roleAdmin',
+};
 ---
 
 <AdminLayout lang={lang} title={t(lang, 'admin.roles.meta.title')} description={t(lang, 'admin.roles.meta.description')}>
@@ -58,6 +64,7 @@ const messageText = message ? t(lang, message.key) : undefined;
             {t(lang, 'admin.roles.grant.roleLabel')}
           </label>
           <select id="grant-role" class="form-input" name="role">
+            <option value="transcriber">{t(lang, 'admin.roles.grant.roleTranscriber')}</option>
             <option value="curator">{t(lang, 'admin.roles.grant.roleCurator')}</option>
             <option value="admin">{t(lang, 'admin.roles.grant.roleAdmin')}</option>
           </select>
@@ -92,7 +99,7 @@ const messageText = message ? t(lang, message.key) : undefined;
                   <tr>
                     <td>{row.id}</td>
                     <td>{row.email ?? '—'}</td>
-                    <td>{row.role === 'admin' ? t(lang, 'admin.roles.list.roleAdmin') : t(lang, 'admin.roles.list.roleCurator')}</td>
+                    <td>{t(lang, roleLabelKey[row.role] ?? 'admin.roles.list.roleCurator')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -112,7 +119,7 @@ const messageText = message ? t(lang, message.key) : undefined;
             {rows.map((row) => (
               <li class="manage-row">
                 <p class="manage-row-title">
-                  {row.email ?? `#${row.id}`} — {row.role === 'admin' ? t(lang, 'admin.roles.list.roleAdmin') : t(lang, 'admin.roles.list.roleCurator')}
+                  {row.email ?? `#${row.id}`} — {t(lang, roleLabelKey[row.role] ?? 'admin.roles.list.roleCurator')}
                 </p>
 
                 <form method="post" action="/admin/roles" class="revoke-form">

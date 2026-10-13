@@ -66,6 +66,9 @@ const EMAILS = {
   reactivateTarget: 'admin-users-route-test-reactivate-target@example.com',
   eraseTarget: 'admin-users-route-test-erase-target@example.com',
   csrfTarget: 'admin-users-route-test-csrf-target@example.com',
+  addNew: 'admin-users-route-test-add-new@example.com',
+  addNoConfirm: 'admin-users-route-test-add-no-confirm@example.com',
+  addCsrf: 'admin-users-route-test-add-csrf@example.com',
 };
 const ERASE_TARGET_PHONE = '+919900012399';
 
@@ -176,6 +179,7 @@ describe('/admin/users (Task 45)', () => {
   });
 
   afterAll(async () => {
+    await db.delete(schema.users).where(inArray(schema.users.email, [EMAILS.addNew, EMAILS.addNoConfirm, EMAILS.addCsrf]));
     const userIds = [curatorId, citizenId, banTargetId, reactivateTargetId, eraseTargetId, csrfTargetId];
     await db.delete(schema.otpCodes).where(inArray(schema.otpCodes.destination, [EMAILS.eraseTarget, ERASE_TARGET_PHONE]));
     await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, ...userIds]));
@@ -205,6 +209,84 @@ describe('/admin/users (Task 45)', () => {
       const res = await run(UsersRoute, '/admin/users', { cookieValue: adminAuth.cookieValue });
       expect(res.status).toBe(200);
       expect(res.headers.get('cache-control')).toBe('no-store');
+    });
+  });
+
+  describe('add a user', () => {
+    it('GET shows the add-user card with all three staff roles', async () => {
+      const res = await run(UsersRoute, '/admin/users', { cookieValue: adminAuth.cookieValue });
+      const html = normalize(await res.text());
+      expect(html).toContain('name="formAction" value="add"');
+      expect(html).toContain('<option value="transcriber">');
+      expect(html).toContain('<option value="curator">');
+      expect(html).toContain('<option value="admin">');
+    });
+
+    it('POST add creates the account and redirects to a search for it', async () => {
+      const form = formWithToken(
+        { formAction: 'add', email: '  Admin-Users-Route-Test-Add-New@Example.com ', role: 'transcriber', confirm: 'on' },
+        adminAuth.token,
+      );
+      const res = await run(UsersRoute, '/admin/users', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe(`/admin/users?q=${encodeURIComponent(EMAILS.addNew)}`);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      const [row] = await db.select().from(schema.users).where(eq(schema.users.email, EMAILS.addNew));
+      expect(row?.role).toBe('transcriber');
+      expect(row?.status).toBe('active');
+    });
+
+    it('POST add for an email that already exists -> 400 with the specific message, role untouched', async () => {
+      const form = formWithToken({ formAction: 'add', email: EMAILS.citizen, role: 'admin', confirm: 'on' }, adminAuth.token);
+      const res = await run(UsersRoute, '/admin/users', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
+      expect(res.status).toBe(400);
+      const html = normalize(await res.text());
+      expect(html).toContain('An account with that email already exists.');
+      const [row] = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, citizenId));
+      expect(row?.role).toBe('citizen');
+    });
+
+    it('POST add with an invalid email -> 400, the typed value is kept in the field', async () => {
+      const form = formWithToken({ formAction: 'add', email: 'not-an-email', role: 'curator', confirm: 'on' }, adminAuth.token);
+      const res = await run(UsersRoute, '/admin/users', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
+      expect(res.status).toBe(400);
+      const html = normalize(await res.text());
+      expect(html).toContain('Enter a valid email address.');
+      expect(html).toContain('value="not-an-email"');
+    });
+
+    it('POST add without the confirm checkbox -> 400, nothing created', async () => {
+      const form = formWithToken({ formAction: 'add', email: EMAILS.addNoConfirm, role: 'curator' }, adminAuth.token);
+      const res = await run(UsersRoute, '/admin/users', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
+      expect(res.status).toBe(400);
+      const rows = await db.select().from(schema.users).where(eq(schema.users.email, EMAILS.addNoConfirm));
+      expect(rows).toHaveLength(0);
+    });
+
+    it.each(['citizen', 'superuser', ''])('POST add with role %j -> 400, nothing created', async (role) => {
+      const form = formWithToken({ formAction: 'add', email: EMAILS.addNoConfirm, role, confirm: 'on' }, adminAuth.token);
+      const res = await run(UsersRoute, '/admin/users', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
+      expect(res.status).toBe(400);
+      const rows = await db.select().from(schema.users).where(eq(schema.users.email, EMAILS.addNoConfirm));
+      expect(rows).toHaveLength(0);
+    });
+
+    it('POST add without the CSRF token -> 403, nothing created', async () => {
+      const form = new FormData();
+      form.set('formAction', 'add');
+      form.set('email', EMAILS.addCsrf);
+      form.set('role', 'admin');
+      form.set('confirm', 'on');
+      const res = await run(UsersRoute, '/admin/users', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
+      expect(res.status).toBe(403);
+      const rows = await db.select().from(schema.users).where(eq(schema.users.email, EMAILS.addCsrf));
+      expect(rows).toHaveLength(0);
+    });
+
+    it('POST add as a curator -> 403', async () => {
+      const form = formWithToken({ formAction: 'add', email: EMAILS.addCsrf, role: 'admin', confirm: 'on' }, curatorAuth.token);
+      const res = await run(UsersRoute, '/admin/users', { method: 'POST', cookieValue: curatorAuth.cookieValue, form });
+      expect(res.status).toBe(403);
     });
   });
 

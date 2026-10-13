@@ -12,7 +12,7 @@
  * in depth, not something this route expects to ever trip.
  */
 import Roles from '../../features/pages/admin/Roles.astro';
-import { findUserIdByLookup, grantRole, listStaff, revokeRole, type AdminActor } from '../../lib/admin';
+import { findUserIdByLookup, grantRole, isStaffRole, listStaff, revokeRole, type AdminActor } from '../../lib/admin';
 import { loadCuratorLang } from '../../lib/curator';
 
 const session = Astro.locals.session!;
@@ -45,14 +45,17 @@ if (Astro.request.method === 'POST') {
       responseStatus = 400;
     } else {
       const lookup = String(form.get('lookup') ?? '');
-      const role = String(form.get('role') ?? '') === 'admin' ? 'admin' : 'curator';
+      const roleRaw = String(form.get('role') ?? '');
+      if (!isStaffRole(roleRaw)) {
+        return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+      }
       const targetUserId = await findUserIdByLookup(lookup);
       if (targetUserId === null) {
         message = { kind: 'error', key: 'admin.roles.error.userNotFound' };
         responseStatus = 400;
       } else {
         try {
-          await grantRole(actor, targetUserId, role);
+          await grantRole(actor, targetUserId, roleRaw);
           return new Response(null, { status: 302, headers: { Location: '/admin/roles', 'cache-control': 'no-store' } });
         } catch (err) {
           message = { kind: 'error', key: errorKey(err, 'admin.roles.error.userNotFound') };

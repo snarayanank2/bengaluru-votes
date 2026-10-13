@@ -2,8 +2,9 @@
 /**
  * `/admin/users` — see src/features/pages/admin/Users.astro for the
  * presentational side. This route twin owns the HTTP concerns: the `?q=`
- * GET search, dispatching the three POST form actions (`ban`, `reactivate`,
- * `erase`) to src/lib/erasure.ts, and no-store on every response.
+ * GET search, dispatching the four POST form actions (`add`, `ban`,
+ * `reactivate`, `erase`) — `add` to src/lib/admin.ts's addUser, the other
+ * three to src/lib/erasure.ts — and no-store on every response.
  *
  * src/middleware.ts already 403s any non-admin session and redirects an
  * anonymous request to /login before this ever runs; the actor handed to
@@ -18,6 +19,7 @@
  * lose the admin's place.
  */
 import Users from '../../features/pages/admin/Users.astro';
+import { addUser, isStaffRole } from '../../lib/admin';
 import { banUser, eraseUser, reactivateUser, searchUsers, type AdminActor } from '../../lib/erasure';
 import { loadCuratorLang } from '../../lib/curator';
 
@@ -34,12 +36,15 @@ function errorKey(err: unknown, fallbackKey: string): string {
   if (msg === 'cannot_erase_last_admin') return 'admin.users.error.cannotEraseLastAdmin';
   if (msg === 'cannot_ban_erased') return 'admin.users.error.cannotBanErased';
   if (msg === 'cannot_reactivate_erased') return 'admin.users.error.cannotReactivateErased';
+  if (msg === 'invalid_email') return 'admin.users.error.invalidEmail';
+  if (msg === 'user_exists') return 'admin.users.error.userExists';
   return fallbackKey;
 }
 
 let message: { kind: 'notice' | 'error'; key: string } | undefined;
 let responseStatus = 200;
 let query = Astro.url.searchParams.get('q') ?? '';
+let addEmail = '';
 
 if (Astro.request.method === 'POST') {
   Astro.response.headers.set('cache-control', 'no-store');
@@ -48,38 +53,65 @@ if (Astro.request.method === 'POST') {
   const confirmed = form.get('confirm') != null;
   query = String(form.get('q') ?? '');
 
-  const targetUserId = Number(form.get('targetUserId'));
-  if (!Number.isInteger(targetUserId)) {
-    return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
-  }
+  if (formAction === 'add') {
+    addEmail = String(form.get('email') ?? '').trim();
+    const roleRaw = String(form.get('role') ?? '');
+    if (!isStaffRole(roleRaw)) {
+      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+    }
 
-  if (!['ban', 'reactivate', 'erase'].includes(formAction)) {
-    return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
-  }
-
-  if (!confirmed) {
-    message = { kind: 'error', key: 'admin.users.error.confirmRequired' };
-    responseStatus = 400;
-  } else {
-    try {
-      if (formAction === 'ban') {
-        const reason = String(form.get('reason') ?? '').trim();
-        await banUser(actor, targetUserId, reason || undefined);
-      } else if (formAction === 'reactivate') {
-        await reactivateUser(actor, targetUserId);
-      } else {
-        await eraseUser(actor, targetUserId);
-      }
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: query ? `/admin/users?q=${encodeURIComponent(query)}` : '/admin/users',
-          'cache-control': 'no-store',
-        },
-      });
-    } catch (err) {
-      message = { kind: 'error', key: errorKey(err, 'admin.users.error.userNotFound') };
+    if (!confirmed) {
+      message = { kind: 'error', key: 'admin.users.error.confirmRequired' };
       responseStatus = 400;
+    } else {
+      try {
+        await addUser(actor, addEmail, roleRaw);
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: `/admin/users?q=${encodeURIComponent(addEmail.toLowerCase())}`,
+            'cache-control': 'no-store',
+          },
+        });
+      } catch (err) {
+        message = { kind: 'error', key: errorKey(err, 'admin.users.error.invalidEmail') };
+        responseStatus = 400;
+      }
+    }
+  } else {
+    const targetUserId = Number(form.get('targetUserId'));
+    if (!Number.isInteger(targetUserId)) {
+      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+    }
+
+    if (!['ban', 'reactivate', 'erase'].includes(formAction)) {
+      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+    }
+
+    if (!confirmed) {
+      message = { kind: 'error', key: 'admin.users.error.confirmRequired' };
+      responseStatus = 400;
+    } else {
+      try {
+        if (formAction === 'ban') {
+          const reason = String(form.get('reason') ?? '').trim();
+          await banUser(actor, targetUserId, reason || undefined);
+        } else if (formAction === 'reactivate') {
+          await reactivateUser(actor, targetUserId);
+        } else {
+          await eraseUser(actor, targetUserId);
+        }
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: query ? `/admin/users?q=${encodeURIComponent(query)}` : '/admin/users',
+            'cache-control': 'no-store',
+          },
+        });
+      } catch (err) {
+        message = { kind: 'error', key: errorKey(err, 'admin.users.error.userNotFound') };
+        responseStatus = 400;
+      }
     }
   }
 }
@@ -89,4 +121,4 @@ Astro.response.headers.set('cache-control', 'no-store');
 Astro.response.status = responseStatus;
 ---
 
-<Users lang={lang} csrfToken={Astro.locals.csrfToken} query={query} results={results} message={message} />
+<Users lang={lang} csrfToken={Astro.locals.csrfToken} query={query} results={results} message={message} addEmail={addEmail} />
