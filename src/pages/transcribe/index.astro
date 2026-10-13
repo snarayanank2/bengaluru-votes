@@ -1,0 +1,50 @@
+---
+/**
+ * `/transcribe` — see src/features/pages/transcribe/Start.astro. This route
+ * twin owns the one form action, `start`, which draws the caller's next
+ * assignment (src/lib/transcribe.ts) and redirects to it, and no-store on
+ * every response.
+ *
+ * src/middleware.ts has already admitted only a transcriber or an admin
+ * and checked the CSRF token.
+ */
+import Start from '../../features/pages/transcribe/Start.astro';
+import { countSubmittedToday, countWaiting, currentAssignment, drawAssignment } from '../../lib/transcribe';
+import { loadCuratorLang } from '../../lib/curator';
+
+const session = Astro.locals.session!;
+
+function redirect(location: string): Response {
+  return new Response(null, { status: 302, headers: { Location: location, 'cache-control': 'no-store' } });
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (String(form.get('formAction') ?? '') !== 'start') {
+    return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+  }
+  const assignmentId = await drawAssignment(session.userId);
+  return redirect(assignmentId === null ? '/transcribe?empty=1' : `/transcribe/${assignmentId}`);
+}
+
+const NOTICES = ['saved', 'released', 'reported', 'expired', 'empty'] as const;
+const notice = NOTICES.find((kind) => Astro.url.searchParams.get(kind) === '1');
+
+const [lang, openAssignmentId, waiting, doneToday] = await Promise.all([
+  loadCuratorLang(session.userId),
+  currentAssignment(session.userId),
+  countWaiting(),
+  countSubmittedToday(session.userId),
+]);
+
+Astro.response.headers.set('cache-control', 'no-store');
+---
+
+<Start
+  lang={lang}
+  csrfToken={Astro.locals.csrfToken}
+  openAssignmentId={openAssignmentId}
+  waiting={waiting}
+  doneToday={doneToday}
+  notice={notice}
+/>

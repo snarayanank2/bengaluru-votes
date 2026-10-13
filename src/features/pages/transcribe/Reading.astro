@@ -1,0 +1,591 @@
+---
+/**
+ * `/transcribe/{assignment-id}` — the reading screen (docs/milestones.md
+ * §10). The affidavit scan sits on the left and stays in view; the form on
+ * the right scrolls. DESKTOP ONLY: the two must be side by side, so there
+ * is no stacked layout for a phone.
+ *
+ * ONE GROUP PER FIELD, in the order a Form 26 affidavit gives them. Each
+ * has the inputs (pre-filled with the value published now), a three-way
+ * answer — a value, not declared, cannot read — and a tick. ONLY TICKED
+ * FIELDS ARE SAVED; nothing is ticked on arrival, so a save always reflects
+ * fields the transcriber chose to stand behind. The pre-filled AI value is
+ * the known rubber-stamp risk; the tick is what makes each confirmation a
+ * deliberate act rather than a default.
+ *
+ * THE WARD IS READ-ONLY. A transcriber who could move a candidate could
+ * choose their ward's work; a wrong ward goes to an admin through the
+ * report section at the bottom.
+ *
+ * After a refused save the route twin passes `raw` — exactly what was
+ * posted — and the form shows that instead of the published values, so
+ * nothing the transcriber typed is lost.
+ *
+ * Works without JavaScript. src/islands/TranscribeForm.ts adds the running
+ * assets total, greys out inputs when the answer is not a value, ticks a
+ * field the transcriber edits, and counts down the hold.
+ */
+import TranscriberLayout from '../../../layouts/TranscriberLayout.astro';
+import Banner from '../../../components/Banner.astro';
+import Button from '../../../components/Button.astro';
+import { t, type Lang } from '../../../i18n';
+import { CSRF_FIELD_NAME } from '../../../lib/csrf';
+import { CANDIDATE_PROFILE_LABEL_KEYS } from '../../../lib/candidate-profile';
+import { EDUCATION_LEVELS, GENDERS } from '../../../lib/affidavit-extraction';
+import { formatInr, type AffidavitFieldKey, type FieldStatus } from '../../../lib/affidavit-publish';
+import type { AssignmentView, FieldError, RawForm } from '../../../lib/transcribe';
+
+interface Props {
+  lang: Lang;
+  csrfToken: string;
+  view: AssignmentView;
+  /** What was posted, after a refused save. */
+  raw?: RawForm;
+  errors: Partial<Record<AffidavitFieldKey, FieldError>>;
+  formErrorKey?: string;
+  reportNote: string;
+}
+
+const { lang, csrfToken, view, raw, errors, formErrorKey, reportNote } = Astro.props;
+
+const STATUSES: FieldStatus[] = ['value', 'not_declared', 'unreadable'];
+const action = `/transcribe/${view.assignmentId}`;
+const wardName = lang === 'kn' ? view.ward.nameKn : view.ward.nameEn;
+const wardNumber = view.ward.id % 1000;
+const minutesLeft = Math.max(0, Math.ceil((view.expiresAt.getTime() - Date.now()) / 60000));
+
+const fields = view.fields.map((field) => {
+  const status = raw?.status[field.key] ?? field.status;
+  const value = (name: string) => raw?.inputs[name] ?? field.inputs[name] ?? '';
+  return {
+    ...field,
+    status,
+    value,
+    ticked: raw?.checked.includes(field.key) ?? false,
+    error: errors[field.key],
+    label: t(lang, CANDIDATE_PROFILE_LABEL_KEYS[field.key]),
+  };
+});
+
+/** The total shown before the island takes over; blank unless both parts are plain whole numbers. */
+function assetsTotal(movable: string, immovable: string): string {
+  const parse = (text: string) => (/^[\d,\s]+$/.test(text) ? Number(text.replace(/[,\s]/g, '')) : NaN);
+  const sum = parse(movable) + parse(immovable);
+  return Number.isFinite(sum) ? formatInr(sum) : '—';
+}
+---
+
+<TranscriberLayout lang={lang} title={t(lang, 'transcribe.reading.meta.title')} description={t(lang, 'transcribe.reading.meta.description')}>
+  <div class="reading">
+    <section class="scan" aria-label={t(lang, 'transcribe.reading.pdfTitle')}>
+      <p class="scan-bar">
+        <a href={view.pdfUrl} target="_blank" rel="noopener noreferrer">{t(lang, 'transcribe.reading.openPdf')}</a>
+      </p>
+      <iframe class="scan-frame" src={`${view.pdfUrl}#view=FitH`} title={t(lang, 'transcribe.reading.pdfTitle')}></iframe>
+    </section>
+
+    <section class="panel">
+      <h1>{t(lang, 'transcribe.reading.heading')}</h1>
+
+      <dl class="facts">
+        <div>
+          <dt>{t(lang, 'transcribe.reading.ward')}</dt>
+          <dd>{wardNumber} {wardName}</dd>
+        </div>
+        <div>
+          <dt>{t(lang, 'transcribe.reading.confidence')}</dt>
+          <dd>{view.confidence === null ? t(lang, 'transcribe.reading.confidenceUnknown') : `${view.confidence}%`}</dd>
+        </div>
+        <div>
+          <dt>{t(lang, 'transcribe.reading.timeLeft')}</dt>
+          <dd data-expires-at={view.expiresAt.toISOString()} data-minutes-template={t(lang, 'transcribe.reading.minutes', { minutes: '{minutes}' })}>
+            {t(lang, 'transcribe.reading.minutes', { minutes: minutesLeft })}
+          </dd>
+        </div>
+      </dl>
+
+      <p class="instructions">{t(lang, 'transcribe.reading.instructions')}</p>
+
+      {
+        formErrorKey && (
+          <Banner kind="error" lang={lang}>
+            {t(lang, formErrorKey)}
+          </Banner>
+        )
+      }
+
+      <form method="post" action={action} class="fields" data-transcribe-form novalidate>
+        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+        <input type="hidden" name="formAction" value="save" />
+
+        {
+          fields.map((field) => (
+            <fieldset class:list={['field', { 'field--error': field.error }]} data-field={field.key}>
+              <legend>
+                <span class="field-name">{field.label}</span>
+                <span class:list={['badge', field.checked ? 'badge--checked' : 'badge--ai']}>
+                  {t(lang, field.checked ? 'transcribe.reading.badge.checked' : 'transcribe.reading.badge.ai')}
+                </span>
+              </legend>
+
+              <div class="status" role="radiogroup" aria-label={t(lang, 'transcribe.reading.status.legend')}>
+                {STATUSES.map((status) => (
+                  <label class="status-option">
+                    <input type="radio" name={`status.${field.key}`} value={status} checked={field.status === status} />
+                    <span>{t(lang, `transcribe.reading.status.${status}`)}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div class="inputs" data-inputs>
+                {(field.key === 'full_name' || field.key === 'party') && (
+                  <label class="input">
+                    <span>{t(lang, `transcribe.reading.input.${field.key === 'full_name' ? 'name' : 'party'}`)}</span>
+                    <input type="text" name={field.key === 'full_name' ? 'name' : 'party'} value={field.value(field.key === 'full_name' ? 'name' : 'party')} autocomplete="off" />
+                  </label>
+                )}
+
+                {field.key === 'gender' && (
+                  <label class="input input--short">
+                    <span>{t(lang, 'transcribe.reading.input.gender')}</span>
+                    <select name="gender">
+                      <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
+                      {GENDERS.map((gender) => (
+                        <option value={gender} selected={field.value('gender') === gender}>
+                          {t(lang, `transcribe.reading.gender.${gender}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {field.key === 'age' && (
+                  <label class="input input--short">
+                    <span>{t(lang, 'transcribe.reading.input.age')}</span>
+                    <input type="text" inputmode="numeric" name="age" value={field.value('age')} autocomplete="off" />
+                  </label>
+                )}
+
+                {field.key === 'education' && (
+                  <div class="input-row">
+                    <label class="input input--short">
+                      <span>{t(lang, 'transcribe.reading.input.educationLevel')}</span>
+                      <select name="educationLevel">
+                        <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
+                        {EDUCATION_LEVELS.map((level) => (
+                          <option value={level} selected={field.value('educationLevel') === level}>
+                            {level}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label class="input">
+                      <span>{t(lang, 'transcribe.reading.input.educationStated')}</span>
+                      <input type="text" name="educationStated" value={field.value('educationStated')} autocomplete="off" />
+                    </label>
+                  </div>
+                )}
+
+                {field.key === 'assets' && (
+                  <>
+                    <div class="input-row">
+                      <label class="input">
+                        <span>{t(lang, 'transcribe.reading.input.movableInr')}</span>
+                        <input type="text" inputmode="numeric" name="movableInr" value={field.value('movableInr')} autocomplete="off" data-assets-part />
+                      </label>
+                      <label class="input">
+                        <span>{t(lang, 'transcribe.reading.input.immovableInr')}</span>
+                        <input type="text" inputmode="numeric" name="immovableInr" value={field.value('immovableInr')} autocomplete="off" data-assets-part />
+                      </label>
+                    </div>
+                    <p class="total">
+                      {t(lang, 'transcribe.reading.assetsTotal')}{' '}
+                      <strong data-assets-total>{assetsTotal(field.value('movableInr'), field.value('immovableInr'))}</strong>
+                    </p>
+                    <p class="help">{t(lang, 'transcribe.reading.assetsHelp')}</p>
+                  </>
+                )}
+
+                {field.key === 'cases' && (
+                  <>
+                    <div class="input-row">
+                      <label class="input input--short">
+                        <span>{t(lang, 'transcribe.reading.input.pending')}</span>
+                        <input type="text" inputmode="numeric" name="pending" value={field.value('pending')} autocomplete="off" />
+                      </label>
+                      <label class="input input--short">
+                        <span>{t(lang, 'transcribe.reading.input.convictions')}</span>
+                        <input type="text" inputmode="numeric" name="convictions" value={field.value('convictions')} autocomplete="off" />
+                      </label>
+                    </div>
+                    <p class="help">{t(lang, 'transcribe.reading.casesHelp')}</p>
+                  </>
+                )}
+              </div>
+
+              {field.note && (
+                <p class="ai-note">
+                  <strong>{t(lang, 'transcribe.reading.aiNote')}</strong> {field.note}
+                </p>
+              )}
+
+              {field.error && <p class="field-error">{t(lang, `transcribe.error.${field.error}`)}</p>}
+
+              <label class="tick">
+                <input type="checkbox" name={`checked.${field.key}`} checked={field.ticked} data-tick />
+                <span>{t(lang, 'transcribe.reading.tick')}</span>
+              </label>
+            </fieldset>
+          ))
+        }
+
+        <div class="save-bar">
+          <Button type="submit" variant="primary" lang={lang}>
+            {t(lang, 'transcribe.reading.save')}
+          </Button>
+        </div>
+      </form>
+
+      <div class="other-actions">
+        <form method="post" action={action} class="release">
+          <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+          <input type="hidden" name="formAction" value="release" />
+          <Button type="submit" variant="secondary" lang={lang}>
+            {t(lang, 'transcribe.reading.release')}
+          </Button>
+          <span class="help">{t(lang, 'transcribe.reading.releaseHelp')}</span>
+        </form>
+
+        <details class="report" open={reportNote !== '' || formErrorKey === 'transcribe.error.noteRequired'}>
+          <summary>{t(lang, 'transcribe.reading.report.summary')}</summary>
+          <p class="help">{t(lang, 'transcribe.reading.report.help')}</p>
+          <form method="post" action={action} class="report-form">
+            <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+            <input type="hidden" name="formAction" value="report" />
+            <label class="input">
+              <span>{t(lang, 'transcribe.reading.report.label')}</span>
+              <textarea name="note" rows="3" maxlength="500">{reportNote}</textarea>
+            </label>
+            <Button type="submit" variant="secondary" lang={lang}>
+              {t(lang, 'transcribe.reading.report.submit')}
+            </Button>
+          </form>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    import { initTranscribeForm } from '../../../islands/TranscribeForm';
+    initTranscribeForm();
+  </script>
+</TranscriberLayout>
+
+<style>
+  /* Scan and form side by side, filling the viewport below the 56px bar.
+     The form column never drops below a workable width; the scan takes the rest. */
+  .reading {
+    display: grid;
+    grid-template-columns: minmax(0, 58fr) minmax(26rem, 42fr);
+    align-items: start;
+  }
+
+  .scan {
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 56px);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .scan-bar {
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .scan-frame {
+    flex: 1;
+    width: 100%;
+    border: 0;
+  }
+
+  .panel {
+    padding: var(--space-6) var(--space-6) var(--space-12);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .panel h1 {
+    margin: 0;
+    font-size: var(--text-xl);
+    line-height: var(--leading-xl);
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  .facts div {
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+  }
+
+  .facts dt {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .facts dd {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .instructions {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .field {
+    margin: 0;
+    padding: var(--space-4);
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .field--error {
+    border-color: var(--color-danger);
+  }
+
+  .field legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+    margin-left: calc(-1 * var(--space-2));
+  }
+
+  .field-name {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: var(--text-lg);
+  }
+
+  .badge {
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .badge--ai {
+    background: var(--color-accent-surface);
+    color: var(--color-text);
+  }
+
+  .badge--checked {
+    background: var(--color-primary-surface);
+    color: var(--color-primary);
+  }
+
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .status-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 36px;
+    padding: var(--space-1) var(--space-3);
+    border: 1.5px solid var(--color-border);
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .status-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-surface);
+    font-weight: 700;
+  }
+
+  .status-option:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .inputs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+    align-items: end;
+  }
+
+  .input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .input--short {
+    max-width: 14rem;
+  }
+
+  .input > span {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .input input,
+  .input select,
+  .input textarea {
+    min-height: 44px;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .input input:focus-visible,
+  .input select:focus-visible,
+  .input textarea:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+    border-color: var(--color-primary);
+  }
+
+  .input input:disabled,
+  .input select:disabled {
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+  }
+
+  .total {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .total strong {
+    font-size: var(--text-base);
+  }
+
+  .help {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .ai-note {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .field-error {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .tick {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .tick input {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    accent-color: var(--color-primary);
+  }
+
+  /* Stays reachable however long the form is. */
+  .save-bar {
+    position: sticky;
+    bottom: 0;
+    padding-block: var(--space-3);
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .other-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .release {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .report summary {
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .report .help {
+    margin-top: var(--space-2);
+  }
+
+  .report-form {
+    margin-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .report-form .input {
+    width: 100%;
+  }
+</style>

@@ -216,6 +216,19 @@ describe('/login, /kn/login (Task 27) — IA §7.1, PRD §10', () => {
       expect(sendEmail).not.toHaveBeenCalled();
     });
 
+    it('a transcriber with nowhere particular to go lands on /transcribe', async () => {
+      await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'transcriber', status: 'active' });
+      const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/' });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('/transcribe');
+    });
+
+    it('a transcriber who asked for a page still gets that page', async () => {
+      await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'transcriber', status: 'active' });
+      const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/transcribe/guide' });
+      expect(res.headers.get('location')).toBe('/transcribe/guide');
+    });
+
     it.each(['https://evil.example/x', '//evil.example/x'])('a hostile next (%s) collapses to /', async (next) => {
       await db.insert(schema.users).values({ email: KNOWN_EMAIL, homeWardId: WARD.id, role: 'citizen', status: 'active' });
       const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next });

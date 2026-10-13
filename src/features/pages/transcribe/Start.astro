@@ -1,0 +1,132 @@
+---
+/**
+ * `/transcribe` (docs/milestones.md §10.2): one Start control and no list.
+ * A transcriber is handed the next affidavit and cannot choose a ward, a
+ * party or a candidate, so this screen deliberately has no search, no
+ * filter and no preview of what is next: only how many are waiting.
+ *
+ * Someone who already holds an affidavit sees Resume instead of Start; a
+ * transcriber holds one at a time.
+ */
+import TranscriberLayout from '../../../layouts/TranscriberLayout.astro';
+import Card from '../../../components/Card.astro';
+import Banner from '../../../components/Banner.astro';
+import Button from '../../../components/Button.astro';
+import { t, type Lang } from '../../../i18n';
+import { CSRF_FIELD_NAME } from '../../../lib/csrf';
+
+interface Props {
+  lang: Lang;
+  csrfToken: string;
+  /** The assignment the caller already holds, if any. */
+  openAssignmentId: number | null;
+  waiting: number;
+  doneToday: number;
+  notice?: 'saved' | 'released' | 'reported' | 'expired' | 'empty';
+}
+
+const { lang, csrfToken, openAssignmentId, waiting, doneToday, notice } = Astro.props;
+
+const waitingText =
+  waiting === 0
+    ? t(lang, 'transcribe.start.waitingNone')
+    : waiting === 1
+      ? t(lang, 'transcribe.start.waitingOne')
+      : t(lang, 'transcribe.start.waitingMany', { count: waiting });
+---
+
+<TranscriberLayout lang={lang} title={t(lang, 'transcribe.start.meta.title')} description={t(lang, 'transcribe.start.meta.description')}>
+  <div class="start-page">
+    <h1>{t(lang, 'transcribe.start.heading')}</h1>
+
+    {
+      notice && (
+        <Banner kind={notice === 'expired' ? 'error' : 'notice'} lang={lang}>
+          {t(lang, `transcribe.notice.${notice}`)}
+        </Banner>
+      )
+    }
+
+    <Card>
+      <p class="intro">{t(lang, 'transcribe.start.intro')}</p>
+      <p class="waiting">{waitingText}</p>
+      <p class="done">{t(lang, 'transcribe.start.doneToday', { count: doneToday })}</p>
+
+      {
+        openAssignmentId !== null ? (
+          <div class="action">
+            <p class="resume-note">{t(lang, 'transcribe.start.resumeNote')}</p>
+            <Button variant="primary" href={`/transcribe/${openAssignmentId}`} lang={lang}>
+              {t(lang, 'transcribe.start.resume')}
+            </Button>
+          </div>
+        ) : (
+          <form method="post" action="/transcribe" class="action">
+            <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+            <input type="hidden" name="formAction" value="start" />
+            <Button type="submit" variant="primary" disabled={waiting === 0} lang={lang}>
+              {t(lang, notice === 'saved' ? 'transcribe.start.next' : 'transcribe.start.submit')}
+            </Button>
+          </form>
+        )
+      }
+    </Card>
+
+    <p class="guide-link">
+      <a href="/transcribe/guide">{t(lang, 'transcribe.start.guideLink')}</a>
+    </p>
+  </div>
+</TranscriberLayout>
+
+<style>
+  .start-page {
+    max-width: 44rem;
+    margin-inline: auto;
+    padding-block: var(--space-8);
+    padding-inline: var(--container-pad-x);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .start-page h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: 0;
+  }
+
+  .intro {
+    margin: 0;
+  }
+
+  .waiting {
+    margin: var(--space-4) 0 0;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: var(--text-lg);
+  }
+
+  .done {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .action {
+    margin-top: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .resume-note {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .guide-link {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+</style>

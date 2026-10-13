@@ -34,6 +34,16 @@ function stripTrailingSlash(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 }
 
+/** `/transcribe/{assignment-id}`: the reading screen, which shows the affidavit PDF in a frame beside the form. */
+function isTranscribeReadingPath(pathname: string): boolean {
+  return /^\/transcribe\/\d+$/.test(stripTrailingSlash(pathname));
+}
+
+/** `/media/{id}/{hash}`: a stored photo or affidavit PDF. */
+function isMediaPath(pathname: string): boolean {
+  return /^\/media\/[^/]+\/[^/]+$/.test(pathname);
+}
+
 function isWardDetailPath(pathname: string): boolean {
   return /^\/ward\/\d+$/.test(stripTrailingSlash(stripLocalePrefix(pathname)));
 }
@@ -128,11 +138,19 @@ export function buildCsp(nonce: string, pathname: string): string {
     frameSrc = 'https://www.google.com';
   }
 
+  // The transcriber's reading screen frames the affidavit, so that one
+  // screen may frame this site's own pages and a stored file may be framed
+  // by them. Both stay same-origin: no other site can frame anything here,
+  // and no page here can frame another site (the ward page's reCAPTCHA
+  // frame above is the one exception).
+  if (isTranscribeReadingPath(pathname)) frameSrc = "'self'";
+  const frameAncestors = isMediaPath(pathname) ? "'self'" : "'none'";
+
   const directives = [
     `default-src 'self'`,
     `base-uri 'self'`,
     `object-src 'none'`,
-    `frame-ancestors 'none'`,
+    `frame-ancestors ${frameAncestors}`,
     `form-action 'self'`,
     `script-src 'self' 'nonce-${nonce}' ${scriptSrcHosts.join(' ')}`,
     `style-src 'self' 'unsafe-inline' ${MAPS_FONT_STYLE_HOST}`,

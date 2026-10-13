@@ -87,8 +87,8 @@ function stripLocalePrefix(pathname: string): string {
   return pathname.replace(/^\/kn(?=\/|$)/, '') || '/';
 }
 
-const AUTH_FORM_PREFIXES = ['/account', '/curator', '/admin'];
-const NOINDEX_PREFIXES = ['/partner', '/account', '/curator', '/admin', '/login'];
+const AUTH_FORM_PREFIXES = ['/account', '/curator', '/admin', '/transcribe'];
+const NOINDEX_PREFIXES = ['/partner', '/account', '/curator', '/admin', '/transcribe', '/login'];
 
 function forbidden(): Response {
   return new Response('Forbidden', { status: 403 });
@@ -217,6 +217,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (isUnder(guardPath, '/admin')) {
     if (!session) return respond(redirectToLogin(pathname + url.search));
     if (role !== 'admin') return respond(forbidden());
+  }
+  // Transcribers and admins only: curators correct flagged values and do not
+  // read the queue (docs/milestones.md §9-§10). The role admits the caller to
+  // the area; which AFFIDAVIT they may read or save is decided per request by
+  // src/lib/transcribe.ts — an open assignment that is theirs — not here.
+  if (isUnder(guardPath, '/transcribe')) {
+    if (!session) return respond(redirectToLogin(pathname + url.search));
+    if (role !== 'transcriber' && role !== 'admin') return respond(forbidden());
   }
 
   // --- synchronizer CSRF token: unsafe methods on authenticated form routes

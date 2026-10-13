@@ -1,0 +1,83 @@
+---
+/**
+ * TranscriberLayout — the document shell for `/transcribe/*`
+ * (design-system.md §7.13 "Curator and admin surfaces"). Same rationale as
+ * `CuratorLayout.astro` and `AdminLayout.astro`, which it mirrors rather
+ * than shares a base with: no `/kn/` twin exists for these routes, the UI
+ * language is the signed-in user's saved `users.language`, and none of
+ * Base.astro's public-page machinery applies to a signed-in staff screen.
+ *
+ * DESKTOP ONLY. Transcribing needs the scan and the form side by side, so
+ * these screens are not laid out for a phone (decided 2026-10-13).
+ *
+ * `noindex` is unconditional; src/middleware.ts also stamps
+ * `X-Robots-Tag: noindex` on every `/transcribe` response.
+ */
+import '../styles/global.css';
+import SkipLink from '../components/SkipLink.astro';
+import { t, type Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description: string;
+}
+
+const { lang, title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex" />
+    {/* Same self-hosted Open City icon set as Base.astro. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/img/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/img/favicon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+  </head>
+  <body>
+    <SkipLink lang={lang} />
+    <header class="transcriber-bar">
+      <a class="wordmark" href="/transcribe">{t(lang, 'transcribe.layout.wordmark')}</a>
+      <nav class="bar-links">
+        <a href="/transcribe/guide">{t(lang, 'transcribe.layout.guide')}</a>
+        <a href="/account">{t(lang, 'transcribe.layout.account')}</a>
+      </nav>
+    </header>
+    <main id="main-content">
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style>
+  .transcriber-bar {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding-inline: var(--container-pad-x);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .wordmark {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: var(--text-lg);
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .bar-links {
+    display: flex;
+    gap: var(--space-4);
+    font-size: var(--text-sm);
+  }
+</style>

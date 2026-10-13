@@ -20,7 +20,10 @@
  * `isSameOriginRelative` on every step rather than trusted once and carried
  * forward blindly.
  */
-import { requestOtp, type OtpChannel } from './otp';
+import { eq, or } from 'drizzle-orm';
+import { db } from '../db/client';
+import { users } from '../db/schema';
+import { normalizeDestination, requestOtp, type OtpChannel } from './otp';
 import { resolveOrRegister, type RegisterPayload } from './auth-flow';
 import { isSameOriginRelative } from './authz';
 import { loginWithMasterPassword, masterLoginEnabled } from './master-login';
@@ -77,6 +80,22 @@ async function handleStep1(form: FormData, next: string): Promise<LoginPostOutco
   return { kind: 'render', state: { step: 2, next, destination, channel } };
 }
 
+/**
+ * Where a successful sign-in goes. A caller who asked for a page gets it;
+ * one who asked for nothing in particular (`next` is `/`) and is a
+ * transcriber is taken to their one screen instead of the public home page.
+ */
+async function landingFor(destinationRaw: string, next: string): Promise<string> {
+  if (next !== '/') return next;
+  const destination = normalizeDestination(destinationRaw);
+  if (destination === '') return next;
+  const [user] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(or(eq(users.email, destination), eq(users.phone, destination)));
+  return user?.role === 'transcriber' ? '/transcribe' : next;
+}
+
 async function handleStep2(form: FormData, next: string, srcAttribution: string | null): Promise<LoginPostOutcome> {
   const destination = String(form.get('destination') ?? '').trim();
   const channel = String(form.get('channel') ?? 'email') === 'whatsapp' ? 'whatsapp' : 'email';
@@ -84,7 +103,7 @@ async function handleStep2(form: FormData, next: string, srcAttribution: string 
 
   const result = await resolveOrRegister(destination, code, undefined, srcAttribution);
   if (result.ok) {
-    return { kind: 'redirect', location: next, setCookie: result.setCookie };
+    return { kind: 'redirect', location: await landingFor(destination, next), setCookie: result.setCookie };
   }
   if (result.reason === 'registration_required') {
     return { kind: 'render', state: { step: 3, next, destination, channel, code } };
@@ -136,7 +155,7 @@ async function handlePasswordLogin(form: FormData, next: string): Promise<LoginP
   const password = String(form.get('password') ?? '');
   const result = await loginWithMasterPassword(destination, password);
   if (result.ok) {
-    return { kind: 'redirect', location: next, setCookie: result.setCookie };
+    return { kind: 'redirect', location: await landingFor(destination, next), setCookie: result.setCookie };
   }
   return {
     kind: 'render',

@@ -36,6 +36,26 @@ describe('src/lib/csp.ts#buildCsp', () => {
       expect(csp).toContain("frame-src 'none'");
     });
 
+    it.each(['/transcribe/12', '/transcribe/12/'])('the reading screen %s may frame the affidavit from this site only', (pathname) => {
+      expect(buildCsp(NONCE, pathname)).toContain("frame-src 'self'");
+    });
+
+    it.each(['/transcribe', '/transcribe/guide', '/transcribe/abc', '/admin/affidavits', '/curator/candidate/3'])('%s may frame nothing', (pathname) => {
+      expect(buildCsp(NONCE, pathname)).toContain("frame-src 'none'");
+    });
+
+    it('a stored file may be framed by this site and by nobody else', () => {
+      const csp = buildCsp(NONCE, '/media/12/0123456789abcdef');
+      expect(csp).toContain("frame-ancestors 'self'");
+      expect(csp).not.toContain("frame-ancestors 'none'");
+    });
+
+    it('nothing but a stored file may be framed at all', () => {
+      for (const pathname of ['/', '/transcribe/12', '/media', '/mediafoo/1/2', '/candidate/x']) {
+        expect(buildCsp(NONCE, pathname)).toContain("frame-ancestors 'none'");
+      }
+    });
+
     it('style-src allows unsafe-inline (Astro scoped styles / inline style attrs)', () => {
       const csp = buildCsp(NONCE, '/ward/57');
       expect(csp).toContain("style-src 'self' 'unsafe-inline'");

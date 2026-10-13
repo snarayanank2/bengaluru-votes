@@ -233,6 +233,45 @@ describe('src/middleware.ts', () => {
       expect(res.status).toBe(403);
     });
 
+    it('unauthenticated GET /transcribe -> redirect to /login', async () => {
+      const res = await run(makeContext({ path: '/transcribe' }), nextStub());
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe(`/login?next=${encodeURIComponent('/transcribe')}`);
+    });
+
+    it.each(['/transcribe', '/transcribe/12', '/transcribe/guide'])('transcriber GET %s -> passes through, noindex', async (path) => {
+      const { cookieValue } = await sessionFor(transcriberId);
+      const next = nextStub();
+      const res = await run(makeContext({ path, cookieValue }), next);
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(res.headers.get('x-robots-tag')).toBe('noindex');
+    });
+
+    it('admin GET /transcribe -> passes through', async () => {
+      const { cookieValue } = await sessionFor(adminId);
+      const next = nextStub();
+      expect((await run(makeContext({ path: '/transcribe', cookieValue }), next)).status).toBe(200);
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('citizen GET /transcribe -> 403', async () => {
+      const { cookieValue } = await sessionFor(citizenId);
+      expect((await run(makeContext({ path: '/transcribe', cookieValue }), nextStub())).status).toBe(403);
+    });
+
+    it('curator GET /transcribe -> 403', async () => {
+      const { cookieValue } = await sessionFor(curatorId);
+      expect((await run(makeContext({ path: '/transcribe', cookieValue }), nextStub())).status).toBe(403);
+    });
+
+    it('a path that merely starts with the word is not the transcriber area', async () => {
+      const next = nextStub();
+      const res = await run(makeContext({ path: '/transcribers-wanted' }), next);
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
     it('curator GET /curator -> passes through', async () => {
       const { cookieValue } = await sessionFor(curatorId);
       const next = nextStub(200);

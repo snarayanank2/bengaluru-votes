@@ -1,0 +1,15 @@
+---
+/**
+ * `/transcribe/guide` — the transcriber onboarding page; see
+ * src/features/pages/transcribe/Guide.astro. Static text in the signed-in
+ * user's saved language. src/middleware.ts admits only a transcriber or an
+ * admin.
+ */
+import Guide from '../../features/pages/transcribe/Guide.astro';
+import { loadCuratorLang } from '../../lib/curator';
+
+const lang = await loadCuratorLang(Astro.locals.session!.userId);
+Astro.response.headers.set('cache-control', 'no-store');
+---
+
+<Guide lang={lang} />
