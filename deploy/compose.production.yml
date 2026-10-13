@@ -201,6 +201,29 @@ services:
       options: { max-size: 10m, max-file: '5' }
 
   # ---------------------------------------------------------------------
+  # The affidavit extraction worker (jobs/extract-affidavits.ts): a
+  # long-running process, not a cron entry, so it is its own service rather
+  # than a line in deploy/crontab. Claims PDFs queued on /admin/affidavits
+  # and reads them with EXTRACTION_MODEL, EXTRACTION_CONCURRENCY at a time.
+  # Without ANTHROPIC_API_KEY it exits at once; `on-failure` with a cap
+  # keeps that from becoming a restart loop.
+  # ---------------------------------------------------------------------
+  extract-worker:
+    image: bengaluru-votes:${IMAGE_TAG:-latest}
+    pull_policy: never
+    restart: on-failure:5
+    command: ['npx', 'tsx', 'jobs/extract-affidavits.ts']
+    env_file: ${PROD_ENV_FILE:-./.env.production}
+    networks:
+      - back_prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '5' }
+
+  # ---------------------------------------------------------------------
   # Production Postgres. `back_prod` ONLY — never `front` — is the entire
   # isolation guarantee: nothing outside this stack's own back network has
   # a route here.

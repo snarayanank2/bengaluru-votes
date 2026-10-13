@@ -4,9 +4,11 @@
 # the Dockerfile (architecture §14.3), but it fronts it with a TLS
 # nginx, run certbot and the jobs container, and expect real vendor
 # credentials. This file exposes the Astro server directly on
-# http://localhost:4321 with none of that — no nginx, no certbot, no jobs
-# container (its cron entries need restic + off-box storage + healthchecks.io
+# http://localhost:4321 with none of that — no nginx, no certbot, no cron
+# jobs container (its entries need restic + off-box storage + healthchecks.io
 # credentials no laptop has, and the local database is disposable demo data).
+# It does define `extract-worker`, the affidavit extraction worker, which
+# takes an Anthropic key from YOUR SHELL and exits without one.
 #
 # Secrets here are deliberately fixed, weak and committed: this stack binds
 # to localhost only and holds nothing real. Never reuse these values anywhere
@@ -111,6 +113,32 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # The affidavit extraction worker (jobs/extract-affidavits.ts): claims
+  # PDFs queued on /admin/affidavits and reads them with a Claude model.
+  # ANTHROPIC_API_KEY is passed through from the shell that runs `compose up`
+  # and is written nowhere. Without it the worker logs one line and exits,
+  # and queued affidavits simply wait — hence `restart: 'no'`. Every call it
+  # makes is paid: roughly $0.20 per affidavit on Opus 5.5.
+  #
+  #   docker compose -f deploy/compose.local.yml up -d extract-worker
+  extract-worker:
+    image: bengaluru-votes:local
+    pull_policy: never
+    command: ['npx', 'tsx', 'jobs/extract-affidavits.ts']
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://gba:gba_local_dev@postgres:5432/gba
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      EXTRACTION_MODEL: ${EXTRACTION_MODEL:-claude-opus-5-5}
+      EXTRACTION_CONCURRENCY: ${EXTRACTION_CONCURRENCY:-3}
+    volumes:
+      - ..:/app
+      - /app/node_modules
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: 'no'
 
   # One-shot, forward-only. Runs to completion before `app` starts, so a
   # plain `up` on a fresh volume yields a migrated database instead of an
