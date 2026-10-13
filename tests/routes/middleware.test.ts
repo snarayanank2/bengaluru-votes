@@ -35,15 +35,17 @@ const WARD = {
 
 const EMAILS = {
   citizen: 'middleware-citizen@example.com',
+  transcriber: 'middleware-transcriber@example.com',
   curator: 'middleware-curator@example.com',
   admin: 'middleware-admin@example.com',
 };
 
 let citizenId: number;
+let transcriberId: number;
 let curatorId: number;
 let adminId: number;
 
-async function upsertUser(email: string, role: 'citizen' | 'curator' | 'admin'): Promise<number> {
+async function upsertUser(email: string, role: 'citizen' | 'transcriber' | 'curator' | 'admin'): Promise<number> {
   const [row] = await db
     .insert(schema.users)
     .values({ email, role, status: 'active' })
@@ -61,12 +63,13 @@ beforeAll(async () => {
     .onConflictDoNothing();
 
   citizenId = await upsertUser(EMAILS.citizen, 'citizen');
+  transcriberId = await upsertUser(EMAILS.transcriber, 'transcriber');
   curatorId = await upsertUser(EMAILS.curator, 'curator');
   adminId = await upsertUser(EMAILS.admin, 'admin');
 });
 
 afterAll(async () => {
-  const userIds = [citizenId, curatorId, adminId];
+  const userIds = [citizenId, transcriberId, curatorId, adminId];
   await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
   await db.delete(schema.users).where(inArray(schema.users.email, Object.values(EMAILS)));
   await client.end();
@@ -210,6 +213,22 @@ describe('src/middleware.ts', () => {
     it('citizen GET /curator -> 403', async () => {
       const { cookieValue } = await sessionFor(citizenId);
       const ctx = makeContext({ path: '/curator', cookieValue });
+      const res = await run(ctx, nextStub());
+      expect(res.status).toBe(403);
+    });
+
+    it('transcriber GET /account -> passes through', async () => {
+      const { cookieValue } = await sessionFor(transcriberId);
+      const next = nextStub();
+      const ctx = makeContext({ path: '/account', cookieValue });
+      const res = await run(ctx, next);
+      expect(res.status).toBe(200);
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['/curator', '/admin', '/admin/users'])('transcriber GET %s -> 403', async (path) => {
+      const { cookieValue } = await sessionFor(transcriberId);
+      const ctx = makeContext({ path, cookieValue });
       const res = await run(ctx, nextStub());
       expect(res.status).toBe(403);
     });

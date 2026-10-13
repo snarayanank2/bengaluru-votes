@@ -8,7 +8,7 @@ export const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
 
 export const corporationEnum = pgEnum('corporation', ['north', 'south', 'east', 'west', 'central']);
 export const langEnum = pgEnum('lang', ['en', 'kn']);
-export const roleEnum = pgEnum('role', ['citizen', 'curator', 'admin']);
+export const roleEnum = pgEnum('role', ['citizen', 'transcriber', 'curator', 'admin']);
 export const userStatusEnum = pgEnum('user_status', ['active', 'banned', 'erased']);
 export const candidateStatusEnum = pgEnum('candidate_status', ['filed', 'contesting', 'rejected', 'withdrawn']);
 export const sourceTypeEnum = pgEnum('source_type', ['official', 'curator']);

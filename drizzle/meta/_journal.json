@@ -78,6 +78,13 @@
       "when": 1791864398273,
       "tag": "0010_remove_ward_readiness_and_news_links",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791876056604,
+      "tag": "0011_add_transcriber_role",
+      "breakpoints": true
     }
   ]
 }
