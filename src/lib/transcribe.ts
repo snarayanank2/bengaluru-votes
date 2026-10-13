@@ -7,7 +7,8 @@
  * random within each — and nothing here lets a caller name the one they
  * want. An assignment is a 45-minute HOLD, not ownership: past its expiry
  * the affidavit is anyone's to draw again, so a half-read one is never
- * stranded.
+ * stranded. Only affidavits the AI has read are in the queue: one stored
+ * before the queue existed has no extraction to check a reading against.
  *
  * AUTHORIZATION IS THE ASSIGNMENT, not the role: every function here that
  * reads or writes takes the caller's id and acts only on an assignment that
@@ -92,6 +93,7 @@ export async function drawAssignment(transcriberId: number): Promise<number | nu
              WHERE a.state = 'published'
                AND a.transcribed_at IS NULL
                AND a.candidate_id IS NOT NULL
+               AND a.extraction IS NOT NULL
                AND NOT EXISTS (SELECT 1 FROM mine)
                AND NOT EXISTS (SELECT 1 FROM transcription_assignments t WHERE t.affidavit_id = a.id AND t.state = 'open')
              ORDER BY CASE
@@ -464,6 +466,8 @@ export async function countWaiting(): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(candidateAffidavits)
-    .where(sql`${candidateAffidavits.state} = 'published' AND ${candidateAffidavits.transcribedAt} IS NULL AND ${candidateAffidavits.candidateId} IS NOT NULL`);
+    .where(
+      sql`${candidateAffidavits.state} = 'published' AND ${candidateAffidavits.transcribedAt} IS NULL AND ${candidateAffidavits.candidateId} IS NOT NULL AND ${candidateAffidavits.extraction} IS NOT NULL`,
+    );
   return row?.n ?? 0;
 }

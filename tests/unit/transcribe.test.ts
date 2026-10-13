@@ -16,6 +16,7 @@ import type { AffidavitExtraction } from '../../src/lib/affidavit-extraction';
 import {
   ASSIGNMENT_MINUTES,
   countSubmittedToday,
+  countWaiting,
   drawAssignment,
   loadAssignment,
   releaseAssignment,
@@ -232,6 +233,13 @@ describe('drawAssignment', () => {
   it.each(['needs_matching', 'failed'] as const)('never hands out an affidavit that is %s', async (state) => {
     await published({ state });
     expect(await drawAssignment(await user())).toBeNull();
+  });
+
+  it('never hands out an affidavit the AI never read, such as one stored before the queue existed', async () => {
+    const a = await published();
+    await db.execute(sql`UPDATE candidate_affidavits SET extraction = NULL, confidence = NULL WHERE id = ${a.affidavitId}`);
+    expect(await drawAssignment(await user())).toBeNull();
+    expect(await countWaiting()).toBe(0);
   });
 
   it('never hands out an affidavit that has been transcribed', async () => {
