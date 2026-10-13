@@ -87,6 +87,20 @@ function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
 }
 
+/** Tokens and cost of the failed calls for one model that reported usage. */
+function failedBilled(model: ExtractionModel, errors: ErrorRow[]): { input: number; output: number; cost: number } {
+  let input = 0;
+  let output = 0;
+  let cost = 0;
+  for (const e of errors) {
+    if (e.model !== model || !e.usage) continue;
+    input += e.usage.inputTokens;
+    output += e.usage.outputTokens;
+    cost += costUsd(model, e.usage.inputTokens, e.usage.outputTokens);
+  }
+  return { input, output, cost };
+}
+
 export function summarize(rows: ResultRow[], errors: ErrorRow[]): string {
   const models = EXTRACTION_MODELS.filter(
     (m) => rows.some((r) => r.model === m) || errors.some((e) => e.model === m),
@@ -94,50 +108,73 @@ export function summarize(rows: ResultRow[], errors: ErrorRow[]): string {
   const lines: string[] = ['# Extraction evaluation summary', ''];
 
   lines.push('## By model', '');
-  lines.push('| Model | Affidavits scored | Correct | Wrong | Abstained | Unscored | Failed calls | Assets within 1% | Input tokens | Output tokens | Cost (USD) | Mean seconds |');
+  lines.push('Tokens and cost include failed calls that reported usage.', '');
+  lines.push('| Model | Affidavits scored | Correct | Wrong | Abstained | Unscored | Failed calls | Assets within 1% | Input tokens | Output tokens | Cost (USD) | Mean seconds (successful calls) |');
   lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const model of models) {
     const mine = rows.filter((r) => r.model === model);
     const t = tally(mine);
     const failed = errors.filter((e) => e.model === model).length;
+    const extra = failedBilled(model, errors);
     const within = mine.filter((r) => r.grade.assetsWithin1Percent === true).length;
     const withAssets = mine.filter((r) => r.grade.assetsWithin1Percent !== null).length;
     const seconds = mine.length ? sum(mine.map((r) => r.usage.elapsedMs)) / mine.length / 1000 : 0;
+    const inputTokens = sum(mine.map((r) => r.usage.inputTokens)) + extra.input;
+    const outputTokens = sum(mine.map((r) => r.usage.outputTokens)) + extra.output;
+    const cost = sum(mine.map((r) => r.costUsd)) + extra.cost;
     lines.push(
       `| ${model} | ${mine.length} | ${t.correct} | ${t.wrong} | ${t.abstained} | ${t.unscored} | ${failed} | ` +
-        `${within}/${withAssets} | ${sum(mine.map((r) => r.usage.inputTokens))} | ` +
-        `${sum(mine.map((r) => r.usage.outputTokens))} | ${sum(mine.map((r) => r.costUsd)).toFixed(2)} | ${seconds.toFixed(0)} |`,
+        `${within}/${withAssets} | ${inputTokens} | ${outputTokens} | ${cost.toFixed(2)} | ${seconds.toFixed(0)} |`,
     );
   }
 
   lines.push('', '## By language', '');
-  lines.push('| Language | Model | Correct | Wrong | Abstained | Unscored |');
-  lines.push('|---|---|---|---|---|---|');
+  lines.push('| Language | Model | Correct | Wrong | Abstained | Unscored | Input tokens | Cost (USD) | Mean seconds |');
+  lines.push('|---|---|---|---|---|---|---|---|---|');
   for (const language of ['kannada', 'english', 'unknown'] as const) {
     for (const model of models) {
       const mine = rows.filter((r) => r.model === model && languageOf(r.file) === language);
       if (mine.length === 0) continue;
       const t = tally(mine);
-      lines.push(`| ${language} | ${model} | ${t.correct} | ${t.wrong} | ${t.abstained} | ${t.unscored} |`);
+      const inputTokens = sum(mine.map((r) => r.usage.inputTokens));
+      const cost = sum(mine.map((r) => r.costUsd));
+      const seconds = sum(mine.map((r) => r.usage.elapsedMs)) / mine.length / 1000;
+      lines.push(
+        `| ${language} | ${model} | ${t.correct} | ${t.wrong} | ${t.abstained} | ${t.unscored} | ` +
+          `${inputTokens} | ${cost.toFixed(2)} | ${seconds.toFixed(0)} |`,
+      );
     }
   }
 
   lines.push('', '## Per affidavit', '');
-  lines.push('Correct values out of those scored, with the model-reported confidence.', '');
-  lines.push(`| Affidavit | ${models.join(' | ')} |`);
-  lines.push(`|---|${models.map(() => '---').join('|')}|`);
+  lines.push("One row per affidavit and model. Confidence is the model's own figure.", '');
+  lines.push('| Affidavit | Model | Correct | Wrong | Abstained | Confidence | Input tokens | Output tokens | Cost (USD) | Seconds |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|');
   const files = [...new Set([...rows.map((r) => r.file), ...errors.map((e) => e.file)])].sort();
   for (const file of files) {
-    const cells = models.map((model) => {
+    for (const model of models) {
       const row = rows.find((r) => r.file === file && r.model === model);
       if (row) {
         const t = tally([row]);
-        return `${t.correct}/${t.correct + t.wrong + t.abstained} (conf ${row.extraction.confidence})`;
+        lines.push(
+          `| ${file} | ${model} | ${t.correct} | ${t.wrong} | ${t.abstained} | ${row.extraction.confidence} | ` +
+            `${row.usage.inputTokens} | ${row.usage.outputTokens} | ${row.costUsd.toFixed(3)} | ` +
+            `${(row.usage.elapsedMs / 1000).toFixed(0)} |`,
+        );
+        continue;
       }
       const error = errors.find((e) => e.file === file && e.model === model);
-      return error ? `FAILED: ${error.failure}` : '';
-    });
-    lines.push(`| ${file} | ${cells.join(' | ')} |`);
+      if (!error) continue;
+      const tokens = error.usage
+        ? [
+            `${error.usage.inputTokens}`,
+            `${error.usage.outputTokens}`,
+            costUsd(model, error.usage.inputTokens, error.usage.outputTokens).toFixed(3),
+          ]
+        : ['', '', ''];
+      const cells = [file, model, `FAILED: ${error.failure}`, '', '', '', ...tokens, ''];
+      lines.push('|' + cells.map((c) => (c === '' ? ' |' : ` ${c} |`)).join(''));
+    }
   }
 
   return lines.join('\n') + '\n';

@@ -95,10 +95,46 @@ describe('summarize', () => {
 
   it('has sections by language and per affidavit', () => {
     expect(text).toContain('## By language');
-    expect(text).toMatch(/\| kannada \| claude-haiku-5-5 \| 3 \| 1 \| 1 \|/);
+    expect(text).toMatch(/\| kannada \| claude-haiku-5-5 \| 3 \| 1 \| 1 \| 0 \| 70000 \| 0\.01 \| 42 \|/);
     expect(text).toContain('## Per affidavit');
-    expect(text).toContain('3/5 (conf 60)');
     expect(text).toContain('FAILED: truncated');
+  });
+
+  it('shows each result row per affidavit with counts, confidence, tokens, cost and seconds', () => {
+    expect(text).toContain(`| ${KN} | claude-haiku-5-5 | 3 | 1 | 1 | 60 | 70000 | 1000 | 0.007 | 42 |`);
+    expect(text).toContain(`| ${EN} | claude-opus-5-5 | FAILED: truncated | | | | | | | |`);
+  });
+});
+
+describe('summarize with failed calls that reported usage', () => {
+  const failedWithUsage: ErrorRow = {
+    file: EN,
+    model: 'claude-opus-5-5',
+    failure: 'truncated',
+    detail: 'response hit max_tokens',
+    usage: { model: 'claude-opus-5-5', inputTokens: 50000, outputTokens: 16000, elapsedMs: 90000, stopReason: 'max_tokens' },
+  };
+  const text = summarize([row(KN, 'claude-opus-5-5')], [failedWithUsage]);
+
+  it('adds the failed call tokens and cost to the model totals, but not to the seconds mean', () => {
+    // Result row: 70000 in, 1000 out, $0.30. Failed call: 50000 in, 16000 out, $0.52.
+    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
+  });
+
+  it('shows the failed call tokens and cost on its per-affidavit row', () => {
+    expect(text).toContain(`| ${EN} | claude-opus-5-5 | FAILED: truncated | | | | 50000 | 16000 | 0.520 | |`);
+  });
+});
+
+describe('summarize for a model with only failed calls', () => {
+  const text = summarize(
+    [row(KN, 'claude-haiku-5-5')],
+    [{ file: EN, model: 'claude-opus-5-5', failure: 'api_error', detail: 'boom' }],
+  );
+
+  it('still gets a by-model row with zero scored, one failed call and zero seconds, and no NaN', () => {
+    expect(text).toMatch(/\| claude-opus-5-5 \| 0 \| 0 \| 0 \| 0 \| 0 \| 1 \| 0\/0 \| 0 \| 0 \| 0\.00 \| 0 \|/);
+    expect(text).not.toContain('NaN');
   });
 });
 
