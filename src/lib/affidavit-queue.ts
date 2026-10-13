@@ -19,7 +19,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
 import { candidateAffidavits, candidates, media, wards } from '../db/schema';
 import type { AffidavitExtraction, ExtractionFailure, ExtractionOutcome } from './affidavit-extraction';
-import { fieldsFromExtraction, publishAffidavitFields, publishWardLabel, type PublishActor } from './affidavit-publish';
+import { fieldsFromExtraction, moveCandidateWard, publishAffidavitFields, publishWardLabel, type PublishActor } from './affidavit-publish';
 import { createCandidateTx } from './publish';
 import { storeMedia, type MediaStoreErrorCode } from './media';
 import { translateFieldSoon } from './translate-runtime';
@@ -169,7 +169,7 @@ export async function publishExtractionTx(
   affidavit: { id: number; mediaId: number; sha256: string },
   extraction: AffidavitExtraction,
   target:
-    | { kind: 'new'; wardId: number; name: string; party: string; confirmedBy: number | null }
+    | { kind: 'new'; wardId: number; name: string; party: string; confirmedBy: { userId: number; role: 'curator' | 'admin' } | null }
     | { kind: 'existing'; candidateId: number; identity: boolean },
 ): Promise<{ candidateId: number; translate: number[] }> {
   const sourceUrl = sourceUrlOf(affidavit.mediaId, affidavit.sha256);
@@ -183,13 +183,13 @@ export async function publishExtractionTx(
     if (target.confirmedBy === null) {
       translate.push(...(await publishAffidavitFields(tx, SYSTEM, candidateId, all, { sourceUrl, checked: false })));
     } else {
-      // An admin confirmed who this is; the affidavit's other values are still only AI-read.
-      const admin: PublishActor = { userId: target.confirmedBy, role: 'admin' };
+      // A person confirmed who this is; the affidavit's other values are still only AI-read.
+      const confirmer: PublishActor = { userId: target.confirmedBy.userId, role: target.confirmedBy.role };
       const confirmed = [
         { key: 'full_name' as const, status: 'value' as const, text: target.name },
         { key: 'party' as const, status: 'value' as const, text: target.party },
       ];
-      translate.push(...(await publishAffidavitFields(tx, admin, candidateId, confirmed, { sourceUrl, checked: true })));
+      translate.push(...(await publishAffidavitFields(tx, confirmer, candidateId, confirmed, { sourceUrl, checked: true })));
       const rest = all.filter((f) => !identityKeys.has(f.key));
       translate.push(...(await publishAffidavitFields(tx, SYSTEM, candidateId, rest, { sourceUrl, checked: false })));
     }
@@ -443,12 +443,12 @@ export interface ConfirmMatchInput {
   wardId: number;
   name: string;
   party: string;
-  /** Publish onto this existing candidate instead of creating one: the admin judged it the same person. */
+  /** Publish onto this existing candidate instead of creating one: an admin or a curator judged it the same person. */
   attachToCandidateId?: number;
 }
 
 /**
- * An admin's answer for an affidavit the worker could not place: which ward,
+ * An admin's or a curator's answer for an affidavit the worker could not place: which ward,
  * and the name and party as they should read. Creates the candidate and
  * publishes the stored extraction — identity as checked by a person, the
  * affidavit's values still AI-labelled. Throws an `AdminActionError` code.
@@ -456,7 +456,7 @@ export interface ConfirmMatchInput {
  * For an affidavit a transcriber sent back, the candidate already exists:
  * it is moved to the chosen ward and renamed, and its values are left alone.
  */
-export async function confirmMatch(actor: { userId: number }, id: number, input: ConfirmMatchInput): Promise<{ candidateId: number }> {
+export async function confirmMatch(actor: { userId: number; role: 'curator' | 'admin' }, id: number, input: ConfirmMatchInput): Promise<{ candidateId: number }> {
   const name = input.name.trim();
   const party = input.party.trim();
   if (name === '') throw new Error('name_required' satisfies AdminActionError);
@@ -484,10 +484,10 @@ export async function confirmMatch(actor: { userId: number }, id: number, input:
 
     if (row.candidateId !== null) {
       // Sent back by a transcriber: correct who and where, keep the values.
-      await tx.update(candidates).set({ wardId: ward.id, updatedAt: new Date() }).where(eq(candidates.id, row.candidateId));
+      await moveCandidateWard(tx, row.candidateId, ward.id, sourceUrl);
       const translate = await publishAffidavitFields(
         tx,
-        { userId: actor.userId, role: 'admin' },
+        { userId: actor.userId, role: actor.role },
         row.candidateId,
         [
           { key: 'full_name', status: 'value', text: name },
@@ -495,7 +495,6 @@ export async function confirmMatch(actor: { userId: number }, id: number, input:
         ],
         { sourceUrl, checked: true },
       );
-      await publishWardLabel(tx, row.candidateId, { sourceUrl, aiExtracted: false });
       await tx.update(candidateAffidavits).set({ state: 'published', matchReason: null, matchNote: null }).where(eq(candidateAffidavits.id, id));
       return { candidateId: row.candidateId, translate };
     }
@@ -506,7 +505,7 @@ export async function confirmMatch(actor: { userId: number }, id: number, input:
       return publishExtractionTx(tx, row, extraction, { kind: 'existing', candidateId: existing.id, identity: false });
     }
 
-    return publishExtractionTx(tx, row, extraction, { kind: 'new', wardId: ward.id, name, party, confirmedBy: actor.userId });
+    return publishExtractionTx(tx, row, extraction, { kind: 'new', wardId: ward.id, name, party, confirmedBy: { userId: actor.userId, role: actor.role } });
   });
 
   for (const fieldId of result.translate) translateFieldSoon({ table: 'candidate_fields', id: fieldId });

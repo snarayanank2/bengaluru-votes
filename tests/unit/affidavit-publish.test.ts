@@ -17,6 +17,7 @@ import {
   fieldsFromExtraction,
   sameFieldData,
   publishAffidavitFields,
+  moveCandidateWard,
   type FieldData,
 } from '../../src/lib/affidavit-publish';
 import { publishCandidateField } from '../../src/lib/publish';
@@ -41,6 +42,16 @@ const WARD = {
   zone: 'Zone T',
   boundaryRef: 'affidavit-publish-test-ward',
 };
+// The ward a candidate is moved to; this suite owns id 99441 too.
+const WARD_B = {
+  id: 99441,
+  nameEn: 'Affidavit Publish Test Ward B',
+  nameKn: 'ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಬಿ',
+  corporation: 'south' as const,
+  zone: 'Zone T',
+  boundaryRef: 'affidavit-publish-test-ward-b',
+};
+const CURATOR_EMAIL = 'affidavit-publish-test-curator@example.com';
 const SOURCE = '/media/1/abcdef0123456789';
 
 function extraction(): AffidavitExtraction {
@@ -263,6 +274,73 @@ describe('publishAffidavitFields', () => {
       );
       await publishCandidateField({ userId: 1, role: 'curator' }, { candidateId, fieldKey: 'age', valueEn: '54', sourceUrl: SOURCE, sourceType: 'official', authoredLang: 'en' });
       expect(await field('age')).toMatchObject({ valueEn: '54', aiExtracted: false, confirmedAi: null, valueData: null });
+    });
+  });
+
+  it('records a curator as the person who checked a value', async () => {
+    const [curator] = await db
+      .insert(schema.users)
+      .values({ email: CURATOR_EMAIL, role: 'curator' })
+      .onConflictDoUpdate({ target: schema.users.email, set: { role: 'curator' } })
+      .returning({ id: schema.users.id });
+    try {
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, { userId: curator.id, role: 'curator' }, candidateId, [{ key: 'age', status: 'value', years: 41 }], { sourceUrl: SOURCE, checked: true }),
+      );
+      expect(await field('age')).toMatchObject({ checkedBy: curator.id, aiExtracted: false });
+    } finally {
+      await db.delete(schema.users).where(eq(schema.users.id, curator.id));
+    }
+  });
+
+  describe('moveCandidateWard', () => {
+    let movedId: number;
+    let otherId: number;
+
+    beforeAll(async () => {
+      await db.insert(schema.wards).values(WARD_B).onConflictDoUpdate({ target: schema.wards.id, set: WARD_B });
+      const made = await db
+        .insert(schema.candidates)
+        .values([
+          { slug: `affidavit-publish-move-${randomUUID()}`, wardId: WARD.id, nameEn: 'Moved (FICTIONAL)', partyEn: 'Independent' },
+          { slug: `affidavit-publish-other-${randomUUID()}`, wardId: WARD.id, nameEn: 'Stays (FICTIONAL)', partyEn: 'Independent' },
+        ])
+        .returning({ id: schema.candidates.id });
+      [movedId, otherId] = made.map((r) => r.id);
+      await db.insert(schema.candidateFields).values({
+        candidateId: movedId, fieldKey: 'ward', valueEn: 'Affidavit Publish Test Ward', sourceType: 'official', sourceUrl: SOURCE, aiExtracted: true,
+      });
+    });
+
+    afterAll(async () => {
+      const wardIds = [WARD.id, WARD_B.id];
+      await db.delete(schema.flagItems).where(inArray(schema.flagItems.wardId, wardIds));
+      await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, [movedId, otherId]));
+      await db.delete(schema.candidates).where(inArray(schema.candidates.id, [movedId, otherId]));
+      await db.delete(schema.wards).where(eq(schema.wards.id, WARD_B.id));
+    });
+
+    it('moves the candidate, marks the ward row person-checked, and re-homes only its pending flags', async () => {
+      const flag = async (targetRef: string, status: 'pending' | 'rejected') =>
+        (await db.insert(schema.flagItems).values({ wardId: WARD.id, targetType: 'candidate_field', targetRef, status }).returning())[0];
+      const pending = await flag(`candidate:${movedId}:age`, 'pending');
+      const resolved = await flag(`candidate:${movedId}:cases`, 'rejected');
+      const others = await flag(`candidate:${otherId}:age`, 'pending');
+
+      await appDb.transaction((tx) => moveCandidateWard(tx, movedId, WARD_B.id, '/media/1/abc'));
+
+      const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, movedId));
+      expect(candidate.wardId).toBe(WARD_B.id);
+      const [wardRow] = await db
+        .select()
+        .from(schema.candidateFields)
+        .where(and(eq(schema.candidateFields.candidateId, movedId), eq(schema.candidateFields.fieldKey, 'ward')));
+      expect(wardRow.aiExtracted).toBe(false);
+      expect(wardRow.sourceUrl).toBe('/media/1/abc');
+      const wardOf = async (id: number) => (await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, id)))[0].wardId;
+      expect(await wardOf(pending.id)).toBe(WARD_B.id);
+      expect(await wardOf(resolved.id)).toBe(WARD.id);
+      expect(await wardOf(others.id)).toBe(WARD.id);
     });
   });
 

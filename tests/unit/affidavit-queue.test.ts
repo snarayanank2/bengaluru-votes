@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import * as schema from '../../src/db/schema';
 import {
@@ -16,6 +16,7 @@ import {
   claimNextAffidavit,
   resolveWard,
   processOne,
+  confirmMatch,
 } from '../../src/lib/affidavit-queue';
 import type { AffidavitExtraction, ExtractionOutcome } from '../../src/lib/affidavit-extraction';
 
@@ -36,8 +37,10 @@ const WARD_SOUTH = { id: 4990, nameEn: 'Queue Test Ward Alpha', nameKn: 'ಪರ�
 const WARD_WEST = { id: 5991, nameEn: '991 - Queue Test Ward Beta', nameKn: 'ಪರೀಕ್ಷೆ ಬಿ', corporation: 'west' as const, zone: 'Zone T', boundaryRef: 'queue-test-ward-beta' };
 const WARD_IDS = [WARD_SOUTH.id, WARD_WEST.id];
 const UPLOADER_EMAIL = 'affidavit-queue-test-admin@example.com';
+const CURATOR_EMAIL = 'affidavit-queue-test-curator@example.com';
 
 let uploaderId: number;
+let curatorId: number;
 
 function pdf(): Buffer {
   return Buffer.from(`%PDF-1.4 queue test ${randomUUID()}`);
@@ -90,6 +93,12 @@ beforeAll(async () => {
     .onConflictDoUpdate({ target: schema.users.email, set: { role: 'admin' } })
     .returning({ id: schema.users.id });
   uploaderId = user.id;
+  const [curator] = await db
+    .insert(schema.users)
+    .values({ email: CURATOR_EMAIL, role: 'curator' })
+    .onConflictDoUpdate({ target: schema.users.email, set: { role: 'curator' } })
+    .returning({ id: schema.users.id });
+  curatorId = curator.id;
 });
 
 beforeEach(async () => {
@@ -107,7 +116,7 @@ afterAll(async () => {
     await db.delete(schema.candidates).where(inArray(schema.candidates.id, candidateIds));
   }
   if (mediaIds.length) await db.delete(schema.media).where(inArray(schema.media.id, mediaIds));
-  await db.delete(schema.users).where(eq(schema.users.id, uploaderId));
+  await db.delete(schema.users).where(inArray(schema.users.id, [uploaderId, curatorId]));
   await db.delete(schema.wards).where(inArray(schema.wards.id, WARD_IDS));
   await client.end();
 });

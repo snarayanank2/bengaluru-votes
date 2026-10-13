@@ -12,9 +12,9 @@
  * of `value_en`; it clears `value_data`, because its text did not come from
  * a structured value.
  */
-import { and, eq } from 'drizzle-orm';
+import { and, eq, like } from 'drizzle-orm';
 import type { Tx } from '../db/client';
-import { candidateFields, candidates } from '../db/schema';
+import { candidateFields, candidates, flagItems } from '../db/schema';
 import { decideTranslationStatus } from './publish';
 import { EDUCATION_LEVELS, GENDERS, type AffidavitExtraction, type EducationLevel, type Gender } from './affidavit-extraction';
 
@@ -34,7 +34,7 @@ export type FieldData =
   | { key: 'cases'; status: FieldStatus; pending: number | null; convictions: number | null };
 
 /** `system` is the extraction worker; its values keep the AI-extracted label. */
-export type PublishActor = { userId: number | null; role: 'system' | 'admin' | 'transcriber' };
+export type PublishActor = { userId: number | null; role: 'system' | 'admin' | 'curator' | 'transcriber' };
 
 /** Whole rupees in Indian digit grouping: 45210000 -> "₹4,52,10,000". */
 export function formatInr(amount: number): string {
@@ -257,4 +257,19 @@ export async function publishWardLabel(tx: Tx, candidateId: number, opts: { sour
     .insert(candidateFields)
     .values({ candidateId, fieldKey: 'ward', ...values })
     .onConflictDoUpdate({ target: [candidateFields.candidateId, candidateFields.fieldKey], set: values });
+}
+
+/**
+ * Moves a candidate to another ward because a person said so: the ward row
+ * on the public page loses its AI label, and the candidate's pending flags
+ * follow it so the queue lists them under the ward the candidate is now in.
+ * The slug keeps the old ward number: the candidate's URL does not change.
+ */
+export async function moveCandidateWard(tx: Tx, candidateId: number, wardId: number, sourceUrl: string): Promise<void> {
+  await tx.update(candidates).set({ wardId, updatedAt: new Date() }).where(eq(candidates.id, candidateId));
+  await publishWardLabel(tx, candidateId, { sourceUrl, aiExtracted: false });
+  await tx
+    .update(flagItems)
+    .set({ wardId })
+    .where(and(eq(flagItems.status, 'pending'), eq(flagItems.targetType, 'candidate_field'), like(flagItems.targetRef, `candidate:${candidateId}:%`)));
 }

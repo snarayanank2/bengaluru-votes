@@ -26,7 +26,7 @@ import { db } from '../../db/client';
 import { wards } from '../../db/schema';
 
 const session = Astro.locals.session!;
-const actor = { userId: session.userId };
+const actor = { userId: session.userId, role: 'admin' as const };
 
 const NOTICE_KINDS = ['uploaded', 'matched', 'retried', 'discarded'] as const;
 
