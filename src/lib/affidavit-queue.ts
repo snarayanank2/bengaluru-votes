@@ -385,6 +385,18 @@ export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
     .where(sql`${candidateAffidavits.state} IN ('needs_matching', 'failed')`)
     .orderBy(candidateAffidavits.id);
 
+  // Every candidate's name, read once, for the "same person as" suggestions
+  // (not once per waiting row: there may be hundreds of rows and thousands
+  // of candidates).
+  const byName = new Map<string, Array<{ id: number; nameEn: string; wardId: number }>>();
+  if (waiting.some((row) => row.state === 'needs_matching')) {
+    const all = await db.select({ id: candidates.id, nameEn: candidates.nameEn, wardId: candidates.wardId }).from(candidates);
+    for (const c of all) {
+      const key = normalizeForMatch(c.nameEn);
+      byName.set(key, [...(byName.get(key) ?? []), c]);
+    }
+  }
+
   const needsMatching: MatchRow[] = [];
   const failed: FailedRow[] = [];
   for (const row of waiting) {
@@ -405,12 +417,7 @@ export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
             .from(candidates)
             .where(eq(candidates.id, row.candidateId));
     const name = current?.nameEn ?? identity?.name.text ?? '';
-    const sameName =
-      name === ''
-        ? []
-        : (await db.select({ id: candidates.id, nameEn: candidates.nameEn, wardId: candidates.wardId }).from(candidates)).filter(
-            (c) => c.id !== row.candidateId && normalizeForMatch(c.nameEn) === normalizeForMatch(name),
-          );
+    const sameName = name === '' ? [] : (byName.get(normalizeForMatch(name)) ?? []).filter((c) => c.id !== row.candidateId);
     needsMatching.push({
       id: row.id,
       pdfUrl,
