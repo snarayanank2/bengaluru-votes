@@ -82,7 +82,7 @@ function assetsTotal(movable: string, immovable: string): string {
       <p class="scan-bar">
         <a href={view.pdfUrl} target="_blank" rel="noopener noreferrer">{t(lang, 'transcribe.reading.openPdf')}</a>
       </p>
-      <iframe class="scan-frame" src={`${view.pdfUrl}#view=FitH`} title={t(lang, 'transcribe.reading.pdfTitle')}></iframe>
+      <iframe class="scan-frame" src={`${view.pdfUrl}#navpanes=0&view=FitH`} title={t(lang, 'transcribe.reading.pdfTitle')}></iframe>
     </section>
 
     <section class="panel">
@@ -284,19 +284,19 @@ function assetsTotal(movable: string, immovable: string): string {
 
 <style>
   /* Scan and form side by side, filling the viewport below the 56px bar.
-     The form column never drops below a workable width; the scan takes the rest. */
+     The page itself does not scroll: the scan stays put and only the form
+     column scrolls, so a value being typed is always beside the page it is
+     read from. The form column never drops below a workable width. */
   .reading {
     display: grid;
     grid-template-columns: minmax(0, 58fr) minmax(26rem, 42fr);
-    align-items: start;
+    height: calc(100vh - 56px);
   }
 
   .scan {
-    position: sticky;
-    top: 0;
-    height: calc(100vh - 56px);
     display: flex;
     flex-direction: column;
+    min-height: 0;
     border-right: 1px solid var(--color-border);
     background: var(--color-surface);
   }
@@ -312,15 +312,18 @@ function assetsTotal(movable: string, immovable: string): string {
   .scan-frame {
     flex: 1;
     width: 100%;
+    min-height: 0;
     border: 0;
   }
 
   .panel {
-    padding: var(--space-6) var(--space-6) var(--space-12);
+    padding: var(--space-6) var(--space-6) 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
     min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .panel h1 {
@@ -331,7 +334,8 @@ function assetsTotal(movable: string, immovable: string): string {
 
   .facts {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* The ward name is the long one. */
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-3);
     margin: 0;
   }
@@ -559,7 +563,7 @@ function assetsTotal(movable: string, immovable: string): string {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    padding-top: var(--space-4);
+    padding-block: var(--space-4) var(--space-12);
     border-top: 1px solid var(--color-border);
   }
 

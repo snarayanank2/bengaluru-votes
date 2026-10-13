@@ -678,7 +678,7 @@
   "admin.affidavits.upload.submit": "Upload and queue",
   "admin.affidavits.viewPdf": "Affidavit #{id} (PDF)",
   "admin.affidavits.match.heading": "Needs matching",
-  "admin.affidavits.match.intro": "The AI read these but could not place them. Check the name and party against the PDF, choose the ward, and confirm. Nothing from these affidavits is public until you do.",
+  "admin.affidavits.match.intro": "The AI read these but could not place them, or a transcriber sent them back. Check the name and party against the PDF, choose the ward, and confirm. A new affidavit publishes nothing until you do.",
   "admin.affidavits.match.none": "Nothing is waiting to be matched.",
   "admin.affidavits.reason.ward_unresolved": "Ward not found",
   "admin.affidavits.reason.possible_duplicate": "Possible duplicate",
@@ -809,6 +809,7 @@
   "transcribe.guide.assets.heading": "Assets and cases",
   "transcribe.guide.assets.body": "Assets are the totals the affidavit prints for movable and for immovable assets, added across the candidate, spouse, dependents and HUF, without subtracting loans. The screen adds the two for you. For cases, count a case with a conviction only under convictions, even if an appeal is pending.",
   "common.unreadable": "Could not be read from the affidavit",
+  "admin.affidavits.match.stillPublished": "This candidate is still published as shown below. Correct the name, party or ward and save; the checked values are kept.",
   "__hints": {
     "footer.jointProject": "Footer label (design-system §7.2) introducing the two partner logos that follow it — Janaagraha and Oorvani Foundation. A sentence fragment ending in 'by', not a complete sentence: the logo images finish it. Keep it short; Kannada should read naturally as the lead-in to two organisation names shown as images.",
     "banner.production": "Site-wide banner shown above the app bar on the PRODUCTION site until launch (design-system §7.14). Informational and friendly, NOT a warning — the site is real, just not open yet. 'Nov 1' is a calendar date: render it as a date in Kannada convention (November 1), never translate it as a word or change the day/month.",
@@ -1142,6 +1143,7 @@
     "transcribe.reading.save": "Button that publishes the ticked fields and returns to the start screen.",
     "transcribe.reading.release": "Button that gives the affidavit back to the queue without saving anything.",
     "transcribe.reading.report.summary": "Expandable section for reporting that the affidavit is attached to the wrong ward or is not this candidate's affidavit.",
-    "common.unreadable": "Shown on a candidate's page in place of a value that neither the AI nor a person could read from the scanned affidavit. Different from 'Not declared', which means the affidavit left it blank."
+    "common.unreadable": "Shown on a candidate's page in place of a value that neither the AI nor a person could read from the scanned affidavit. Different from 'Not declared', which means the affidavit left it blank.",
+    "admin.affidavits.match.stillPublished": "Shown on an affidavit a transcriber sent back: unlike a new affidavit, its candidate is already public."
   }
 }

@@ -333,6 +333,8 @@ export interface MatchRow {
   wardRead: string | null;
   /** The candidate this affidavit is already published on, when a transcriber sent it back. */
   candidateId: number | null;
+  /** That candidate's ward today, to pre-select; null when there is no candidate yet. */
+  currentWardId: number | null;
   /** Candidates of the same name, for a possible duplicate. */
   sameName: Array<{ id: number; nameEn: string; wardId: number }>;
 }
@@ -392,7 +394,17 @@ export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
       continue;
     }
     const identity = (row.extraction as AffidavitExtraction | null)?.identity;
-    const name = identity?.name.text ?? '';
+    // A sent-back affidavit already has a candidate, possibly renamed since
+    // the AI read it: the form starts from what is published, so saving a
+    // ward correction cannot quietly undo a name correction.
+    const [current] =
+      row.candidateId === null
+        ? []
+        : await db
+            .select({ nameEn: candidates.nameEn, partyEn: candidates.partyEn, wardId: candidates.wardId })
+            .from(candidates)
+            .where(eq(candidates.id, row.candidateId));
+    const name = current?.nameEn ?? identity?.name.text ?? '';
     const sameName =
       name === ''
         ? []
@@ -406,10 +418,11 @@ export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
       note: row.matchNote,
       confidence: row.confidence,
       name,
-      party: identity?.party.text ?? '',
+      party: current?.partyEn ?? identity?.party.text ?? '',
       gender: identity?.gender.gender ?? null,
       wardRead: wardReadText(identity?.ward),
       candidateId: row.candidateId,
+      currentWardId: current?.wardId ?? null,
       sameName,
     });
   }

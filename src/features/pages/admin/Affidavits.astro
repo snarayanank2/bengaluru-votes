@@ -119,6 +119,7 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
                       <strong>{t(lang, 'admin.affidavits.match.transcriberNote')}</strong> {row.note}
                     </p>
                   )}
+                  {row.candidateId !== null && <p class="note">{t(lang, 'admin.affidavits.match.stillPublished')}</p>}
                 </div>
 
                 <form method="post" action="/admin/affidavits" class="match-form">
@@ -138,7 +139,7 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
                     <select id={`ward-${row.id}`} class="form-input" name="wardId" required>
                       <option value="">{t(lang, 'admin.affidavits.match.wardChoose')}</option>
                       {wards.map((ward) => (
-                        <option value={ward.id}>{wardLabel(ward)}</option>
+                        <option value={ward.id} selected={ward.id === row.currentWardId}>{wardLabel(ward)}</option>
                       ))}
                     </select>
                   </div>

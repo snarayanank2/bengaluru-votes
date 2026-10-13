@@ -280,6 +280,53 @@ describe('/admin/affidavits', () => {
     });
   });
 
+  describe('sent back by a transcriber', () => {
+    async function sentBack() {
+      const [candidate] = await db
+        .insert(schema.candidates)
+        .values({ slug: `admin-affidavits-sent-back-${randomUUID()}`, wardId: WARD.id, nameEn: 'Named By Admin (FICTIONAL)', partyEn: 'Demo Party B' })
+        .returning({ id: schema.candidates.id });
+      await db.insert(schema.candidateFields).values({ candidateId: candidate.id, fieldKey: 'age', valueEn: '47', aiExtracted: false, checkedBy: 7, sourceType: 'official', sourceUrl: '/media/1/x' });
+      const w = await waiting('needs_matching', 'As The AI Read It (FICTIONAL)', candidate.id);
+      await db
+        .update(schema.candidateAffidavits)
+        .set({ matchReason: 'reported_by_transcriber', matchNote: 'Belongs to the ward next door.' })
+        .where(eq(schema.candidateAffidavits.id, w.id));
+      return { ...w, candidateId: candidate.id };
+    }
+
+    it("shows the transcriber's note and the candidate as published now, not as the AI first read it", async () => {
+      const w = await sentBack();
+      const html = await (await run('/admin/affidavits', { cookieValue: admin.cookieValue })).text();
+      const row = html.slice(html.indexOf(`name="affidavitId" value="${w.id}"`));
+      expect(html).toContain('Belongs to the ward next door.');
+      expect(row).toMatch(/name="name"[^>]*value="Named By Admin \(FICTIONAL\)"/);
+      expect(row).toMatch(/name="party"[^>]*value="Demo Party B"/);
+      expect(row.slice(0, row.indexOf('</select>'))).toMatch(new RegExp(`<option value="${WARD.id}" selected`));
+      expect(html).toContain('still published');
+    });
+
+    it('moves the candidate to the corrected ward and keeps every checked value', async () => {
+      const other = { ...WARD, id: 99461, nameEn: 'Admin Affidavits Other Ward', boundaryRef: 'admin-affidavits-other-ward' };
+      await db.insert(schema.wards).values(other).onConflictDoUpdate({ target: schema.wards.id, set: other });
+      const w = await sentBack();
+
+      const fd = form(admin.token, { formAction: 'match', affidavitId: String(w.id), wardId: String(other.id), name: 'Named By Admin (FICTIONAL)', party: 'Demo Party B' });
+      expect((await run('/admin/affidavits', { cookieValue: admin.cookieValue, form: fd })).status).toBe(302);
+
+      expect(await affidavit(w.id)).toMatchObject({ state: 'published', candidateId: w.candidateId, matchReason: null, matchNote: null });
+      const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, w.candidateId));
+      expect(candidate).toMatchObject({ wardId: other.id, nameEn: 'Named By Admin (FICTIONAL)' });
+      const [age] = await db.select().from(schema.candidateFields).where(eq(schema.candidateFields.candidateId, w.candidateId));
+      expect(age).toMatchObject({ fieldKey: 'age', valueEn: '47', checkedBy: 7 });
+
+      await db.delete(schema.candidateFields).where(eq(schema.candidateFields.candidateId, w.candidateId));
+      await db.delete(schema.candidateAffidavits).where(eq(schema.candidateAffidavits.id, w.id));
+      await db.delete(schema.candidates).where(eq(schema.candidates.id, w.candidateId));
+      await db.delete(schema.wards).where(eq(schema.wards.id, other.id));
+    });
+  });
+
   describe('failed', () => {
     it('shows the failure and puts a retried affidavit back in the queue', async () => {
       const w = await waiting('failed');
