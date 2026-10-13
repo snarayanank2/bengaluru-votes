@@ -277,6 +277,47 @@ describe('processOne', () => {
     expect(keys).toEqual(['age', 'assets', 'cases', 'education', 'gender']);
   });
 
+  it('lets a curator confirm a sent-back affidavit: the candidate moves and the curator is the checker', async () => {
+    const [candidate] = await db
+      .insert(schema.candidates)
+      .values({ slug: `queue-sent-back-${randomUUID()}`, wardId: WARD_SOUTH.id, nameEn: 'Sent Back (FICTIONAL)', partyEn: 'Demo Party B' })
+      .returning({ id: schema.candidates.id });
+    const id = await queued({ candidateId: candidate.id });
+    await db
+      .update(schema.candidateAffidavits)
+      .set({ state: 'needs_matching', matchReason: 'reported_by_transcriber', extraction: extraction() })
+      .where(eq(schema.candidateAffidavits.id, id));
+
+    await confirmMatch({ userId: curatorId, role: 'curator' }, id, { wardId: WARD_WEST.id, name: 'Moved Person', party: 'Independent' });
+
+    const [after] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidate.id));
+    expect(after.wardId).toBe(WARD_WEST.id);
+    expect(after.nameEn).toBe('Moved Person');
+    const [nameRow] = await db
+      .select()
+      .from(schema.candidateFields)
+      .where(and(eq(schema.candidateFields.candidateId, candidate.id), eq(schema.candidateFields.fieldKey, 'full_name')));
+    expect(nameRow.checkedBy).toBe(curatorId);
+    expect((await affidavit(id)).state).toBe('published');
+  });
+
+  it('lets a curator confirm an unplaced affidavit: the new candidate is checked by the curator', async () => {
+    const id = await queued();
+    await processOne(ok(extraction({ ward: { status: 'unreadable', number: null, name: null, corporation: null } })));
+    expect(await affidavit(id)).toMatchObject({ state: 'needs_matching', matchReason: 'ward_unresolved', candidateId: null });
+
+    const { candidateId } = await confirmMatch({ userId: curatorId, role: 'curator' }, id, { wardId: WARD_WEST.id, name: 'Placed Person', party: 'Independent' });
+
+    const [after] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateId));
+    expect(after).toMatchObject({ wardId: WARD_WEST.id, nameEn: 'Placed Person' });
+    const [nameRow] = await db
+      .select()
+      .from(schema.candidateFields)
+      .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'full_name')));
+    expect(nameRow.checkedBy).toBe(curatorId);
+    expect((await affidavit(id)).state).toBe('published');
+  });
+
   it(`retries a failed call and gives up after ${MAX_ATTEMPTS} attempts, publishing nothing`, async () => {
     const id = await queued();
     for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt += 1) {
