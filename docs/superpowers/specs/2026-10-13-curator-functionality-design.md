@@ -15,6 +15,8 @@ Most of the curator area exists. This spec covers what is missing or stale:
 - The editor is reachable only by typing its URL.
 - There is no onboarding page.
 
+It also adds one thing M7 did not have: curators resolve the affidavits waiting to be matched to a candidate and ward, which only the admin can do today.
+
 ## 2. Decisions already made
 
 | Decision | Choice |
@@ -26,6 +28,8 @@ Most of the curator area exists. This spec covers what is missing or stale:
 | Candidate editor | The same structured fields as the flag fix; the five legacy forms are removed |
 | Finding candidates | Search on the dashboard **and** a candidate list on the ward page |
 | Onboarding | A `/curator/guide` page |
+| Affidavits waiting for matching | Curators resolve **all three reasons** (ward unresolved, possible duplicate, sent back by a transcriber) on their own list-and-item screens. The admin list stays; both use `confirmMatch` |
+| Other affidavit powers | Bulk upload, retry and discard stay **admin-only** |
 | Mark a candidate complete | **Out of scope** for this round |
 | Code sharing | Extract the transcriber's field inputs and form parsing and share them (not copy) |
 
@@ -128,9 +132,37 @@ A query shorter than two characters returns nothing. A few thousand candidates a
 
 **`/curator/ward/{id}`** gains the ward's candidates (name, party, status), each linking to the editor, above the existing "add candidate" link.
 
-**`CuratorLayout.astro`**: the bar gains Queue and Guide links.
+**`CuratorLayout.astro`**: the bar gains Queue, Matching (§9) and Guide links.
 
-## 9. Guide: `/curator/guide`
+## 9. Matching: `/curator/matching`
+
+Affidavits in `needs_matching` are the ones the worker read but could not publish, or that a transcriber sent back. Curators now clear them; `/admin/affidavits` keeps its own list as a fallback.
+
+**Library.** No new write path.
+
+- `confirmMatch` takes the actor's role (`curator` or `admin`) with the user id and passes it to `publishAffidavitFields` where it hard-codes `admin` today. Its behaviour is otherwise unchanged, including the `not_waiting` refusal when someone else resolved the row first.
+- `loadMatchList()` and `loadMatchItem(id)` in `src/lib/affidavit-queue.ts` are split out of `loadAffidavitAdmin`, which is rebuilt on `loadMatchList` so both screens read the same rows.
+
+**`/curator/matching`** lists every waiting affidavit, oldest first: the reason, the name and ward as the AI read them, confidence, and for a sent-back one the transcriber's note. Each row links to its item. The dashboard shows the waiting count beside the flag count, and the layout bar gains a Matching link.
+
+**`/curator/matching/{id}`** uses the two panes of §6: the affidavit on the left, and on the right:
+
+1. Why it is waiting, and what the AI read (name, party, gender, ward text, confidence).
+2. For a sent-back affidavit: the transcriber's note, a link to the candidate, and a line saying its values stay published until this is confirmed.
+3. One form: name, party, the ward select (pre-chosen for a sent-back candidate), and for a possible duplicate a choice between "a new candidate" and each same-name candidate, with their wards.
+4. The required "publishes immediately" checkbox, checked server-side. The admin form has none; every curator publish does.
+
+A confirm redirects to the list with a notice. A refusal (`name_required`, `party_required`, `unknown_ward`, `unknown_candidate`, `not_waiting`) re-renders with a 400 and the admin screen's existing sentences. An id that is not waiting is a 404.
+
+**Not offered to curators:** bulk upload, retry of a failed extraction, and discard. A document that is unusable, or that belongs to nobody on the list, is left waiting and reported to the admin; the guide says so.
+
+**Documents this reverses.** These are edited in the same change:
+
+- `docs/candidate-data.md` §3 and §4: "Siva handles loading and source-file problems" and "curators do not … handle ingestion exceptions" become: curators match waiting affidavits; loading, failed extractions and discards remain the admin's. The workload paragraph notes that matching is not in the 5%-of-candidates flag estimate behind the two-curator provision.
+- `docs/milestones.md` §9: "the flag queue is the whole job" gains the matching list.
+- `AGENTS.md` and `docs/architecture.md` §7, where they say only an admin sets a ward.
+
+## 10. Guide: `/curator/guide`
 
 In the pattern of `/transcribe/guide`: an Astro page of i18n strings, English and Kannada, linked from the dashboard and the bar. Content, from `docs/candidate-data.md` §4:
 
@@ -139,20 +171,23 @@ In the pattern of `/transcribe/guide`: an Astro page of i18n strings, English an
 - The dismissal reason is shown to the citizen; write it for them.
 - Never guess. Unreadable is an answer.
 - A wrong ward is fixed by moving the candidate.
+- Matching: compare the AI-read name, party and ward with the affidavit, choose the ward, and for a same-name candidate decide whether it is the same person. When unsure, leave it waiting.
 - What is not the job: re-reading unflagged affidavits, approving transcribers' work, ingestion problems.
 - Who to contact for a wrong or missing document.
 
-## 10. Authorization
+## 11. Authorization
 
-Unchanged. `src/middleware.ts` admits `curator` and `admin` to `/curator/*` by role, with the existing CSRF, origin and `no-store` rules. The new GET search is under the same guard.
+Unchanged. `src/middleware.ts` admits `curator` and `admin` to `/curator/*` by role, with the existing CSRF, origin and `no-store` rules. The search and `/curator/matching` are under the same guard.
 
-## 11. What this does not protect against
+## 12. What this does not protect against
 
 - **There is no history and no rollback.** A wrong fix or ward move overwrites the published value and is public within 60 seconds. The confirmation checkbox and the refusal of unchanged saves are the only brakes.
 - A moved candidate keeps the old ward number in its slug.
-- A curator can now move any candidate to any ward. Until now only an admin could.
+- A curator can now move any candidate to any ward, and create candidates from waiting affidavits. Until now only an admin could.
+- Attaching an affidavit to the wrong same-name candidate publishes its values over that candidate's, and nothing restores them.
+- Two people now work one matching list. The row lock in `confirmMatch` stops a double publish; it does not stop two people spending time on the same row.
 
-## 12. Tests
+## 13. Tests
 
 - `tests/routes/transcribe.test.ts`: unmodified, passing.
 - `tests/unit/affidavit-form.test.ts`: `readFieldForm`, `fieldFromInputs` and `errorFor` per field.
@@ -161,6 +196,8 @@ Unchanged. `src/middleware.ts` admits `curator` and `admin` to `/curator/*` by r
 - `tests/routes/curator-ward.test.ts`: the candidate list.
 - Search: by candidate name, ward name, ward number; short query; the cap.
 - `tests/unit/flags.test.ts` and the API route: `ward_field`, `ward_issue` and `candidate:{id}:ec_affidavit` are 400.
-- `tests/unit/affidavit-queue.test.ts`: `confirmMatch` still moves a sent-back candidate, through the shared helper.
+- `tests/unit/affidavit-queue.test.ts`: `confirmMatch` still moves a sent-back candidate, through the shared helper, and records the curator as the checker when a curator confirms.
+- `tests/routes/curator-matching.test.ts`: the list shows all three reasons; confirm creates the candidate and publishes; attach publishes onto the existing candidate; a sent-back affidavit moves and renames its candidate; each refusal is a 400 with nothing written; a resolved or unknown id is 404; a missing confirmation tick is refused; citizen and transcriber get 403; retry, discard and upload posted here are refused.
+- `tests/routes/admin-affidavits.test.ts`: unmodified, passing.
 - `tests/e2e/flag.spec.ts`: flag, structured fix, live value.
-- Browser check of the queue item, editor, dashboard, ward page and guide at desktop and mobile widths, per `CLAUDE.md`.
+- Browser check of the queue item, editor, dashboard, ward page, matching list and item, and guide at desktop and mobile widths, per `CLAUDE.md`.
