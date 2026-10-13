@@ -11,10 +11,10 @@
  *     list — and NEVER any error/red styling (`badge-chip--flag-rejected`,
  *     `banner--error`) for the "not ready" state itself.
  *   - SIGN-OFF: "Mark ward ready" POST actually signs the ward off
- *     (ward_readiness row updated); an out-of-scope curator gets 403; a
- *     POST with no CSRF token gets 403.
- *   - WARD ISSUES: add/rename/remove all work end-to-end; an out-of-scope
- *     curator is 403'd on both the list page and every mutation.
+ *     (ward_readiness row updated); a POST with no CSRF token gets 403.
+ *   - WARD ISSUES: add/rename/remove all work end-to-end.
+ *   The curator here has no ward assignment of any kind — curators are
+ *   city-wide.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
@@ -62,14 +62,6 @@ const WARD_HELD = {
   zone: 'Zone CW',
   boundaryRef: 'curator-ward-route-test-held',
 };
-const WARD_OUT_OF_SCOPE = {
-  id: 99497,
-  nameEn: 'Curator Ward Route Test Ward Out Of Scope',
-  nameKn: 'ಕ್ಯುರೇಟರ್ ವಾರ್ಡ್ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಸಿ',
-  corporation: 'south' as const,
-  zone: 'Zone CW',
-  boundaryRef: 'curator-ward-route-test-out-of-scope',
-};
 const WARD_ISSUES = {
   id: 99498,
   nameEn: 'Curator Ward Route Test Ward Issues',
@@ -86,8 +78,7 @@ const WARD_CSRF = {
   zone: 'Zone CW',
   boundaryRef: 'curator-ward-route-test-csrf',
 };
-const ALL_WARDS = [WARD_COMPLETE, WARD_HELD, WARD_OUT_OF_SCOPE, WARD_ISSUES, WARD_CSRF];
-const SCOPED_WARD_IDS = [WARD_COMPLETE.id, WARD_HELD.id, WARD_ISSUES.id, WARD_CSRF.id];
+const ALL_WARDS = [WARD_COMPLETE, WARD_HELD, WARD_ISSUES, WARD_CSRF];
 
 const EMAILS = { curator: 'curator-ward-route-test-curator@example.com' };
 const SOURCE = 'https://example.org/curator-ward-route-test-source';
@@ -220,7 +211,6 @@ async function resetFixtures(): Promise<void> {
   await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARDS.map((w) => w.id)));
   if (typeof curatorId === 'number') {
     await db.delete(schema.sessions).where(eq(schema.sessions.userId, curatorId));
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
   }
 }
 
@@ -235,7 +225,6 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
     curatorId = await upsertUser(EMAILS.curator, 'curator');
     await resetFixtures();
 
-    await db.insert(schema.curatorScopes).values(SCOPED_WARD_IDS.map((wardId) => ({ userId: curatorId, wardId })));
     curatorAuth = await sessionFor(curatorId);
 
     const completeCandidate = await insertCandidate(WARD_COMPLETE.id, { nameEn: 'Complete Ward Candidate' });
@@ -258,16 +247,8 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
     await client.end();
   });
 
-  describe('scope enforcement', () => {
-    it('GET a ward out of scope -> 403', async () => {
-      const res = await run(WardEditRoute, `/curator/ward/${WARD_OUT_OF_SCOPE.id}`, {
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(WARD_OUT_OF_SCOPE.id) },
-      });
-      expect(res.status).toBe(403);
-    });
-
-    it('GET a ward in scope -> 200, no-store', async () => {
+  describe('ward access', () => {
+    it('GET a ward -> 200, no-store', async () => {
       const res = await run(WardEditRoute, `/curator/ward/${WARD_COMPLETE.id}`, {
         cookieValue: curatorAuth.cookieValue,
         params: { id: String(WARD_COMPLETE.id) },
@@ -341,17 +322,6 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
       expect(row?.signedOffBy).toBe(curatorId);
     });
 
-    it('sign-off on an out-of-scope ward -> 403', async () => {
-      const form = formWithToken({ formAction: 'sign_off' }, curatorAuth.token);
-      const res = await run(WardEditRoute, `/curator/ward/${WARD_OUT_OF_SCOPE.id}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(WARD_OUT_OF_SCOPE.id) },
-        form,
-      });
-      expect(res.status).toBe(403);
-    });
-
     it('POST without the CSRF token -> 403, ward unaffected', async () => {
       const fd = new FormData();
       fd.set('formAction', 'sign_off');
@@ -370,14 +340,6 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
   });
 
   describe('ward issues editor', () => {
-    it('GET the issues page out of scope -> 403', async () => {
-      const res = await run(WardIssuesRoute, `/curator/ward/${WARD_OUT_OF_SCOPE.id}/issues`, {
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(WARD_OUT_OF_SCOPE.id) },
-      });
-      expect(res.status).toBe(403);
-    });
-
     it('add form creates a new issue', async () => {
       const form = formWithToken({ formAction: 'add', titleEn: 'Roads' }, curatorAuth.token);
       const res = await run(WardIssuesRoute, `/curator/ward/${WARD_ISSUES.id}/issues`, {
@@ -454,17 +416,6 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
 
       const [stillThere] = await db.select().from(schema.wardIssues).where(eq(schema.wardIssues.id, issue!.id));
       expect(stillThere).toBeDefined();
-    });
-
-    it('add/rename/remove out of scope -> 403', async () => {
-      const addForm = formWithToken({ formAction: 'add', titleEn: 'Should not land' }, curatorAuth.token);
-      const res = await run(WardIssuesRoute, `/curator/ward/${WARD_OUT_OF_SCOPE.id}/issues`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(WARD_OUT_OF_SCOPE.id) },
-        form: addForm,
-      });
-      expect(res.status).toBe(403);
     });
   });
 });

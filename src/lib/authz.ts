@@ -1,32 +1,9 @@
 /**
- * Authorization helpers used by src/middleware.ts (route-class guards) and
- * by the curator/admin write actions themselves (Task 34/36/39, PRD §7/§10)
- * for per-ward scope checks the middleware can't make on its own — the
- * middleware only knows the route CLASS (`/curator/*`), not the ward id
- * embedded in a specific edit's payload/params.
+ * Authorization helpers used by src/middleware.ts (route-class guards).
+ * Curators and admins are both city-wide (decided 2026-08-15): the
+ * middleware answers their writes by role alone, so there is no per-ward
+ * check here or anywhere else.
  */
-import { and, eq } from 'drizzle-orm';
-import { db } from '../db/client';
-import { curatorScopes } from '../db/schema';
-import type { Role } from './session';
-
-/**
- * Whether `userId` (with `role`) may edit ward `wardId`'s data. Admin: always
- * true (city-wide, PRD §7/§10). Curator: true iff a `curator_scopes` row
- * (userId, wardId) exists — a curator's edits are scoped to their assigned
- * wards/zone. Citizen: always false (citizens never edit ward/candidate
- * data at all).
- */
-export async function canEditWard(userId: number, role: Role, wardId: number): Promise<boolean> {
-  if (role === 'admin') return true;
-  if (role !== 'curator') return false;
-
-  const [row] = await db
-    .select()
-    .from(curatorScopes)
-    .where(and(eq(curatorScopes.userId, userId), eq(curatorScopes.wardId, wardId)));
-  return row !== undefined;
-}
 
 /** Same default used by src/middleware.ts's `passesOriginCheck` fallback. */
 const DEFAULT_SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';

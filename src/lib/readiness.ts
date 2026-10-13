@@ -22,7 +22,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { candidateFields, candidates, wardReadiness } from '../db/schema';
-import { canEditWard } from './authz';
 
 /** The three affidavit-derived report-card fields whose completeness this task's gate cares about (name/party are checked separately, off the `candidates` row itself). */
 const AFFIDAVIT_FIELD_KEYS = ['cases', 'assets', 'education'] as const;
@@ -154,9 +153,7 @@ export function wasClearedByChange(row: { signedOffAt: Date | null; clearedAt: D
 }
 
 /**
- * Records a curator/admin's sign-off for `wardId` (PRD §9.1). SCOPE-CHECKED
- * (`canEditWard`) — throws `Error('out_of_scope')` for a curator not
- * assigned to this ward; admin is always allowed.
+ * Records a curator/admin's sign-off for `wardId` (PRD §9.1).
  *
  * Snapshots the CURRENT `computeReadiness` result into
  * `completeness_snapshot` (so a later audit/dispute can see exactly what
@@ -174,11 +171,6 @@ export function wasClearedByChange(row: { signedOffAt: Date | null; clearedAt: D
  * Upserts the `ward_readiness` row (a ward may never have had one).
  */
 export async function signOffWard(actor: CuratorActor, wardId: number): Promise<void> {
-  const inScope = await canEditWard(actor.userId, actor.role, wardId);
-  if (!inScope) {
-    throw new Error('out_of_scope');
-  }
-
   const readiness = await computeReadiness(wardId);
   const now = new Date();
 

@@ -161,16 +161,9 @@ export async function addNewsLink(
  * produce a conflicting result, so there is nothing to protect against by
  * throwing here. Throws `'news_link_not_found'` if `linkId` doesn't exist.
  *
- * SCOPE: does NOT itself check curator ward-scope — it trusts the caller
- * to have already done so (same convention as `flags.ts`'s `resolveFlag`,
- * `publish.ts`'s `publishCandidateFieldTx`, etc. — see their docstrings).
- * The curator editor route enforces this two ways: (1) the whole
- * `/curator/candidate/{id}` page 403s upfront if the signed-in curator
- * isn't scoped to the CANDIDATE'S ward, and (2)
- * `src/lib/curator.ts`'s `handleNewsLinkApprove` re-checks that the
- * posted `linkId` actually belongs to the candidate on that page before
- * calling this — otherwise a curator could scope-hop by posting an
- * out-of-scope candidate's `linkId` alongside an in-scope candidate's URL.
+ * `src/lib/curator.ts`'s `handleNewsLinkApprove` checks that the posted
+ * `linkId` actually belongs to the candidate on that page before calling
+ * this.
  */
 export async function approveNewsLink(actor: NewsLinkActor, linkId: number): Promise<void> {
   await db.transaction(async (tx) => {

@@ -8,8 +8,8 @@
  * param, persisted onto `users.srcAttribution` at registration — see
  * src/lib/account-flow.ts/auth-flow.ts's registration path) and in the
  * partner kit page `/partner/{slug}` (Task 48). It carries no permissions
- * of its own and is entirely separate from `users.role` /
- * `curator_scopes` (src/lib/admin.ts) — a partner is not a user account.
+ * of its own and is entirely separate from `users.role`
+ * (src/lib/admin.ts) — a partner is not a user account.
  *
  * THREE WORK QUEUES this module surfaces for the admin console:
  *   1. COVERAGE (`partnerCoverage`) — which of the 369 wards have >=1
@@ -140,8 +140,8 @@ export interface UpdatePartnerInput {
 /**
  * Updates `name`/`contact` (only fields actually present in `input` are
  * touched) and, if `wardIds` is given, REPLACES the partner's entire
- * `partner_wards` set (delete + insert in the same transaction — same
- * replace-not-merge convention as `src/lib/admin.ts`'s `setCuratorScope`).
+ * `partner_wards` set (delete + insert in the same transaction —
+ * replace, not merge).
  * Omitting `wardIds` entirely leaves the existing coverage untouched.
  * Audited. Throws `'partner_not_found'` / `'invalid_ward_id'`.
  */
@@ -443,8 +443,8 @@ export async function acceptEoiAwareness(actor: AdminActor, eoiId: number, input
 
 /**
  * Accepts a 'curation'-path EOI — marks it accepted and
- * NOTHING ELSE. Deliberately does NOT grant the curator role or touch
- * `curator_scopes` (PRD §5.13: "no self-activation") — this only records
+ * NOTHING ELSE. Deliberately does NOT grant the curator role
+ * (PRD §5.13: "no self-activation") — this only records
  * that an admin has decided this person should become a curator; the
  * actual elevation is a SEPARATE, deliberate action on `/admin/roles`
  * (`grantRole`, src/lib/admin.ts). Keeping the two steps apart means

@@ -12,8 +12,8 @@
  *     in the SAME vote set (for issues that were not removed) are left
  *     alone (PRD §5.5: "delete cascades selections + remaining stand").
  *
- * Every mutator is scope-checked (`canEditWard`) — an out-of-scope curator
- * gets `Error('out_of_scope')`, never a silent no-op.
+ * Curators are city-wide: the curator here has no ward assignment of any
+ * kind and can still edit issues in any ward.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -36,23 +36,23 @@ const db = drizzle(client, { schema });
 
 // High, task-specific ward ids (Task 39 brief) — readiness.test.ts owns
 // 99480-99492; this suite owns 99493-99499.
-const WARD_IN_SCOPE = {
+const WARD_A = {
   id: 99493,
-  nameEn: 'Ward Issues Test Ward In Scope',
+  nameEn: 'Ward Issues Test Ward A',
   nameKn: 'ವಾರ್ಡ್ ಸಮಸ್ಯೆ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಎ',
   corporation: 'south' as const,
   zone: 'Zone W',
-  boundaryRef: 'ward-issues-lib-test-in-scope',
+  boundaryRef: 'ward-issues-lib-test-a',
 };
-const WARD_OUT_OF_SCOPE = {
+const WARD_B = {
   id: 99494,
-  nameEn: 'Ward Issues Test Ward Out Of Scope',
+  nameEn: 'Ward Issues Test Ward B',
   nameKn: 'ವಾರ್ಡ್ ಸಮಸ್ಯೆ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಬಿ',
   corporation: 'south' as const,
   zone: 'Zone W',
-  boundaryRef: 'ward-issues-lib-test-out-of-scope',
+  boundaryRef: 'ward-issues-lib-test-b',
 };
-const ALL_WARDS = [WARD_IN_SCOPE, WARD_OUT_OF_SCOPE];
+const ALL_WARDS = [WARD_A, WARD_B];
 const ALL_WARD_IDS = ALL_WARDS.map((w) => w.id);
 
 const EMAILS = { curator: 'ward-issues-lib-test-curator@example.com' };
@@ -92,21 +92,18 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
     ACTOR_CURATOR.userId = curatorId;
 
     await resetFixtures();
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
-    await db.insert(schema.curatorScopes).values({ userId: curatorId, wardId: WARD_IN_SCOPE.id });
   });
 
   afterAll(async () => {
     await resetFixtures();
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
     await db.delete(schema.users).where(eq(schema.users.id, curatorId));
     await client.end();
   });
 
   describe('addWardIssue', () => {
     it('inserts with position incrementing, authoredLang en, translationStatus pending; audit-logged', async () => {
-      const { id: firstId } = await addWardIssue(ACTOR_CURATOR, WARD_IN_SCOPE.id, 'Roads');
-      const { id: secondId } = await addWardIssue(ACTOR_CURATOR, WARD_IN_SCOPE.id, 'Water supply');
+      const { id: firstId } = await addWardIssue(ACTOR_CURATOR, WARD_A.id, 'Roads');
+      const { id: secondId } = await addWardIssue(ACTOR_CURATOR, WARD_A.id, 'Water supply');
 
       const [first] = await db.select().from(schema.wardIssues).where(eq(schema.wardIssues.id, firstId));
       const [second] = await db.select().from(schema.wardIssues).where(eq(schema.wardIssues.id, secondId));
@@ -118,17 +115,14 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
 
     });
 
-    it('out-of-scope curator throws out_of_scope, nothing written', async () => {
-      const before = await listWardIssues(WARD_OUT_OF_SCOPE.id);
-      await expect(addWardIssue(ACTOR_CURATOR, WARD_OUT_OF_SCOPE.id, 'Should not land')).rejects.toThrow(
-        'out_of_scope',
-      );
-      const after = await listWardIssues(WARD_OUT_OF_SCOPE.id);
-      expect(after).toEqual(before);
+    it('curator can add to a second ward (city-wide)', async () => {
+      const { id } = await addWardIssue(ACTOR_CURATOR, WARD_B.id, 'Curator-added issue');
+      const after = await listWardIssues(WARD_B.id);
+      expect(after.map((i) => i.id)).toContain(id);
     });
 
-    it('admin can add to any ward regardless of scope', async () => {
-      const { id } = await addWardIssue(ACTOR_ADMIN, WARD_OUT_OF_SCOPE.id, 'Admin-added issue');
+    it('admin can add to any ward', async () => {
+      const { id } = await addWardIssue(ACTOR_ADMIN, WARD_B.id, 'Admin-added issue');
       const [row] = await db.select().from(schema.wardIssues).where(eq(schema.wardIssues.id, id));
       expect(row?.titleEn).toBe('Admin-added issue');
     });
@@ -136,7 +130,7 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
 
   describe('renameWardIssue — id unchanged, votes preserved', () => {
     it('title changes, id unchanged, and a pre-existing issue_vote_selection referencing it still exists', async () => {
-      const { id: issueId } = await addWardIssue(ACTOR_CURATOR, WARD_IN_SCOPE.id, 'Original Title');
+      const { id: issueId } = await addWardIssue(ACTOR_CURATOR, WARD_A.id, 'Original Title');
 
       // Simulate a citizen's existing cast vote referencing this issue.
       const [voter] = await db
@@ -151,7 +145,7 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
       await db.delete(schema.issueVoteSets).where(eq(schema.issueVoteSets.userId, voter!.id));
       const [voteSet] = await db
         .insert(schema.issueVoteSets)
-        .values({ userId: voter!.id, wardId: WARD_IN_SCOPE.id })
+        .values({ userId: voter!.id, wardId: WARD_A.id })
         .returning({ id: schema.issueVoteSets.id });
       await db.insert(schema.issueVoteSelections).values({ setId: voteSet!.id, wardIssueId: issueId });
 
@@ -176,19 +170,19 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
       await db.delete(schema.users).where(eq(schema.users.id, voter!.id));
     });
 
-    it('out-of-scope curator (issue in an out-of-scope ward) throws out_of_scope, title unchanged', async () => {
-      const { id: issueId } = await addWardIssue(ACTOR_ADMIN, WARD_OUT_OF_SCOPE.id, 'Out Of Scope Issue');
-      await expect(renameWardIssue(ACTOR_CURATOR, issueId, 'Should not apply')).rejects.toThrow('out_of_scope');
+    it('curator can rename an issue in a second ward (city-wide)', async () => {
+      const { id: issueId } = await addWardIssue(ACTOR_ADMIN, WARD_B.id, 'Second Ward Issue');
+      await renameWardIssue(ACTOR_CURATOR, issueId, 'Second Ward Issue Renamed');
 
       const [row] = await db.select().from(schema.wardIssues).where(eq(schema.wardIssues.id, issueId));
-      expect(row?.titleEn).toBe('Out Of Scope Issue');
+      expect(row?.titleEn).toBe('Second Ward Issue Renamed');
     });
   });
 
   describe('removeWardIssue — cascades its own selections, leaves other issues in the same set alone', () => {
     it('the ward_issue is gone, its issue_vote_selections cascade-removed, but OTHER issues in the same vote set remain', async () => {
-      const { id: issueToRemove } = await addWardIssue(ACTOR_CURATOR, WARD_IN_SCOPE.id, 'Issue To Remove');
-      const { id: issueToKeep } = await addWardIssue(ACTOR_CURATOR, WARD_IN_SCOPE.id, 'Issue To Keep');
+      const { id: issueToRemove } = await addWardIssue(ACTOR_CURATOR, WARD_A.id, 'Issue To Remove');
+      const { id: issueToKeep } = await addWardIssue(ACTOR_CURATOR, WARD_A.id, 'Issue To Keep');
 
       const [voter] = await db
         .insert(schema.users)
@@ -198,7 +192,7 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
       await db.delete(schema.issueVoteSets).where(eq(schema.issueVoteSets.userId, voter!.id));
       const [voteSet] = await db
         .insert(schema.issueVoteSets)
-        .values({ userId: voter!.id, wardId: WARD_IN_SCOPE.id })
+        .values({ userId: voter!.id, wardId: WARD_A.id })
         .returning({ id: schema.issueVoteSets.id });
       await db.insert(schema.issueVoteSelections).values([
         { setId: voteSet!.id, wardIssueId: issueToRemove },
@@ -222,12 +216,12 @@ describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.
       await db.delete(schema.users).where(eq(schema.users.id, voter!.id));
     });
 
-    it('out-of-scope curator throws out_of_scope, the issue is left in place', async () => {
-      const { id: issueId } = await addWardIssue(ACTOR_ADMIN, WARD_OUT_OF_SCOPE.id, 'Should survive');
-      await expect(removeWardIssue(ACTOR_CURATOR, issueId)).rejects.toThrow('out_of_scope');
+    it('curator can remove an issue in a second ward (city-wide)', async () => {
+      const { id: issueId } = await addWardIssue(ACTOR_ADMIN, WARD_B.id, 'To be removed');
+      await removeWardIssue(ACTOR_CURATOR, issueId);
 
       const [row] = await db.select().from(schema.wardIssues).where(eq(schema.wardIssues.id, issueId));
-      expect(row).toBeDefined();
+      expect(row).toBeUndefined();
     });
 
     it('removing a non-existent issue throws (not a silent no-op)', async () => {

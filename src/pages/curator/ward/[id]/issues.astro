@@ -2,8 +2,7 @@
 /**
  * `/curator/ward/{id}/issues` — see
  * src/features/pages/curator/WardIssuesEdit.astro for the presentational
- * side. This route twin owns the numeric-id existence check (404), the
- * SCOPE CHECK against the ward (`canEditWard`, 403), dispatching the
+ * side. This route twin owns the numeric-id existence check (404), dispatching the
  * add/rename/remove POSTs via src/lib/ward-issues.ts, and no-store on
  * every response.
  *
@@ -14,7 +13,6 @@
  * `required` attribute).
  */
 import WardIssuesEdit from '../../../../features/pages/curator/WardIssuesEdit.astro';
-import { canEditWard } from '../../../../lib/authz';
 import { loadCuratorLang, loadWardBasic } from '../../../../lib/curator';
 import { addWardIssue, listWardIssues, removeWardIssue, renameWardIssue } from '../../../../lib/ward-issues';
 
@@ -30,11 +28,6 @@ if (!idParam || !Number.isInteger(wardId)) {
 const ward = await loadWardBasic(wardId);
 if (!ward) {
   return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
-}
-
-const inScope = await canEditWard(session.userId, session.role, wardId);
-if (!inScope) {
-  return new Response('Forbidden', { status: 403, headers: { 'cache-control': 'no-store' } });
 }
 
 const lang = await loadCuratorLang(session.userId);
@@ -91,7 +84,7 @@ if (Astro.request.method === 'POST') {
       return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
     }
   } catch (err) {
-    if (err instanceof Error && (err.message === 'out_of_scope' || err.message === 'not_found')) {
+    if (err instanceof Error && err.message === 'not_found') {
       return new Response('Forbidden', { status: 403, headers: { 'cache-control': 'no-store' } });
     }
     throw err;

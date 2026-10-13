@@ -22,8 +22,8 @@
  *   - Every PRESENT field (populated or notDeclared) must carry a source
  *     (sourceUrl non-empty) — a populated-but-sourceless field is a gap.
  *
- * SIGN-OFF: signOffWard is scope-checked (throws 'out_of_scope' for a
- * curator not covering the ward), snapshots the computed readiness, and
+ * SIGN-OFF: signOffWard works in any ward for a curator or admin (both
+ * are city-wide), snapshots the computed readiness, and
  * does NOT refuse on incompleteness — the curator's sign-off is a human
  * judgement layered on top of the mechanical check (design-system.md
  * §7.13: the readiness panel shows the gaps precisely so an incomplete
@@ -109,21 +109,21 @@ const WARD_MISSING_NAME_PARTY = {
   zone: 'Zone R',
   boundaryRef: 'readiness-test-ward-missing-name-party',
 };
-const WARD_SCOPE_IN = {
+const WARD_SIGNOFF_A = {
   id: 99487,
-  nameEn: 'Readiness Test Ward Scope In',
+  nameEn: 'Readiness Test Ward Sign-off A',
   nameKn: 'ಸಿದ್ಧತೆ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಎಚ್',
   corporation: 'south' as const,
   zone: 'Zone R',
-  boundaryRef: 'readiness-test-ward-scope-in',
+  boundaryRef: 'readiness-test-ward-signoff-a',
 };
-const WARD_SCOPE_OUT = {
+const WARD_SIGNOFF_B = {
   id: 99488,
-  nameEn: 'Readiness Test Ward Scope Out',
+  nameEn: 'Readiness Test Ward Sign-off B',
   nameKn: 'ಸಿದ್ಧತೆ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಐ',
   corporation: 'south' as const,
   zone: 'Zone R',
-  boundaryRef: 'readiness-test-ward-scope-out',
+  boundaryRef: 'readiness-test-ward-signoff-b',
 };
 const WARD_GATE_INCOMPLETE_SIGNED = {
   id: 99489,
@@ -166,8 +166,8 @@ const ALL_WARDS = [
   WARD_WITHDRAWN_ONLY_HAS_GAPS,
   WARD_EMPTY,
   WARD_MISSING_NAME_PARTY,
-  WARD_SCOPE_IN,
-  WARD_SCOPE_OUT,
+  WARD_SIGNOFF_A,
+  WARD_SIGNOFF_B,
   WARD_GATE_INCOMPLETE_SIGNED,
   WARD_GATE_COMPLETE_NOT_SIGNED,
   WARD_GATE_COMPLETE_SIGNED,
@@ -248,13 +248,10 @@ describe('src/lib/readiness.ts (Task 39)', () => {
     curatorId = curator!.id;
 
     await resetFixtures();
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
-    await db.insert(schema.curatorScopes).values({ userId: curatorId, wardId: WARD_SCOPE_IN.id });
   });
 
   afterAll(async () => {
     await resetFixtures();
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
     await db.delete(schema.users).where(eq(schema.users.id, curatorId));
     await client.end();
   });
@@ -359,25 +356,14 @@ describe('src/lib/readiness.ts (Task 39)', () => {
   });
 });
 
-  describe('signOffWard (scope + snapshot + audit)', () => {
-  beforeAll(async () => {
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
-    await db.insert(schema.curatorScopes).values({ userId: curatorId, wardId: WARD_SCOPE_IN.id });
-  });
-
-  it('an out-of-scope curator throws out_of_scope', async () => {
-    await expect(signOffWard({ userId: curatorId, role: 'curator' }, WARD_SCOPE_OUT.id)).rejects.toThrow(
-      'out_of_scope',
-    );
-  });
-
-  it('an in-scope curator signs off: snapshot + signedOffAt set + audit-logged, even when the ward is NOT mechanically complete', async () => {
-    // WARD_SCOPE_IN has zero candidates -> mechanically incomplete. Signing
+  describe('signOffWard (snapshot)', () => {
+  it('a curator signs off: snapshot + signedOffAt set, even when the ward is NOT mechanically complete', async () => {
+    // WARD_SIGNOFF_A has zero candidates -> mechanically incomplete. Signing
     // off anyway must succeed: the sign-off is a human judgement, not gated
     // on completeness (the gaps are shown to inform it, not block it).
-    await signOffWard({ userId: curatorId, role: 'curator' }, WARD_SCOPE_IN.id);
+    await signOffWard({ userId: curatorId, role: 'curator' }, WARD_SIGNOFF_A.id);
 
-    const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_SCOPE_IN.id));
+    const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_SIGNOFF_A.id));
     expect(row?.signedOffAt).not.toBeNull();
     expect(row?.signedOffBy).toBe(curatorId);
     expect(row?.clearedAt).toBeNull();
@@ -385,9 +371,9 @@ describe('src/lib/readiness.ts (Task 39)', () => {
 
   });
 
-  it('admin can sign off any ward regardless of scope', async () => {
-    await signOffWard({ userId: 999999, role: 'admin' }, WARD_SCOPE_OUT.id);
-    const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_SCOPE_OUT.id));
+  it('admin can sign off any ward', async () => {
+    await signOffWard({ userId: 999999, role: 'admin' }, WARD_SIGNOFF_B.id);
+    const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_SIGNOFF_B.id));
     expect(row?.signedOffAt).not.toBeNull();
   });
 });

@@ -17,9 +17,8 @@
  *   3. A candidate_fields row for seed-dev's first candidate on its first
  *      ward — a known BASELINE value with sourceType 'curator', so
  *      flag.spec.ts has something real to flag and later see corrected.
- *   4. A curator user (role='curator') scoped to that same first ward, so
- *      flag.spec.ts's second actor (accept + publish) can log in and act
- *      without needing city-wide admin scope.
+ *   4. A curator user (role='curator'), so flag.spec.ts's second actor
+ *      (accept + publish) can log in and act without being an admin.
  *
  * Never writes real candidate/party/curator data — every string here is
  * marked (E2E FIXTURE) the same way seed-dev marks its own rows
@@ -49,7 +48,7 @@ import path from 'node:path';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as schema from '../src/db/schema';
 import type { Db } from '../src/db/client';
 import { seedWards } from './seed-wards';
@@ -119,24 +118,14 @@ async function ensureFlaggableField(db: Db, candidateId: number): Promise<void> 
     });
 }
 
-async function ensureCurator(db: Db, wardId: number): Promise<void> {
-  const [curator] = await db
+async function ensureCurator(db: Db): Promise<void> {
+  await db
     .insert(schema.users)
     .values({ email: E2E_CURATOR_EMAIL, role: 'curator', status: 'active' })
     .onConflictDoUpdate({
       target: schema.users.email,
       set: { role: 'curator', status: 'active' },
-    })
-    .returning({ id: schema.users.id });
-
-  const [existingScope] = await db
-    .select()
-    .from(schema.curatorScopes)
-    .where(and(eq(schema.curatorScopes.userId, curator!.id), eq(schema.curatorScopes.wardId, wardId)));
-
-  if (!existingScope) {
-    await db.insert(schema.curatorScopes).values({ userId: curator!.id, wardId });
-  }
+    });
 }
 
 export async function seedE2E(db: Db): Promise<SeedE2EResult> {
@@ -169,7 +158,7 @@ export async function seedE2E(db: Db): Promise<SeedE2EResult> {
   }
 
   await ensureFlaggableField(db, candidate.id);
-  await ensureCurator(db, primaryWardId);
+  await ensureCurator(db);
 
   return {
     wardIds: devResult.wardIds,

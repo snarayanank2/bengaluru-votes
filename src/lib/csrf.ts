@@ -1,6 +1,6 @@
 /**
  * Synchronizer CSRF tokens (architecture.md §7 "one middleware enforces
- * roles + curator ward scope... server-rendered forms carry a synchronizer
+ * roles... server-rendered forms carry a synchronizer
  * CSRF token", §13 "CSRF"). `SameSite=Lax` plus the middleware's
  * Origin/Sec-Fetch-Site check (src/middleware.ts) are the first two layers;
  * this is the third, specifically for the no-JS server-rendered form paths

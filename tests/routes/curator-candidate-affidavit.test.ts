@@ -9,7 +9,7 @@
  *
  * `extractAffidavitFields` and `fetchAffidavitFromEc` are both MOCKED —
  * this suite is about the ROUTE WIRING (upload vs. EC-link dispatch,
- * curator scope, CSRF), not the SSRF hardening (tests/unit/affidavit-fetch.test.ts)
+ * CSRF), not the SSRF hardening (tests/unit/affidavit-fetch.test.ts)
  * or the extraction pipeline (tests/unit/extract.test.ts) themselves.
  *
  * COVERAGE MAP:
@@ -20,7 +20,6 @@
  *     URL, stores its returned bytes, and creates a `candidate_affidavits`
  *     row with `originUrl` set to the pasted link.
  *   - validation: neither file nor url -> 400; both provided -> 400.
- *   - SCOPE: a curator not scoped to the candidate's ward -> 403.
  *   - CSRF: POST without the synchronizer token -> 403.
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -61,7 +60,7 @@ const SITE_URL = new URL(SITE_ORIGIN);
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
 
-// High, task-specific ward ids (Task 37 brief) — this suite owns 99450-99451.
+// High, task-specific ward id (Task 37 brief) — this suite owns 99450.
 const WARD_A = {
   id: 99450,
   nameEn: 'Affidavit Test Ward A',
@@ -70,15 +69,6 @@ const WARD_A = {
   zone: 'Zone Y',
   boundaryRef: 'affidavit-test-ward-a',
 };
-const WARD_OUT_OF_SCOPE = {
-  id: 99451,
-  nameEn: 'Affidavit Test Ward Out Of Scope',
-  nameKn: 'ಅಫಿಡವಿಟ್ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಔಟ್',
-  corporation: 'south' as const,
-  zone: 'Zone Y',
-  boundaryRef: 'affidavit-test-ward-out-of-scope',
-};
-
 const PDF_BYTES = Buffer.from('%PDF-1.4\nfake-affidavit-body-for-route-test\n%%EOF');
 
 async function makeContainer() {
@@ -150,33 +140,26 @@ async function upsertUser(email: string): Promise<number> {
 let curatorId: number;
 let curatorAuth: { cookieValue: string; token: string };
 let candidateA: number;
-let candidateOutOfScope: number;
 
 async function resetFixtures(): Promise<void> {
   if (typeof curatorId === 'number') {
     await db.delete(schema.sessions).where(eq(schema.sessions.userId, curatorId));
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
   }
-  const candidateIds = [candidateA, candidateOutOfScope].filter((v): v is number => typeof v === 'number');
-  if (candidateIds.length > 0) {
+  if (typeof candidateA === 'number') {
     await db.delete(schema.candidateAffidavits).where(eq(schema.candidateAffidavits.candidateId, candidateA));
   }
   await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD_A.id));
-  await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD_OUT_OF_SCOPE.id));
 }
 
 describe('/curator/candidate/{id} — affidavit ingestion (Task 37)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 
-    for (const ward of [WARD_A, WARD_OUT_OF_SCOPE]) {
-      await db.insert(schema.wards).values(ward).onConflictDoUpdate({ target: schema.wards.id, set: ward });
-    }
+    await db.insert(schema.wards).values(WARD_A).onConflictDoUpdate({ target: schema.wards.id, set: WARD_A });
 
     curatorId = await upsertUser('affidavit-test-curator@example.com');
     await resetFixtures();
 
-    await db.insert(schema.curatorScopes).values({ userId: curatorId, wardId: WARD_A.id });
     curatorAuth = await sessionFor(curatorId);
 
     const [rowA] = await db
@@ -184,12 +167,6 @@ describe('/curator/candidate/{id} — affidavit ingestion (Task 37)', () => {
       .values({ slug: 'affidavit-test-candidate-a', wardId: WARD_A.id, nameEn: 'Affidavit Test Candidate', partyEn: 'Independent' })
       .returning({ id: schema.candidates.id });
     candidateA = rowA!.id;
-
-    const [rowOut] = await db
-      .insert(schema.candidates)
-      .values({ slug: 'affidavit-test-candidate-oos', wardId: WARD_OUT_OF_SCOPE.id, nameEn: 'Out Of Scope Candidate', partyEn: 'Independent' })
-      .returning({ id: schema.candidates.id });
-    candidateOutOfScope = rowOut!.id;
   });
 
   afterAll(async () => {
@@ -270,18 +247,6 @@ describe('/curator/candidate/{id} — affidavit ingestion (Task 37)', () => {
     fd.set('affidavitFile', new File([PDF_BYTES], 'affidavit.pdf', { type: 'application/pdf' }));
     const res = await run(`/curator/candidate/${candidateA}`, { cookieValue: curatorAuth.cookieValue, params: { id: String(candidateA) }, form: fd });
     expect(res.status).toBe(400);
-  });
-
-  it('curator out of scope for the candidate\'s ward -> 403', async () => {
-    const fd = affidavitForm({}, curatorAuth.token);
-    fd.set('affidavitFile', new File([PDF_BYTES], 'affidavit.pdf', { type: 'application/pdf' }));
-
-    const res = await run(`/curator/candidate/${candidateOutOfScope}`, {
-      cookieValue: curatorAuth.cookieValue,
-      params: { id: String(candidateOutOfScope) },
-      form: fd,
-    });
-    expect(res.status).toBe(403);
   });
 
   it('CSRF: POST without the synchronizer token -> 403', async () => {

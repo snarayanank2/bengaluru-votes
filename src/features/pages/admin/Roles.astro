@@ -1,22 +1,10 @@
 ---
 /**
  * `/admin/roles` (Task 44, information-architecture.md §6.2; PRD §7/§10;
- * design-system.md §7.13). The roles & scope console: grant a role to a
- * user (by id/email lookup), a dense overview table of every current
- * curator/admin with their scope, and a per-user "manage" panel with
- * REVOKE and SET SCOPE forms (curators only — an admin's scope is
- * city-wide, never a stored ward set, see src/lib/authz.ts's
- * `canEditWard`).
- *
- * THE ZONE SHORTCUT (PRD §10): the scope form's ward list is a plain
- * comma-separated ward-id text field (369 wards is too many for a
- * reasonable native `<select multiple>`) PLUS a zone `<select>` — picking
- * a zone does not replace the typed ids, it's UNIONED with them at save
- * time (the route twin calls `expandZoneToWards` and merges the two id
- * sets before calling `setCuratorScope`, which itself has no notion of
- * zones — see src/lib/admin.ts's module docstring). The prefilled
- * `wardIds` value always reflects the CURRENT stored scope, so re-submitting
- * unchanged is a no-op replace.
+ * design-system.md §7.13). The roles console: grant a role to a user (by
+ * id/email lookup), a dense overview table of every current curator/admin,
+ * and a per-user "manage" panel with a REVOKE form. Curators and admins
+ * are both city-wide, so there is no ward scope to set.
  *
  * CONFIRMATION (design-system.md §7.13: "destructive and publish actions
  * get confirmation dialogs stating scope"): this codebase's established
@@ -24,7 +12,7 @@
  * is a REQUIRED checkbox with explicit label text, re-validated
  * server-side (see src/lib/curator.ts's `handleAccept`/`confirmPublish`,
  * src/features/pages/curator/WardIssuesEdit.astro's `confirmRemove`) —
- * grant/revoke/set-scope follow the exact same convention here.
+ * grant/revoke follow the exact same convention here.
  */
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Card from '../../../components/Card.astro';
@@ -33,17 +21,16 @@ import Button from '../../../components/Button.astro';
 import FormField from '../../../components/FormField.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
-import type { CuratorScopeRow } from '../../../lib/admin';
+import type { StaffRow } from '../../../lib/admin';
 
 interface Props {
   lang: Lang;
   csrfToken: string;
-  rows: CuratorScopeRow[];
-  zones: string[];
+  rows: StaffRow[];
   message?: { kind: 'notice' | 'error'; key: string };
 }
 
-const { lang, csrfToken, rows, zones, message } = Astro.props;
+const { lang, csrfToken, rows, message } = Astro.props;
 const messageText = message ? t(lang, message.key) : undefined;
 ---
 
@@ -98,7 +85,6 @@ const messageText = message ? t(lang, message.key) : undefined;
                   <th>{t(lang, 'admin.roles.list.colId')}</th>
                   <th>{t(lang, 'admin.roles.list.colEmail')}</th>
                   <th>{t(lang, 'admin.roles.list.colRole')}</th>
-                  <th>{t(lang, 'admin.roles.list.colWards')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,7 +93,6 @@ const messageText = message ? t(lang, message.key) : undefined;
                     <td>{row.id}</td>
                     <td>{row.email ?? '—'}</td>
                     <td>{row.role === 'admin' ? t(lang, 'admin.roles.list.roleAdmin') : t(lang, 'admin.roles.list.roleCurator')}</td>
-                    <td>{row.role === 'admin' ? t(lang, 'admin.roles.list.cityWide') : `${row.wards.length} — ${row.wards.map((w) => w.nameEn).join(', ')}`}</td>
                   </tr>
                 ))}
               </tbody>
@@ -142,41 +127,6 @@ const messageText = message ? t(lang, message.key) : undefined;
                     {t(lang, 'admin.roles.manage.revoke.submit')}
                   </Button>
                 </form>
-
-                {
-                  row.role === 'curator' && (
-                    <form method="post" action="/admin/roles" class="scope-form">
-                      <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                      <input type="hidden" name="formAction" value="set_scope" />
-                      <input type="hidden" name="targetUserId" value={row.id} />
-                      <FormField
-                        label={t(lang, 'admin.roles.manage.scope.wardIdsLabel')}
-                        name="wardIds"
-                        helper={t(lang, 'admin.roles.manage.scope.wardIdsHelper')}
-                        value={row.wards.map((w) => w.id).join(', ')}
-                        lang={lang}
-                      />
-                      <div class="form-field">
-                        <label class="form-label" for={`scope-zone-${row.id}`}>
-                          {t(lang, 'admin.roles.manage.scope.zoneLabel')}
-                        </label>
-                        <select id={`scope-zone-${row.id}`} class="form-input" name="zone">
-                          <option value="">{t(lang, 'admin.roles.manage.scope.zoneNone')}</option>
-                          {zones.map((zone) => (
-                            <option value={zone}>{zone}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <label class="checkbox">
-                        <input type="checkbox" name="confirm" required />
-                        {t(lang, 'admin.roles.manage.scope.confirmLabel', { email: row.email ?? String(row.id) })}
-                      </label>
-                      <Button type="submit" variant="secondary" lang={lang}>
-                        {t(lang, 'admin.roles.manage.scope.submit')}
-                      </Button>
-                    </form>
-                  )
-                }
               </li>
             ))}
           </ul>
@@ -216,8 +166,7 @@ const messageText = message ? t(lang, message.key) : undefined;
   }
 
   .grant-form,
-  .revoke-form,
-  .scope-form {
+  .revoke-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);

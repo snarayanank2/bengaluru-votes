@@ -4,16 +4,12 @@
  * src/features/pages/curator/CandidateEdit.astro for the presentational
  * side. This route twin owns:
  *   - resolving `?ward=` (missing/non-numeric -> 400; unknown ward -> 404);
- *   - the SCOPE CHECK (`canEditWard`) against that ward id -> 403 for a
- *     curator not scoped to it (same convention as
- *     src/pages/curator/queue/[id].astro);
  *   - dispatching the create POST, and redirecting to the new candidate's
  *     `/curator/candidate/{id}` edit page on success (so report-card fields
  *     can be added right after creation);
  *   - no-store on every response.
  */
 import CandidateEdit from '../../../features/pages/curator/CandidateEdit.astro';
-import { canEditWard } from '../../../lib/authz';
 import { handleCandidateCreate, loadCuratorLang, loadWardBasic } from '../../../lib/curator';
 
 const session = Astro.locals.session!;
@@ -28,11 +24,6 @@ if (!wardIdParam || !Number.isInteger(wardId)) {
 const ward = await loadWardBasic(wardId);
 if (!ward) {
   return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
-}
-
-const inScope = await canEditWard(session.userId, session.role, wardId);
-if (!inScope) {
-  return new Response('Forbidden', { status: 403, headers: { 'cache-control': 'no-store' } });
 }
 
 const lang = await loadCuratorLang(session.userId);

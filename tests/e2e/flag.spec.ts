@@ -6,8 +6,8 @@
  * share a session):
  *   1. An anonymous citizen (registers via OTP mid-flow) flags the seeded
  *      candidate's `track_record` field, suggesting a correction.
- *   2. The seeded curator (already-registered contact, plain OTP login,
- *      scoped to this candidate's ward via curator_scopes) opens the queue
+ *   2. The seeded curator (already-registered contact, plain OTP login)
+ *      opens the queue
  *      item this flag created and PUBLISHES a correction.
  *
  * The flag_items row this creates is looked up directly via the DB (rather

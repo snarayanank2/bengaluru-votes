@@ -64,6 +64,13 @@
       "when": 1787165000000,
       "tag": "0008_remove_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791861340407,
+      "tag": "0009_remove_curator_scopes",
+      "breakpoints": true
     }
   ]
 }

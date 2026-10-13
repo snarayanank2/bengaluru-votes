@@ -7,7 +7,7 @@ import * as schema from '../../src/db/schema';
 import { onRequest } from '../../src/middleware';
 import { createSession, SESSION_COOKIE } from '../../src/lib/session';
 import { issueCsrfToken } from '../../src/lib/csrf';
-import { canEditWard, isSameOriginRelative } from '../../src/lib/authz';
+import { isSameOriginRelative } from '../../src/lib/authz';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -32,7 +32,6 @@ const WARD = {
   zone: 'Zone T',
   boundaryRef: 'middleware-test-ward',
 };
-const UNSCOPED_WARD_ID = 99002;
 
 const EMAILS = {
   citizen: 'middleware-citizen@example.com',
@@ -58,22 +57,16 @@ beforeAll(async () => {
 
   await db
     .insert(schema.wards)
-    .values([WARD, { ...WARD, id: UNSCOPED_WARD_ID, boundaryRef: 'middleware-test-ward-2' }])
+    .values(WARD)
     .onConflictDoNothing();
 
   citizenId = await upsertUser(EMAILS.citizen, 'citizen');
   curatorId = await upsertUser(EMAILS.curator, 'curator');
   adminId = await upsertUser(EMAILS.admin, 'admin');
-
-  await db
-    .insert(schema.curatorScopes)
-    .values({ userId: curatorId, wardId: WARD.id })
-    .onConflictDoNothing();
 });
 
 afterAll(async () => {
   const userIds = [citizenId, curatorId, adminId];
-  await db.delete(schema.curatorScopes).where(inArray(schema.curatorScopes.userId, userIds));
   await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
   await db.delete(schema.users).where(inArray(schema.users.email, Object.values(EMAILS)));
   await client.end();
@@ -400,25 +393,6 @@ describe('src/middleware.ts', () => {
           expect(isSameOriginRelative(input).startsWith('//')).toBe(false);
         }
       });
-    });
-  });
-
-  describe('canEditWard', () => {
-    it('admin: true for any ward', async () => {
-      expect(await canEditWard(adminId, 'admin', WARD.id)).toBe(true);
-      expect(await canEditWard(adminId, 'admin', UNSCOPED_WARD_ID)).toBe(true);
-    });
-
-    it('curator: true for a scoped ward', async () => {
-      expect(await canEditWard(curatorId, 'curator', WARD.id)).toBe(true);
-    });
-
-    it('curator: false for an unscoped ward', async () => {
-      expect(await canEditWard(curatorId, 'curator', UNSCOPED_WARD_ID)).toBe(false);
-    });
-
-    it('citizen: always false', async () => {
-      expect(await canEditWard(citizenId, 'citizen', WARD.id)).toBe(false);
     });
   });
 

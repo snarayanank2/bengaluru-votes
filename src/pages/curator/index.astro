@@ -14,7 +14,7 @@ import Dashboard from '../../features/pages/curator/Dashboard.astro';
 import { loadDashboard, loadCuratorLang } from '../../lib/curator';
 
 const session = Astro.locals.session!;
-const [data, lang] = await Promise.all([loadDashboard(session.userId, session.role), loadCuratorLang(session.userId)]);
+const [data, lang] = await Promise.all([loadDashboard(), loadCuratorLang(session.userId)]);
 
 Astro.response.headers.set('cache-control', 'no-store');
 ---

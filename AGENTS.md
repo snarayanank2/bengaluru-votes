@@ -118,7 +118,7 @@ Session, CSRF, role authorization, CSP, and cache-safety all run here, before an
 Two invariants worth stating outright:
 
 - **It never calls `cookies.set`/`cookies.delete`, on any route.** That omission *is* the cache-safety guarantee (public GETs never set a cookie). A route test asserts it.
-- **Per-ward curator scope is not checked here.** The middleware only knows the route class, not which ward an edit targets. Call `canEditWard` (`src/lib/authz.ts`) where the ward id is known.
+- **There is no per-ward scope.** Curators and admins are both city-wide, so the role check here is the whole answer for `/curator/*` and `/admin/*`; `canEditWard` and the `curator_scopes` table were removed (migration `0009`).
 
 ### The caching invariant
 
@@ -160,9 +160,9 @@ Register/Login (fallback page `/login`) and Flag are **modals** that overlay wit
 
 ### Roles
 
-Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Data curator (**scoped to assigned wards/zone**) · Admin (city-wide). `roleEnum` in the schema is the authority on what exists today; `src/middleware.ts` and `src/lib/authz.ts` are the authority on what each can do. There is no written permissions matrix at present.
+Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Data curator (**city-wide**, no ward or zone assignment) · Admin (city-wide). `roleEnum` in the schema is the authority on what exists today; `src/middleware.ts` is the authority on what each can do. There is no written permissions matrix at present.
 
-A fifth role, **transcriber**, is planned but not built: city-wide, *scopeless*, so `canEditWard` will not apply to it and authorization becomes "does an open assignment for this affidavit belong to this caller". That is a change to the enforcement model, not a new row in a table — see `docs/milestones.md` §10 before implementing it.
+A fifth role, **transcriber**, is planned but not built: city-wide, and authorized by assignment rather than by role alone — "does an open assignment for this affidavit belong to this caller". That is a change to the enforcement model, not a new row in a table — see `docs/milestones.md` §10 before implementing it.
 
 ## Gotchas that bite silently
 

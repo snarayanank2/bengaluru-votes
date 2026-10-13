@@ -2,12 +2,8 @@
 /**
  * `/admin/roles` — see src/features/pages/admin/Roles.astro for the
  * presentational side. This route twin owns the HTTP concerns a plain
- * component cannot: dispatching the three POST form actions (`grant`,
- * `revoke`, `set_scope`) to src/lib/admin.ts, the ZONE-SHORTCUT UNION
- * (parsing the comma-separated `wardIds` text field, expanding the chosen
- * `zone` via `expandZoneToWards`, and merging the two id sets BEFORE
- * calling `setCuratorScope` — see that function's docstring: it has no
- * notion of zones itself), and no-store on every response.
+ * component cannot: dispatching the two POST form actions (`grant`,
+ * `revoke`) to src/lib/admin.ts, and no-store on every response.
  *
  * src/middleware.ts already 403s any non-admin session and redirects an
  * anonymous request to /login before this ever runs; the actor handed to
@@ -16,16 +12,7 @@
  * in depth, not something this route expects to ever trip.
  */
 import Roles from '../../features/pages/admin/Roles.astro';
-import {
-  expandZoneToWards,
-  findUserIdByLookup,
-  grantRole,
-  listCuratorsAndScopes,
-  listZones,
-  revokeRole,
-  setCuratorScope,
-  type AdminActor,
-} from '../../lib/admin';
+import { findUserIdByLookup, grantRole, listCuratorsAndAdmins, revokeRole, type AdminActor } from '../../lib/admin';
 import { loadCuratorLang } from '../../lib/curator';
 
 const session = Astro.locals.session!;
@@ -35,24 +22,12 @@ const actor: AdminActor = { userId: session.userId, role: 'admin' };
 function errorKey(err: unknown, fallbackKey: string): string {
   const msg = err instanceof Error ? err.message : '';
   if (msg === 'user_not_found') return 'admin.roles.error.userNotFound';
-  if (msg === 'invalid_ward_id') return 'admin.roles.error.invalidWardId';
   // Lockout-prevention guards (src/lib/admin.ts's assertNotSelfOrLastAdmin,
   // Task 44 review) — thrown by both revokeRole and grantRole's one
   // demote-an-admin path, so this mapping covers both formActions.
   if (msg === 'cannot_revoke_self') return 'admin.roles.error.cannotRevokeSelf';
   if (msg === 'cannot_revoke_last_admin') return 'admin.roles.error.cannotRevokeLastAdmin';
   return fallbackKey;
-}
-
-/** Parses the scope form's comma-separated `wardIds` text field. `null` for any token that isn't a bare integer (the route responds 400 rather than silently dropping a typo'd id). */
-function parseWardIdsText(text: string): number[] | null {
-  const tokens = text
-    .split(',')
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
-  const ids = tokens.map(Number);
-  if (ids.some((n) => !Number.isInteger(n))) return null;
-  return ids;
 }
 
 let message: { kind: 'notice' | 'error'; key: string } | undefined;
@@ -102,43 +77,14 @@ if (Astro.request.method === 'POST') {
         responseStatus = 400;
       }
     }
-  } else if (formAction === 'set_scope') {
-    const targetUserId = Number(form.get('targetUserId'));
-    if (!Number.isInteger(targetUserId)) {
-      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
-    }
-    if (!confirmed) {
-      message = { kind: 'error', key: 'admin.roles.error.confirmRequired' };
-      responseStatus = 400;
-    } else {
-      const manualIds = parseWardIdsText(String(form.get('wardIds') ?? ''));
-      if (manualIds === null) {
-        message = { kind: 'error', key: 'admin.roles.error.invalidWardId' };
-        responseStatus = 400;
-      } else {
-        const zone = String(form.get('zone') ?? '').trim();
-        // THE ZONE SHORTCUT (PRD §10): union the zone's wards into the
-        // manually-typed set at save time — expandZoneToWards has no
-        // memory of this choice; only the resulting per-ward rows persist.
-        const zoneIds = zone ? await expandZoneToWards(zone) : [];
-        const wardIds = [...new Set([...manualIds, ...zoneIds])];
-        try {
-          await setCuratorScope(actor, targetUserId, wardIds);
-          return new Response(null, { status: 302, headers: { Location: '/admin/roles', 'cache-control': 'no-store' } });
-        } catch (err) {
-          message = { kind: 'error', key: errorKey(err, 'admin.roles.error.invalidWardId') };
-          responseStatus = 400;
-        }
-      }
-    }
   } else {
     return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
   }
 }
 
-const [rows, zones, lang] = await Promise.all([listCuratorsAndScopes(), listZones(), loadCuratorLang(session.userId)]);
+const [rows, lang] = await Promise.all([listCuratorsAndAdmins(), loadCuratorLang(session.userId)]);
 Astro.response.headers.set('cache-control', 'no-store');
 Astro.response.status = responseStatus;
 ---
 
-<Roles lang={lang} csrfToken={Astro.locals.csrfToken} rows={rows} zones={zones} message={message} />
+<Roles lang={lang} csrfToken={Astro.locals.csrfToken} rows={rows} message={message} />

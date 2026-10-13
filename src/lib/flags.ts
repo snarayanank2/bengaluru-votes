@@ -35,7 +35,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
 import { candidates, flagItems, flagSubmissions, wardIssues, wards } from '../db/schema';
-import { canEditWard } from './authz';
 import { isUniqueViolation } from './db-errors';
 import { publishCandidateFieldTx, type PublishCandidateFieldInput } from './publish';
 import { translateFieldSoon } from './translate-runtime';
@@ -188,22 +187,8 @@ export async function submitFlag(userId: number, input: SubmitFlagInput): Promis
 }
 
 /**
- * Resolves a queue item (curator/admin only — PRD §6.1; the caller, e.g.
- * Task 34's curator route, ALSO does a per-ward `canEditWard` scope check
- * on the loaded item BEFORE calling this).
- *
- * ACCEPT-PATH SCOPE RE-CHECK (final-review Fix 1, defense-in-depth): before
- * publishing, this re-derives the REAL ward of the candidate actually being
- * written (`resolution.publish.candidateId`'s `wardId`) and asserts the
- * acting curator `canEditWard` THAT ward — not merely the flag item's stored
- * `wardId`. Admin (city-wide) always passes. This closes the seam
- * permanently: even a legacy/hand-inserted flag_items row whose stored
- * `wardId` was filed against the wrong ward (so the route's item.wardId
- * check passed for a curator who has no scope over the candidate's true
- * ward) can never publish a field in a ward the curator doesn't own — the
- * publish is authorized against the write's ACTUAL target ward. Throws
- * `out_of_scope` (failing closed — no publish, no status flip) when not
- * allowed.
+ * Resolves a queue item (curator/admin only — PRD §6.1). Both roles are
+ * city-wide, so there is no per-ward check.
  *
  * ACCEPT (candidate_field targets only, for now — ward_field/ward_issue
  * accept-publish paths land in Tasks 34/39): publishes the field via
@@ -246,21 +231,6 @@ export async function resolveFlag(
     }
 
     if (resolution.accept) {
-      // ACCEPT-PATH SCOPE RE-CHECK (see docstring): authorize the write
-      // against the candidate's REAL ward, re-derived here — not the flag
-      // item's stored `wardId`. Admin passes via canEditWard's role branch.
-      const [targetCandidate] = await tx
-        .select({ wardId: candidates.wardId })
-        .from(candidates)
-        .where(eq(candidates.id, resolution.publish.candidateId));
-      if (!targetCandidate) {
-        throw new Error(`resolveFlag: no candidate with id ${resolution.publish.candidateId}`);
-      }
-      const allowed = await canEditWard(actor.userId, actor.role, targetCandidate.wardId);
-      if (!allowed) {
-        throw new Error('out_of_scope');
-      }
-
       // Task 31 scope: accept only supports candidate_field targets, via
       // the shared publish core. ward_field/ward_issue accept-publish
       // paths are added by Tasks 34/39 (a discriminated union over

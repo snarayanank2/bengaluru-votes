@@ -317,13 +317,13 @@ Admins can add and block operators without a shell on the box.
 
 **Effort:** 3 days · **dummy data only**
 
-Curators work the citizen flag queue and correct anything wrong, on demo data, before a real affidavit exists.
+Curators work the citizen flag queue, on demo data, before a real affidavit exists. The flag queue is the whole job (decided 2026-10-13, following `docs/candidate-data.md`).
 
 **What ships**
 
 - **The citizen flag queue**, city-wide: the flagged field, the citizen's comment, the affidavit page, the published value. The curator makes the fix or rejects the flag with a reason, and either outcome reaches the submitter at `/account/submissions`. Resolution publishes immediately (tracker 112).
-- **Edit any candidate field**, flagged or not. With one reading per affidavit and no consensus step, this is the main net under the data — a curator does not need a flag as an excuse to fix something wrong.
-- **A transcriber performance view** at `/curator/transcribers` — accuracy against subsequently-corrected values, volume, median time per affidavit (tracker 113). Visible to curators and admins, never to other transcribers: a published ranking optimises for speed, which is the opposite of what is wanted.
+- **The candidate editor**, already built at `/curator/candidate/{id}`. It stays as a tool — a curator can fix an unflagged value they come across — but routinely checking unflagged fields is not part of the role.
+- ~~A transcriber performance view at `/curator/transcribers`~~ — **dropped 2026-10-13** (tracker 113 to be closed). Curators do not monitor transcribers.
 - **Mark a candidate complete** — a coverage signal feeding the `/data` figures. It gates nothing; there is no ward readiness check (§6).
 - **A curator onboarding page.**
 
@@ -335,10 +335,10 @@ Curators work the citizen flag queue and correct anything wrong, on demo data, b
 |---|---|
 | M6 for the account, and M4a for the OTP that signs into it | §8, §6.1 |
 | CurOps owner named | tracker 57 |
-| Four curators enrolled, Kannada-reading | tracker 58 |
+| Two curators enrolled, Kannada-reading | tracker 58 |
 | Curator onboarding material | tracker 60 |
 
-**Curators are city-wide, and that is a change.** The model until 2026-08-15 scoped each curator to assigned wards or a zone. At a team of four against 369 wards, per-ward assignment is a label rather than a division of work, so scoping is dropped: **`canEditWard` (`src/lib/authz.ts`) no longer applies to curators.** Combined with §10.2, no privileged role is ward-scoped any more, which removes per-ward authorization from the enforcement model entirely rather than adding a second path to it.
+**Curators are city-wide, and that is a change.** The model until 2026-08-15 scoped each curator to assigned wards or a zone. At a team of two against 369 wards, per-ward assignment is a label rather than a division of work, so scoping is dropped: **`canEditWard` and the `curator_scopes` table are gone from the code (removed 2026-10-13, migration `0009`).** Combined with §10.2, no privileged role is ward-scoped any more, which removes per-ward authorization from the enforcement model entirely rather than adding a second path to it.
 
 **Curators no longer transcribe.** The earlier model asked one curator to upload and spot-check every affidavit; this one separates reading (M8) from correcting (M7).
 
@@ -366,9 +366,9 @@ AI extraction ──► published at once, marked AI-extracted
 
 **There is no second reading, no consensus step and no approval.** A transcriber's save goes live on the report card the moment it is made. Consensus between two or three readings was specified until 2026-08-15 and removed: it doubled the reading cost of every affidavit against a window (§16) that cannot absorb it, and it protected least where it cost most — two transcribers looking at the same pre-filled AI value tend to confirm the same wrong extraction.
 
-**What replaces it.** Curators can correct any field at any time (§9), citizens can flag any value, and transcriber accuracy is visible so a poor reader can be removed. These are the same nets already sitting under machine-translated Kannada, which also publishes with no human review.
+**What replaces it.** Citizens can flag any value, and curators resolve those flags (§9); a curator can also correct a field they happen to find wrong. Transcriber accuracy is not tracked (dropped 2026-10-13). These are the same nets already sitting under machine-translated Kannada, which also publishes with no human review.
 
-**All three are forward-only, and since 2026-08-15 that is all there is.** The audit log was removed as not required, taking with it the record of who published a value and the ability to restore a previous one (`docs/architecture.md` §6, §7, §13). A wrong value gets corrected; it does not get traced. The one thing kept is a `corrected_after_check` marker on the field row, so a transcriber whose readings are frequently overturned is still findable — that is what the accuracy view in §9 now runs on.
+**Both are forward-only, and since 2026-08-15 that is all there is.** The audit log was removed as not required, taking with it the record of who published a value and the ability to restore a previous one (`docs/architecture.md` §6, §7, §13). A wrong value gets corrected; it does not get traced. The `corrected_after_check` marker that was to be kept on the field row for the accuracy view is no longer needed, since that view was dropped on 2026-10-13.
 
 **Two states, not four.** A value is *AI-extracted* or *checked by a person*. There is no `verified` / `disputed` / `curator-confirmed` ladder, which removes the state machine, the `transcription_readings` table, the `field_disputes` table and the value-normalization comparison logic from the build.
 
@@ -382,7 +382,7 @@ Someone who can pick their affidavit can pick their ward, and a reader drawn to 
 
 Three database-level invariants (`docs/architecture.md` §6, tracker 109): the draw is one atomic statement, so two people are never handed the same document; assignments expire back into the queue, so a half-read affidavit is never stranded; and the priority ordering is computed in the draw rather than in application code, so it cannot drift between callers.
 
-**No privileged role is ward-scoped.** Transcribers never were, and curators stopped being on 2026-08-15 (§9). Authorization for a transcriber is "does an open assignment for this affidavit belong to this caller"; for a curator and admin it is the role alone. **`canEditWard` (`src/lib/authz.ts`) has no remaining callers** — that is a simplification of the enforcement model in `src/middleware.ts`, not an addition to it (tracker 115).
+**No privileged role is ward-scoped.** Transcribers never were, and curators stopped being on 2026-08-15 (§9). Authorization for a transcriber is "does an open assignment for this affidavit belong to this caller"; for a curator and admin it is the role alone. **`canEditWard` no longer exists (removed 2026-10-13)** — that is a simplification of the enforcement model in `src/middleware.ts`, not an addition to it (tracker 115).
 
 ### 10.3 What else ships
 
@@ -396,15 +396,15 @@ Three database-level invariants (`docs/architecture.md` §6, tracker 109): the d
 | | |
 |---|---|
 | M6 for the account, and M4a for the OTP that signs into it | §8, §6.1 |
-| A hired transcription team — 5 at the floor, 33 for full coverage | tracker 58; `docs/overview.md` §11 |
-| **An approved transcription budget — ₹10,000 to ₹66,000** | `docs/overview.md` §11; no tracker row yet (§17) |
+| A hired transcription team — 23 people for five days | tracker 58; `docs/overview.md` §11 |
+| **An approved transcription budget — ₹80,500** | `docs/overview.md` §11; no tracker row yet (§17) |
 | Transcriber onboarding material | tracker 60 |
 
 **The known hole, owned rather than solved.** Transcribers see the AI's value pre-filled, so a confident wrong extraction is likely to be confirmed rather than caught. Blind entry would close it and roughly double the reading cost. The trade is made knowingly, and it is the same one made for machine-translated Kannada.
 
-**The arithmetic is no longer the risk it was, because the reading is now paid for.** Roughly 4,000 candidates, of which about 600 need a human read once AI extraction has settled the rest at 85%, most of them handwritten notarised Kannada scans (`ksec-data-risk.md` §2). At ten minutes each that is **100 transcriber-hours for the high-priority set and 666 for a full pass**; against 20 productive hours per person across the three-day window, **5 hired transcribers to clear everything the AI could not settle, 33 to read every candidate** — ₹10,000 and ₹66,000 at ₹2,000 a head (`docs/overview.md` §11, changed 2026-08-16 from an unpaid cohort of 36). The software is still three days, and **none of that effort estimate covers the reading**.
+**The arithmetic is no longer the risk it was, because the reading is now paid for.** Roughly 4,000 candidates, all of them read by a person, most of them handwritten notarised Kannada scans (`ksec-data-risk.md` §2). At ten minutes each that is about **667 transcriber-hours**; against 33⅓ productive hours per person across a five-day engagement, **20 hired transcribers is the minimum and 23 is the provision** — ₹80,500 at ₹3,500 a head (`docs/overview.md` §11 and `docs/candidate-data.md` §3, revised 2026-09-20 from 5–33 people at ₹2,000 for three days). The software is still three days, and **none of that effort estimate covers the reading**.
 
-**What remains is lead time, not headcount.** The money is small enough that full coverage is affordable; what cannot be bought is three named days inside a window that opens when nominations close, with people already identified, briefed and Kannada-literate. **Tracker 58 still describes a volunteer cohort and needs re-scoping, and there is no budget row at all** (§17). The 85% assumption behind all of it is measurable now, against affidavits already in the public domain — and if it proves to be a per-field rather than a per-candidate rate, the set needing a read triples (`docs/overview.md` §11).
+**What remains is lead time, not headcount.** The money is small enough that full coverage is affordable; what cannot be bought is five named days with people already identified, briefed and Kannada-literate. **Tracker 58 still describes a volunteer cohort and needs re-scoping, and there is no budget row at all** (§17). The ten-minute pace behind it is the assumption to test: it is measurable now, in a pilot against affidavits already in the public domain, and at fifteen minutes the minimum rises from 20 to 30 (`docs/overview.md` §11).
 
 ---
 
@@ -630,7 +630,7 @@ Several things this plan depends on have no home on disk right now and are not r
 - **"Dispute" and "flag" were the same thing, and the vocabulary is now collapsed to "flag".** The transcriber consensus failure that "dispute" used to name no longer exists (§10.1), so the sheet's "dispute candidate information" in M10 and the codebase's *flag* were one action and one queue under two names. The sheet's M7 and M10 descriptions were changed to "flag" on 2026-08-15. The word "dispute" should not reappear in a task description, a schema name or a route.
 - **The transcription rows were re-scoped on 2026-08-15.** They had specified `transcription_readings`, `field_disputes`, consensus resolution, a `/curator/disputes` screen, and a unique index enforcing "one transcriber never reads the same affidavit twice" — roughly half a build that no longer exists. 108 now names only `transcription_assignments`, a two-state marker and `corrected_after_check`; 109 is retitled *prioritized* and records that there is deliberately **no** unique index; 112 is the one city-wide flag queue; 113 measures accuracy rather than agreement, derived from the field row now that there is no change log; 115 records that `canEditWard` has no callers left at all. Rows 111 and 114 were deleted.
 - **Rows 58 and 60 were re-sized on 2026-08-15.** Row 58 is now "enroll 4 curators and 36 transcribers (target 50)", against the old "curator lead and 15–20 transcribers". Row 60 records that there is no sign-off step to document and that the two jobs need different words.
-- **Row 58 needs re-scoping again, and a budget row does not exist.** Transcription became paid work on 2026-08-16 (`docs/overview.md` §8, §11): 5 transcribers clear the high-priority set and 33 read every candidate, at about ₹2,000 a head. Row 58's "36 transcribers (target 50)" is now wrong in both number and kind — it enrols volunteers for a job that is hired — and curator recruitment (4, unpaid, vetted) should split off it, since the two roles no longer move together or answer to the same owner. **Nothing tracks the ₹10,000–₹66,000.** The only budget row on the sheet is 140 (the ₹3L WhatsApp spend); this needs its own beside it, and it gates M8 having anyone to use it.
+- **Row 58 needs re-scoping again, and a budget row does not exist.** Transcription became paid work on 2026-08-16 and was re-sized on 2026-09-20 (`docs/overview.md` §8, §11): 23 transcribers for five days at ₹3,500 a head. Row 58's "36 transcribers (target 50)" is now wrong in both number and kind — it enrols volunteers for a job that is hired — and curator recruitment (2, paid ₹5,000 each, vetted) should split off it, since the two roles no longer move together or answer to the same owner. **Nothing tracks the ₹80,500.** The only budget row on the sheet is 140 (the ₹3L WhatsApp spend); this needs its own beside it, and it gates M8 having anyone to use it.
 - **"Mark candidate complete" fed a ward readiness gate that no longer exists**, and its row (114) was deleted on 2026-08-15. If the `/data` page is still to publish coverage figures (`docs/overview.md` §8, "Public metrics"), something has to compute them — that is now untracked.
 - **M11's blocker on M10 was deleted on 2026-08-15**, on the sheet and here (§13). It had put the project's central deliverable behind a milestone the sheet elsewhere contemplates dropping. It was slack rather than a real constraint, so nothing in §16's arithmetic moves.
 - **The sheet's M9 said Google Cloud Storage while `architecture.md` said Postgres `bytea`.** Resolved 2026-08-15 in favour of GCS; `architecture.md` was rewritten to match and §11 records what that commits to. **Tracker 123 was re-scoped on 2026-08-15** from Postgres dump size to bucket throughput and egress cost, and row **135** was added to provision the bucket itself (`project-dependencies.md` §6.19).
@@ -644,7 +644,7 @@ Several things this plan depends on have no home on disk right now and are not r
 2. **The unblocked block is the agenda.** M4a, M1, M2, M5, M6, M7, M8, M9 and M12 wait on no external queue — 32 of the 47 non-M4b days. Three of them (M6, M7, M8) need M4a done before a real operator can sign in and prove them; and every one of them can be finished before the announcement.
 3. **Both halves of M4 start today, for opposite reasons.** M4b is forty days of queues nobody can compress. M4a is two days that nothing queues behind and that three other milestones are waiting on — it should be the first thing finished, not the fourth.
 4. **Do not read the order as a schedule.** M4a and M4b run alongside everything. M5–M9 and M12 can run in any order. M3, M10, M11, M13 and M14 cannot start delivering before the EC acts, whatever we do.
-5. **The effort column measures software and campaign work, and nothing else.** M8 at three days is the tooling; the 600 high-priority affidavit readings it exists to support are not in that number — nor the 4,000 of a full pass, nor the ₹10,000–₹66,000 of hiring the people to do them (§10). M11 at two days assumes a bulk download that does not currently exist.
+5. **The effort column measures software and campaign work, and nothing else.** M8 at three days is the tooling; the 4,000 affidavit readings it exists to support are not in that number, nor the ₹80,500 of hiring the people to do them (§10). M11 at two days assumes a bulk download that does not currently exist.
 6. **Two questions are worth more than the rest of the plan combined:** when is N (tracker 71), and can affidavits be obtained in bulk (tracker 121). Both are answerable by asking. Both are unassigned.
 
 Related: `docs/election-timelines.md` (what the calendar allows), `docs/ksec-data-risk.md` (whether the candidate data exists at all), `docs/architecture.md` (the technical design), `docs/project-dependencies.md` (everything outside the codebase), `docs/messages.md` (the send copy), `docs/design-system.md`, `docs/gcp.md`.

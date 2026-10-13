@@ -12,8 +12,8 @@
  *     §9.1): exercised end-to-end through the real POST handlers (the
  *     lib-level atomicity/slug coverage lives in
  *     tests/unit/publish-candidate.test.ts).
- *   - SCOPE: a curator not scoped to the candidate's (or `?ward=`'s) ward
- *     gets 403.
+ *   - CITY-WIDE: a curator with no ward assignment of any kind can open
+ *     any candidate and start a new one in any ward.
  *   - PHOTO: a valid PNG upload sets photoMediaId; an SVG masquerading as a
  *     photo is rejected, candidate left uncorrupted.
  *   - CSRF: POST without the synchronizer token -> 403.
@@ -56,14 +56,6 @@ const WARD_A = {
   zone: 'Zone T',
   boundaryRef: 'candidate-editor-test-ward-a',
 };
-const WARD_B_OUT_OF_SCOPE = {
-  id: 99421,
-  nameEn: 'Candidate Editor Test Ward B Out Of Scope',
-  nameKn: 'ಅಭ್ಯರ್ಥಿ ಸಂಪಾದಕ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಬಿ',
-  corporation: 'south' as const,
-  zone: 'Zone T',
-  boundaryRef: 'candidate-editor-test-ward-b',
-};
 const WARD_STATUS_CLEAR = {
   id: 99422,
   nameEn: 'Candidate Editor Test Ward Status Clear',
@@ -80,8 +72,7 @@ const WARD_NEW_CANDIDATE = {
   zone: 'Zone T',
   boundaryRef: 'candidate-editor-test-ward-new-candidate',
 };
-const ALL_WARDS = [WARD_A, WARD_B_OUT_OF_SCOPE, WARD_STATUS_CLEAR, WARD_NEW_CANDIDATE];
-const SCOPED_WARD_IDS = [WARD_A.id, WARD_STATUS_CLEAR.id, WARD_NEW_CANDIDATE.id];
+const ALL_WARDS = [WARD_A, WARD_STATUS_CLEAR, WARD_NEW_CANDIDATE];
 
 const EMAILS = {
   curator: 'candidate-editor-test-curator@example.com',
@@ -195,15 +186,13 @@ let curatorId: number;
 let curatorAuth: { cookieValue: string; token: string };
 
 let candidateA: number; // WARD_A — hosts core/field/photo/CSRF tests
-let candidateOutOfScope: number; // WARD_B_OUT_OF_SCOPE
 let candidateStatusClear: number; // WARD_STATUS_CLEAR — signed off
 
 async function resetFixtures(): Promise<void> {
   if (typeof curatorId === 'number') {
     await db.delete(schema.sessions).where(eq(schema.sessions.userId, curatorId));
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
   }
-  const candidateIds = [candidateA, candidateOutOfScope, candidateStatusClear].filter(
+  const candidateIds = [candidateA, candidateStatusClear].filter(
     (v): v is number => typeof v === 'number',
   );
   if (candidateIds.length > 0) {
@@ -224,11 +213,9 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
     curatorId = await upsertUser(EMAILS.curator, 'curator');
     await resetFixtures();
 
-    await db.insert(schema.curatorScopes).values(SCOPED_WARD_IDS.map((wardId) => ({ userId: curatorId, wardId })));
     curatorAuth = await sessionFor(curatorId);
 
     candidateA = await insertCandidate(WARD_A.id, 'Original Name');
-    candidateOutOfScope = await insertCandidate(WARD_B_OUT_OF_SCOPE.id);
     candidateStatusClear = await insertCandidate(WARD_STATUS_CLEAR.id, 'Status Clear Candidate');
 
     const signedOffAt = new Date(Date.now() - 60_000);
@@ -241,16 +228,8 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
     await client.end();
   });
 
-  describe('scope enforcement', () => {
-    it('GET a candidate in an out-of-scope ward -> 403', async () => {
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateOutOfScope}`, {
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateOutOfScope) },
-      });
-      expect(res.status).toBe(403);
-    });
-
-    it('GET a candidate in a scoped ward -> 200, page shows the candidate name', async () => {
+  describe('city-wide access', () => {
+    it('GET a candidate -> 200, page shows the candidate name', async () => {
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
         cookieValue: curatorAuth.cookieValue,
         params: { id: String(candidateA) },
@@ -261,15 +240,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
       expect(html).toContain('Original Name');
     });
 
-    it('GET /curator/candidate/new?ward={out-of-scope} -> 403', async () => {
-      const res = await run(CandidateNewRoute, '/curator/candidate/new', {
-        cookieValue: curatorAuth.cookieValue,
-        search: `?ward=${WARD_B_OUT_OF_SCOPE.id}`,
-      });
-      expect(res.status).toBe(403);
-    });
-
-    it('GET /curator/candidate/new?ward={scoped} -> 200', async () => {
+    it('GET /curator/candidate/new?ward={id} -> 200', async () => {
       const res = await run(CandidateNewRoute, '/curator/candidate/new', {
         cookieValue: curatorAuth.cookieValue,
         search: `?ward=${WARD_NEW_CANDIDATE.id}`,

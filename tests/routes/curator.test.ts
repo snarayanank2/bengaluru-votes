@@ -4,7 +4,7 @@
  * every request through the REAL middleware (src/middleware.ts) composed
  * with the real page twin via Astro's container API, same technique as
  * tests/routes/account.test.ts — so this suite exercises the actual
- * session/role/CSRF/scope guards end to end, not just that a form happens
+ * session/role/CSRF guards end to end, not just that a form happens
  * to render a token.
  *
  * These routes have no `/kn/` twin (see src/middleware.ts's noindex list
@@ -55,9 +55,9 @@ const WARD_A = {
   zone: 'Zone T',
   boundaryRef: 'curator-route-test-ward-a',
 };
-const WARD_B_OUT_OF_SCOPE = {
+const WARD_B = {
   id: 99402,
-  nameEn: 'Curator Route Test Ward B Out Of Scope',
+  nameEn: 'Curator Route Test Ward B',
   nameKn: 'ಕ್ಯುರೇಟರ್ ಮಾರ್ಗ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಬಿ',
   corporation: 'south' as const,
   zone: 'Zone T',
@@ -79,8 +79,7 @@ const WARD_E_FULLY_SIGNED_OFF = {
   zone: 'Zone T',
   boundaryRef: 'curator-route-test-ward-e',
 };
-const ALL_WARDS = [WARD_A, WARD_B_OUT_OF_SCOPE, WARD_D_NEVER_SIGNED_OFF, WARD_E_FULLY_SIGNED_OFF];
-const SCOPED_WARD_IDS = [WARD_A.id, WARD_D_NEVER_SIGNED_OFF.id, WARD_E_FULLY_SIGNED_OFF.id];
+const ALL_WARDS = [WARD_A, WARD_B, WARD_D_NEVER_SIGNED_OFF, WARD_E_FULLY_SIGNED_OFF];
 
 const EMAILS = {
   curator: 'curator-route-test-curator@example.com',
@@ -88,7 +87,6 @@ const EMAILS = {
   submitterA: 'curator-route-test-submitter-a@example.com',
   submitterB: 'curator-route-test-submitter-b@example.com',
   admin: 'curator-route-test-admin@example.com',
-  emptyScopeCurator: 'curator-route-test-empty-scope-curator@example.com',
 };
 
 /** Strips container-API debug attributes and collapses whitespace (see tests/routes/account.test.ts). */
@@ -205,17 +203,15 @@ let curatorId: number;
 let citizenId: number;
 let submitterAId: number;
 let submitterBId: number;
-let adminId: number; // role 'admin', NO curator_scopes rows — sees every ward (Gap 2)
-let emptyScopeCuratorId: number; // role 'curator', ZERO curator_scopes rows — the []-is-not-null sentinel (Gap 2)
+let adminId: number;
 let curatorAuth: { cookieValue: string; token: string };
 let citizenAuth: { cookieValue: string; token: string };
 let adminAuth: { cookieValue: string; token: string };
-let emptyScopeCuratorAuth: { cookieValue: string; token: string };
 
 let candidateA: number; // in WARD_A — hosts every accept/reject fixture field below
-let candidateB: number; // in WARD_B (out of scope)
+let candidateB: number; // in WARD_B — a second ward, to prove the queue is city-wide
 
-let itemOutOfScope: { id: number; targetRef: string };
+let itemWardB: { id: number; targetRef: string };
 let itemDedupe: { id: number; targetRef: string }; // 2 submissions — dedupe count + also the accept-test target
 let itemRejectEmpty: { id: number; targetRef: string };
 let itemRejectValid: { id: number; targetRef: string };
@@ -225,13 +221,12 @@ let itemAcceptMissingSource: { id: number; targetRef: string };
 let itemAcceptBadSource: { id: number; targetRef: string };
 
 async function resetFixtures(): Promise<void> {
-  const userIds = [curatorId, citizenId, submitterAId, submitterBId, adminId, emptyScopeCuratorId].filter(
+  const userIds = [curatorId, citizenId, submitterAId, submitterBId, adminId].filter(
     (v): v is number => typeof v === 'number',
   );
   if (userIds.length > 0) {
     await db.delete(schema.flagSubmissions).where(inArray(schema.flagSubmissions.userId, userIds));
     await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
-    await db.delete(schema.curatorScopes).where(inArray(schema.curatorScopes.userId, userIds));
   }
   await db.delete(schema.flagItems).where(inArray(schema.flagItems.wardId, ALL_WARDS.map((w) => w.id)));
   if (typeof candidateA === 'number' || typeof candidateB === 'number') {
@@ -263,36 +258,23 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     }
 
     // Stable ids across runs (email upsert) — resolve them FIRST, then wipe
-    // any stale flag/candidate/scope rows a PRIOR run left behind under
+    // any stale flag/candidate rows a PRIOR run left behind under
     // these same ids, before inserting this run's fresh fixtures.
     curatorId = await upsertUser(EMAILS.curator, 'curator');
     citizenId = await upsertUser(EMAILS.citizen, 'citizen');
     submitterAId = await upsertUser(EMAILS.submitterA, 'citizen');
     submitterBId = await upsertUser(EMAILS.submitterB, 'citizen');
     adminId = await upsertUser(EMAILS.admin, 'admin');
-    emptyScopeCuratorId = await upsertUser(EMAILS.emptyScopeCurator, 'curator');
     await resetFixtures();
-
-    // Curator scoped to WARD_A, WARD_D, WARD_E — NOT WARD_B (the
-    // out-of-scope test's whole point). Deliberately NO curator_scopes rows
-    // for adminId (admin ignores scope entirely, src/lib/curator.ts's
-    // `scopedWardIds` returns `null` for it) or for emptyScopeCuratorId
-    // (zero rows -> `[]`, the "in scope for nothing" sentinel, Gap 2).
-    await db.insert(schema.curatorScopes).values([
-      { userId: curatorId, wardId: WARD_A.id },
-      { userId: curatorId, wardId: WARD_D_NEVER_SIGNED_OFF.id },
-      { userId: curatorId, wardId: WARD_E_FULLY_SIGNED_OFF.id },
-    ]);
 
     curatorAuth = await sessionFor(curatorId);
     citizenAuth = await sessionFor(citizenId);
     adminAuth = await sessionFor(adminId);
-    emptyScopeCuratorAuth = await sessionFor(emptyScopeCuratorId);
 
     candidateA = await insertCandidate(WARD_A.id);
-    candidateB = await insertCandidate(WARD_B_OUT_OF_SCOPE.id);
+    candidateB = await insertCandidate(WARD_B.id);
 
-    itemOutOfScope = await insertPendingItem(WARD_B_OUT_OF_SCOPE.id, candidateB, 'cases', [submitterAId]);
+    itemWardB = await insertPendingItem(WARD_B.id, candidateB, 'cases', [submitterAId]);
     itemDedupe = await insertPendingItem(WARD_A.id, candidateA, 'cases', [submitterAId, submitterBId]);
     itemRejectEmpty = await insertPendingItem(WARD_A.id, candidateA, 'assets', [submitterAId]);
     itemRejectValid = await insertPendingItem(WARD_A.id, candidateA, 'education', [submitterAId]);
@@ -330,34 +312,34 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     await client.end();
   });
 
-  describe('scope enforcement — out-of-scope invisible (the core test)', () => {
-    it('a pending flag_item in an out-of-scope ward never appears in /curator/queue, and 403s at /curator/queue/{id}', async () => {
+  describe('city-wide queue — a curator has no ward assignment and sees every ward', () => {
+    it('pending flag_items in different wards all appear in /curator/queue, and any of them opens at /curator/queue/{id}', async () => {
       const queueRes = await run(QueueIndex, '/curator/queue', { cookieValue: curatorAuth.cookieValue });
       expect(queueRes.status).toBe(200);
       const html = normalize(await queueRes.text());
 
-      expect(html).not.toContain(humanTargetLabel('candidate_field', itemOutOfScope.targetRef));
-      expect(html).not.toContain(WARD_B_OUT_OF_SCOPE.nameEn);
+      expect(html).toContain(humanTargetLabel('candidate_field', itemWardB.targetRef));
+      expect(html).toContain(WARD_B.nameEn);
 
-      // In-scope items ARE listed, including the dedupe count.
+      // Including the dedupe count.
       expect(html).toContain(
         `<td>${WARD_A.nameEn}</td><td>${humanTargetLabel('candidate_field', itemDedupe.targetRef)}</td><td>2</td>`,
       );
 
-      const itemRes = await run(QueueItemRoute, `/curator/queue/${itemOutOfScope.id}`, {
+      const itemRes = await run(QueueItemRoute, `/curator/queue/${itemWardB.id}`, {
         cookieValue: curatorAuth.cookieValue,
-        params: { id: String(itemOutOfScope.id) },
+        params: { id: String(itemWardB.id) },
       });
-      expect(itemRes.status).toBe(403);
+      expect(itemRes.status).toBe(200);
     });
   });
 
   describe('dashboard (IA §5.1)', () => {
-    it('queue count matches pending items in scoped wards; cleared-by-change ward is called out first; fully-signed-off ward never appears', async () => {
+    it('queue count matches every pending item; cleared-by-change ward is called out first; fully-signed-off ward never appears', async () => {
       const [countRow] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(schema.flagItems)
-        .where(and(eq(schema.flagItems.status, 'pending'), inArray(schema.flagItems.wardId, SCOPED_WARD_IDS)));
+        .where(eq(schema.flagItems.status, 'pending'));
       const expectedCount = Number(countRow?.count ?? 0);
 
       const res = await run(CuratorIndex, '/curator', { cookieValue: curatorAuth.cookieValue });
@@ -606,42 +588,21 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     });
   });
 
-  describe('admin all-wards + empty-scope curator (the []-vs-null security sentinel)', () => {
-    it('admin (no curator_scopes rows at all) sees pending items across MULTIPLE wards, including one no curator_scopes row covers, and can open any of them directly', async () => {
+  describe('admin all-wards', () => {
+    it('admin sees pending items across MULTIPLE wards and can open any of them directly', async () => {
       const queueRes = await run(QueueIndex, '/curator/queue', { cookieValue: adminAuth.cookieValue });
       expect(queueRes.status).toBe(200);
       const html = normalize(await queueRes.text());
 
-      // WARD_B_OUT_OF_SCOPE has no curator_scopes row for ANY user — proves
-      // admin's `null` sentinel is a real "no filter", not merely "whatever
-      // the regular curator's scopes happen to include".
-      expect(html).toContain(WARD_B_OUT_OF_SCOPE.nameEn);
-      expect(html).toContain(humanTargetLabel('candidate_field', itemOutOfScope.targetRef));
-      // AND a different ward's item, in the same response — genuinely
-      // unfiltered across multiple wards, not a fluke of one row leaking.
+      expect(html).toContain(WARD_B.nameEn);
+      expect(html).toContain(humanTargetLabel('candidate_field', itemWardB.targetRef));
       expect(html).toContain(WARD_A.nameEn);
 
-      const itemRes = await run(QueueItemRoute, `/curator/queue/${itemOutOfScope.id}`, {
+      const itemRes = await run(QueueItemRoute, `/curator/queue/${itemWardB.id}`, {
         cookieValue: adminAuth.cookieValue,
-        params: { id: String(itemOutOfScope.id) },
+        params: { id: String(itemWardB.id) },
       });
       expect(itemRes.status).toBe(200);
-    });
-
-    it('a curator with ZERO curator_scopes rows sees NO items (empty scope means nothing, not everything), and is 403d on direct item access', async () => {
-      const queueRes = await run(QueueIndex, '/curator/queue', { cookieValue: emptyScopeCuratorAuth.cookieValue });
-      expect(queueRes.status).toBe(200);
-      const html = normalize(await queueRes.text());
-
-      expect(html).not.toContain(WARD_A.nameEn);
-      expect(html).not.toContain(WARD_B_OUT_OF_SCOPE.nameEn);
-      expect(html).not.toContain(humanTargetLabel('candidate_field', itemOutOfScope.targetRef));
-
-      const itemRes = await run(QueueItemRoute, `/curator/queue/${itemOutOfScope.id}`, {
-        cookieValue: emptyScopeCuratorAuth.cookieValue,
-        params: { id: String(itemOutOfScope.id) },
-      });
-      expect(itemRes.status).toBe(403);
     });
   });
 

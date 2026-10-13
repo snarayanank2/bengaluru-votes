@@ -19,7 +19,8 @@
  *     curator-only editor page must NOT be returned by
  *     `listNewsLinks(id, { approvedOnly: true })` for a still-suggested
  *     link — proving the public path structurally cannot surface it.
- *   - SCOPE: a curator not scoped to the candidate's ward -> 403.
+ *   - CROSS-CANDIDATE: a link belonging to another candidate cannot be
+ *     approved from this candidate's page -> 400.
  *   - CSRF: POST without the synchronizer token -> 403.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -60,15 +61,15 @@ const WARD_A = {
   zone: 'Zone R',
   boundaryRef: 'news-links-route-test-ward-a',
 };
-const WARD_OUT_OF_SCOPE = {
+const WARD_B = {
   id: 99471,
-  nameEn: 'News Links Route Test Ward Out Of Scope',
+  nameEn: 'News Links Route Test Ward B',
   nameKn: 'ಸುದ್ದಿ ಲಿಂಕ್ ರೂಟ್ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಔಟ್',
   corporation: 'south' as const,
   zone: 'Zone R',
-  boundaryRef: 'news-links-route-test-ward-out-of-scope',
+  boundaryRef: 'news-links-route-test-ward-b',
 };
-const ALL_WARDS = [WARD_A, WARD_OUT_OF_SCOPE];
+const ALL_WARDS = [WARD_A, WARD_B];
 
 function normalize(html: string): string {
   return html
@@ -165,15 +166,14 @@ async function insertCandidate(wardId: number): Promise<number> {
 let curatorId: number;
 let curatorAuth: { cookieValue: string; token: string };
 let candidateA: number;
-let candidateOutOfScope: number;
+let candidateOther: number;
 
 async function resetFixtures(): Promise<void> {
   if (typeof curatorId === 'number') {
     await db.delete(schema.sessions).where(eq(schema.sessions.userId, curatorId));
-    await db.delete(schema.curatorScopes).where(eq(schema.curatorScopes.userId, curatorId));
   }
   // Delete news_links via a subquery on ward id (not the in-memory
-  // candidateA/candidateOutOfScope vars) so this cleans up correctly even
+  // candidateA/candidateOther vars) so this cleans up correctly even
   // when called BEFORE those are assigned (the first beforeAll call) or
   // after a previous failed run left rows behind.
   const wardIds = ALL_WARDS.map((w) => w.id);
@@ -193,11 +193,10 @@ describe('/curator/candidate/{id} — news links (Task 38)', () => {
     curatorId = await upsertUser('news-links-test-curator@example.com');
     await resetFixtures();
 
-    await db.insert(schema.curatorScopes).values({ userId: curatorId, wardId: WARD_A.id });
     curatorAuth = await sessionFor(curatorId);
 
     candidateA = await insertCandidate(WARD_A.id);
-    candidateOutOfScope = await insertCandidate(WARD_OUT_OF_SCOPE.id);
+    candidateOther = await insertCandidate(WARD_B.id);
   });
 
   afterAll(async () => {
@@ -349,59 +348,24 @@ describe('/curator/candidate/{id} — news links (Task 38)', () => {
     expect(after!.approvedBy).toBe(curatorId);
   });
 
-  it('SCOPE: a curator not scoped to the candidate\'s ward -> 403 (for both add and approve)', async () => {
-    const addFd = newsLinkAddForm({ url: `https://news.example.org/scope-${randomUUID()}`, title: 'Scope test' }, curatorAuth.token);
-    const addRes = await run(`/curator/candidate/${candidateOutOfScope}`, {
-      method: 'POST',
-      cookieValue: curatorAuth.cookieValue,
-      params: { id: String(candidateOutOfScope) },
-      form: addFd,
-    });
-    expect(addRes.status).toBe(403);
-
-    const [suggested] = await db
+  it('CROSS-CANDIDATE: approving another candidate\'s link via this candidate\'s URL -> 400, link stays suggested', async () => {
+    // Seed a suggested link L belonging to candidateOther.
+    const [otherLink] = await db
       .insert(schema.candidateNewsLinks)
       .values({
-        candidateId: candidateOutOfScope,
-        url: `https://auto-suggested.example.org/scope-${randomUUID()}`,
-        title: 'Out of scope suggested story',
+        candidateId: candidateOther,
+        url: `https://auto-suggested.example.org/cross-candidate-${randomUUID()}`,
+        title: 'Other candidate link for cross-candidate test',
         domain: 'auto-suggested.example.org',
         origin: 'auto',
         status: 'suggested',
       })
       .returning();
 
-    const approveFd = newsLinkApproveForm(suggested!.id, curatorAuth.token);
-    const approveRes = await run(`/curator/candidate/${candidateOutOfScope}`, {
-      method: 'POST',
-      cookieValue: curatorAuth.cookieValue,
-      params: { id: String(candidateOutOfScope) },
-      form: approveFd,
-    });
-    expect(approveRes.status).toBe(403);
-  });
-
-  it('SCOPE HOP: approve an out-of-scope link via an in-scope URL -> 400 (the deeper scope-hop guard), link stays suggested', async () => {
-    // Curator is scoped to WARD_A; candidateA is in WARD_A (in scope);
-    // candidateOutOfScope is in WARD_OUT_OF_SCOPE (NOT in scope).
-    // Seed a suggested link L belonging to candidateOutOfScope.
-    const [outOfScopeLink] = await db
-      .insert(schema.candidateNewsLinks)
-      .values({
-        candidateId: candidateOutOfScope,
-        url: `https://auto-suggested.example.org/scope-hop-${randomUUID()}`,
-        title: 'Out of scope link for scope-hop test',
-        domain: 'auto-suggested.example.org',
-        origin: 'auto',
-        status: 'suggested',
-      })
-      .returning();
-
-    // POST an approve action to candidateA's editor URL (in scope) with linkId = L.
-    // The candidateA URL access should succeed (200 GET), but the POST to approve
-    // should hit the handleNewsLinkApprove's scope-hop guard (line 928:
-    // link.candidateId !== candidateId), returning validation_error -> 400.
-    const fd = newsLinkApproveForm(outOfScopeLink!.id, curatorAuth.token);
+    // POST an approve action to candidateA's editor URL with linkId = L:
+    // handleNewsLinkApprove's link.candidateId !== candidateId guard
+    // returns validation_error -> 400.
+    const fd = newsLinkApproveForm(otherLink!.id, curatorAuth.token);
     const res = await run(`/curator/candidate/${candidateA}`, {
       method: 'POST',
       cookieValue: curatorAuth.cookieValue,
@@ -411,7 +375,7 @@ describe('/curator/candidate/{id} — news links (Task 38)', () => {
     expect(res.status).toBe(400);
 
     // Verify link L is still 'suggested' (NOT approved — approvedBy is null).
-    const [after] = await db.select().from(schema.candidateNewsLinks).where(eq(schema.candidateNewsLinks.id, outOfScopeLink!.id));
+    const [after] = await db.select().from(schema.candidateNewsLinks).where(eq(schema.candidateNewsLinks.id, otherLink!.id));
     expect(after!.status).toBe('suggested');
     expect(after!.approvedBy).toBeNull();
   });

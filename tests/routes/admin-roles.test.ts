@@ -12,11 +12,9 @@
  *     Partners & coverage, Audit log — all real pages by Task 47).
  *   - GRANT: POST formAction=grant on /admin/roles actually promotes a
  *     citizen and writes a grant_role audit row.
- *   - REVOKE: POST formAction=revoke demotes to citizen AND clears
- *     curator_scopes, audited.
- *   - SET SCOPE + ZONE SHORTCUT: POST formAction=set_scope with a
- *     comma-separated wardIds field PLUS a zone selection stores the
- *     UNION as per-ward curator_scopes rows, audited.
+ *   - REVOKE: POST formAction=revoke demotes to citizen.
+ *   - NO WARD SCOPE: curators are city-wide, so the page offers no scope
+ *     form and the old `set_scope` action is rejected.
  *   - CSRF: POST without the token -> 403, DB unaffected.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -46,22 +44,12 @@ const SITE_URL = new URL(SITE_ORIGIN);
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
 
-// High, task-specific ward ids (Task 44 brief: "use high dedicated ids").
-// tests/unit/admin.test.ts owns 99600-99609 and 99700-99799; this route
-// suite owns 99610-99619.
-const ZONE_ROUTE = 'Admin Route Test Zone';
-const WARD_ROUTE_1 = { id: 99610, nameEn: 'Admin Route Test Ward 1', nameKn: 'ಆ೧', corporation: 'south' as const, zone: ZONE_ROUTE, boundaryRef: 'admin-route-test-1' };
-const WARD_ROUTE_2 = { id: 99611, nameEn: 'Admin Route Test Ward 2', nameKn: 'ಆ೨', corporation: 'south' as const, zone: ZONE_ROUTE, boundaryRef: 'admin-route-test-2' };
-const WARD_ROUTE_MANUAL = { id: 99612, nameEn: 'Admin Route Test Ward Manual', nameKn: 'ಆಎಂ', corporation: 'south' as const, zone: 'Admin Route Test Zone Other', boundaryRef: 'admin-route-test-manual' };
-const ALL_WARDS = [WARD_ROUTE_1, WARD_ROUTE_2, WARD_ROUTE_MANUAL];
-
 const EMAILS = {
   admin: 'admin-roles-route-test-admin@example.com',
   curator: 'admin-roles-route-test-curator@example.com',
   citizen: 'admin-roles-route-test-citizen@example.com',
   grantTarget: 'admin-roles-route-test-grant-target@example.com',
   revokeTarget: 'admin-roles-route-test-revoke-target@example.com',
-  scopeTarget: 'admin-roles-route-test-scope-target@example.com',
   csrfTarget: 'admin-roles-route-test-csrf-target@example.com',
 };
 
@@ -143,7 +131,6 @@ let curatorId: number;
 let citizenId: number;
 let grantTargetId: number;
 let revokeTargetId: number;
-let scopeTargetId: number;
 let csrfTargetId: number;
 let adminAuth: { cookieValue: string; token: string };
 let curatorAuth: { cookieValue: string; token: string };
@@ -153,19 +140,12 @@ describe('/admin, /admin/roles (Task 44)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 
-    for (const ward of ALL_WARDS) {
-      await db.insert(schema.wards).values(ward).onConflictDoUpdate({ target: schema.wards.id, set: ward });
-    }
-
     adminId = await upsertUser(EMAILS.admin, 'admin');
     curatorId = await upsertUser(EMAILS.curator, 'curator');
     citizenId = await upsertUser(EMAILS.citizen, 'citizen');
     grantTargetId = await upsertUser(EMAILS.grantTarget, 'citizen');
     revokeTargetId = await upsertUser(EMAILS.revokeTarget, 'curator');
-    scopeTargetId = await upsertUser(EMAILS.scopeTarget, 'curator');
     csrfTargetId = await upsertUser(EMAILS.csrfTarget, 'curator');
-
-    await db.insert(schema.curatorScopes).values({ userId: revokeTargetId, wardId: WARD_ROUTE_MANUAL.id });
 
     adminAuth = await sessionFor(adminId);
     curatorAuth = await sessionFor(curatorId);
@@ -173,11 +153,9 @@ describe('/admin, /admin/roles (Task 44)', () => {
   });
 
   afterAll(async () => {
-    const userIds = [curatorId, citizenId, grantTargetId, revokeTargetId, scopeTargetId, csrfTargetId];
-    await db.delete(schema.curatorScopes).where(inArray(schema.curatorScopes.userId, userIds));
+    const userIds = [curatorId, citizenId, grantTargetId, revokeTargetId, csrfTargetId];
     await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, ...userIds]));
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, ...userIds]));
-    await db.delete(schema.wards).where(inArray(schema.wards.id, ALL_WARDS.map((w) => w.id)));
     await client.end();
   });
 
@@ -244,20 +222,13 @@ describe('/admin, /admin/roles (Task 44)', () => {
   });
 
   describe('revoke', () => {
-    it('POST formAction=revoke demotes to citizen AND clears curator_scopes, audited', async () => {
-      const before = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, revokeTargetId));
-      expect(before.length).toBe(1);
-
+    it('POST formAction=revoke demotes to citizen', async () => {
       const form = formWithToken({ formAction: 'revoke', targetUserId: String(revokeTargetId), confirm: 'on' }, adminAuth.token);
       const res = await run(RolesRoute, '/admin/roles', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
       expect(res.status).toBe(302);
 
       const [row] = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, revokeTargetId));
       expect(row?.role).toBe('citizen');
-
-      const scopeRows = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, revokeTargetId));
-      expect(scopeRows).toEqual([]);
-
     });
 
     it('POST formAction=revoke targeting the caller\'s OWN id -> 400 friendly error, admin still admin (Task 44 review lockout guard)', async () => {
@@ -273,44 +244,23 @@ describe('/admin, /admin/roles (Task 44)', () => {
     });
   });
 
-  describe('set scope + zone shortcut', () => {
-    it('POST formAction=set_scope with a manual id + a zone stores the UNION as per-ward rows, audited', async () => {
-      const form = formWithToken(
-        { formAction: 'set_scope', targetUserId: String(scopeTargetId), wardIds: String(WARD_ROUTE_MANUAL.id), zone: ZONE_ROUTE, confirm: 'on' },
-        adminAuth.token,
-      );
-      const res = await run(RolesRoute, '/admin/roles', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
-      expect(res.status).toBe(302);
-
-      const rows = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, scopeTargetId));
-      expect(rows.map((r) => r.wardId).sort((a, b) => a - b)).toEqual([WARD_ROUTE_1.id, WARD_ROUTE_2.id, WARD_ROUTE_MANUAL.id].sort((a, b) => a - b));
-
+  describe('no ward scope (curators are city-wide)', () => {
+    it('the roles page offers no scope form', async () => {
+      const res = await run(RolesRoute, '/admin/roles', { cookieValue: adminAuth.cookieValue });
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).not.toContain('value="set_scope"');
+      expect(html).not.toContain('name="wardIds"');
+      expect(html).not.toContain('name="zone"');
     });
 
-    it('a re-submit REPLACES the scope rather than adding to it', async () => {
+    it('POST formAction=set_scope -> 400 (the action no longer exists)', async () => {
       const form = formWithToken(
-        { formAction: 'set_scope', targetUserId: String(scopeTargetId), wardIds: String(WARD_ROUTE_1.id), zone: '', confirm: 'on' },
-        adminAuth.token,
-      );
-      const res = await run(RolesRoute, '/admin/roles', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
-      expect(res.status).toBe(302);
-
-      const rows = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, scopeTargetId));
-      expect(rows.map((r) => r.wardId)).toEqual([WARD_ROUTE_1.id]);
-    });
-
-    it('an unknown ward id -> 400, existing scope untouched', async () => {
-      const before = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, scopeTargetId));
-
-      const form = formWithToken(
-        { formAction: 'set_scope', targetUserId: String(scopeTargetId), wardIds: '999999999', zone: '', confirm: 'on' },
+        { formAction: 'set_scope', targetUserId: String(csrfTargetId), wardIds: '1', zone: '', confirm: 'on' },
         adminAuth.token,
       );
       const res = await run(RolesRoute, '/admin/roles', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
       expect(res.status).toBe(400);
-
-      const after = await db.select().from(schema.curatorScopes).where(eq(schema.curatorScopes.userId, scopeTargetId));
-      expect(after).toEqual(before);
     });
   });
 

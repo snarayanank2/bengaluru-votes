@@ -4,11 +4,6 @@
  * §6.1 step 3-4) — one flag item: every collapsed `flag_submissions` row,
  * the target's current value + source, and the accept/reject actions.
  *
- * SCOPE ENFORCEMENT: this component trusts that its caller
- * (src/pages/curator/queue/[id].astro) has already verified `canEditWard`
- * for `item.wardId` and 403'd otherwise — it does not re-check scope
- * itself. See src/lib/curator.ts's module docstring.
- *
  * ACCEPT is only offered for a `candidate_field` target (Task 34 scope —
  * `item.candidateField` is non-null exactly then; ward_field/ward_issue
  * accept-publish lands in Task 39, see src/lib/curator.ts's

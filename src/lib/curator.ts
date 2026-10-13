@@ -6,17 +6,9 @@
  * (src/pages/curator/*) own the HTTP concerns a plain module cannot
  * (redirects, no-store, 403/404 status).
  *
- * SCOPE ENFORCEMENT (the security core of this task): every query here that
- * lists data is scoped to the caller's wards via `scopedWardIds` — a curator
- * with no matching `curator_scopes` row for a ward never sees that ward's
- * queue items or sign-off status. `null` from `scopedWardIds`
- * is the admin sentinel ("no ward filter — see every ward"), never confused
- * with an empty array ("this curator has zero assigned wards — see
- * nothing"). The single-item lookup (`loadQueueItem`) does NOT scope-check
- * on its own — the caller (src/pages/curator/queue/[id].astro) MUST call
- * `canEditWard` against the loaded item's `wardId` before showing or acting
- * on it; that per-item check is what makes an out-of-scope item 403 rather
- * than merely absent from the list.
+ * NO WARD SCOPE: curators and admins are both city-wide (decided
+ * 2026-08-15), so every query here covers every ward. src/middleware.ts
+ * admits the `/curator/*` route class by role alone.
  *
  * LANGUAGE: curator/admin routes have no `/kn/` twin (they're internal
  * tooling, not public bilingual content — see src/middleware.ts's noindex
@@ -25,14 +17,13 @@
  * writes) rather than the URL — there is no URL to derive it from. See
  * `loadCuratorLang` below.
  */
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
   candidateAffidavits,
   candidateFields,
   candidateNewsLinks,
   candidates,
-  curatorScopes,
   flagItems,
   flagSubmissions,
   media,
@@ -55,7 +46,6 @@ import { extractAffidavitFields } from './extract';
 import { addNewsLink, approveNewsLink } from './news';
 import { computeReadiness, signOffWard, wasClearedByChange, type ReadinessResult } from './readiness';
 import type { Lang } from '../i18n';
-import type { Role } from './session';
 
 type FlagTargetType = (typeof flagTargetEnum.enumValues)[number];
 type FlagStatus = (typeof flagStatusEnum.enumValues)[number];
@@ -76,21 +66,6 @@ export type CuratorActor = { userId: number; role: 'curator' | 'admin' };
 export async function loadCuratorLang(userId: number): Promise<Lang> {
   const [row] = await db.select({ language: users.language }).from(users).where(eq(users.id, userId));
   return row?.language ?? 'en';
-}
-
-// ---------------------------------------------------------------------------
-// Scope
-// ---------------------------------------------------------------------------
-
-/**
- * `null` = no ward filter (admin — every ward is in scope). An empty array
- * (curator with no `curator_scopes` rows) is a real, distinct value: it
- * means "in scope for nothing", not "unfiltered".
- */
-export async function scopedWardIds(userId: number, role: Role): Promise<number[] | null> {
-  if (role === 'admin') return null;
-  const rows = await db.select({ wardId: curatorScopes.wardId }).from(curatorScopes).where(eq(curatorScopes.userId, userId));
-  return rows.map((r) => r.wardId);
 }
 
 // ---------------------------------------------------------------------------
@@ -136,19 +111,12 @@ export interface DashboardData {
   awaitingSignOff: AwaitingSignOffWard[];
 }
 
-export async function loadDashboard(userId: number, role: Role): Promise<DashboardData> {
-  const wardIds = await scopedWardIds(userId, role);
-  if (wardIds !== null && wardIds.length === 0) {
-    return { queueCount: 0, awaitingSignOff: [] };
-  }
-
-  const flagWardFilter = wardIds ? inArray(flagItems.wardId, wardIds) : undefined;
+export async function loadDashboard(): Promise<DashboardData> {
   const [countRow] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(flagItems)
-    .where(flagWardFilter ? and(eq(flagItems.status, 'pending'), flagWardFilter) : eq(flagItems.status, 'pending'));
+    .where(eq(flagItems.status, 'pending'));
 
-  const wardFilter = wardIds ? inArray(wards.id, wardIds) : undefined;
   const wardRows = await db
     .select({
       wardId: wards.id,
@@ -158,8 +126,7 @@ export async function loadDashboard(userId: number, role: Role): Promise<Dashboa
       clearedAt: wardReadiness.clearedAt,
     })
     .from(wards)
-    .leftJoin(wardReadiness, eq(wardReadiness.wardId, wards.id))
-    .where(wardFilter);
+    .leftJoin(wardReadiness, eq(wardReadiness.wardId, wards.id));
 
   const awaitingSignOff: AwaitingSignOffWard[] = [];
   for (const row of wardRows) {
@@ -200,18 +167,9 @@ export interface QueueListItem {
   createdAt: Date;
 }
 
-/**
- * PENDING flag_items in the caller's scoped wards ONLY (out-of-scope items
- * are simply never selected — this is the list-side half of the scope
- * test; src/pages/curator/queue/[id].astro's `canEditWard` check is the
- * other half, for direct navigation to an item's URL).
- */
-export async function loadQueueList(userId: number, role: Role, sort: QueueSort = 'recent'): Promise<QueueListItem[]> {
-  const wardIds = await scopedWardIds(userId, role);
-  if (wardIds !== null && wardIds.length === 0) return [];
-
-  const wardFilter = wardIds ? inArray(flagItems.wardId, wardIds) : undefined;
-  const whereClause = wardFilter ? and(eq(flagItems.status, 'pending'), wardFilter) : eq(flagItems.status, 'pending');
+/** Every PENDING flag_item, city-wide. */
+export async function loadQueueList(sort: QueueSort = 'recent'): Promise<QueueListItem[]> {
+  const whereClause = eq(flagItems.status, 'pending');
 
   const rows = await db
     .select({
@@ -279,7 +237,7 @@ export interface QueueItemDetail {
   candidateField: CandidateFieldContext | null;
 }
 
-/** `null` when no such flag_items row exists (the route twin turns that into a 404). Does NOT check scope — see module docstring. */
+/** `null` when no such flag_items row exists (the route twin turns that into a 404). */
 export async function loadQueueItem(id: number): Promise<QueueItemDetail | null> {
   const [item] = await db
     .select({
@@ -497,7 +455,7 @@ export interface CandidateEditData {
   affidavits: CandidateAffidavitRow[];
 }
 
-/** Loads everything `/curator/candidate/{id}` needs to render: the candidate's core row (+ ward name) and its five report-card fields, defaulting any field with no `candidate_fields` row yet to an empty, not-yet-declared state. `null` when no such candidate exists — the route twin turns that into a 404. Does NOT check scope (same convention as `loadQueueItem` — the caller must `canEditWard` against the returned `wardId`). */
+/** Loads everything `/curator/candidate/{id}` needs to render: the candidate's core row (+ ward name) and its five report-card fields, defaulting any field with no `candidate_fields` row yet to an empty, not-yet-declared state. `null` when no such candidate exists — the route twin turns that into a 404. */
 export async function loadCandidateForEdit(candidateId: number): Promise<CandidateEditData | null> {
   const [row] = await db
     .select({
@@ -850,7 +808,7 @@ export async function handleCandidateAffidavitPublish(
 // `/curator/candidate/{id}`. The engine (write-time http(s) validation,
 // curator-added-vs-auto-suggested lifecycles, the public `approvedOnly`
 // guard) lives in src/lib/news.ts; these two handlers only own the
-// FormData parsing + the extra scope-hop guard described below.
+// FormData parsing + the link-belongs-to-this-candidate guard described below.
 // ---------------------------------------------------------------------------
 
 export type NewsLinkOutcome = { kind: 'saved' } | { kind: 'validation_error'; key: string };
@@ -886,15 +844,10 @@ export async function handleNewsLinkAdd(actor: CuratorActor, candidateId: number
 }
 
 /**
- * Handles the "approve" form on a `suggested` link. `approveNewsLink`
- * itself trusts its caller on ward-scope (see that function's docstring) —
- * the SCOPE-HOP GUARD here is what makes that trust safe: the page has
- * already 403'd for a curator out of scope for `candidateId`'s ward, but
- * without this extra check a curator could still POST an arbitrary
- * `linkId` belonging to a DIFFERENT (out-of-scope) candidate alongside
- * this in-scope candidate's URL. Re-selecting the link and confirming its
- * `candidateId` matches the page's `candidateId` before calling
- * `approveNewsLink` closes that gap.
+ * Handles the "approve" form on a `suggested` link. Re-selects the link
+ * and confirms its `candidateId` matches the page's `candidateId` before
+ * calling `approveNewsLink`, so a form on one candidate's page can never
+ * approve a link that belongs to a different candidate.
  */
 export async function handleNewsLinkApprove(actor: CuratorActor, candidateId: number, form: FormData): Promise<NewsLinkOutcome> {
   const linkId = Number(form.get('linkId'));
@@ -943,8 +896,7 @@ export interface WardEditData {
  * (official, curator-read-only in this task) metadata, the live
  * `computeReadiness` result, and the current `ward_readiness` sign-off
  * state. `null` when no such ward exists — the route twin turns that into
- * a 404. Does NOT check scope (same convention as `loadCandidateForEdit` —
- * the caller must `canEditWard` against the returned ward id).
+ * a 404.
  */
 export async function loadWardForEdit(wardId: number): Promise<WardEditData | null> {
   const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
@@ -982,22 +934,10 @@ export async function loadWardForEdit(wardId: number): Promise<WardEditData | nu
   };
 }
 
-export type SignOffOutcome = { kind: 'saved' } | { kind: 'out_of_scope' };
-
 /**
- * Handles the "Mark ward ready" form. `signOffWard` (src/lib/readiness.ts)
- * itself re-checks scope (defense in depth — the route twin has already
- * 403'd once for GET/POST, same convention as every other scope-checked
- * mutator in this module) and writes the readiness snapshot.
+ * Handles the "Mark ward ready" form: `signOffWard` (src/lib/readiness.ts)
+ * writes the readiness snapshot.
  */
-export async function handleWardSignOff(actor: CuratorActor, wardId: number): Promise<SignOffOutcome> {
-  try {
-    await signOffWard(actor, wardId);
-  } catch (err) {
-    if (err instanceof Error && err.message === 'out_of_scope') {
-      return { kind: 'out_of_scope' };
-    }
-    throw err;
-  }
-  return { kind: 'saved' };
+export async function handleWardSignOff(actor: CuratorActor, wardId: number): Promise<void> {
+  await signOffWard(actor, wardId);
 }

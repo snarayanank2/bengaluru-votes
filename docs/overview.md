@@ -83,7 +83,7 @@ Two notes that matter more than they look.
 | **Anonymous citizen** | Any visitor, no account | Find & read information; cast an anonymous issue ballot; sign in to submit a flag |
 | **Registered citizen** | Signs up with email/WhatsApp + ward + language | Get updates; flag candidate misinformation; vote on ward issues |
 | **Transcriber** | Hired readers, Kannada-literate; no ward of their own | Check the AI-extracted fields on one candidate affidavit at a time |
-| **Data curator** | Trusted, vetted individuals, city-wide | Work the flag queue; correct any candidate field |
+| **Data curator** | Trusted, vetted individuals, city-wide | Work the citizen flag queue: fix the data or reject the flag |
 | **Admin** | Small internal team | Manage roles, access, users, and oversight |
 
 **One guiding principle:** the two citizen contributions — flagging an error and voting on issues — are **visible to everyone but require registration at the moment of submitting**. Anonymous users see the buttons; tapping one opens a quick sign-up popup, then the action continues.
@@ -113,7 +113,7 @@ Two notes that matter more than they look.
 ### 5.3 Transcriber
 *A hired reader who checks affidavits. The role exists because the numbers demand it: roughly 4,000 candidates, each with a scanned, notarised, often handwritten Kannada affidavit, all arriving in the days between nominations closing and the poll.*
 
-- **Paid work, not volunteering — five people at the floor, thirty-three for full coverage**, sized in §11 against the candidate count, the three-day window, and how much of the extraction the AI settles on its own. The whole engagement costs between **₹10,000 and ₹66,000**.
+- **Paid work, not volunteering — 23 people for five working days at ₹3,500 each**, sized in §11 so that every affidavit is read by a person. The whole engagement costs **₹80,500**.
 - Is handed **one affidavit at a time from a prioritized, city-wide queue** — missing values first, low-confidence values next — and cannot choose the ward, the party, or the candidate.
 - Sees the AI-extracted fields beside the affidavit and either **confirms each value or corrects it**.
 - **What a transcriber saves goes live immediately.** The report card updates on the spot, and the value's marker changes from AI-extracted to checked by a person. There is no second reading and no approval step — transcribers are invited and vetted, and are trusted on the same basis curators are.
@@ -124,10 +124,11 @@ Two notes that matter more than they look.
 ### 5.4 Data curator
 *A trusted, vetted individual responsible for data accuracy. Because curators are trusted, their edits go live immediately — no second approval.*
 
-- Small team of 4, **working city-wide**, paid **₹5,000 each** for the cycle. With four people and 369 wards, assigning wards to curators would be a label rather than a division of work, so there is no ward scope: any curator can act anywhere.
+- Small team of 2, on a rota through election day, **working city-wide**, paid **₹5,000 each** for the cycle. With two people and 369 wards, assigning wards to curators would be a label rather than a division of work, so there is no ward scope: any curator can act anywhere.
 - Review the queue of citizen flags, and accept them (making the correction) or reject them (with a reason the submitter can see).
-- **Correct any candidate field, flagged or not.** With one transcriber per affidavit and no second reading, this is the main net under the data — a curator does not need a flag as an excuse to fix something wrong.
-- **See how each transcriber is doing** — accuracy against corrected values, volume, time per affidavit — so a poor reader can be found and removed. On a three-day paid engagement, removal is the sanction that exists; there is no time to train anyone up mid-window.
+- **The job is the flag queue and nothing else** (decided 2026-10-13, following `docs/candidate-data.md`). Curators do not routinely read affidavits, approve transcriber work, or receive unflagged cases.
+- **The candidate editor stays available as a tool.** A curator who comes across an obviously wrong value can open the candidate and fix it without waiting for a flag, but looking for such errors is not part of the role and no coverage is planned around it.
+- **Out of scope:** no monitoring of transcribers. The transcriber performance view that was planned for curators is dropped.
 
 ### 5.5 Admin
 
@@ -139,7 +140,7 @@ Two notes that matter more than they look.
 - **Create and revoke staff accounts.** A curator or transcriber gets an account with their email against it; they sign in from `/login` by requesting a code, like anyone else. Revoking ends live sessions, not just future logins.
 **There is no audit log and no rollback** (removed 2026-08-15). Admins govern people and access; they cannot see who changed a value, or put a previous value back. A wrong entry is corrected by publishing over it.
 
-**This is worth stating plainly to stakeholders, because it is the platform's largest accepted risk.** One transcriber reads each affidavit, their save goes live immediately, and any of four curators can change any field on any candidate in any ward. Nothing records who did it and nothing can reverse it. If a candidate disputes what we published about their criminal record, **we cannot say who entered it, when, or what it replaced.** The remaining protections are forward-only: curators correct, citizens flag, and a transcriber whose readings are frequently overturned can still be identified and removed.
+**This is worth stating plainly to stakeholders, because it is the platform's largest accepted risk.** One transcriber reads each affidavit, their save goes live immediately, and either of the two curators can change any field on any candidate in any ward. Nothing records who did it and nothing can reverse it. If a candidate disputes what we published about their criminal record, **we cannot say who entered it, when, or what it replaced.** The remaining protections are forward-only: citizens flag and curators correct. Nothing measures how often a transcriber's readings are overturned.
 
 ---
 
@@ -176,13 +177,13 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 | Flagging scope | Registered citizens can flag across any ward. |
 | Issue list ownership | **Derived centrally**, in one editorial pass, from Sahaaya / JAM output and Open City complaints — not defined per ward by a curator. It is already a launch dependency; it needs a named owner. |
 | Report card content | **Affidavit-sourced fields and the affidavit itself.** Curator-compiled press coverage is deferred — it has no owner at this headcount. |
-| Curator scope | **City-wide.** A team of four across 369 wards is not a scoping problem, and per-ward assignment would be a label rather than a division of work. **Vetting is now the only net** — the audit log that used to share that job was removed on 2026-08-15, so a curator's scope is their unreviewed and unrecorded blast radius. |
+| Curator scope | **City-wide.** A team of two across 369 wards is not a scoping problem, and per-ward assignment would be a label rather than a division of work. **Vetting is now the only net** — the audit log that used to share that job was removed on 2026-08-15, so a curator's scope is their unreviewed and unrecorded blast radius. |
 | Audit log | **Removed 2026-08-15 — not required.** No change history, no `/admin/audit` viewer, no restore-a-previous-value action. Consequence: published values have no recorded author and cannot be reverted; see Verification nets below. |
 | Affidavit verification | **One transcriber reads each affidavit, and what they save goes live immediately.** No second reading, no consensus step, no approval. Values publish from the moment they are extracted, labelled AI-extracted until a person has checked them. |
-| Verification nets | Because there is no second reading, the checks are: curators can correct any field at any time, citizens can flag any value, and transcriber accuracy is visible so a poor reader can be found and removed. **All three are forward-only.** With the audit log removed (2026-08-15) there is no record of who changed a value and no way to restore a previous one — the nets catch a wrong value going forward, they do not reconstruct what happened. |
+| Verification nets | Because there is no second reading, the checks are: citizens can flag any value, and curators resolve those flags (and can correct a field they happen to find wrong). Transcriber accuracy is not tracked — the performance view was dropped on 2026-10-13. **Both are forward-only.** With the audit log removed (2026-08-15) there is no record of who changed a value and no way to restore a previous one — the nets catch a wrong value going forward, they do not reconstruct what happened. |
 | Transcriber queue | **Prioritized and city-wide** — worst-first: missing values, then low-confidence values, then everything else, randomized within each tier. Nobody chooses the ward, party or candidate they read; self-selection is what would concentrate the operation in the wards the readers already care about, and the priority order is what makes the team size a dial rather than a cliff (§11). |
-| Transcriber sourcing | **Hired and paid — roughly ₹2,000 a head for the three days** (changed from an unpaid volunteer cohort on 2026-08-16; anything citing "36 volunteers, targeting 50" predates it). Invited by an admin, not open sign-up, and an offline effort tracked as a dependency. |
-| Curator pay | **₹5,000 per curator as their fee for the cycle** — ₹20,000 for the team of four (decided 2026-08-16). Curators are paid for the work, not thanked for it: the role runs across months, carries city-wide authority over every published value, and is compensated accordingly. Vetting still governs who gets in, because the scope is unbounded. Admins are internal and are not paid from this budget. |
+| Transcriber sourcing | **Hired and paid — ₹3,500 a head for a five-day engagement, 23 people** (revised 2026-09-20 in `docs/candidate-data.md`; anything citing "₹2,000 for three days", "5 to 33 transcribers" or "36 volunteers, targeting 50" predates it). Invited by an admin, not open sign-up, and an offline effort tracked as a dependency. |
+| Curator pay | **₹5,000 per curator as their fee for the cycle** — ₹10,000 for the team of two (fee decided 2026-08-16; team size revised from four on 2026-09-20). Curators are paid for the work, not thanked for it: the role runs across months, carries city-wide authority over every published value, and is compensated accordingly. Vetting still governs who gets in, because the scope is unbounded. Admins are internal and are not paid from this budget. |
 | Launch phasing | **Fourteen milestones**, replacing a nine-milestone plan on 2026-08-15 (`docs/milestones.md`), with the messaging one split into an email half and a WhatsApp half. **Two launches, not one:** a soft launch on the ward finder and voting guidance at the announcement, and a hard launch on candidates and booths once real data exists. |
 | Staff sessions | **24 hours**, then sign in again. Long enough that nobody re-authenticates mid-shift, short enough that a borrowed laptop or a stale browser stops being a way in by the next day. |
 | Staff access | Staff sign in by email OTP, so the data operation **depends on SendGrid** — and on nothing else. It does not depend on Meta verification, the WhatsApp number, or template approval, which is where the messaging milestone's forty days actually go. |
@@ -209,8 +210,8 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 *Nearly everything that gates this launch sits outside the codebase. The complete register is `docs/project-dependencies.md`; these are the ones stakeholders should know about.*
 
 - **EC affidavits, obtainable at scale** — the hardest item on this list and the subject of §2. Unresolved, answerable now by asking, and in need of an owner.
-- **A hired transcription team (offline)** — **5 people to clear the high-priority set, 33 to read every candidate**, each working an eight-hour day for three days in the window between nominations closing and the poll, reading handwritten Kannada. Kannada reading is a hard requirement. **Money is no longer the obstacle here** — a full pass costs about **₹66,000** — so what has to exist in advance is an approved budget, a named hiring owner, and people identified and briefed before the window opens. The window is three days long and cannot be extended. §11 shows the sizing and what moves it.
-- **Curator recruitment & vetting (offline)** — four trusted people who can correct anything on the platform, city-wide, paid a **₹5,000 fee each** for the cycle. Vetting matters more than headcount here, because the scope is unbounded and the fee buys the work rather than the trust. **Doubles as partner recruitment.**
+- **A hired transcription team (offline)** — **23 people, enough to read every candidate with a 15% buffer**, each working an eight-hour day for five days, reading handwritten Kannada. Kannada reading is a hard requirement. **Money is no longer the obstacle here** — the engagement costs **₹80,500** — so what has to exist in advance is an approved budget, a named hiring owner, and people identified and briefed before the work arrives. Transcription starts as soon as extracted affidavits are ready rather than waiting for the final candidate list. §11 shows the sizing and what moves it.
+- **Curator recruitment & vetting (offline)** — two trusted people who resolve citizen flags city-wide and can correct anything on the platform, paid a **₹5,000 fee each** for the cycle. Vetting matters more than headcount here, because the scope is unbounded and the fee buys the work rather than the trust. **Doubles as partner recruitment.**
 - **Partner network (offline)** — reach depends on RWAs and civic orgs forwarding ward links to their networks. A hard dependency, since there is no paid channel to fall back on.
 - **The election announcement** — the anchor for every date in the plan. Not yet made; watching for it and propagating it through the calendar needs an owner.
 - **A working booth lookup by voter ID** — assumed to exist on the EC's side, not yet verified. Half the hard-launch campaign rests on it.
@@ -229,11 +230,11 @@ Five kinds of line appear below, and the distinction matters more than any singl
 
 | Item | Basis | Estimate | Status |
 |---|---|---|---|
-| **Transcription team** | 33 people × ₹2,000 for three days (5 × ₹2,000 at the floor) — §11 | **₹66,000** (₹10,000 floor) | Decided |
+| **Transcription team** | 23 people × ₹3,500 for five days — §11 | **₹80,500** | Decided (headcount to validate in the pilot) |
 | **WhatsApp sends and login OTPs** | 2 hard-launch messages × 25,000 registered users at ₹1.50 delivered (**₹75,000**), plus roughly 75,000 login OTPs — one per registration and about two repeat logins each — at ~₹0.20 delivered (**₹15,000**) | **₹90,000** | Decided / Modelled |
 | **Email sends + SendGrid account** | 2 hard-launch messages plus OTPs; Essentials/Pro across ~4 months | **₹12,000–₹15,000** | Quoted 2026-08-16 |
-| **AI affidavit extraction** | 4,000 affidavits × ~10 scanned pages; ~30,000 input and ~500 output tokens each, on the Batches API at half price | **₹17,000–₹35,000** | Modelled |
-| **Curator team** | 4 curators × ₹5,000 fee for the cycle | **₹20,000** | Decided |
+| **AI affidavit extraction** | 4,000 affidavits × ~10 scanned pages; a provisional API reserve, about double the earlier ₹17,000–₹35,000 batch-priced model, pending the pilot (`docs/candidate-data.md` §2) | **₹35,000–₹70,000** | Modelled |
+| **Curator team** | 2 curators × ₹5,000 fee for the cycle | **₹10,000** | Decided (headcount to validate) |
 | **Legal review** | Privacy policy and terms, DPDP Act 2023 | **₹50,000** | **Assumed** |
 
 **Running, while the platform is live**
@@ -250,7 +251,7 @@ Five kinds of line appear below, and the distinction matters more than any singl
 | **Paid acquisition** | Ruled out — it costs money the project lacks and undercuts the neutrality claim (§8) | **₹0** | Decided |
 | **Admins** | Two people, internal, not paid from this budget | **₹0** | Decided |
 
-**The one-off lines come to roughly ₹2.7 lakh** (₹2.6–2.8 lakh across the ranges above), with press assets the only priceable thing still missing. That is the number to put in front of whoever holds the budget, and it is small enough that the interesting question is not whether it is affordable but whether anyone has been asked. The WhatsApp figures include 18% GST; the USD-billed lines — SendGrid, Anthropic, Google — are quoted before it.
+**The one-off lines come to roughly ₹3.0 lakh** (₹2.8–3.2 lakh across the ranges above), with press assets the only priceable thing still missing. That is the number to put in front of whoever holds the budget, and it is small enough that the interesting question is not whether it is affordable but whether anyone has been asked. The WhatsApp figures include 18% GST; the USD-billed lines — SendGrid, Anthropic, Google — are quoted before it.
 
 Four things deserve attention more than the total does.
 
@@ -318,7 +319,7 @@ The platform does not launch in one moment. Candidate data cannot exist until th
 | **M4b** | WhatsApp sending | The ability to send WhatsApp at all | 40d |
 | **M5** | Candidate pages | Report cards and comparison, on demo data | 3d |
 | **M6** | Admin | Adding and blocking operators without a shell on the server | 3d |
-| **M7** | Curator tools | The flag queue, corrections to any field, and transcriber oversight | 3d |
+| **M7** | Curator tools | The flag queue and the candidate editor | 3d |
 | **M8** | Transcriber tools | The randomized queue and the affidavit checking surface | 3d |
 | **M9** | Affidavit pipeline | Bulk ingestion, storage and AI extraction, on stand-in documents | 3d |
 | **M10** | Registered users | Accounts, updates, issue voting, flagging | 3d |
@@ -339,56 +340,30 @@ Four things stakeholders should take from this list rather than from the sizes.
 
 ### Sizing the transcription team
 
-Seven working assumptions, all revisable:
+The working is in `docs/candidate-data.md` §3; this is the summary. It was revised on 2026-09-20 and replaces the earlier range of 5 to 33 transcribers at ₹2,000 for three days.
 
 | Assumption | Value |
 |---|---|
 | Candidates | 4,000 |
-| Fields read from the affidavit | 4 (§3.1) |
 | One candidate takes a transcriber | 10 minutes |
-| AI extraction correct at high confidence | 85% of candidates |
-| A transcriber works | an 8-hour day, for 3 days |
-| Productive hours per transcriber across the window | 20 |
-| Pay | about ₹2,000 per transcriber for the engagement |
+| A transcriber works | an 8-hour day, for 5 days (40 paid hours) |
+| Productive reading hours per transcriber | 33⅓ (the rest is briefing, breaks and handover) |
+| Coverage target | every affidavit read by a person |
+| Pay | ₹3,500 per transcriber for the engagement |
 
-At ten minutes each, **one transcriber-hour is six candidates**, and one transcriber gives 20 productive hours across the three days — twenty-four hours of engagement, less about four for briefing, breaks and handover. **One transcriber therefore reads 120 candidates.**
+At ten minutes each, one transcriber reads **200 candidates** over the five days, and a full pass over 4,000 is about **667 transcriber-hours**.
 
-**A full pass over every candidate is 666 transcriber-hours.** 4,000 × 10 minutes.
+| Staffing | Transcribers | Capacity over five days | Cost at ₹3,500 each |
+|---|---|---|---|
+| Minimum for full coverage at ten minutes | 20 | 4,000 | ₹70,000 |
+| **Provision** | **23** | **4,600** | **₹80,500** |
+| Minimum if a candidate takes fifteen minutes | 30 | 4,000 | ₹1,05,000 |
 
-**The high-priority set is 600 candidates, or 100 transcriber-hours.** At 85% of candidates settled by the AI at high confidence, the other 15% come back with a value missing or a value the extraction is not sure of. Those are the ones a person has to read.
+**Provision 23**, which is a 15% buffer at the assumed pace. The ₹3,500 fee and the five-day window are settled; the headcount and the ten-minute pace are estimates to validate in a pilot on 50–100 representative Kannada affidavits before hiring closes.
 
-**So the floor is 5 transcribers and the ceiling is 33.** 100 ÷ 20 = 5 to clear everything the AI could not settle; 666 ÷ 20 = 33.3 to read every candidate on every field. At ₹2,000 a head, that is **₹10,000 at the floor and ₹66,000 at the ceiling.**
+**The queue is still ordered worst-first** — candidates with missing values, then low-confidence ones, then everything else — so if fewer people turn up or the pace is slower, the work left undone is the work least likely to be wrong.
 
-### The queue is ordered so the headcount does not have to be guessed right
-
-Work is handed out in priority order, not at random within the whole set:
-
-1. **Candidates with missing values** — a blank field on a report card is the worst thing a citizen can meet, and it is the one case where the AI has told us plainly that it has nothing.
-2. **Candidates with low-confidence values** — a value is present and published, but the extraction is not sure of it. A wrong number that looks confident is more damaging than a gap.
-3. **Everything else** — high-confidence across all four fields, spot-checked if there is capacity and left AI-marked if there is not.
-
-This is what makes the team size a dial rather than a cliff. Whatever headcount is hired, the queue drains worst-first, and the work that does not get done is the work least likely to be wrong:
-
-| Transcribers | Productive hours | Candidates read | What that clears | Cost |
-|---|---|---|---|---|
-| **5** | 100 | 600 | **The high-priority set** — every candidate the AI left missing or unsure | **₹10,000** |
-| 10 | 200 | 1,200 | The above, and a spot-check pass over as many again | ₹20,000 |
-| 20 | 400 | 2,400 | Three candidates in five, read by a person | ₹40,000 |
-| **33** | 660 | 3,960 | **Every candidate, every field**, bar a tail of about forty | **₹66,000** |
-
-**₹56,000 is what separates the floor from full coverage, and that is the number to put in front of whoever holds the budget.** It is small against the cost of publishing a wrong criminal-case entry about a real person, and it is the only lever in this plan that converts money directly into data quality. What it does not buy is time: five people or thirty-three, they have to be identified, briefed and available on three named days that cannot be scheduled until the election is announced.
-
-**The 85% is a stated hope, not a measured rate — and it can be measured now**, by running extraction over the Karnataka Assembly and Lok Sabha affidavits that are already public, months before the real ones arrive. It is the input with the most leverage on everything above:
-
-| If the AI settles… | Needs a human read | Hours | Transcribers | Cost |
-|---|---|---|---|---|
-| 85% of candidates | 600 | 100 | 5 | ₹10,000 |
-| 70% of candidates | 1,200 | 200 | 10 | ₹20,000 |
-| 85% *per field*, not per candidate | 1,912 | 319 | 16 | ₹32,000 |
-
-**That last row is the assumption to check first.** The figures above read the 85% as a per-*candidate* rate: 85 candidates in 100 come back clean on all four affidavit fields. If it is instead 85% *per field*, four fields compound to 0.85⁴ = 52% clean, and the set needing a human read is 48% of candidates rather than 15% — three times the headcount. It is still under ₹35,000, which is the point: at these prices the sizing question is about lead time and briefing, not money.
-
-Two smaller assumptions carry the rest. Ten minutes assumes the transcriber is confirming rather than typing, on a notarised, often handwritten Kannada scan. And twenty productive hours assumes about four hours across the three days go to briefing, breaks and handover.
+**Staffing no longer depends on how good the AI is.** The earlier sizing assumed extraction would settle 85% of candidates and staffed only the remainder; this one reads everything. The extraction rate still matters for pace, since confirming a correct value is faster than correcting a wrong one, so it remains worth measuring now against the Karnataka Assembly and Lok Sabha affidavits already in the public domain.
 
 **On current sequencing, the hard launch finishes after the election.** Chaining the plan's own dependencies and estimates, the candidate campaign ends past the silence period. It is fixable — run it against the provisional candidate list, shorten it, or split the booth half (which needs no candidate data) from the candidate half — but it has to be chosen now rather than discovered in the final week. `docs/milestones.md` §16 works it through.
 
@@ -420,7 +395,7 @@ Three points deserve stakeholder attention:
 
 Three public pages carry the neutrality claim. **About** names the operator — the **Oorvani Foundation**, the trust behind `opencity.in` — says how we source data, and **who funds us**, because that is the first question a skeptical journalist asks. It also states Oorvani's commitments in plain words: we do not sell citizen data, we share it only with the services that deliver the platform's own messages, and we use contact details for ward election updates and critical service notices only. Saying that on the page citizens actually read, rather than only in the privacy policy, is what earns a phone number. **Data** publishes our own coverage and integrity figures alongside a city-wide picture of what Bengaluru's wards say matters; a platform that publishes other people's records should publish its own. **Press kit** ships early, since journalists arrive at the announcement and a kit assembled then is assembled too late.
 
-**Partner with us** turns recruitment from a private motion into a public one, offering the three ways to help — *spread awareness*, *curate data*, or *transcribe affidavits* — and taking applications from anyone. Two of the three are paid, and the page should say so plainly: transcribing is a three-day engagement at ₹2,000 with a Kannada-reading requirement, and curating carries a ₹5,000 fee for the cycle. Describing either as volunteering would misdescribe the ask and draw the wrong applicants. The team's own address book does not stretch to 369 wards, and it is precisely where a central-Bengaluru skew would come from.
+**Partner with us** turns recruitment from a private motion into a public one, offering the three ways to help — *spread awareness*, *curate data*, or *transcribe affidavits* — and taking applications from anyone. Two of the three are paid, and the page should say so plainly: transcribing is a five-day engagement at ₹3,500 with a Kannada-reading requirement, and curating carries a ₹5,000 fee for the cycle. Describing either as volunteering would misdescribe the ask and draw the wrong applicants. The team's own address book does not stretch to 369 wards, and it is precisely where a central-Bengaluru skew would come from.
 
 One sequencing point worth stakeholder attention: the **privacy policy is the first thing we must publish**, before the public launch. Meta will not approve WhatsApp onboarding without a live privacy-policy URL, so it gates the templates, which gate the entire comms plan. It also needs a lawyer — India's DPDP Act applies squarely to what we collect. The retention proposal is decided product-side — citizen contact data deleted or anonymized within **3 months of results being declared** — and the privacy policy waits only on the lawyer confirming or amending that period.
 
@@ -436,8 +411,8 @@ Ordered by how much they cost to start and how much they cost to delay.
 2. **Engage a lawyer for the privacy policy and terms.** The first item on the critical path, not the last: the privacy policy gates WhatsApp onboarding, which gates the templates, which gate the comms plan. Confirm the three-month retention period in the same conversation.
 3. **Name owners for the three workstreams that do not yet have one** — affidavit acquisition, partnerships, and the curator/transcriber operation. Every one of them has a longer lead time than the software it feeds, so naming the owner is the step that starts the clock.
 4. **Split the vendor chain and start both halves now.** SendGrid with domain authentication is days and unblocks staff login — do it first, because the curator and transcriber tooling cannot be proved without it. Meta business verification, the sender number and template submission are the forty days; they queue whatever else happens.
-5. **Approve the budget, and start curator and partner recruitment.** The whole one-off cost is **about ₹2.7 lakh**, itemised in §9.1: ₹90,000 for WhatsApp sends and login OTPs, ₹66,000 for the transcription team, ₹50,000 assumed for legal, ₹17,000–₹35,000 for AI extraction, ₹20,000 for the curators and ₹15,000 for email. Approving the larger transcription figure now costs nothing until the window opens while removing the sizing question entirely. Two things move this total more than anything else: classifying the WhatsApp templates before they enter the approval queue, and quoting Google's metering — §9.1 has both. Curator and partner recruitment remain one motion with one named owner, and hiring transcribers is a separate, larger job that needs a budget holder rather than a network.
-6. **Measure the extraction accuracy now**, against the Karnataka Assembly and Lok Sabha affidavits already in the public domain. The 85% assumption sets the team size and the budget, and it is the one input in §11 that can be replaced with a real number months before the real affidavits arrive.
+5. **Approve the budget, and start curator and partner recruitment.** The whole one-off cost is **about ₹3.0 lakh**, itemised in §9.1: ₹90,000 for WhatsApp sends and login OTPs, ₹80,500 for the transcription team, ₹50,000 assumed for legal, ₹35,000–₹70,000 for AI extraction, ₹10,000 for the curators and ₹15,000 for email. Two things move this total more than anything else: classifying the WhatsApp templates before they enter the approval queue, and quoting Google's metering — §9.1 has both. Curator and partner recruitment remain one motion with one named owner, and hiring transcribers is a separate, larger job that needs a budget holder rather than a network.
+6. **Measure the extraction accuracy now**, against the Karnataka Assembly and Lok Sabha affidavits already in the public domain. The team is sized to read every affidavit regardless, but the extraction rate decides how much of that reading is confirming rather than correcting — which is what the ten-minute pace in §11 rests on — and it can be replaced with a real number months before the real affidavits arrive.
 7. **Track the election announcement.** Every date in the plan is an offset from it, so watching for it and updating the calendar when it lands needs an owner.
 8. **Verify the booth lookup by voter ID actually works** before building a campaign around it.
 9. **Decide the hard-launch sequencing** described in §11, while it is still a choice.

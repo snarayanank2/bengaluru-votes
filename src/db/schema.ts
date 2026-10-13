@@ -200,11 +200,6 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-export const curatorScopes = pgTable('curator_scopes', {
-  userId: integer('user_id').notNull().references(() => users.id),
-  wardId: integer('ward_id').notNull().references(() => wards.id),
-}, (t) => [primaryKey({ columns: [t.userId, t.wardId] })]);
-
 /**
  * TEST ONLY — written to exclusively when `OTP_TEST_SINK === 'true'`
  * (src/lib/otp.ts's `requestOtp`), which must NEVER be set in production or

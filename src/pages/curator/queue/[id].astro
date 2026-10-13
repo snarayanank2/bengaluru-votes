@@ -4,17 +4,11 @@
  * for the presentational side. This route twin owns:
  *   - the numeric-id existence check (404 for a non-integer id or a row
  *     that doesn't exist — same pattern as src/pages/ward/[id].astro);
- *   - the SCOPE CHECK (`canEditWard`) — a curator whose scope does not
- *     cover this item's ward gets a 403, and never sees the item's content
- *     (the queue list is the OTHER half of this test: it never lists an
- *     out-of-scope item in the first place, src/lib/curator.ts's
- *     `loadQueueList`);
  *   - dispatching the accept/reject POST via the hidden `formAction`
- *     field, and the resulting redirect/re-render/403 status codes;
+ *     field, and the resulting redirect/re-render status codes;
  *   - no-store on every response.
  */
 import QueueItem from '../../../features/pages/curator/QueueItem.astro';
-import { canEditWard } from '../../../lib/authz';
 import { handleAccept, handleReject, loadCuratorLang, loadQueueItem } from '../../../lib/curator';
 
 const session = Astro.locals.session!;
@@ -29,11 +23,6 @@ if (!idParam || !Number.isInteger(itemId)) {
 let item = await loadQueueItem(itemId);
 if (!item) {
   return new Response(null, { status: 404 });
-}
-
-const inScope = await canEditWard(session.userId, session.role, item.wardId);
-if (!inScope) {
-  return new Response('Forbidden', { status: 403, headers: { 'cache-control': 'no-store' } });
 }
 
 const lang = await loadCuratorLang(session.userId);

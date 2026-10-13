@@ -25,20 +25,18 @@ const client = postgres(process.env.DATABASE_URL, { max: 5 });
 const db = drizzle(client, { schema });
 
 // High, task-specific ward id (Task 31 brief) — other suites own
-// 94xxx-99202; this suite owns 99310 (and 99312 for the out-of-scope ward B).
+// 94xxx-99202; this suite owns 99310 (and 99312 for a second ward, B).
 const WARD_ID = 99310;
-const WARD_ID_B = 99312; // a SECOND ward the scoped curator has NO scope over
+const WARD_ID_B = 99312; // a SECOND ward — curators are city-wide, so the same curator acts here too
 
 let candidateId: number;
-let candidateBId: number; // in WARD_ID_B — the out-of-scope accept target
+let candidateBId: number; // in WARD_ID_B
 let submitterAId: number;
 let submitterBId: number;
 let raceUserAId: number;
 let raceUserBId: number;
-// A REAL curator user scoped ONLY to WARD_ID (curator_scopes row), used by
-// every curator ACCEPT below — resolveFlag now re-checks canEditWard against
-// the candidate's real ward on the accept/publish path (final-review Fix 1).
-let scopedCuratorId: number;
+// A REAL curator user, used by every curator ACCEPT below.
+let curatorUserId: number;
 
 function targetRefFor(fieldKey: string): string {
   return `candidate:${candidateId}:${fieldKey}`;
@@ -64,13 +62,13 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
       .insert(schema.wards)
       .values({
         id: WARD_ID_B,
-        nameEn: 'Flags Test Ward B (out of scope)',
+        nameEn: 'Flags Test Ward B',
         nameKn: 'ಫ್ಲ್ಯಾಗ್ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಬಿ',
         corporation: 'south',
         zone: 'Zone F',
         boundaryRef: 'flags-test-ward-b',
       })
-      .onConflictDoUpdate({ target: schema.wards.id, set: { nameEn: 'Flags Test Ward B (out of scope)' } });
+      .onConflictDoUpdate({ target: schema.wards.id, set: { nameEn: 'Flags Test Ward B' } });
 
     const [candidate] = await db
       .insert(schema.candidates)
@@ -94,17 +92,12 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
       .returning();
     candidateBId = candidateB!.id;
 
-    // A real curator user, scoped ONLY to WARD_ID (NOT WARD_ID_B) — the
-    // accept-path scope re-check reads curator_scopes via canEditWard.
-    const [scopedCurator] = await db
+    // A real curator user, with no ward assignment of any kind.
+    const [curatorUser] = await db
       .insert(schema.users)
-      .values({ email: `flags-test-scoped-curator-${randomUUID()}@example.com`, homeWardId: WARD_ID, role: 'curator', status: 'active' })
+      .values({ email: `flags-test-curator-${randomUUID()}@example.com`, homeWardId: WARD_ID, role: 'curator', status: 'active' })
       .returning();
-    scopedCuratorId = scopedCurator!.id;
-    await db
-      .insert(schema.curatorScopes)
-      .values({ userId: scopedCuratorId, wardId: WARD_ID })
-      .onConflictDoNothing();
+    curatorUserId = curatorUser!.id;
 
     const submitterA = await db
       .insert(schema.users)
@@ -188,7 +181,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     });
 
     await resolveFlag(
-      { userId: scopedCuratorId, role: 'curator' },
+      { userId: curatorUserId, role: 'curator' },
       first.flagItemId,
       {
         accept: true,
@@ -212,7 +205,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
 
     const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, first.flagItemId));
     expect(item!.status).toBe('accepted');
-    expect(item!.resolvedBy).toBe(scopedCuratorId);
+    expect(item!.resolvedBy).toBe(curatorUserId);
     expect(item!.resolvedAt).not.toBeNull();
 
     // Both submitters' visible status is the SAME item — no per-submission
@@ -423,10 +416,10 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
       authoredLang: 'en' as const,
     };
 
-    await resolveFlag({ userId: scopedCuratorId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput });
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput });
 
     await expect(
-      resolveFlag({ userId: scopedCuratorId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput }),
+      resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput }),
     ).rejects.toThrow('flag_already_resolved');
 
     const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
@@ -473,7 +466,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     vi.mocked(translateFieldSoon).mockClear();
 
     await resolveFlag(
-      { userId: scopedCuratorId, role: 'curator' },
+      { userId: curatorUserId, role: 'curator' },
       flagItemId,
       {
         accept: true,
@@ -513,7 +506,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     vi.mocked(translateFieldSoon).mockClear();
 
     await resolveFlag(
-      { userId: scopedCuratorId, role: 'curator' },
+      { userId: curatorUserId, role: 'curator' },
       first.flagItemId,
       {
         accept: true,
@@ -556,7 +549,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     // supplied differently -> decideTranslationStatus returns 'manual' ->
     // resolveFlag must NOT fire translateFieldSoon at all (flags.ts:~270).
     await resolveFlag(
-      { userId: scopedCuratorId, role: 'curator' },
+      { userId: curatorUserId, role: 'curator' },
       second.flagItemId,
       {
         accept: true,
@@ -585,14 +578,14 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   // -------------------------------------------------------------------------
-  // Final-review Fix 1 — curator ward-scope enforcement on the flag path.
+  // Final-review Fix 1 — the flag's ward is derived from its target; curators and admins resolve city-wide.
   // -------------------------------------------------------------------------
 
   it('Fix 1(a): submitFlag DERIVES the ward from the target candidate, ignoring the client-supplied wardId', async () => {
     const targetRef = `candidate:${candidateBId}:cases`; // candidate B lives in WARD_ID_B
 
-    // Client LIES about the ward (claims WARD_ID, the curator-A ward) — the
-    // whole attack. The stored ward must be the candidate's REAL ward.
+    // Client LIES about the ward (claims WARD_ID). The stored ward must be
+    // the candidate's REAL ward.
     const { flagItemId } = await submitFlag(submitterAId, {
       wardId: WARD_ID, // wrong on purpose
       targetType: 'candidate_field',
@@ -615,11 +608,9 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     ).rejects.toThrow('invalid_flag_target');
   });
 
-  it('Fix 1(b): a curator scoped ONLY to ward A cannot accept/publish a flag whose target candidate is in ward B — accept is rejected and B\'s field is unchanged', async () => {
+  it('a curator (city-wide, no ward assignment) CAN accept/publish a flag whose target candidate is in a different ward', async () => {
     const targetRef = `candidate:${candidateBId}:track_record`;
 
-    // Filed correctly under WARD_ID_B (fix 1a derives it), so ward-B's own
-    // curator would see it — but scopedCuratorId has NO scope over WARD_ID_B.
     const { flagItemId } = await submitFlag(submitterAId, {
       targetType: 'candidate_field',
       targetRef,
@@ -629,32 +620,29 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     const [itemBefore] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
     expect(itemBefore!.wardId).toBe(WARD_ID_B);
 
-    await expect(
-      resolveFlag({ userId: scopedCuratorId, role: 'curator' }, flagItemId, {
-        accept: true,
-        publish: {
-          candidateId: candidateBId,
-          fieldKey: 'track_record',
-          valueEn: 'Malicious cross-ward edit that must not land.',
-          sourceUrl: 'https://example.org/attacker-source',
-          sourceType: 'curator',
-          authoredLang: 'en',
-        },
-      }),
-    ).rejects.toThrow('out_of_scope');
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, {
+      accept: true,
+      publish: {
+        candidateId: candidateBId,
+        fieldKey: 'track_record',
+        valueEn: 'Track record, curator-published in ward B.',
+        sourceUrl: 'https://example.org/curator-source',
+        sourceType: 'curator',
+        authoredLang: 'en',
+      },
+    });
 
-    // Candidate B's field was never written, and the item stays pending.
     const [field] = await db
       .select()
       .from(schema.candidateFields)
       .where(and(eq(schema.candidateFields.candidateId, candidateBId), eq(schema.candidateFields.fieldKey, 'track_record')));
-    expect(field).toBeUndefined();
+    expect(field!.valueEn).toBe('Track record, curator-published in ward B.');
 
     const [itemAfter] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
-    expect(itemAfter!.status).toBe('pending');
+    expect(itemAfter!.status).toBe('accepted');
   });
 
-  it('Fix 1(b): admin (city-wide) CAN accept a cross-ward flag — scope re-check passes for admin', async () => {
+  it('admin CAN accept a flag in any ward', async () => {
     const targetRef = `candidate:${candidateBId}:assets`;
 
     const { flagItemId } = await submitFlag(submitterAId, {

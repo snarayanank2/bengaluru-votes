@@ -12,7 +12,7 @@ const sortParam = Astro.url.searchParams.get('sort');
 const sort: QueueSort = sortParam === 'ward' ? 'ward' : 'recent';
 
 const [items, lang] = await Promise.all([
-  loadQueueList(session.userId, session.role, sort),
+  loadQueueList(sort),
   loadCuratorLang(session.userId),
 ]);
 

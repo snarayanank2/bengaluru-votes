@@ -1,10 +1,8 @@
 ---
 /**
  * `/curator/queue` (Task 34, information-architecture.md §5.2) — PENDING
- * flag_items in the curator's scoped wards ONLY (admin: every ward). An
- * out-of-scope item is never in `items` — src/lib/curator.ts's
- * `loadQueueList` does the scoping; this component just renders whatever
- * it's handed. See src/features/pages/curator/Dashboard.astro's docstring
+ * flag_items, city-wide; this component just renders whatever
+ * src/lib/curator.ts's `loadQueueList` hands it. See src/features/pages/curator/Dashboard.astro's docstring
  * for the language/noindex rationale shared by every curator page.
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';

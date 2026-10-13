@@ -28,10 +28,8 @@
  *    every other method) requires a session; wrong role -> 403; no session
  *    -> redirect to `/login?next=<validated relative path>`. Unsafe methods
  *    additionally require a valid synchronizer CSRF token (src/lib/csrf.ts).
- *    Per-ward curator scope (`canEditWard`, src/lib/authz.ts) is NOT checked
- *    here — the middleware only knows the route class, not which ward a
- *    specific edit targets; that's checked where the ward id is known
- *    (Task 34/36/39 call `canEditWard` directly).
+ *    There is no per-ward scope: curators and admins are both city-wide
+ *    (decided 2026-08-15), so the role check here is the whole answer.
  *  - /api/webhooks/*: exempt from the Origin/Sec-Fetch-Site check (no
  *    session, no CSRF token — vendor POSTs are signature-verified instead,
  *    Task 53) and from every route guard above.

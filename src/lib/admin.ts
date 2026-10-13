@@ -1,41 +1,14 @@
 /**
- * Business logic behind the admin console's roles & scope management
+ * Business logic behind the admin console's role management
  * (Task 44, information-architecture.md §6.1/§6.2; PRD §7/§10/§11/§14).
- * Admins govern who is a curator and which wards they may edit — this
- * module IS the root of the authorization chain the rest of the app reads
- * (`src/lib/authz.ts`'s `canEditWard`, `src/lib/curator.ts`'s
- * `scopedWardIds`, both keyed off `users.role` + `curator_scopes`). Every
- * mutation here is admin-only (PRD §7's
- * permissions matrix): `src/middleware.ts` already 403s any non-admin
- * session on the `/admin/*` route class, and each mutator below
- * re-asserts `actor.role === 'admin'` anyway — defense in depth against a
- * future non-route caller (same convention as `src/lib/authz.ts`'s
- * `canEditWard` being re-checked at multiple layers).
- *
- * ZONE SHORTCUT (PRD §10, IA §6.2): a curator's scope is stored ONLY as a
- * set of `curator_scopes` (userId, wardId) rows — there is no
- * `curator_zones` table and no "zone scope" concept anywhere in the data
- * model. "Assign a zone" is purely an ADMIN-UI convenience:
- * `expandZoneToWards` resolves a zone name to its member ward ids at the
- * moment the admin saves, and the caller (the `/admin/roles` route) folds
- * those ids into the same ward-id set `setCuratorScope` receives —
- * `setCuratorScope` itself has no notion of zones at all. A ward later
- * reassigned to a different zone does NOT retroactively change any
- * curator's stored scope (it was never zone-scoped to begin with, only
- * expanded-once) — this is a one-time expansion, not a live binding.
- *
- * UNCAPPED (PRD §14): `setCuratorScope` enforces no upper bound on ward
- * count — an admin may scope a curator across all 369 wards if that is
- * the right call for that person. There is no size guard.
- *
- * ORDERING: `grantRole` and `setCuratorScope` are deliberately independent
- * — `setCuratorScope` does not check or require the target user's current
- * role. The normal flow is grant-then-scope (make someone a curator, then
- * assign their wards), but nothing here enforces that order: a scope row
- * for a citizen is inert (no code path ever reads `curator_scopes` for a
- * non-curator/admin user — see `scopedWardIds`'s `role` parameter), and
- * `revokeRole` always clears scope on the way back down, so the two never
- * drift into a confusing state either way.
+ * Admins govern who is a curator or an admin — this module IS the root of
+ * the authorization chain the rest of the app reads (`users.role`, checked
+ * by `src/middleware.ts`). Curators and admins are both city-wide (decided
+ * 2026-08-15): there is no ward scope to assign. Every mutation here is
+ * admin-only (PRD §7's permissions matrix): `src/middleware.ts` already
+ * 403s any non-admin session on the `/admin/*` route class, and each
+ * mutator below re-asserts `actor.role === 'admin'` anyway — defense in
+ * depth against a future non-route caller.
  *
  * LOCKOUT PREVENTION (Task 44 review): because this module is the root of
  * the authorization chain and `readSession` re-reads `users.role` on every
@@ -48,7 +21,7 @@
  */
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
-import { curatorScopes, eoiSubmissions, users, wards } from '../db/schema';
+import { eoiSubmissions, users } from '../db/schema';
 
 /** The actor shape every mutator below requires — same session shape `src/middleware.ts` puts on `locals.session`, narrowed to admin. */
 export type AdminActor = { userId: number; role: 'admin' };
@@ -121,13 +94,8 @@ async function assertNotSelfOrLastAdmin(
 
 /**
  * Sets `targetUserId`'s role (citizen → curator/admin, or a lateral
- * curator ↔ admin move). Does NOT touch `curator_scopes` — a fresh
- * curator starts with zero wards until `setCuratorScope` is called
- * separately (see module docstring's ORDERING note); an existing
- * curator's scope rows are left as-is by a grant (e.g. curator → admin
- * doesn't retroactively matter since admin scope is the `null` sentinel
- * everywhere scope is read, but the rows themselves aren't deleted here —
- * only `revokeRole` clears them).
+ * curator ↔ admin move). Either role is city-wide the moment it is
+ * granted.
  *
  * DEMOTE-AN-ADMIN GUARD (Task 44 review): `role`'s only two values mean
  * this function's only possible DEMOTION is an existing admin set to
@@ -160,12 +128,7 @@ export async function grantRole(actor: AdminActor, targetUserId: number, role: '
 }
 
 /**
- * Demotes `targetUserId` to `'citizen'` AND removes every `curator_scopes`
- * row for them — a demoted curator has no scope (a stale scope row for a
- * citizen would be inert everywhere it's read, per module docstring, but
- * leaving it around would be a silent trap for a future re-grant that
- * expects to start from zero). Both the role update and the scope wipe
- * happen in one transaction.
+ * Demotes `targetUserId` to `'citizen'`.
  *
  * LOCKOUT-PREVENTION GUARD (Task 44 review): before applying the change,
  * rejects with `'cannot_revoke_self'` (the caller revoking their own id) or
@@ -187,113 +150,25 @@ export async function revokeRole(actor: AdminActor, targetUserId: number): Promi
     await assertNotSelfOrLastAdmin(tx, actor, targetUserId, existing);
 
     await tx.update(users).set({ role: 'citizen' }).where(eq(users.id, targetUserId));
-    await tx.delete(curatorScopes).where(eq(curatorScopes.userId, targetUserId));
   });
 }
 
-/**
- * REPLACES `targetUserId`'s entire `curator_scopes` set with exactly
- * `wardIds` (deduped) — existing rows are deleted and the new set
- * inserted in one transaction, so a reader never observes a
- * partially-updated scope. Every id is validated against `wards` FIRST
- * (before any delete), so an invalid id throws `'invalid_ward_id'` and
- * leaves the existing scope completely untouched. No upper bound on
- * `wardIds.length` — see module docstring's UNCAPPED note.
- *
- * Does not check or require the target's current role (see module
- * docstring's ORDERING note) — this function only ever touches
- * `curator_scopes`.
- */
-export async function setCuratorScope(actor: AdminActor, targetUserId: number, wardIds: number[]): Promise<void> {
-  assertAdmin(actor);
-  const uniqueWardIds = [...new Set(wardIds)];
-
-  await db.transaction(async (tx) => {
-    if (uniqueWardIds.length > 0) {
-      const validRows = await tx.select({ id: wards.id }).from(wards).where(inArray(wards.id, uniqueWardIds));
-      if (validRows.length !== uniqueWardIds.length) {
-        throw new Error('invalid_ward_id');
-      }
-    }
-
-    await tx.delete(curatorScopes).where(eq(curatorScopes.userId, targetUserId));
-    if (uniqueWardIds.length > 0) {
-      await tx.insert(curatorScopes).values(uniqueWardIds.map((wardId) => ({ userId: targetUserId, wardId })));
-    }
-  });
-}
-
-/**
- * The ZONE SHORTCUT (see module docstring): every ward id whose
- * `wards.zone` exactly equals `zone`. Read-only — never writes anything
- * itself; the caller (the `/admin/roles` route) folds the result into
- * the ward-id set it passes to `setCuratorScope`. An unknown zone simply
- * returns `[]` (no distinct "zone not found" error — a typo'd zone name
- * is indistinguishable from "this zone currently has no wards", and both
- * mean "nothing to add").
- */
-export async function expandZoneToWards(zone: string): Promise<number[]> {
-  const rows = await db.select({ id: wards.id }).from(wards).where(eq(wards.zone, zone));
-  return rows.map((r) => r.id);
-}
-
-/** Every distinct zone name across `wards` — populates the Roles page's zone-shortcut `<select>`. */
-export async function listZones(): Promise<string[]> {
-  const rows = await db.selectDistinct({ zone: wards.zone }).from(wards).orderBy(wards.zone);
-  return rows.map((r) => r.zone);
-}
-
-export interface CuratorScopeWard {
-  id: number;
-  nameEn: string;
-}
-
-export interface CuratorScopeRow {
+export interface StaffRow {
   id: number;
   email: string | null;
   role: 'curator' | 'admin';
   status: string;
-  /** Scoped wards, sorted by name for stable display — empty for an admin (city-wide, PRD §7/§10, never stored per-ward). */
-  wards: CuratorScopeWard[];
 }
 
-/**
- * Every curator/admin user, each with their current scope (empty for an
- * admin — city-wide is the `null` sentinel everywhere scope is read, not
- * a stored row set). Feeds the Roles page's list (IA §6.2).
- */
-export async function listCuratorsAndScopes(): Promise<CuratorScopeRow[]> {
+/** Every curator/admin user. Feeds the Roles page's list (IA §6.2). */
+export async function listCuratorsAndAdmins(): Promise<StaffRow[]> {
   const userRows = await db
     .select({ id: users.id, email: users.email, role: users.role, status: users.status })
     .from(users)
     .where(inArray(users.role, ['curator', 'admin']))
     .orderBy(users.id);
 
-  const userIds = userRows.map((r) => r.id);
-  const scopeRows = userIds.length
-    ? await db
-        .select({ userId: curatorScopes.userId, wardId: curatorScopes.wardId, nameEn: wards.nameEn })
-        .from(curatorScopes)
-        .innerJoin(wards, eq(wards.id, curatorScopes.wardId))
-        .where(inArray(curatorScopes.userId, userIds))
-    : [];
-
-  const byUser = new Map<number, CuratorScopeWard[]>();
-  for (const row of scopeRows) {
-    const list = byUser.get(row.userId) ?? [];
-    list.push({ id: row.wardId, nameEn: row.nameEn });
-    byUser.set(row.userId, list);
-  }
-
-  return userRows
-    .filter((row): row is typeof row & { role: 'curator' | 'admin' } => row.role === 'curator' || row.role === 'admin')
-    .map((row) => ({
-      id: row.id,
-      email: row.email,
-      role: row.role,
-      status: row.status,
-      wards: (byUser.get(row.id) ?? []).sort((a, b) => a.nameEn.localeCompare(b.nameEn)),
-    }));
+  return userRows.filter((row): row is typeof row & { role: 'curator' | 'admin' } => row.role === 'curator' || row.role === 'admin');
 }
 
 export interface ConsoleStats {
