@@ -7,7 +7,7 @@
  * out of the mocked "sent" email body, same technique as
  * tests/unit/otp.test.ts / tests/unit/auth-flow.test.ts.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
@@ -181,6 +181,72 @@ describe('/login, /kn/login (Task 27) — IA §7.1, PRD §10', () => {
     expect(res.headers.get('location')).toBe('/account');
     expect(res.headers.get('set-cookie')).toContain(`${SESSION_COOKIE}=`);
     expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
+  describe('password mode (temporary, until email works for OTP)', () => {
+    const PASSWORD = 'route-test-master-password-0001';
+
+    beforeEach(() => {
+      process.env.MASTER_PASSWORD = PASSWORD;
+    });
+
+    afterEach(() => {
+      delete process.env.MASTER_PASSWORD;
+    });
+
+    it.each(['en', 'kn'] as const)('%s: GET renders the password form and no OTP step', async (lang) => {
+      const res = await get(lang);
+      expect(res.status).toBe(200);
+      const html = normalize(await res.text());
+      expect(html).toContain('name="destination"');
+      expect(html).toContain('name="password"');
+      expect(html).toContain('type="password"');
+      expect(html).toContain('autocomplete="current-password"');
+      expect(html).not.toContain('name="step"');
+      expect(html).toContain(t(lang, 'auth.password.heading'));
+    });
+
+    it('right password for a known user -> 302 to next with a session cookie, no OTP sent', async () => {
+      await db.insert(schema.users).values({ email: KNOWN_EMAIL, homeWardId: WARD.id, role: 'citizen', status: 'active' });
+      const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/admin/users' });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('/admin/users');
+      expect(res.headers.get('set-cookie')).toContain(`${SESSION_COOKIE}=`);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    it.each(['https://evil.example/x', '//evil.example/x'])('a hostile next (%s) collapses to /', async (next) => {
+      await db.insert(schema.users).values({ email: KNOWN_EMAIL, homeWardId: WARD.id, role: 'citizen', status: 'active' });
+      const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('/');
+    });
+
+    it('wrong password -> re-renders with the error, keeps the contact, sets no cookie', async () => {
+      await db.insert(schema.users).values({ email: KNOWN_EMAIL, homeWardId: WARD.id, role: 'citizen', status: 'active' });
+      const res = await post('en', { destination: KNOWN_EMAIL, password: 'wrong-password-wrong-password', next: '/' });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('set-cookie')).toBeNull();
+      const html = normalize(await res.text());
+      expect(html).toContain(t('en', 'auth.password.error.invalid'));
+      expect(html).toContain(`value="${KNOWN_EMAIL}"`);
+      expect(html).not.toContain('wrong-password-wrong-password');
+    });
+
+    it('an unknown contact with the right password gets the SAME error and creates no user', async () => {
+      const res = await post('en', { destination: NEW_EMAIL, password: PASSWORD, next: '/' });
+      expect(res.status).toBe(200);
+      expect(normalize(await res.text())).toContain(t('en', 'auth.password.error.invalid'));
+      const rows = await db.select().from(schema.users).where(eq(schema.users.email, NEW_EMAIL));
+      expect(rows).toHaveLength(0);
+    });
+
+    it('a POST with no password field at all fails cleanly (no 500)', async () => {
+      const res = await post('en', { destination: KNOWN_EMAIL, next: '/' });
+      expect(res.status).toBe(200);
+      expect(normalize(await res.text())).toContain(t('en', 'auth.password.error.invalid'));
+    });
   });
 
   describe('next open-redirect hardening (isSameOriginRelative)', () => {

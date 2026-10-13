@@ -23,6 +23,7 @@
 import { requestOtp, type OtpChannel } from './otp';
 import { resolveOrRegister, type RegisterPayload } from './auth-flow';
 import { isSameOriginRelative } from './authz';
+import { loginWithMasterPassword, masterLoginEnabled } from './master-login';
 
 export type LoginStep = 1 | 2 | 3;
 
@@ -30,6 +31,8 @@ export interface LoginRenderState {
   step: LoginStep;
   /** Already-validated (isSameOriginRelative) same-origin relative path. */
   next: string;
+  /** TEMPORARY (until email works for OTP): render the master-password form instead of the OTP steps. */
+  passwordMode?: boolean;
   destination?: string;
   channel?: OtpChannel;
   /** Step 3 only — the OTP code carried forward from step 2, reused on submit. */
@@ -49,7 +52,7 @@ function inferChannel(destination: string): OtpChannel {
 
 /** GET /login (or any error path that restarts the flow) — always step 1. */
 export function initialLoginState(nextRaw: unknown, error?: string): LoginRenderState {
-  return { step: 1, next: isSameOriginRelative(nextRaw), error };
+  return { step: 1, next: isSameOriginRelative(nextRaw), error, passwordMode: masterLoginEnabled() };
 }
 
 async function handleStep1(form: FormData, next: string): Promise<LoginPostOutcome> {
@@ -127,9 +130,24 @@ async function handleStep3(form: FormData, next: string, srcAttribution: string 
   };
 }
 
+/** TEMPORARY master-password path (src/lib/master-login.ts) — deleted when email works for OTP. */
+async function handlePasswordLogin(form: FormData, next: string): Promise<LoginPostOutcome> {
+  const destination = String(form.get('destination') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+  const result = await loginWithMasterPassword(destination, password);
+  if (result.ok) {
+    return { kind: 'redirect', location: next, setCookie: result.setCookie };
+  }
+  return {
+    kind: 'render',
+    state: { step: 1, next, passwordMode: true, destination, error: 'auth.password.error.invalid' },
+  };
+}
+
 /** Dispatches a `/login` POST by its hidden `step` field (defaults to '1' if absent/tampered). */
 export async function handleLoginPost(form: FormData, srcAttribution: string | null): Promise<LoginPostOutcome> {
   const next = isSameOriginRelative(form.get('next'));
+  if (masterLoginEnabled()) return handlePasswordLogin(form, next);
   const step = String(form.get('step') ?? '1');
 
   if (step === '2') return handleStep2(form, next, srcAttribution);

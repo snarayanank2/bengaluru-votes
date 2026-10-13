@@ -42,17 +42,19 @@ interface Props {
 
 const { lang, state } = Astro.props;
 const errorText = state.error ? t(lang, state.error) : undefined;
+// TEMPORARY (until email works for OTP): one email-or-phone + password form.
+const passwordMode = state.passwordMode === true;
 ---
 
 <Base
   lang={lang}
-  title={t(lang, 'auth.meta.title')}
-  description={t(lang, 'auth.meta.description')}
+  title={t(lang, passwordMode ? 'auth.password.meta.title' : 'auth.meta.title')}
+  description={t(lang, passwordMode ? 'auth.password.meta.description' : 'auth.meta.description')}
   path="/login"
   noindex={true}
 >
   <div class="login-page">
-    <h1>{t(lang, 'auth.modal.title')}</h1>
+    <h1>{t(lang, passwordMode ? 'auth.password.heading' : 'auth.modal.title')}</h1>
 
     {errorText && (
       <Banner kind="error" lang={lang}>
@@ -61,7 +63,45 @@ const errorText = state.error ? t(lang, state.error) : undefined;
     )}
 
     {
-      state.step === 1 && (
+      passwordMode && (
+        <form method="post" novalidate>
+          <input type="hidden" name="next" value={state.next} />
+          <div class="form-field">
+            <label class="form-label" for="login-destination">
+              {t(lang, 'auth.password.contactLabel')}
+            </label>
+            <input
+              id="login-destination"
+              class="form-input"
+              name="destination"
+              type="text"
+              autocomplete="username"
+              value={state.destination ?? ''}
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="login-password">
+              {t(lang, 'auth.password.passwordLabel')}
+            </label>
+            <input
+              id="login-password"
+              class="form-input"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <Button type="submit" variant="primary" lang={lang}>
+            {t(lang, 'auth.password.submit')}
+          </Button>
+        </form>
+      )
+    }
+
+    {
+      !passwordMode && state.step === 1 && (
         <form method="post" novalidate>
           <input type="hidden" name="step" value="1" />
           <input type="hidden" name="next" value={state.next} />
@@ -75,7 +115,7 @@ const errorText = state.error ? t(lang, state.error) : undefined;
     }
 
     {
-      state.step === 2 && (
+      !passwordMode && state.step === 2 && (
         <form method="post" novalidate>
           <input type="hidden" name="step" value="2" />
           <input type="hidden" name="next" value={state.next} />
@@ -105,7 +145,7 @@ const errorText = state.error ? t(lang, state.error) : undefined;
     }
 
     {
-      state.step === 3 && (
+      !passwordMode && state.step === 3 && (
         <form method="post" novalidate>
           <input type="hidden" name="step" value="3" />
           <input type="hidden" name="next" value={state.next} />
