@@ -47,6 +47,10 @@ export const SETTING_KEYS = [
   // rather than inventing a time (see that file's module docstring).
   'poll_open_time',
   'poll_close_time',
+  // The transcriber queue hands out affidavits whose AI confidence is below
+  // this (0-100) before the rest (src/lib/transcribe.ts). Absent -> 70, a
+  // placeholder until the Kannada pilot sets it (docs/candidate-data.md §2).
+  'low_confidence_threshold',
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

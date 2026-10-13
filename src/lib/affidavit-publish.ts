@@ -154,6 +154,8 @@ export interface PublishAffidavitOptions {
   sourceUrl: string;
   /** True when a person checked these values against the affidavit. */
   checked: boolean;
+  /** What the AI read, when known: lets a checked value record whether the person kept it or changed it. */
+  aiFields?: FieldData[];
 }
 
 /**
@@ -163,6 +165,10 @@ export interface PublishAffidavitOptions {
  * The AI-extracted label stays only when the system wrote the value and
  * nobody checked it. A field nobody could read (`unreadable`) is not a
  * checked value, so it never clears a label that was already there.
+ *
+ * `checked_by`, `checked_at` and `confirmed_ai` are written here and only
+ * here for structured values, in the same statement as the value: nothing
+ * can say "checked by a person" without a person having published it.
  *
  * Name and party also update the `candidates` row, which is what the public
  * page reads them from; an unreadable or undeclared one leaves it alone.
@@ -196,6 +202,7 @@ export async function publishAffidavitFields(
     const humanChecked = opts.checked && actor.role !== 'system' && !unreadable;
     const aiExtracted = humanChecked ? false : unreadable && existing ? existing.aiExtracted : actor.role === 'system' || unreadable;
     const translationStatus = decideTranslationStatus(existing, { valueEn, authoredLang: 'en' });
+    const aiField = opts.aiFields?.find((f) => f.key === data.key);
 
     const values = {
       valueEn,
@@ -209,6 +216,9 @@ export async function publishAffidavitFields(
       sourceUrl: opts.sourceUrl,
       sourceType: 'official' as const,
       aiExtracted,
+      checkedBy: humanChecked ? actor.userId : null,
+      checkedAt: humanChecked ? now : null,
+      confirmedAi: humanChecked && aiField ? sameFieldData(data, aiField) : null,
       updatedAt: now,
     };
 

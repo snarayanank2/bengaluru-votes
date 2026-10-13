@@ -152,6 +152,10 @@ export async function publishCandidateFieldTx(
         // (src/lib/affidavit-publish.ts).
         valueData: null,
         unreadable: false,
+        // A person typing the value is a person checking it; the system is not.
+        checkedBy: aiExtracted || actor.role === 'system' ? null : actor.userId,
+        checkedAt: aiExtracted || actor.role === 'system' ? null : new Date(),
+        confirmedAi: null,
         updatedAt: new Date(),
       },
     })

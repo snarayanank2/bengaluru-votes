@@ -196,6 +196,76 @@ describe('publishAffidavitFields', () => {
     expect((await field('assets')).valueEn).toContain('₹4,52,10,000');
   });
 
+  describe('checked by a person', () => {
+    const transcriber = { userId: 4242, role: 'transcriber' as const };
+    const ai = fieldsFromExtraction(extraction());
+
+    async function reset() {
+      await appDb.transaction((tx) => publishAffidavitFields(tx, { userId: null, role: 'system' }, candidateId, ai, { sourceUrl: SOURCE, checked: false }));
+    }
+
+    it('marks a confirmed value checked, by whom and when, and clears the AI label', async () => {
+      await reset();
+      const before = Date.now();
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'age', status: 'value', years: 52 }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
+      );
+      const age = await field('age');
+      expect(age).toMatchObject({ aiExtracted: false, checkedBy: 4242, confirmedAi: true, valueEn: '52' });
+      expect(age.checkedAt!.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    });
+
+    it('records that the person changed the AI value', async () => {
+      await reset();
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'age', status: 'value', years: 53 }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
+      );
+      expect(await field('age')).toMatchObject({ aiExtracted: false, checkedBy: 4242, confirmedAi: false, valueEn: '53' });
+    });
+
+    it('leaves fields that were not submitted exactly as they were', async () => {
+      await reset();
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'age', status: 'value', years: 53 }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
+      );
+      expect(await field('assets')).toMatchObject({ aiExtracted: true, checkedBy: null, checkedAt: null, confirmedAi: null });
+    });
+
+    it('treats "not declared" as a checked answer', async () => {
+      await reset();
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'cases', status: 'not_declared', pending: null, convictions: null }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
+      );
+      expect(await field('cases')).toMatchObject({ notDeclared: true, aiExtracted: false, checkedBy: 4242, confirmedAi: false });
+    });
+
+    it('does not call "cannot read" a checked value', async () => {
+      await reset();
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'assets', status: 'unreadable', movableInr: null, immovableInr: null }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
+      );
+      expect(await field('assets')).toMatchObject({ unreadable: true, valueEn: null, aiExtracted: true, checkedBy: null, checkedAt: null, confirmedAi: null });
+    });
+
+    it('forgets who checked a value when the system later rewrites it', async () => {
+      await reset();
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'age', status: 'value', years: 53 }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
+      );
+      await reset();
+      expect(await field('age')).toMatchObject({ aiExtracted: true, checkedBy: null, checkedAt: null, confirmedAi: null, valueEn: '52' });
+    });
+
+    it('clears the check marks when a curator rewrites the text by hand', async () => {
+      await reset();
+      await appDb.transaction((tx) =>
+        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'age', status: 'value', years: 53 }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
+      );
+      await publishCandidateField({ userId: 1, role: 'curator' }, { candidateId, fieldKey: 'age', valueEn: '54', sourceUrl: SOURCE, sourceType: 'official', authoredLang: 'en' });
+      expect(await field('age')).toMatchObject({ valueEn: '54', aiExtracted: false, confirmedAi: null, valueData: null });
+    });
+  });
+
   it("drops the structured value when a curator edits the field's text by hand", async () => {
     await publishCandidateField(
       { userId: 1, role: 'curator' },
