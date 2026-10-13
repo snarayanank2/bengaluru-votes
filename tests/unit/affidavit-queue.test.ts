@@ -32,7 +32,8 @@ const db = drizzle(client, { schema });
 // Ward ids follow the real scheme (corporation index * 1000 + ward number)
 // with numbers no real ward uses: South is 4, West is 5.
 const WARD_SOUTH = { id: 4990, nameEn: 'Queue Test Ward Alpha', nameKn: 'ಪರೀಕ್ಷೆ ಎ', corporation: 'south' as const, zone: 'Zone T', boundaryRef: 'queue-test-ward-alpha' };
-const WARD_WEST = { id: 5991, nameEn: 'Queue Test Ward Beta', nameKn: 'ಪರೀಕ್ಷೆ ಬಿ', corporation: 'west' as const, zone: 'Zone T', boundaryRef: 'queue-test-ward-beta' };
+// Named as the real wards are: the number, a dash, then the name.
+const WARD_WEST = { id: 5991, nameEn: '991 - Queue Test Ward Beta', nameKn: 'ಪರೀಕ್ಷೆ ಬಿ', corporation: 'west' as const, zone: 'Zone T', boundaryRef: 'queue-test-ward-beta' };
 const WARD_IDS = [WARD_SOUTH.id, WARD_WEST.id];
 const UPLOADER_EMAIL = 'affidavit-queue-test-admin@example.com';
 
@@ -184,6 +185,11 @@ describe('resolveWard', () => {
 
   it('resolves a number and matching name when the corporation is missing', async () => {
     expect(await resolveWard({ status: 'value', number: 991, name: 'queue test ward BETA', corporation: null })).toBe(WARD_WEST.id);
+  });
+
+  it('resolves when the affidavit repeats the ward number in front of the name', async () => {
+    expect(await resolveWard({ status: 'value', number: 991, name: '991 - Queue Test Ward Beta', corporation: null })).toBe(WARD_WEST.id);
+    expect(await resolveWard({ status: 'value', number: 991, name: 'Ward No. 991 Queue Test Ward Beta', corporation: null })).toBeNull();
   });
 
   it.each([

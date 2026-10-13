@@ -141,9 +141,14 @@ export async function resolveWard(ward: AffidavitExtraction['identity']['ward'])
   }
 
   if (ward.name === null) return null;
-  const wanted = normalizeForMatch(ward.name);
+  // `wards.name_en` carries the ward number in front ("11 - Old
+  // Baiyappanahalli"); an affidavit may or may not repeat it. Compare names
+  // without it — the number is matched on its own above.
+  const bare = (name: string) => normalizeForMatch(name.replace(/^\s*\d+\s*-\s*/, ''));
+  const wanted = bare(ward.name);
+  if (wanted === '') return null;
   const sameNumber = await db.select({ id: wards.id, nameEn: wards.nameEn }).from(wards).where(sql`${wards.id} % 1000 = ${ward.number}`);
-  const matches = sameNumber.filter((w) => w.id < 6000 && normalizeForMatch(w.nameEn) === wanted);
+  const matches = sameNumber.filter((w) => w.id < 6000 && bare(w.nameEn) === wanted);
   return matches.length === 1 ? matches[0].id : null;
 }
 

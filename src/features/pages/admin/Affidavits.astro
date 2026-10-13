@@ -36,7 +36,8 @@ const STATES: AffidavitState[] = ['queued', 'extracting', 'needs_matching', 'pub
 
 function wardLabel(ward: { id: number; nameEn: string; corporation: string }): string {
   const corporation = ward.corporation[0].toUpperCase() + ward.corporation.slice(1);
-  return `${corporation} ${ward.id % 1000} · ${ward.nameEn}`;
+  // `name_en` already starts with the ward number ("11 - Old Baiyappanahalli").
+  return `${corporation} ${ward.id % 1000} · ${ward.nameEn.replace(/^\d+\s*-\s*/, '')}`;
 }
 ---
 
@@ -320,12 +321,20 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
     flex-direction: column;
   }
 
+  /* What was read sits above the form: side by side, the three inputs were
+     too narrow to show a full name, party or ward. */
   .work-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-    gap: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     padding-block: var(--space-4);
     border-top: 1px solid var(--color-border);
+  }
+
+  .work-item--failed {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--space-4);
   }
 
   .work-title {
@@ -345,8 +354,8 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
 
   .read {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-6);
     margin: var(--space-2) 0 0;
     font-size: var(--text-sm);
   }
@@ -375,7 +384,7 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
 
   .match-form {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 5fr) minmax(0, 6fr) auto;
     gap: var(--space-3);
     align-items: end;
   }

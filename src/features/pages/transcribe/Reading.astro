@@ -50,7 +50,8 @@ const { lang, csrfToken, view, raw, errors, formErrorKey, reportNote } = Astro.p
 
 const STATUSES: FieldStatus[] = ['value', 'not_declared', 'unreadable'];
 const action = `/transcribe/${view.assignmentId}`;
-const wardName = lang === 'kn' ? view.ward.nameKn : view.ward.nameEn;
+// Ward names are stored with their number in front ("11 - Old Baiyappanahalli"); it is shown once, beside the name.
+const wardName = (lang === 'kn' ? view.ward.nameKn : view.ward.nameEn).replace(/^\d+\s*-\s*/, '');
 const wardNumber = view.ward.id % 1000;
 const minutesLeft = Math.max(0, Math.ceil((view.expiresAt.getTime() - Date.now()) / 60000));
 
@@ -90,7 +91,7 @@ function assetsTotal(movable: string, immovable: string): string {
       <dl class="facts">
         <div>
           <dt>{t(lang, 'transcribe.reading.ward')}</dt>
-          <dd>{wardNumber} {wardName}</dd>
+          <dd>{t(lang, 'nav.ward', { wardNumber, wardName })}</dd>
         </div>
         <div>
           <dt>{t(lang, 'transcribe.reading.confidence')}</dt>
