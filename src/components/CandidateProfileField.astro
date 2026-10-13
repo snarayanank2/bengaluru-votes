@@ -9,6 +9,8 @@ interface Props {
   aiExtracted?: boolean;
   showVerification?: boolean;
   notDeclared?: boolean;
+  /** Nobody could read the value from the affidavit. Not the same as not declared, and never shown as it. */
+  unreadable?: boolean;
   lang: Lang;
 }
 
@@ -19,9 +21,10 @@ const {
   aiExtracted = false,
   showVerification = true,
   notDeclared = false,
+  unreadable = false,
   lang,
 } = Astro.props;
-const hasValue = !notDeclared && Boolean(value);
+const hasValue = !notDeclared && !unreadable && Boolean(value);
 ---
 
 <div class="profile-field">
@@ -35,7 +38,7 @@ const hasValue = !notDeclared && Boolean(value);
         {showVerification && <VerificationLabel aiExtracted={aiExtracted} lang={lang} />}
       </>
     ) : (
-      <p class="profile-field__value profile-field__value--empty">{t(lang, 'common.notDeclared')}</p>
+      <p class="profile-field__value profile-field__value--empty">{t(lang, unreadable ? 'common.unreadable' : 'common.notDeclared')}</p>
     )
   }
 </div>

@@ -44,6 +44,8 @@ const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 interface ResolvedField {
   value: string | null;
   notDeclared: boolean;
+  /** Nobody could read the value from the affidavit; shown as unresolved, never as not declared. */
+  unreadable: boolean;
   valueUrl: string | null;
   aiExtracted: boolean;
 }
@@ -123,6 +125,7 @@ const compareCandidates: CompareCandidate[] = orderedCandidates.map((c) => {
       const resolved: ResolvedField = {
         value: canonicalValue ?? pickCandidateValue(lang, f?.valueEn, f?.valueKn),
         notDeclared: f?.notDeclared ?? false,
+        unreadable: f?.unreadable ?? false,
         valueUrl: key === 'ec_affidavit' ? affidavitUrl : null,
         aiExtracted: f?.aiExtracted ?? false,
       };
@@ -219,7 +222,9 @@ const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t
                               <td class="candidate-col">
                                 <div class="cell-value">
                                   {isNotDeclared ? (
-                                    <p class="field-value field-value--not-declared">{t(lang, 'common.notDeclared')}</p>
+                                    <p class="field-value field-value--not-declared">
+                                      {t(lang, field.unreadable && !field.value ? 'common.unreadable' : 'common.notDeclared')}
+                                    </p>
                                   ) : (
                                     <>
                                       <p class="field-value">

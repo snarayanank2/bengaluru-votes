@@ -808,6 +808,7 @@
   "transcribe.guide.wrong.body": "If the affidavit is for a different ward, is not an affidavit, or belongs to another person, do not correct the values. Use the section at the bottom of the screen to send it to an admin with a short note.",
   "transcribe.guide.assets.heading": "Assets and cases",
   "transcribe.guide.assets.body": "Assets are the totals the affidavit prints for movable and for immovable assets, added across the candidate, spouse, dependents and HUF, without subtracting loans. The screen adds the two for you. For cases, count a case with a conviction only under convictions, even if an appeal is pending.",
+  "common.unreadable": "Could not be read from the affidavit",
   "__hints": {
     "footer.jointProject": "Footer label (design-system §7.2) introducing the two partner logos that follow it — Janaagraha and Oorvani Foundation. A sentence fragment ending in 'by', not a complete sentence: the logo images finish it. Keep it short; Kannada should read naturally as the lead-in to two organisation names shown as images.",
     "banner.production": "Site-wide banner shown above the app bar on the PRODUCTION site until launch (design-system §7.14). Informational and friendly, NOT a warning — the site is real, just not open yet. 'Nov 1' is a calendar date: render it as a date in Kannada convention (November 1), never translate it as a word or change the day/month.",
@@ -1140,6 +1141,7 @@
     "transcribe.reading.assetsTotal": "Label for the computed sum of movable and immovable assets.",
     "transcribe.reading.save": "Button that publishes the ticked fields and returns to the start screen.",
     "transcribe.reading.release": "Button that gives the affidavit back to the queue without saving anything.",
-    "transcribe.reading.report.summary": "Expandable section for reporting that the affidavit is attached to the wrong ward or is not this candidate's affidavit."
+    "transcribe.reading.report.summary": "Expandable section for reporting that the affidavit is attached to the wrong ward or is not this candidate's affidavit.",
+    "common.unreadable": "Shown on a candidate's page in place of a value that neither the AI nor a person could read from the scanned affidavit. Different from 'Not declared', which means the affidavit left it blank."
   }
 }

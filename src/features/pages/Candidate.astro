@@ -99,6 +99,7 @@ const profileFields = CANDIDATE_PROFILE_FIELD_KEYS.map((key) => {
     value: canonicalValue ?? pickCandidateValue(lang, f?.valueEn, f?.valueKn),
     valueUrl: key === 'ec_affidavit' ? affidavitUrl : null,
     notDeclared: f?.notDeclared ?? false,
+    unreadable: (f?.unreadable ?? false) && canonicalValue === null,
     aiExtracted: f?.aiExtracted ?? false,
   };
 });
@@ -196,6 +197,7 @@ const candidateJsonLd = row
                 value={field.value}
                 valueUrl={field.valueUrl}
                 notDeclared={field.notDeclared}
+                unreadable={field.unreadable}
                 aiExtracted={field.aiExtracted}
                 showVerification={field.key !== 'ec_affidavit'}
                 lang={lang}
