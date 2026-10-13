@@ -153,7 +153,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       candidateId: mainCandidateId,
       mediaId: affidavitMedia.id,
       originUrl: null,
-      extractionStatus: 'done',
+      state: 'published',
     });
     await db.insert(schema.candidateFields).values([
       {

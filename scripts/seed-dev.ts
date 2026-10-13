@@ -152,7 +152,7 @@ export async function seedDev(db: Db): Promise<SeedDevResult> {
         await db.insert(schema.candidateAffidavits).values({
           candidateId: candidate.id,
           mediaId: pdfMedia.id,
-          extractionStatus: 'done',
+          state: 'published',
         });
       }
       candidateCount++;

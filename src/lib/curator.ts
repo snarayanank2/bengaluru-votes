@@ -29,7 +29,7 @@ import {
   users,
   wards,
   type candidateStatusEnum,
-  type extractionStatusEnum,
+  type affidavitStateEnum,
   type flagStatusEnum,
   type flagTargetEnum,
   type sourceTypeEnum,
@@ -40,7 +40,6 @@ import { createCandidate, publishCandidateCore, publishCandidateField } from './
 import { storeMedia, type MediaStoreErrorCode } from './media';
 import { checkDefaultLimit } from './rate-limit';
 import { fetchAffidavitFromEc, type AffidavitFetchErrorCode } from './affidavit-fetch';
-import { extractAffidavitFields } from './extract';
 import type { Lang } from '../i18n';
 
 type FlagTargetType = (typeof flagTargetEnum.enumValues)[number];
@@ -48,7 +47,15 @@ type FlagStatus = (typeof flagStatusEnum.enumValues)[number];
 type SourceType = (typeof sourceTypeEnum.enumValues)[number];
 type AuthoredLang = (typeof langEnum.enumValues)[number];
 type CandidateStatus = (typeof candidateStatusEnum.enumValues)[number];
-type ExtractionStatus = (typeof extractionStatusEnum.enumValues)[number];
+type AffidavitState = (typeof affidavitStateEnum.enumValues)[number];
+/** What the editor shows for a stored affidavit: waiting on the worker or an admin match, extracted, or failed. */
+type ExtractionStatus = 'pending' | 'done' | 'failed';
+
+function extractionStatusOf(state: AffidavitState): ExtractionStatus {
+  if (state === 'published') return 'done';
+  if (state === 'failed') return 'failed';
+  return 'pending';
+}
 const CANDIDATE_STATUSES = ['filed', 'contesting', 'rejected', 'withdrawn'] as const satisfies readonly CandidateStatus[];
 
 /** Same shape `src/middleware.ts` puts on `locals.session` for an authed request. */
@@ -457,7 +464,7 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
     .select({
       id: candidateAffidavits.id,
       originUrl: candidateAffidavits.originUrl,
-      extractionStatus: candidateAffidavits.extractionStatus,
+      state: candidateAffidavits.state,
       createdAt: candidateAffidavits.createdAt,
       mediaHash: media.sha256,
       mediaId: media.id,
@@ -470,7 +477,7 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
   const affidavits: CandidateAffidavitRow[] = affidavitRows.map((a) => ({
     id: a.id,
     originUrl: a.originUrl,
-    extractionStatus: a.extractionStatus,
+    extractionStatus: extractionStatusOf(a.state),
     mediaUrl: `/media/${a.mediaId}/${a.mediaHash.slice(0, 16)}`,
     createdAt: a.createdAt,
   }));

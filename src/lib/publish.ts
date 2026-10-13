@@ -5,7 +5,7 @@ import { translateFieldSoon } from './translate-runtime';
 
 export type Actor = {
   userId: number | null;
-  role: 'curator' | 'admin' | 'system' | 'citizen';
+  role: 'curator' | 'admin' | 'system' | 'citizen' | 'transcriber';
 };
 
 export type CandidateStatus = (typeof candidateStatusEnum.enumValues)[number];
@@ -147,6 +147,11 @@ export async function publishCandidateFieldTx(
         sourceUrl: input.sourceUrl,
         sourceType: input.sourceType,
         aiExtracted,
+        // This text was typed, not rendered from a structured value, so the
+        // structured value behind the old text no longer describes it
+        // (src/lib/affidavit-publish.ts).
+        valueData: null,
+        unreadable: false,
         updatedAt: new Date(),
       },
     })
@@ -284,24 +289,27 @@ export async function createCandidate(
   _actor: Actor,
   input: CreateCandidateInput,
 ): Promise<{ id: number; slug: string }> {
-  return db.transaction(async (tx) => {
-    const slug = await generateUniqueSlug(tx, input.wardId, input.nameEn);
+  return db.transaction((tx) => createCandidateTx(tx, input));
+}
 
-    const [row] = await tx
-      .insert(candidates)
-      .values({
-        slug,
-        wardId: input.wardId,
-        nameEn: input.nameEn,
-        nameKn: input.nameKn ?? null,
-        partyEn: input.partyEn,
-        partyKn: input.partyKn ?? null,
-        photoMediaId: input.photoMediaId ?? null,
-      })
-      .returning({ id: candidates.id });
+/** {@link createCandidate} inside the caller's transaction, for callers that create a candidate and publish onto it together. */
+export async function createCandidateTx(tx: Tx, input: CreateCandidateInput): Promise<{ id: number; slug: string }> {
+  const slug = await generateUniqueSlug(tx, input.wardId, input.nameEn);
 
-    return { id: row!.id, slug };
-  });
+  const [row] = await tx
+    .insert(candidates)
+    .values({
+      slug,
+      wardId: input.wardId,
+      nameEn: input.nameEn,
+      nameKn: input.nameKn ?? null,
+      partyEn: input.partyEn,
+      partyKn: input.partyKn ?? null,
+      photoMediaId: input.photoMediaId ?? null,
+    })
+    .returning({ id: candidates.id });
+
+  return { id: row!.id, slug };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import {
   pgTable, pgEnum, serial, integer, text, boolean, timestamp,
-  uniqueIndex, index, primaryKey, customType, date, check,
+  uniqueIndex, index, primaryKey, customType, date, check, jsonb,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -13,7 +13,7 @@ export const userStatusEnum = pgEnum('user_status', ['active', 'banned', 'erased
 export const candidateStatusEnum = pgEnum('candidate_status', ['filed', 'contesting', 'rejected', 'withdrawn']);
 export const sourceTypeEnum = pgEnum('source_type', ['official', 'curator']);
 export const translationStatusEnum = pgEnum('translation_status', ['pending', 'done', 'manual']);
-export const extractionStatusEnum = pgEnum('extraction_status', ['pending', 'done', 'failed']);
+export const affidavitStateEnum = pgEnum('affidavit_state', ['queued', 'extracting', 'needs_matching', 'published', 'failed']);
 export const channelEnum = pgEnum('channel', ['email', 'whatsapp']);
 export const otpPurposeEnum = pgEnum('otp_purpose', ['auth', 'add_contact']);
 export const suppressionReasonEnum = pgEnum('suppression_reason', ['bounce', 'complaint', 'stop']);
@@ -121,17 +121,34 @@ export const candidateFields = pgTable('candidate_fields', {
   sourceUrl: text('source_url'),
   sourceType: sourceTypeEnum('source_type').notNull().default('curator'),
   aiExtracted: boolean('ai_extracted').notNull().default(false),  // cleared on curator confirm (PRD §5.2)
+  // The structured value behind value_en, written only by src/lib/affidavit-publish.ts.
+  // Null once a curator edits the text by hand.
+  valueData: jsonb('value_data'),
+  unreadable: boolean('unreadable').notNull().default(false),     // nobody could read it from the scan; shown as unresolved
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [uniqueIndex('candidate_field_uq').on(t.candidateId, t.fieldKey)]);
 
+// The extraction queue (src/lib/affidavit-queue.ts). A row is claimed by the
+// worker while `queued`, and ends `published`, `needs_matching` (no candidate
+// yet, waiting on /admin/affidavits) or `failed`.
 export const candidateAffidavits = pgTable('candidate_affidavits', {
   id: serial('id').primaryKey(),
-  candidateId: integer('candidate_id').notNull().references(() => candidates.id),
+  candidateId: integer('candidate_id').references(() => candidates.id),   // null until matched to a candidate
   mediaId: integer('media_id').notNull().references(() => media.id),
   originUrl: text('origin_url'),                        // EC URL when fetched, null when uploaded
-  extractionStatus: extractionStatusEnum('extraction_status').notNull().default('pending'),
+  state: affidavitStateEnum('state').notNull().default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  leaseExpiresAt: timestamp('lease_expires_at'),        // set while `extracting`; past it, the row is claimable again
+  confidence: integer('confidence'),                    // the model's one figure for the affidavit, 0-100
+  extraction: jsonb('extraction'),                      // the validated AffidavitExtraction, as returned
+  failure: text('failure'),
+  matchReason: text('match_reason'),                    // 'ward_unresolved' | 'possible_duplicate' | 'reported_by_transcriber'
+  sha256: text('sha256'),                               // of the PDF; unique, so a re-upload is a no-op. Null on pre-queue rows.
   createdAt: timestamp('created_at').notNull().defaultNow(),
-});
+}, (t) => [
+  uniqueIndex('candidate_affidavits_sha256_uq').on(t.sha256),
+  index('candidate_affidavits_state_idx').on(t.state),
+]);
 
 export const wardIssues = pgTable('ward_issues', {
   id: serial('id').primaryKey(),
