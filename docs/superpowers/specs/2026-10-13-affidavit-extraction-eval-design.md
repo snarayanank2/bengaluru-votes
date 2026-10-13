@@ -56,7 +56,7 @@ Definitions the prompt states explicitly:
 
 ### 3.2 The model call
 
-- Anthropic TypeScript SDK, `client.messages.parse` with `output_config.format` built from a Zod schema (`zodOutputFormat`). If the installed SDK and Zod versions do not support that helper together, the same JSON schema is passed to `output_config.format` directly; the plan settles which by compiling.
+- Anthropic TypeScript SDK, `client.messages.create` with `output_config.format` built from a Zod schema (`zodOutputFormat`, which requires the `zod/v4` entry point). The module parses and validates the response text itself, so truncation, refusal and bad JSON each map to a named failure in one place.
 - The PDF is sent as a base64 `document` block before the instruction text.
 - Thinking is left at the adaptive default. `output_config.effort` is set to `medium` for all three models and recorded with each result.
 - `max_tokens` 16000. SDK defaults for timeout (10 minutes) and retries (2).
