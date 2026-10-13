@@ -35,3 +35,11 @@ c03cd4217179b7c3e08541bac9263d0d7dbff8b82b22fe70cd33fdc22ea5a087  test-affidavit
 6ca1868ae042fe6145dba0aa6295a5b1f01b4cbb6af49ccd2825dddddc535ec6  test-affidavit-ka2023-english-inc-kr-pura-dk-mohan.pdf
 f1ff05a0be05b8fd3b6a25693dd94ff2c336c8004576f812bb9d6bd811eeab4f  test-affidavit-ka2023-english-aap-jayanagar-mahalakshmi.pdf
 ```
+
+## Expected values
+
+`expected.json` holds the expected extraction for each PDF, keyed by filename: age, education level, total assets in rupees, pending criminal cases and convictions. Values come from each candidate's page on [MyNeta](https://myneta.info/Karnataka2023/) (`sourceUrl`, `retrievedOn`), which transcribes the same affidavits independently.
+
+`verifiedBy` records the authority for each value: `myneta`, or `siva` where Siva read the PDF and overruled MyNeta, with a one-line entry in `reasons`. A `null` value means there is no expected figure and the evaluation leaves it unscored.
+
+`npm run eval:extraction` scores model output against this file. Do not fill it in from a model's reading of the PDFs.

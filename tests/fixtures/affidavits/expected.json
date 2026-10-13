@@ -1,0 +1,146 @@
+{
+  "test-affidavit-ka2023-kannada-jds-chamrajpet-govindaraj-c.pdf": {
+    "age": 62,
+    "educationLevel": "10th Pass",
+    "assetsTotalInr": 328899975,
+    "casesPending": 18,
+    "casesConvictions": 1,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7176",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-kannada-bjp-bommanahalli-satish-reddy.pdf": {
+    "age": 51,
+    "educationLevel": "10th Pass",
+    "assetsTotalInr": 1224981101,
+    "casesPending": 0,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=8577",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-kannada-bjp-shantinagar-k-shivakumar.pdf": {
+    "age": 47,
+    "educationLevel": "Graduate",
+    "assetsTotalInr": 36260204,
+    "casesPending": 0,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7675",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-kannada-bjp-kr-pura-ba-basavaraj.pdf": {
+    "age": 59,
+    "educationLevel": "12th Pass",
+    "assetsTotalInr": 1225222505,
+    "casesPending": 3,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7415",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-kannada-jds-shantinagar-h-manjunath.pdf": {
+    "age": 62,
+    "educationLevel": "Graduate",
+    "assetsTotalInr": 18500000,
+    "casesPending": 0,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=8277",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-english-bjp-chamrajpet-bhaskar-rao.pdf": {
+    "age": 59,
+    "educationLevel": "Post Graduate",
+    "assetsTotalInr": 239282106,
+    "casesPending": 0,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7178",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-english-aap-bommanahalli-sitaramu.pdf": {
+    "age": 63,
+    "educationLevel": "Post Graduate",
+    "assetsTotalInr": 217625588,
+    "casesPending": 0,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7883",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-english-inc-kr-pura-dk-mohan.pdf": {
+    "age": 60,
+    "educationLevel": "Graduate Professional",
+    "assetsTotalInr": 1371749463,
+    "casesPending": 0,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=8445",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  },
+  "test-affidavit-ka2023-english-aap-jayanagar-mahalakshmi.pdf": {
+    "age": 41,
+    "educationLevel": "Others",
+    "assetsTotalInr": 12004095,
+    "casesPending": 0,
+    "casesConvictions": 0,
+    "sourceUrl": "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7404",
+    "retrievedOn": "2026-10-13",
+    "verifiedBy": {
+      "age": "myneta",
+      "educationLevel": "myneta",
+      "assetsTotalInr": "myneta",
+      "casesPending": "myneta",
+      "casesConvictions": "myneta"
+    }
+  }
+}

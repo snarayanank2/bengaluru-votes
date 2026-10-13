@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import type { AffidavitExtraction } from '../../src/lib/affidavit-extraction';
-import { grade, type ExpectedEntry } from '../../scripts/eval-extraction/grade';
+import { grade, expectedFileSchema, type ExpectedEntry } from '../../scripts/eval-extraction/grade';
 
 function extraction(): AffidavitExtraction {
   return {
@@ -102,5 +105,25 @@ describe('grade', () => {
     expect(grade(e, x).assetsWithin1Percent).toBe(true);
     e.assets.totalInr = 10;
     expect(grade(e, x).assetsWithin1Percent).toBe(false);
+  });
+});
+
+describe('expected.json', () => {
+  const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../fixtures/affidavits');
+
+  it('has a valid entry for every fixture PDF and nothing else', () => {
+    const pdfs = readdirSync(dir).filter((f) => f.endsWith('.pdf')).sort();
+    const parsed = expectedFileSchema.parse(JSON.parse(readFileSync(path.join(dir, 'expected.json'), 'utf8')));
+    expect(Object.keys(parsed).sort()).toEqual(pdfs);
+    expect(pdfs).toHaveLength(9);
+  });
+
+  it('gives a reason for every value Siva overruled', () => {
+    const parsed = expectedFileSchema.parse(JSON.parse(readFileSync(path.join(dir, 'expected.json'), 'utf8')));
+    for (const [file, entry] of Object.entries(parsed)) {
+      for (const [key, who] of Object.entries(entry.verifiedBy)) {
+        if (who === 'siva') expect(entry.reasons?.[key], `${file} ${key}`).toBeTruthy();
+      }
+    }
   });
 });
