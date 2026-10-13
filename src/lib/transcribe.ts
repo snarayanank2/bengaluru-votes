@@ -18,16 +18,17 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { candidateAffidavits, candidateFields, candidates, media, transcriptionAssignments, wards } from '../db/schema';
-import { EDUCATION_LEVELS, GENDERS, type AffidavitExtraction, type EducationLevel, type Gender } from './affidavit-extraction';
+import { type AffidavitExtraction } from './affidavit-extraction';
+import { errorFor, fieldFromInputs, inputsOf, readFieldForm, type FieldError } from './affidavit-form';
 import {
   AFFIDAVIT_FIELD_KEYS,
-  checkFieldData,
   fieldsFromExtraction,
   publishAffidavitFields,
   type AffidavitFieldKey,
   type FieldData,
   type FieldStatus,
 } from './affidavit-publish';
+export { FIELD_INPUTS, inputsOf, type FieldError } from './affidavit-form';
 import { isUniqueViolation } from './db-errors';
 import { getKnownSetting } from './settings';
 import { translateFieldSoon } from './translate-runtime';
@@ -36,19 +37,6 @@ import { logEvent } from './log';
 export const ASSIGNMENT_MINUTES = 45;
 /** Used when `low_confidence_threshold` is unset or not a number. A placeholder until the Kannada pilot sets one. */
 export const DEFAULT_LOW_CONFIDENCE_THRESHOLD = 70;
-
-/** The names of the form inputs that carry each field's value, in screen order. */
-export const FIELD_INPUTS: Record<AffidavitFieldKey, readonly string[]> = {
-  full_name: ['name'],
-  party: ['party'],
-  gender: ['gender'],
-  age: ['age'],
-  education: ['educationLevel', 'educationStated'],
-  assets: ['movableInr', 'immovableInr'],
-  cases: ['pending', 'convictions'],
-};
-
-const STATUSES: readonly FieldStatus[] = ['value', 'not_declared', 'unreadable'];
 
 async function lowConfidenceThreshold(): Promise<number> {
   const raw = await getKnownSetting('low_confidence_threshold');
@@ -144,27 +132,6 @@ export interface AssignmentView {
   fields: AssignmentField[];
 }
 
-/** The strings a field's inputs show for a structured value. */
-export function inputsOf(data: FieldData): Record<string, string> {
-  const text = (value: string | number | null) => (value === null ? '' : String(value));
-  switch (data.key) {
-    case 'full_name':
-      return { name: text(data.text) };
-    case 'party':
-      return { party: text(data.text) };
-    case 'gender':
-      return { gender: text(data.gender) };
-    case 'age':
-      return { age: text(data.years) };
-    case 'education':
-      return { educationLevel: text(data.level), educationStated: text(data.stated) };
-    case 'assets':
-      return { movableInr: text(data.movableInr), immovableInr: text(data.immovableInr) };
-    case 'cases':
-      return { pending: text(data.pending), convictions: text(data.convictions) };
-  }
-}
-
 function emptyField(key: AffidavitFieldKey): FieldData {
   return fieldFromInputs(key, 'unreadable', {});
 }
@@ -250,9 +217,6 @@ export async function loadAssignment(transcriberId: number, assignmentId: number
   };
 }
 
-/** Why a ticked field was refused; the screen has one sentence for each. */
-export type FieldError = 'required' | 'whole_number' | 'age_range' | 'choose';
-
 /** What the transcriber posted, as posted, so a refused save can show it back unchanged. */
 export interface RawForm {
   status: Record<AffidavitFieldKey, FieldStatus>;
@@ -265,63 +229,15 @@ export type SubmitOutcome =
   | { kind: 'expired' }
   | { kind: 'invalid'; errors: Partial<Record<AffidavitFieldKey, FieldError>>; formError?: 'nothing_checked'; raw: RawForm };
 
-/** A whole number typed with optional digit grouping ("1,02,10,000") or spaces; null for anything else. */
-function wholeNumber(raw: string): number | null {
-  const digits = raw.replace(/[,\s]/g, '');
-  if (!/^\d{1,15}$/.test(digits)) return null;
-  return Number(digits);
-}
-
-/** Builds a field's structured value from the form's strings. Unparseable input becomes null, which `checkFieldData` then refuses. */
-function fieldFromInputs(key: AffidavitFieldKey, status: FieldStatus, inputs: Record<string, string>): FieldData {
-  const has = status === 'value';
-  const text = (name: string) => (has ? (inputs[name] ?? '').trim() : null);
-  const number = (name: string) => (has ? wholeNumber(inputs[name] ?? '') : null);
-  switch (key) {
-    case 'full_name':
-      return { key, status, text: text('name') };
-    case 'party':
-      return { key, status, text: text('party') };
-    case 'gender': {
-      const raw = text('gender');
-      return { key, status, gender: (GENDERS as readonly string[]).includes(raw ?? '') ? (raw as Gender) : null };
-    }
-    case 'age':
-      return { key, status, years: number('age') };
-    case 'education': {
-      const raw = text('educationLevel');
-      return {
-        key,
-        status,
-        level: (EDUCATION_LEVELS as readonly string[]).includes(raw ?? '') ? (raw as EducationLevel) : null,
-        stated: has ? text('educationStated') || null : null,
-      };
-    }
-    case 'assets':
-      return { key, status, movableInr: number('movableInr'), immovableInr: number('immovableInr') };
-    case 'cases':
-      return { key, status, pending: number('pending'), convictions: number('convictions') };
-  }
-}
-
-function errorFor(data: FieldData, inputs: Record<string, string>): FieldError | null {
-  if (checkFieldData(data) === null) return null;
-  const blank = FIELD_INPUTS[data.key].every((name) => name === 'educationStated' || (inputs[name] ?? '').trim() === '');
-  if (data.key === 'gender' || data.key === 'education') return 'choose';
-  if (blank || data.key === 'full_name' || data.key === 'party') return 'required';
-  if (data.key === 'age' && data.years !== null) return 'age_range';
-  return 'whole_number';
-}
-
 export function readForm(form: FormData): RawForm {
   const status = {} as Record<AffidavitFieldKey, FieldStatus>;
   const checked: AffidavitFieldKey[] = [];
   const inputs: Record<string, string> = {};
   for (const key of AFFIDAVIT_FIELD_KEYS) {
-    const raw = String(form.get(`status.${key}`) ?? 'value');
-    status[key] = STATUSES.includes(raw as FieldStatus) ? (raw as FieldStatus) : 'value';
+    const field = readFieldForm(form, key);
+    status[key] = field.status;
+    Object.assign(inputs, field.inputs);
     if (form.get(`checked.${key}`) != null) checked.push(key);
-    for (const name of FIELD_INPUTS[key]) inputs[name] = String(form.get(name) ?? '');
   }
   return { status, checked, inputs };
 }
