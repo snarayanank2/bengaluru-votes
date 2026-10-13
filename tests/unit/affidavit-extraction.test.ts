@@ -126,6 +126,24 @@ describe('extractAffidavit', () => {
     expect(outcome).toMatchObject({ ok: false, failure: 'truncated', usage: { outputTokens: 900 } });
   });
 
+  it('rejects a stop_reason other than end_turn even when the text is valid JSON', async () => {
+    const { client } = fakeClient(message(JSON.stringify(good()), 'pause_turn'));
+    const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
+    expect(outcome).toMatchObject({
+      ok: false,
+      failure: 'invalid_output',
+      detail: 'unexpected stop_reason: pause_turn',
+      usage: { outputTokens: 900 },
+    });
+  });
+
+  it('reports an end_turn response with no text block as invalid_output', async () => {
+    const empty = { ...message(''), content: [] } as unknown as Anthropic.Message;
+    const { client } = fakeClient(empty);
+    const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
+    expect(outcome).toMatchObject({ ok: false, failure: 'invalid_output', detail: 'response has no text block' });
+  });
+
   it('reports text that is not JSON as invalid_output', async () => {
     const { client } = fakeClient(message('I could not read this document.'));
     const outcome = await extractAffidavit(PDF, 'claude-sonnet-5-5', client);

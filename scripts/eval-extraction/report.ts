@@ -108,13 +108,18 @@ export function summarize(rows: ResultRow[], errors: ErrorRow[]): string {
   const lines: string[] = ['# Extraction evaluation summary', ''];
 
   lines.push('## By model', '');
-  lines.push('Tokens and cost include failed calls that reported usage.', '');
-  lines.push('| Model | Affidavits scored | Correct | Wrong | Abstained | Unscored | Failed calls | Assets within 1% | Input tokens | Output tokens | Cost (USD) | Mean seconds (successful calls) |');
-  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('Tokens and cost include failed attempts that reported usage.', '');
+  lines.push('| Model | Affidavits scored | Correct | Wrong | Abstained | Unscored | Failed attempts | Pairs still failing | Assets within 1% | Input tokens | Output tokens | Cost (USD) | Mean seconds (successful calls) |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  const resolved = new Set(rows.map((r) => `${r.file}\n${r.model}`));
   for (const model of models) {
     const mine = rows.filter((r) => r.model === model);
     const t = tally(mine);
-    const failed = errors.filter((e) => e.model === model).length;
+    const attempts = errors.filter((e) => e.model === model);
+    const failed = attempts.length;
+    const stillFailing = new Set(
+      attempts.filter((e) => !resolved.has(`${e.file}\n${e.model}`)).map((e) => e.file),
+    ).size;
     const extra = failedBilled(model, errors);
     const within = mine.filter((r) => r.grade.assetsWithin1Percent === true).length;
     const withAssets = mine.filter((r) => r.grade.assetsWithin1Percent !== null).length;
@@ -123,7 +128,7 @@ export function summarize(rows: ResultRow[], errors: ErrorRow[]): string {
     const outputTokens = sum(mine.map((r) => r.usage.outputTokens)) + extra.output;
     const cost = sum(mine.map((r) => r.costUsd)) + extra.cost;
     lines.push(
-      `| ${model} | ${mine.length} | ${t.correct} | ${t.wrong} | ${t.abstained} | ${t.unscored} | ${failed} | ` +
+      `| ${model} | ${mine.length} | ${t.correct} | ${t.wrong} | ${t.abstained} | ${t.unscored} | ${failed} | ${stillFailing} | ` +
         `${within}/${withAssets} | ${inputTokens} | ${outputTokens} | ${cost.toFixed(2)} | ${seconds.toFixed(0)} |`,
     );
   }
@@ -146,6 +151,18 @@ export function summarize(rows: ResultRow[], errors: ErrorRow[]): string {
     }
   }
 
+  lines.push('', '## By field', '');
+  lines.push('| Model | Field | Correct | Wrong | Abstained | Unscored |');
+  lines.push('|---|---|---|---|---|---|');
+  for (const model of models) {
+    const mine = rows.filter((r) => r.model === model);
+    for (const key of SCORED_KEYS) {
+      const counts: Record<Outcome, number> = { correct: 0, wrong: 0, abstained: 0, unscored: 0 };
+      for (const r of mine) counts[r.grade.scores[key].outcome] += 1;
+      lines.push(`| ${model} | ${key} | ${counts.correct} | ${counts.wrong} | ${counts.abstained} | ${counts.unscored} |`);
+    }
+  }
+
   lines.push('', '## Per affidavit', '');
   lines.push("One row per affidavit and model. Confidence is the model's own figure.", '');
   lines.push('| Affidavit | Model | Correct | Wrong | Abstained | Confidence | Input tokens | Output tokens | Cost (USD) | Seconds |');
@@ -163,7 +180,7 @@ export function summarize(rows: ResultRow[], errors: ErrorRow[]): string {
         );
         continue;
       }
-      const error = errors.find((e) => e.file === file && e.model === model);
+      const error = errors.filter((e) => e.file === file && e.model === model).at(-1);
       if (!error) continue;
       const tokens = error.usage
         ? [
@@ -199,7 +216,9 @@ export function disagreements(rows: ResultRow[]): string {
   const files = [...new Set(rows.map((r) => r.file))].sort();
   for (const file of files) {
     const items: string[] = [];
-    for (const row of rows.filter((r) => r.file === file)) {
+    const mine = rows.filter((r) => r.file === file);
+    const ordered = EXTRACTION_MODELS.flatMap((m) => mine.filter((r) => r.model === m));
+    for (const row of ordered) {
       for (const key of SCORED_KEYS) {
         const s = row.grade.scores[key];
         if (s.outcome === 'correct' && !s.flag) continue;

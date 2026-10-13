@@ -82,23 +82,12 @@ async function runPairs(pairs: Pair[], outDir: string): Promise<boolean> {
   return hadUnexpectedError;
 }
 
-/** Errors for pairs that later succeeded on a rerun are stale; drop them. */
-function liveErrors(rows: ResultRow[], errors: ErrorRow[]): ErrorRow[] {
-  const done = new Set(rows.map((r) => `${r.file}\n${r.model}`));
-  const latest = new Map<string, ErrorRow>();
-  for (const e of errors) {
-    const key = `${e.file}\n${e.model}`;
-    if (!done.has(key)) latest.set(key, e);
-  }
-  return [...latest.values()];
-}
-
-function writeReports(outDir: string, suffix = ''): void {
+function writeReports(outDir: string): void {
   const rows = readJsonl<ResultRow>(path.join(outDir, 'results.jsonl'));
-  const errors = liveErrors(rows, readJsonl<ErrorRow>(path.join(outDir, 'errors.jsonl')));
-  writeFileSync(path.join(outDir, `summary${suffix}.md`), summarize(rows, errors));
-  writeFileSync(path.join(outDir, `disagreements${suffix}.md`), disagreements(rows));
-  console.log(`\nWrote summary${suffix}.md and disagreements${suffix}.md to ${outDir}`);
+  const errors = readJsonl<ErrorRow>(path.join(outDir, 'errors.jsonl'));
+  writeFileSync(path.join(outDir, 'summary.md'), summarize(rows, errors));
+  writeFileSync(path.join(outDir, 'disagreements.md'), disagreements(rows));
+  console.log(`\nWrote summary.md and disagreements.md to ${outDir}`);
 }
 
 function requireKey(): void {
@@ -128,7 +117,7 @@ async function main(): Promise<void> {
       grade: grade(row.extraction, expected[row.file]),
     }));
     writeFileSync(path.join(dir, 'results-regraded.jsonl'), rows.map((r) => JSON.stringify(r)).join('\n') + '\n');
-    const errors = liveErrors(rows, readJsonl<ErrorRow>(path.join(dir, 'errors.jsonl')));
+    const errors = readJsonl<ErrorRow>(path.join(dir, 'errors.jsonl'));
     writeFileSync(path.join(dir, 'summary-regraded.md'), summarize(rows, errors));
     writeFileSync(path.join(dir, 'disagreements-regraded.md'), disagreements(rows));
     console.log(`Regraded ${rows.length} results in ${dir}`);

@@ -183,6 +183,10 @@ export async function extractAffidavit(
     return { ok: false, failure: 'truncated', detail: 'response hit max_tokens', usage };
   }
 
+  if (response.stop_reason !== 'end_turn') {
+    return { ok: false, failure: 'invalid_output', detail: `unexpected stop_reason: ${response.stop_reason}`, usage };
+  }
+
   const text = response.content.find((block) => block.type === 'text');
   if (!text || text.type !== 'text') {
     return { ok: false, failure: 'invalid_output', detail: 'response has no text block', usage };

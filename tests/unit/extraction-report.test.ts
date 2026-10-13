@@ -87,10 +87,10 @@ describe('summarize', () => {
   const text = summarize(rows, errors);
 
   it('has a row per model with outcome counts and failures', () => {
-    // Haiku: 2 affidavits x (3 correct, 1 wrong, 1 abstained); 0 failures.
-    expect(text).toMatch(/\| claude-haiku-5-5 \| 2 \| 6 \| 2 \| 2 \| 0 \| 0 \|/);
-    // Opus: 1 affidavit scored, 1 failed.
-    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \|/);
+    // Haiku: 2 affidavits x (3 correct, 1 wrong, 1 abstained); 0 failed attempts, 0 pairs still failing.
+    expect(text).toMatch(/\| claude-haiku-5-5 \| 2 \| 6 \| 2 \| 2 \| 0 \| 0 \| 0 \|/);
+    // Opus: 1 affidavit scored, 1 failed attempt, 1 pair still failing.
+    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 1 \|/);
   });
 
   it('has sections by language and per affidavit', () => {
@@ -118,11 +118,50 @@ describe('summarize with failed calls that reported usage', () => {
 
   it('adds the failed call tokens and cost to the model totals, but not to the seconds mean', () => {
     // Result row: 70000 in, 1000 out, $0.30. Failed call: 50000 in, 16000 out, $0.52.
-    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
+    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 1 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
   });
 
   it('shows the failed call tokens and cost on its per-affidavit row', () => {
     expect(text).toContain(`| ${EN} | claude-opus-5-5 | FAILED: truncated | | | | 50000 | 16000 | 0.520 | |`);
+  });
+});
+
+describe('summarize with retries', () => {
+  const usage = { model: 'claude-opus-5-5' as const, inputTokens: 50000, outputTokens: 16000, elapsedMs: 90000, stopReason: 'max_tokens' };
+
+  it('counts a failed attempt for a pair that later succeeded, with its tokens and cost, but no FAILED row', () => {
+    const text = summarize([row(KN, 'claude-opus-5-5')], [
+      { file: KN, model: 'claude-opus-5-5', failure: 'truncated', detail: 'x', usage },
+    ]);
+    expect(text).toContain('| Failed attempts | Pairs still failing |');
+    expect(text).toMatch(/\| claude-opus-5-5 \| 1 \| 3 \| 1 \| 1 \| 0 \| 1 \| 0 \| 0\/0 \| 120000 \| 17000 \| 0\.82 \| 42 \|/);
+    expect(text).not.toContain('FAILED');
+  });
+
+  it('counts two errors for one unresolved pair as 2 attempts and 1 pair, showing the last failure', () => {
+    const text = summarize([row(KN, 'claude-haiku-5-5')], [
+      { file: EN, model: 'claude-opus-5-5', failure: 'truncated', detail: 'first' },
+      { file: EN, model: 'claude-opus-5-5', failure: 'invalid_output', detail: 'second' },
+    ]);
+    expect(text).toMatch(/\| claude-opus-5-5 \| 0 \| 0 \| 0 \| 0 \| 0 \| 2 \| 1 \|/);
+    expect(text).toContain(`| ${EN} | claude-opus-5-5 | FAILED: invalid_output |`);
+    expect(text).not.toContain('FAILED: truncated');
+  });
+});
+
+describe('summarize by field', () => {
+  const text = summarize([row(KN, 'claude-haiku-5-5'), row(EN, 'claude-haiku-5-5')], []);
+
+  it('has a section between language and per affidavit', () => {
+    expect(text.indexOf('## By language')).toBeLessThan(text.indexOf('## By field'));
+    expect(text.indexOf('## By field')).toBeLessThan(text.indexOf('## Per affidavit'));
+    expect(text).toContain('| Model | Field | Correct | Wrong | Abstained | Unscored |');
+  });
+
+  it('counts per model and key over that model result rows', () => {
+    // Fixture grade: age wrong, educationLevel correct, two rows each.
+    expect(text).toContain('| claude-haiku-5-5 | age | 0 | 2 | 0 | 0 |');
+    expect(text).toContain('| claude-haiku-5-5 | educationLevel | 2 | 0 | 0 | 0 |');
   });
 });
 
@@ -133,12 +172,18 @@ describe('summarize for a model with only failed calls', () => {
   );
 
   it('still gets a by-model row with zero scored, one failed call and zero seconds, and no NaN', () => {
-    expect(text).toMatch(/\| claude-opus-5-5 \| 0 \| 0 \| 0 \| 0 \| 0 \| 1 \| 0\/0 \| 0 \| 0 \| 0\.00 \| 0 \|/);
+    expect(text).toMatch(/\| claude-opus-5-5 \| 0 \| 0 \| 0 \| 0 \| 0 \| 1 \| 1 \| 0\/0 \| 0 \| 0 \| 0\.00 \| 0 \|/);
     expect(text).not.toContain('NaN');
   });
 });
 
 describe('disagreements', () => {
+  it('orders lines within a file by model order, not arrival order', () => {
+    const text = disagreements([row(KN, 'claude-opus-5-5'), row(KN, 'claude-haiku-5-5')]);
+    expect(text.indexOf('(claude-haiku-5-5)')).toBeGreaterThan(-1);
+    expect(text.indexOf('(claude-haiku-5-5)')).toBeLessThan(text.indexOf('(claude-opus-5-5)'));
+  });
+
   it('lists wrong and abstained values with the note, and nothing correct', () => {
     const text = disagreements([row(KN, 'claude-haiku-5-5')]);
     expect(text).toContain(KN);

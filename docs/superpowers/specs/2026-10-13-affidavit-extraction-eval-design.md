@@ -92,6 +92,7 @@ Each scored value has exactly one outcome:
 | `correct` | Status is `value` and the value equals the expected value exactly |
 | `wrong` | Status is `value` and it differs; or status is `not_declared` where a value is expected |
 | `abstained` | Status is `unreadable` |
+| `unscored` | `expected.json` has no value for this field, so the model is not judged on it |
 
 - **Cases exception:** `not_declared` is scored as equal to an expected zero, and flagged in the report.
 - **Assets** also report `within1Percent` as a secondary figure. The headline is exact match.
@@ -114,7 +115,7 @@ Output goes to `eval-runs/<timestamp>/`, which is added to `.gitignore`:
 |---|---|
 | `results.jsonl` | One row per successful call: affidavit, model, extraction, scored values, usage, cost |
 | `errors.jsonl` | One row per failed call with its failure class |
-| `summary.md` | Tables by model, by language and per affidavit: correct, wrong, abstained, failures, tokens, cost and seconds |
+| `summary.md` | Tables by model, by language, by field and per affidavit: correct, wrong, abstained, tokens, cost and seconds; failed attempts and pairs still failing are reported separately |
 | `disagreements.md` | Every value that differs from `expected.json`, with the model's note, for Siva to check against the PDF |
 
 After Siva rules on the disagreements, `expected.json` is updated and `--regrade <run-dir>` rescores the saved results without calling the API. The summary shows results before and after the rulings.
