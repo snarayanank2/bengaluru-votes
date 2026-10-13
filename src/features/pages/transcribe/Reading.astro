@@ -28,11 +28,13 @@
 import TranscriberLayout from '../../../layouts/TranscriberLayout.astro';
 import Banner from '../../../components/Banner.astro';
 import Button from '../../../components/Button.astro';
+import AffidavitFieldInputs from '../../../components/AffidavitFieldInputs.astro';
+import AffidavitScan from '../../../components/AffidavitScan.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
 import { CANDIDATE_PROFILE_LABEL_KEYS } from '../../../lib/candidate-profile';
-import { EDUCATION_LEVELS, GENDERS } from '../../../lib/affidavit-extraction';
-import { formatInr, type AffidavitFieldKey, type FieldStatus } from '../../../lib/affidavit-publish';
+import type { AffidavitFieldKey } from '../../../lib/affidavit-publish';
+import { FIELD_INPUTS } from '../../../lib/affidavit-form';
 import type { AssignmentView, FieldError, RawForm } from '../../../lib/transcribe';
 
 interface Props {
@@ -48,7 +50,6 @@ interface Props {
 
 const { lang, csrfToken, view, raw, errors, formErrorKey, reportNote } = Astro.props;
 
-const STATUSES: FieldStatus[] = ['value', 'not_declared', 'unreadable'];
 const action = `/transcribe/${view.assignmentId}`;
 // Ward names are stored with their number in front ("11 - Old Baiyappanahalli"); it is shown once, beside the name.
 const wardName = (lang === 'kn' ? view.ward.nameKn : view.ward.nameEn).replace(/^\d+\s*-\s*/, '');
@@ -57,33 +58,21 @@ const minutesLeft = Math.max(0, Math.ceil((view.expiresAt.getTime() - Date.now()
 
 const fields = view.fields.map((field) => {
   const status = raw?.status[field.key] ?? field.status;
-  const value = (name: string) => raw?.inputs[name] ?? field.inputs[name] ?? '';
+  const inputs = Object.fromEntries(FIELD_INPUTS[field.key].map((name) => [name, raw?.inputs[name] ?? field.inputs[name] ?? '']));
   return {
     ...field,
     status,
-    value,
+    inputs,
     ticked: raw?.checked.includes(field.key) ?? false,
     error: errors[field.key],
     label: t(lang, CANDIDATE_PROFILE_LABEL_KEYS[field.key]),
   };
 });
-
-/** The total shown before the island takes over; blank unless both parts are plain whole numbers. */
-function assetsTotal(movable: string, immovable: string): string {
-  const parse = (text: string) => (/^[\d,\s]+$/.test(text) ? Number(text.replace(/[,\s]/g, '')) : NaN);
-  const sum = parse(movable) + parse(immovable);
-  return Number.isFinite(sum) ? formatInr(sum) : '—';
-}
 ---
 
 <TranscriberLayout lang={lang} title={t(lang, 'transcribe.reading.meta.title')} description={t(lang, 'transcribe.reading.meta.description')}>
   <div class="reading">
-    <section class="scan" aria-label={t(lang, 'transcribe.reading.pdfTitle')}>
-      <p class="scan-bar">
-        <a href={view.pdfUrl} target="_blank" rel="noopener noreferrer">{t(lang, 'transcribe.reading.openPdf')}</a>
-      </p>
-      <iframe class="scan-frame" src={`${view.pdfUrl}#navpanes=0&view=FitH`} title={t(lang, 'transcribe.reading.pdfTitle')}></iframe>
-    </section>
+    <AffidavitScan lang={lang} pdfUrl={view.pdfUrl} />
 
     <section class="panel">
       <h1>{t(lang, 'transcribe.reading.heading')}</h1>
@@ -129,108 +118,13 @@ function assetsTotal(movable: string, immovable: string): string {
                 </span>
               </legend>
 
-              <div class="status" role="radiogroup" aria-label={t(lang, 'transcribe.reading.status.legend')}>
-                {STATUSES.map((status) => (
-                  <label class="status-option">
-                    <input type="radio" name={`status.${field.key}`} value={status} checked={field.status === status} />
-                    <span>{t(lang, `transcribe.reading.status.${status}`)}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div class="inputs" data-inputs>
-                {(field.key === 'full_name' || field.key === 'party') && (
-                  <label class="input">
-                    <span>{t(lang, `transcribe.reading.input.${field.key === 'full_name' ? 'name' : 'party'}`)}</span>
-                    <input type="text" name={field.key === 'full_name' ? 'name' : 'party'} value={field.value(field.key === 'full_name' ? 'name' : 'party')} autocomplete="off" />
-                  </label>
+              <AffidavitFieldInputs lang={lang} fieldKey={field.key} status={field.status} inputs={field.inputs} error={field.error}>
+                {field.note && (
+                  <p class="ai-note">
+                    <strong>{t(lang, 'transcribe.reading.aiNote')}</strong> {field.note}
+                  </p>
                 )}
-
-                {field.key === 'gender' && (
-                  <label class="input input--short">
-                    <span>{t(lang, 'transcribe.reading.input.gender')}</span>
-                    <select name="gender">
-                      <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
-                      {GENDERS.map((gender) => (
-                        <option value={gender} selected={field.value('gender') === gender}>
-                          {t(lang, `transcribe.reading.gender.${gender}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                {field.key === 'age' && (
-                  <label class="input input--short">
-                    <span>{t(lang, 'transcribe.reading.input.age')}</span>
-                    <input type="text" inputmode="numeric" name="age" value={field.value('age')} autocomplete="off" />
-                  </label>
-                )}
-
-                {field.key === 'education' && (
-                  <div class="input-row">
-                    <label class="input input--short">
-                      <span>{t(lang, 'transcribe.reading.input.educationLevel')}</span>
-                      <select name="educationLevel">
-                        <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
-                        {EDUCATION_LEVELS.map((level) => (
-                          <option value={level} selected={field.value('educationLevel') === level}>
-                            {level}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label class="input">
-                      <span>{t(lang, 'transcribe.reading.input.educationStated')}</span>
-                      <input type="text" name="educationStated" value={field.value('educationStated')} autocomplete="off" />
-                    </label>
-                  </div>
-                )}
-
-                {field.key === 'assets' && (
-                  <>
-                    <div class="input-row">
-                      <label class="input">
-                        <span>{t(lang, 'transcribe.reading.input.movableInr')}</span>
-                        <input type="text" inputmode="numeric" name="movableInr" value={field.value('movableInr')} autocomplete="off" data-assets-part />
-                      </label>
-                      <label class="input">
-                        <span>{t(lang, 'transcribe.reading.input.immovableInr')}</span>
-                        <input type="text" inputmode="numeric" name="immovableInr" value={field.value('immovableInr')} autocomplete="off" data-assets-part />
-                      </label>
-                    </div>
-                    <p class="total">
-                      {t(lang, 'transcribe.reading.assetsTotal')}{' '}
-                      <strong data-assets-total>{assetsTotal(field.value('movableInr'), field.value('immovableInr'))}</strong>
-                    </p>
-                    <p class="help">{t(lang, 'transcribe.reading.assetsHelp')}</p>
-                  </>
-                )}
-
-                {field.key === 'cases' && (
-                  <>
-                    <div class="input-row">
-                      <label class="input input--short">
-                        <span>{t(lang, 'transcribe.reading.input.pending')}</span>
-                        <input type="text" inputmode="numeric" name="pending" value={field.value('pending')} autocomplete="off" />
-                      </label>
-                      <label class="input input--short">
-                        <span>{t(lang, 'transcribe.reading.input.convictions')}</span>
-                        <input type="text" inputmode="numeric" name="convictions" value={field.value('convictions')} autocomplete="off" />
-                      </label>
-                    </div>
-                    <p class="help">{t(lang, 'transcribe.reading.casesHelp')}</p>
-                  </>
-                )}
-              </div>
-
-              {field.note && (
-                <p class="ai-note">
-                  <strong>{t(lang, 'transcribe.reading.aiNote')}</strong> {field.note}
-                </p>
-              )}
-
-              {field.error && <p class="field-error">{t(lang, `transcribe.error.${field.error}`)}</p>}
+              </AffidavitFieldInputs>
 
               <label class="tick">
                 <input type="checkbox" name={`checked.${field.key}`} checked={field.ticked} data-tick />
@@ -291,29 +185,6 @@ function assetsTotal(movable: string, immovable: string): string {
     display: grid;
     grid-template-columns: minmax(0, 58fr) minmax(26rem, 42fr);
     height: calc(100vh - 56px);
-  }
-
-  .scan {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    border-right: 1px solid var(--color-border);
-    background: var(--color-surface);
-  }
-
-  .scan-bar {
-    margin: 0;
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--text-sm);
-    background: var(--color-bg);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .scan-frame {
-    flex: 1;
-    width: 100%;
-    min-height: 0;
-    border: 0;
   }
 
   .panel {
@@ -416,57 +287,11 @@ function assetsTotal(movable: string, immovable: string): string {
     color: var(--color-primary);
   }
 
-  .status {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .status-option {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 36px;
-    padding: var(--space-1) var(--space-3);
-    border: 1.5px solid var(--color-border);
-    border-radius: 999px;
-    font-size: var(--text-sm);
-    cursor: pointer;
-  }
-
-  .status-option:has(input:checked) {
-    border-color: var(--color-primary);
-    background: var(--color-primary-surface);
-    font-weight: 700;
-  }
-
-  .status-option:has(input:focus-visible) {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  .inputs {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .input-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-3);
-    align-items: end;
-  }
-
   .input {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
     min-width: 0;
-  }
-
-  .input--short {
-    max-width: 14rem;
   }
 
   .input > span {
@@ -502,15 +327,6 @@ function assetsTotal(movable: string, immovable: string): string {
     color: var(--color-text-muted);
   }
 
-  .total {
-    margin: 0;
-    font-size: var(--text-sm);
-  }
-
-  .total strong {
-    font-size: var(--text-base);
-  }
-
   .help {
     margin: 0;
     font-size: var(--text-xs);
@@ -524,13 +340,6 @@ function assetsTotal(movable: string, immovable: string): string {
     border-radius: var(--radius-sm);
     font-size: var(--text-sm);
     overflow-wrap: anywhere;
-  }
-
-  .field-error {
-    margin: 0;
-    color: var(--color-danger);
-    font-size: var(--text-sm);
-    font-weight: 700;
   }
 
   .tick {

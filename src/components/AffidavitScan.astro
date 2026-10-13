@@ -1,0 +1,58 @@
+---
+/**
+ * The affidavit beside the form that is being filled from it: a link that
+ * opens the PDF on its own, and the PDF itself. With `collapse`, a narrow
+ * screen gets only the link (a phone cannot show a scan and a form at once).
+ */
+import { t, type Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  pdfUrl: string;
+  collapse?: boolean;
+}
+
+const { lang, pdfUrl, collapse = false } = Astro.props;
+---
+
+<section class:list={['scan', { 'scan--collapse': collapse }]} aria-label={t(lang, 'transcribe.reading.pdfTitle')}>
+  <p class="scan-bar">
+    <a href={pdfUrl} target="_blank" rel="noopener noreferrer">{t(lang, 'transcribe.reading.openPdf')}</a>
+  </p>
+  <iframe class="scan-frame" src={`${pdfUrl}#navpanes=0&view=FitH`} title={t(lang, 'transcribe.reading.pdfTitle')}></iframe>
+</section>
+
+<style>
+  .scan {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .scan-bar {
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .scan-frame {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    border: 0;
+  }
+
+  @media (max-width: 899px) {
+    .scan--collapse {
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .scan--collapse .scan-frame {
+      display: none;
+    }
+  }
+</style>

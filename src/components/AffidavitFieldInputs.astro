@@ -1,0 +1,237 @@
+---
+/**
+ * One affidavit field's inputs: the three-way status, then the inputs that
+ * field takes. Rendered inside a `fieldset[data-field]`, which
+ * src/islands/AffidavitFields.ts looks for. The default slot sits between
+ * the inputs and the error (the transcriber screen puts the AI's note there).
+ */
+import { t, type Lang } from '../i18n';
+import { EDUCATION_LEVELS, GENDERS } from '../lib/affidavit-extraction';
+import { formatInr, type AffidavitFieldKey, type FieldStatus } from '../lib/affidavit-publish';
+import { STATUSES, type FieldError } from '../lib/affidavit-form';
+
+interface Props {
+  lang: Lang;
+  fieldKey: AffidavitFieldKey;
+  status: FieldStatus;
+  inputs: Record<string, string>;
+  error?: FieldError;
+}
+
+const { lang, fieldKey, status, inputs, error } = Astro.props;
+const value = (name: string) => inputs[name] ?? '';
+
+/** The total shown before the island takes over; blank unless both parts are plain whole numbers. */
+function assetsTotal(movable: string, immovable: string): string {
+  const parse = (text: string) => (/^[\d,\s]+$/.test(text) ? Number(text.replace(/[,\s]/g, '')) : NaN);
+  const sum = parse(movable) + parse(immovable);
+  return Number.isFinite(sum) ? formatInr(sum) : '—';
+}
+---
+
+<div class="status" role="radiogroup" aria-label={t(lang, 'transcribe.reading.status.legend')}>
+  {STATUSES.map((option) => (
+    <label class="status-option">
+      <input type="radio" name={`status.${fieldKey}`} value={option} checked={status === option} />
+      <span>{t(lang, `transcribe.reading.status.${option}`)}</span>
+    </label>
+  ))}
+</div>
+
+<div class="inputs" data-inputs>
+  {(fieldKey === 'full_name' || fieldKey === 'party') && (
+    <label class="input">
+      <span>{t(lang, `transcribe.reading.input.${fieldKey === 'full_name' ? 'name' : 'party'}`)}</span>
+      <input type="text" name={fieldKey === 'full_name' ? 'name' : 'party'} value={value(fieldKey === 'full_name' ? 'name' : 'party')} autocomplete="off" />
+    </label>
+  )}
+
+  {fieldKey === 'gender' && (
+    <label class="input input--short">
+      <span>{t(lang, 'transcribe.reading.input.gender')}</span>
+      <select name="gender">
+        <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
+        {GENDERS.map((gender) => (
+          <option value={gender} selected={value('gender') === gender}>
+            {t(lang, `transcribe.reading.gender.${gender}`)}
+          </option>
+        ))}
+      </select>
+    </label>
+  )}
+
+  {fieldKey === 'age' && (
+    <label class="input input--short">
+      <span>{t(lang, 'transcribe.reading.input.age')}</span>
+      <input type="text" inputmode="numeric" name="age" value={value('age')} autocomplete="off" />
+    </label>
+  )}
+
+  {fieldKey === 'education' && (
+    <div class="input-row">
+      <label class="input input--short">
+        <span>{t(lang, 'transcribe.reading.input.educationLevel')}</span>
+        <select name="educationLevel">
+          <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
+          {EDUCATION_LEVELS.map((level) => (
+            <option value={level} selected={value('educationLevel') === level}>
+              {level}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label class="input">
+        <span>{t(lang, 'transcribe.reading.input.educationStated')}</span>
+        <input type="text" name="educationStated" value={value('educationStated')} autocomplete="off" />
+      </label>
+    </div>
+  )}
+
+  {fieldKey === 'assets' && (
+    <>
+      <div class="input-row">
+        <label class="input">
+          <span>{t(lang, 'transcribe.reading.input.movableInr')}</span>
+          <input type="text" inputmode="numeric" name="movableInr" value={value('movableInr')} autocomplete="off" data-assets-part />
+        </label>
+        <label class="input">
+          <span>{t(lang, 'transcribe.reading.input.immovableInr')}</span>
+          <input type="text" inputmode="numeric" name="immovableInr" value={value('immovableInr')} autocomplete="off" data-assets-part />
+        </label>
+      </div>
+      <p class="total">
+        {t(lang, 'transcribe.reading.assetsTotal')}{' '}
+        <strong data-assets-total>{assetsTotal(value('movableInr'), value('immovableInr'))}</strong>
+      </p>
+      <p class="help">{t(lang, 'transcribe.reading.assetsHelp')}</p>
+    </>
+  )}
+
+  {fieldKey === 'cases' && (
+    <>
+      <div class="input-row">
+        <label class="input input--short">
+          <span>{t(lang, 'transcribe.reading.input.pending')}</span>
+          <input type="text" inputmode="numeric" name="pending" value={value('pending')} autocomplete="off" />
+        </label>
+        <label class="input input--short">
+          <span>{t(lang, 'transcribe.reading.input.convictions')}</span>
+          <input type="text" inputmode="numeric" name="convictions" value={value('convictions')} autocomplete="off" />
+        </label>
+      </div>
+      <p class="help">{t(lang, 'transcribe.reading.casesHelp')}</p>
+    </>
+  )}
+</div>
+<slot />
+{error && <p class="field-error">{t(lang, `transcribe.error.${error}`)}</p>}
+
+<style>
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .status-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 36px;
+    padding: var(--space-1) var(--space-3);
+    border: 1.5px solid var(--color-border);
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .status-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-surface);
+    font-weight: 700;
+  }
+
+  .status-option:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .inputs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+    align-items: end;
+  }
+
+  .input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .input--short {
+    max-width: 14rem;
+  }
+
+  .input > span {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .input input,
+  .input select,
+  .input textarea {
+    min-height: 44px;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .input input:focus-visible,
+  .input select:focus-visible,
+  .input textarea:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+    border-color: var(--color-primary);
+  }
+
+  .input input:disabled,
+  .input select:disabled {
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+  }
+
+  .total {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .total strong {
+    font-size: var(--text-base);
+  }
+
+  .help {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .field-error {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+</style>

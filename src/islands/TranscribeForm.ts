@@ -15,30 +15,7 @@
  * own. Everything it needs is in `data-` attributes the server rendered.
  */
 
-/** Whole rupees in Indian digit grouping, matching the server's `formatInr`. */
-function formatInr(amount: number): string {
-  return `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amount)}`;
-}
-
-function parseWhole(text: string): number | null {
-  const digits = text.replace(/[,\s]/g, '');
-  return /^\d{1,15}$/.test(digits) ? Number(digits) : null;
-}
-
-function syncStatus(field: HTMLFieldSetElement): void {
-  const chosen = field.querySelector<HTMLInputElement>('input[type="radio"]:checked');
-  const hasValue = !chosen || chosen.value === 'value';
-  field.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-inputs] input, [data-inputs] select').forEach((input) => {
-    input.disabled = !hasValue;
-  });
-}
-
-function syncTotal(form: HTMLFormElement): void {
-  const total = form.querySelector<HTMLElement>('[data-assets-total]');
-  if (!total) return;
-  const parts = Array.from(form.querySelectorAll<HTMLInputElement>('[data-assets-part]')).map((input) => parseWhole(input.value));
-  total.textContent = parts.length === 2 && parts.every((part) => part !== null) ? formatInr(parts[0]! + parts[1]!) : '—';
-}
+import { syncStatus, syncTotal } from './AffidavitFields';
 
 function startCountdown(): void {
   const el = document.querySelector<HTMLElement>('[data-expires-at]');
