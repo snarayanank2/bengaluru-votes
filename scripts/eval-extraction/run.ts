@@ -39,36 +39,47 @@ function fixtureFiles(): string[] {
   return readdirSync(fixturesDir).filter((f) => f.endsWith('.pdf')).sort();
 }
 
-async function runPairs(pairs: Pair[], outDir: string): Promise<void> {
-  mkdirSync(outDir, { recursive: true });
+/** Returns true if any pair threw unexpectedly; those pairs write nothing and are retried on the next run. */
+async function runPairs(pairs: Pair[], outDir: string): Promise<boolean> {
   const expected = loadExpected();
+  for (const { file } of pairs) {
+    if (expected[file] === undefined) throw new Error(`expected.json has no entry for ${file}`);
+  }
+  mkdirSync(outDir, { recursive: true });
   const client = new Anthropic();
   const queue = [...pairs];
+  let hadUnexpectedError = false;
 
   async function worker(): Promise<void> {
     for (let pair = queue.shift(); pair; pair = queue.shift()) {
       const { file, model } = pair;
-      const outcome = await extractAffidavit(readFileSync(path.join(fixturesDir, file)), model, client);
-      if (outcome.ok) {
-        const row: ResultRow = {
-          file,
-          model,
-          extraction: outcome.extraction,
-          grade: grade(outcome.extraction, expected[file]),
-          usage: outcome.usage,
-          costUsd: costUsd(model, outcome.usage.inputTokens, outcome.usage.outputTokens),
-        };
-        appendFileSync(path.join(outDir, 'results.jsonl'), JSON.stringify(row) + '\n');
-        console.log(`ok      ${model}  ${file}  ${outcome.usage.inputTokens} in / ${outcome.usage.outputTokens} out  $${row.costUsd.toFixed(3)}`);
-      } else {
-        const row: ErrorRow = { file, model, failure: outcome.failure, detail: outcome.detail, usage: outcome.usage };
-        appendFileSync(path.join(outDir, 'errors.jsonl'), JSON.stringify(row) + '\n');
-        console.log(`FAILED  ${model}  ${file}  ${outcome.failure}: ${outcome.detail}`);
+      try {
+        const outcome = await extractAffidavit(readFileSync(path.join(fixturesDir, file)), model, client);
+        if (outcome.ok) {
+          const row: ResultRow = {
+            file,
+            model,
+            extraction: outcome.extraction,
+            grade: grade(outcome.extraction, expected[file]),
+            usage: outcome.usage,
+            costUsd: costUsd(model, outcome.usage.inputTokens, outcome.usage.outputTokens),
+          };
+          appendFileSync(path.join(outDir, 'results.jsonl'), JSON.stringify(row) + '\n');
+          console.log(`ok      ${model}  ${file}  ${outcome.usage.inputTokens} in / ${outcome.usage.outputTokens} out  $${row.costUsd.toFixed(3)}`);
+        } else {
+          const row: ErrorRow = { file, model, failure: outcome.failure, detail: outcome.detail, usage: outcome.usage };
+          appendFileSync(path.join(outDir, 'errors.jsonl'), JSON.stringify(row) + '\n');
+          console.log(`FAILED  ${model}  ${file}  ${outcome.failure}: ${outcome.detail}`);
+        }
+      } catch (err) {
+        hadUnexpectedError = true;
+        console.log(`ERROR   ${model}  ${file}  ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }
 
   await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+  return hadUnexpectedError;
 }
 
 /** Errors for pairs that later succeeded on a rerun are stale; drop them. */
@@ -101,7 +112,10 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const valueOf = (flag: string): string | undefined => {
     const i = args.indexOf(flag);
-    return i === -1 ? undefined : args[i + 1];
+    if (i === -1) return undefined;
+    const value = args[i + 1];
+    if (value === undefined || value.startsWith('--')) throw new Error(`${flag} needs a value`);
+    return value;
   };
   const files = fixtureFiles();
 
@@ -124,8 +138,12 @@ async function main(): Promise<void> {
   if (args.includes('--pilot')) {
     requireKey();
     const outDir = valueOf('--out') ?? path.join(repoRoot, 'eval-runs', `pilot-${new Date().toISOString().replace(/[:.]/g, '-')}`);
-    await runPairs(pendingPairs([files[0]], EXTRACTION_MODELS, []), outDir);
-    const rows = readJsonl<ResultRow>(path.join(outDir, 'results.jsonl'));
+    const existing = readJsonl<ResultRow>(path.join(outDir, 'results.jsonl'));
+    const pending = pendingPairs([files[0]], EXTRACTION_MODELS, existing);
+    let hadError = false;
+    if (pending.length === 0) console.log(`Pilot already complete in ${outDir}.`);
+    else hadError = await runPairs(pending, outDir);
+    const rows = readJsonl<ResultRow>(path.join(outDir, 'results.jsonl')).filter((row) => row.file === files[0]);
     const pilotBytes = readFileSync(path.join(fixturesDir, files[0])).length;
     const restBytes = files.slice(1).reduce((n, f) => n + readFileSync(path.join(fixturesDir, f)).length, 0);
     console.log('\nProjection for the remaining affidavits, scaled by file size from the pilot:');
@@ -135,8 +153,17 @@ async function main(): Promise<void> {
       total += projected;
       console.log(`  ${row.model}: pilot $${row.costUsd.toFixed(3)} (${row.usage.inputTokens} in / ${row.usage.outputTokens} out, ${(row.usage.elapsedMs / 1000).toFixed(0)}s); remaining about $${projected.toFixed(2)}`);
     }
+    for (const model of EXTRACTION_MODELS) {
+      if (!rows.some((row) => row.model === model)) {
+        console.log(`  ${model}: no pilot result (see errors.jsonl); not included in the total`);
+      }
+    }
     console.log(`  Total remaining: about $${total.toFixed(2)}`);
     console.log(`\nPilot results are in ${outDir}. To continue into the same directory:\n  npm run eval:extraction -- --full --out ${outDir}`);
+    if (hadError) {
+      console.error('Some calls threw unexpectedly; rerun the same command to retry them.');
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -147,8 +174,12 @@ async function main(): Promise<void> {
     const done = readJsonl<ResultRow>(path.join(outDir, 'results.jsonl'));
     const pending = pendingPairs(files, EXTRACTION_MODELS, done);
     console.log(`${done.length} results already saved; running ${pending.length} calls.`);
-    await runPairs(pending, outDir);
+    const hadError = await runPairs(pending, outDir);
     writeReports(outDir);
+    if (hadError) {
+      console.error('Some calls threw unexpectedly; rerun the same command to retry them.');
+      process.exitCode = 1;
+    }
     return;
   }
 
