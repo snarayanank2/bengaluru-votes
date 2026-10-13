@@ -69,6 +69,10 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { placeLd } from '../../lib/seo';
 import { mapsConfig } from '../../lib/maps-config';
 import { getKnownSetting } from '../../lib/settings';
+import { masterLoginEnabled } from '../../lib/master-login';
+
+// TEMPORARY (until email works for OTP): no register-for-updates slot in password mode.
+const passwordMode = masterLoginEnabled();
 
 interface Props {
   lang: Lang;
@@ -260,21 +264,23 @@ const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePat
           )}
         </section>
 
-        <section class="register-slot" aria-labelledby="ward-updates-heading">
-          <h2 id="ward-updates-heading">{t(lang, 'ward.updates.heading')}</h2>
-          <p id="ward-updates-description">{t(lang, 'ward.updates.description')}</p>
-          <Button
-            variant="primary"
-            href={localePath(lang, '/login')}
-            lang={lang}
-            aria-describedby="ward-updates-description"
-            data-register-slot
-            data-ward-id={wardId}
-            data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
-          >
-            {t(lang, 'common.registerForUpdates')}
-          </Button>
-        </section>
+        {!passwordMode && (
+          <section class="register-slot" aria-labelledby="ward-updates-heading">
+            <h2 id="ward-updates-heading">{t(lang, 'ward.updates.heading')}</h2>
+            <p id="ward-updates-description">{t(lang, 'ward.updates.description')}</p>
+            <Button
+              variant="primary"
+              href={localePath(lang, '/login')}
+              lang={lang}
+              aria-describedby="ward-updates-description"
+              data-register-slot
+              data-ward-id={wardId}
+              data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
+            >
+              {t(lang, 'common.registerForUpdates')}
+            </Button>
+          </section>
+        )}
 
         <section id="ward-candidates" class="ward-section ward-candidates ward-candidates-section" aria-labelledby="ward-candidates-heading">
           <p class="ward-section-eyebrow eyebrow">{t(lang, 'ward.nav.candidates')}</p>

@@ -405,6 +405,19 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
     });
   });
 
+  it('temporary password mode: renders no register slot', async () => {
+    process.env.MASTER_PASSWORD = 'slot-test-master-password-0001';
+    try {
+      const res = await renderCompare('en', WARD.id);
+      const html = normalize(await res.text());
+      expect(res.status).toBe(200);
+      expect(html).not.toContain('data-register-slot');
+      expect(html).not.toContain('data-register-login-modal');
+    } finally {
+      delete process.env.MASTER_PASSWORD;
+    }
+  });
+
   describe('unknown ward id -> real 404 (route twin)', () => {
     it.each(['en', 'kn'] as const)('%s: a well-formed but non-existent id 404s', async (lang) => {
       const res = await renderCompare(lang, 999999);

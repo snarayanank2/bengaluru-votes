@@ -87,11 +87,16 @@ import EnvBanner from '../components/EnvBanner.astro';
 import AppBar from '../components/AppBar.astro';
 import Footer from '../components/Footer.astro';
 import RegisterLoginModal from '../components/RegisterLoginModal.astro';
+import { masterLoginEnabled } from '../lib/master-login';
 import FlagModal from '../components/FlagModal.astro';
 import { localePath, type Lang } from '../i18n';
 import { ATTRIBUTION_SCRIPT_SOURCE } from '../lib/attribution';
 import { gaLoaderSrc, gaConfigScriptSource } from '../lib/analytics';
 import { jsonLd } from '../lib/seo';
+
+// TEMPORARY (until email works for OTP): registration is parked in
+// password mode, so the Register/Login modal is not rendered at all.
+const passwordMode = masterLoginEnabled();
 
 interface Props {
   lang: Lang;
@@ -246,7 +251,7 @@ const showGa = !noindex && !!gaMeasurementId;
       <slot />
     </main>
     <Footer lang={lang} />
-    <RegisterLoginModal lang={lang} />
+    {!passwordMode && <RegisterLoginModal lang={lang} />}
     <FlagModal lang={lang} />
     <script>
       import { initMeSlot } from '../islands/MeSlot';

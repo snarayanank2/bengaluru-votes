@@ -25,6 +25,8 @@
  *     THIS function runs again, now authed, and shows the (still-empty,
  *     nothing was ever typed) flag form. Authed -> the flag form shows
  *     immediately.
+ *     TEMPORARY: when the modal is not on the page (master-password mode),
+ *     anonymous visitors are sent to the locale's /login with `next`.
  *   - ON SUBMIT: the already-open flag dialog is deliberately left open
  *     (not closed) while `window.bvOpenRegisterLogin` opens on top of it —
  *     native `<dialog>` supports stacked modals, and this means a 401 mid-
@@ -350,6 +352,17 @@ function showFlagForm(opts: OpenFlagModalOptions, opener?: FocusTarget | null): 
 }
 
 /**
+ * Where an anonymous visitor goes when the Register/Login modal is not on
+ * the page. TEMPORARY: that only happens in master-password mode
+ * (src/lib/master-login.ts), which parks registration until email works
+ * for OTP. Locale-aware, and carries the current page as `next`.
+ */
+export function loginRedirectUrl(pathname: string, search: string): string {
+  const isKannada = pathname === '/kn' || pathname.startsWith('/kn/');
+  return `${isKannada ? '/kn/login' : '/login'}?next=${encodeURIComponent(pathname + search)}`;
+}
+
+/**
  * Opens the Flag misinformation modal (IA §7.2). Anonymous visitors are
  * shown Register/Login FIRST — this function itself re-runs as that
  * flow's `onSuccess`, so `opts` (the SAME targets/wardId) is preserved
@@ -365,9 +378,13 @@ export function openFlagModal(opts: OpenFlagModalOptions, opener?: FocusTarget |
 
   void fetchMe().then((me) => {
     if (!me || me.anonymous) {
-      window.bvOpenRegisterLogin?.({
-        onSuccess: () => openFlagModal(opts, opener),
-      });
+      if (window.bvOpenRegisterLogin) {
+        window.bvOpenRegisterLogin({
+          onSuccess: () => openFlagModal(opts, opener),
+        });
+      } else {
+        location.assign(loginRedirectUrl(location.pathname, location.search));
+      }
       return;
     }
 

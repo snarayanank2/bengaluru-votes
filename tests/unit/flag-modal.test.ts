@@ -114,6 +114,7 @@ describe('FlagModal island (src/islands/FlagModal.ts)', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   let registerLoginSpy: ReturnType<typeof vi.fn>;
   let openFlagModal: FlagModalModule['openFlagModal'];
+  let loginRedirectUrl: FlagModalModule['loginRedirectUrl'];
   let initialHref: string;
 
   beforeEach(async () => {
@@ -127,7 +128,7 @@ describe('FlagModal island (src/islands/FlagModal.ts)', () => {
     initialHref = location.href;
 
     vi.resetModules();
-    ({ openFlagModal } = await import('../../src/islands/FlagModal'));
+    ({ openFlagModal, loginRedirectUrl } = await import('../../src/islands/FlagModal'));
   });
 
   afterEach(() => {
@@ -369,6 +370,32 @@ describe('FlagModal island (src/islands/FlagModal.ts)', () => {
       await flush();
 
       expect(dialog().contains(document.activeElement)).toBe(true);
+    });
+  });
+
+  describe('temporary password mode: Register/Login modal absent', () => {
+    it('loginRedirectUrl sends an English page to /login with next', () => {
+      expect(loginRedirectUrl('/candidate/some-slug', '?x=1')).toBe(
+        `/login?next=${encodeURIComponent('/candidate/some-slug?x=1')}`,
+      );
+    });
+
+    it('loginRedirectUrl sends a Kannada page to /kn/login with next', () => {
+      expect(loginRedirectUrl('/kn/ward/12', '')).toBe(`/kn/login?next=${encodeURIComponent('/kn/ward/12')}`);
+      expect(loginRedirectUrl('/kn', '')).toBe(`/kn/login?next=${encodeURIComponent('/kn')}`);
+    });
+
+    it('a path that merely starts with "kn" is not treated as Kannada', () => {
+      expect(loginRedirectUrl('/knowledge', '')).toBe(`/login?next=${encodeURIComponent('/knowledge')}`);
+    });
+
+    it('ANONYMOUS with no bvOpenRegisterLogin: the flag form does not open', async () => {
+      delete (window as { bvOpenRegisterLogin?: unknown }).bvOpenRegisterLogin;
+      fetchMock.mockResolvedValueOnce(jsonResponse({ anonymous: true }));
+      openFlagModal({ wardId: 1, targets: SINGLE_TARGET });
+      await flush();
+      expect(dialog().open).toBe(false);
+      expect(registerLoginSpy).not.toHaveBeenCalled();
     });
   });
 });

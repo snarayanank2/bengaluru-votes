@@ -285,6 +285,27 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
       );
       expect(withCookie).toBe(noCookie);
     });
+
+    describe('temporary password mode', () => {
+      beforeEach(() => {
+        process.env.MASTER_PASSWORD = 'ward-test-master-password-0001';
+      });
+
+      afterEach(() => {
+        delete process.env.MASTER_PASSWORD;
+      });
+
+      it.each(['en', 'kn'] as const)('%s: renders no register slot and no Register/Login modal', async (lang) => {
+        const res = await renderWard(lang, WARD.id);
+        expect(res.status).toBe(200);
+        const html = normalize(await res.text());
+        expect(html).not.toContain('data-register-slot');
+        expect(html).not.toContain(t(lang, 'common.registerForUpdates'));
+        expect(html).not.toContain('data-register-login-modal');
+        // The flag modal stays: staff still flag, and citizens are sent to /login.
+        expect(html).toContain('data-flag-modal');
+      });
+    });
   });
 
   describe('inline candidate list', () => {

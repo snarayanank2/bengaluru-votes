@@ -59,6 +59,10 @@ import { db } from '../../db/client';
 import { wards, candidates, media } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { getKnownSetting } from '../../lib/settings';
+import { masterLoginEnabled } from '../../lib/master-login';
+
+// TEMPORARY (until email works for OTP): no register-for-updates slot in password mode.
+const passwordMode = masterLoginEnabled();
 
 interface Props {
   lang: Lang;
@@ -131,16 +135,18 @@ const description = ward
 
         {sortedCandidates.length === 0 ? (
           <EmptyState fact={emptyFact}>
-            <Button
-              variant="primary"
-              href={localePath(lang, '/login')}
-              lang={lang}
-              data-register-slot
-              data-ward-id={wardId}
-              data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
-            >
-              {t(lang, 'common.registerForUpdates')}
-            </Button>
+            {!passwordMode && (
+              <Button
+                variant="primary"
+                href={localePath(lang, '/login')}
+                lang={lang}
+                data-register-slot
+                data-ward-id={wardId}
+                data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
+              >
+                {t(lang, 'common.registerForUpdates')}
+              </Button>
+            )}
           </EmptyState>
         ) : (
           <>
@@ -161,18 +167,20 @@ const description = ward
               <a href={localePath(lang, `/ward/${wardId}/compare`)}>{t(lang, 'candidate.links.compare')}</a>
             </nav>
 
-            <section class="register-slot">
-              <Button
-                variant="secondary"
-                href={localePath(lang, '/login')}
-                lang={lang}
-                data-register-slot
-                data-ward-id={wardId}
-                data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
-              >
-                {t(lang, 'common.registerForUpdates')}
-              </Button>
-            </section>
+            {!passwordMode && (
+              <section class="register-slot">
+                <Button
+                  variant="secondary"
+                  href={localePath(lang, '/login')}
+                  lang={lang}
+                  data-register-slot
+                  data-ward-id={wardId}
+                  data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
+                >
+                  {t(lang, 'common.registerForUpdates')}
+                </Button>
+              </section>
+            )}
           </>
         )}
       </div>

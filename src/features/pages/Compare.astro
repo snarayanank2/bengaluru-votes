@@ -23,6 +23,10 @@ import {
   type CandidateProfileFieldKey,
 } from '../../lib/candidate-profile';
 import { getKnownSetting } from '../../lib/settings';
+import { masterLoginEnabled } from '../../lib/master-login';
+
+// TEMPORARY (until email works for OTP): no register-for-updates slot in password mode.
+const passwordMode = masterLoginEnabled();
 
 interface Props {
   lang: Lang;
@@ -241,24 +245,26 @@ const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t
           </div>
         </div>
 
-        <section class="updates-band" aria-labelledby="updates-heading">
-          <div class="compare-container updates-content">
-            <div class="heading-group">
-              <h2 id="updates-heading">{t(lang, 'compare.updates.heading')}</h2>
-              <p>{t(lang, 'compare.updates.description', { wardName })}</p>
+        {!passwordMode && (
+          <section class="updates-band" aria-labelledby="updates-heading">
+            <div class="compare-container updates-content">
+              <div class="heading-group">
+                <h2 id="updates-heading">{t(lang, 'compare.updates.heading')}</h2>
+                <p>{t(lang, 'compare.updates.description', { wardName })}</p>
+              </div>
+              <Button
+                variant="primary"
+                href={localePath(lang, '/login')}
+                lang={lang}
+                data-register-slot
+                data-ward-id={wardId}
+                data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
+              >
+                {t(lang, 'common.registerForUpdates')}
+              </Button>
             </div>
-            <Button
-              variant="primary"
-              href={localePath(lang, '/login')}
-              lang={lang}
-              data-register-slot
-              data-ward-id={wardId}
-              data-msg-receiving-updates={t(lang, 'common.receivingUpdates')}
-            >
-              {t(lang, 'common.registerForUpdates')}
-            </Button>
-          </div>
-        </section>
+          </section>
+        )}
       </div>
     ) : (
       <EmptyState fact={t(lang, 'ward.notFound.fact')} />
