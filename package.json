@@ -22,7 +22,8 @@
     "translate": "tsx scripts/translate.ts",
     "build-fonts": "tsx scripts/build-fonts.ts",
     "build:e2e": "E2E_ALLOWED_HOST=127.0.0.1 E2E_ALLOWED_PORT=4321 astro build",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "eval:extraction": "tsx scripts/eval-extraction/run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",

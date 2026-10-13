@@ -53,3 +53,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Extraction evaluation output (scripts/eval-extraction/run.ts)
+eval-runs/
