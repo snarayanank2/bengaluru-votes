@@ -20,7 +20,8 @@
  *   - SELF / LAST-ADMIN GUARDS: mirrors src/lib/admin.ts's guard, with this
  *     module's own ban_/erase_ error codes.
  *   - ADMIN-ONLY: every mutator rejects a non-admin actor.
- *   - searchUsers: by id, by email/phone substring, empty query -> [].
+ *   - listUsers: staff by default; by id, by email/phone substring; role
+ *     and status filters; citizens never listed without a query; the cap.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -36,7 +37,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-import { eraseUser, banUser, reactivateUser, searchUsers, type AdminActor } from '../../src/lib/erasure';
+import { eraseUser, banUser, reactivateUser, listUsers, type AdminActor } from '../../src/lib/erasure';
 import { createSession, readSession } from '../../src/lib/session';
 
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
@@ -44,7 +45,7 @@ const db = drizzle(client, { schema });
 
 // High, task-specific ids (Task 45 brief: "use high dedicated ids").
 // tests/unit/admin.test.ts owns 99600-99609/99700-99799,
-// tests/routes/admin-roles.test.ts owns 99610-99619; this suite owns
+// tests/routes/admin-console.test.ts owns 99610-99619; this suite owns
 // 99800-99819 (ward id + user ids are separate id spaces, but kept in the
 // same numeric neighborhood for readability). tests/routes/admin-users.test.ts
 // owns its own disjoint email/ward fixtures.
@@ -351,35 +352,35 @@ describe('src/lib/erasure.ts (Task 45)', () => {
     });
   });
 
-  describe('searchUsers', () => {
-    it('returns [] for an empty/whitespace query', async () => {
-      expect(await searchUsers('')).toEqual([]);
-      expect(await searchUsers('   ')).toEqual([]);
+  describe('listUsers', () => {
+    it('returns no rows for an empty/whitespace query once citizens are in scope', async () => {
+      expect((await listUsers({ query: '', role: 'any' })).rows).toEqual([]);
+      expect((await listUsers({ query: '   ', role: 'citizen' })).rows).toEqual([]);
     });
 
     it('matches by exact numeric id', async () => {
       // Scoped to this test's OWN fixture row rather than asserting the
       // result array is exactly [searchByEmailId] / reading rows[0]: per
-      // searchUsers' docstring, a numeric query is unioned with substring
+      // listUsers' docstring, a numeric query is unioned with substring
       // matches on email/phone BY DESIGN ("an admin typing digits gets
       // every row that could plausibly mean"), so other users elsewhere
       // in the shared test DB whose email/phone happens to contain this
       // id's digits as a substring can legitimately also match and sort
-      // ahead of it — that's not a bug in searchUsers, so this assertion
+      // ahead of it — that's not a bug in listUsers, so this assertion
       // must not depend on being the only/first match.
-      const rows = await searchUsers(String(searchByEmailId));
+      const rows = (await listUsers({ query: String(searchByEmailId) })).rows;
       const row = rows.find((r) => r.id === searchByEmailId);
       expect(row).toBeDefined();
       expect(row?.homeWardNameEn).toBe(WARD.nameEn);
     });
 
     it('matches by email substring, case-insensitively', async () => {
-      const rows = await searchUsers('SEARCH-ALPHA');
+      const rows = (await listUsers({ query: 'SEARCH-ALPHA' })).rows;
       expect(rows.some((r) => r.id === searchByEmailId)).toBe(true);
     });
 
     it('matches by phone substring', async () => {
-      const rows = await searchUsers('99887');
+      const rows = (await listUsers({ query: '99887' })).rows;
       expect(rows.some((r) => r.id === searchByEmailId)).toBe(true);
     });
 
@@ -389,13 +390,13 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       // rows[0] — an unrelated user elsewhere in the shared test DB whose
       // email/phone substring-matches this numeric query can legitimately
       // sort first without affecting THIS user's (correctly zero) count.
-      const rows = await searchUsers(String(searchByEmailId));
+      const rows = (await listUsers({ query: String(searchByEmailId) })).rows;
       const row = rows.find((r) => r.id === searchByEmailId);
       expect(row?.flagSubmissionCount).toBe(0);
     });
 
     it('returns [] for no match', async () => {
-      expect(await searchUsers('nobody-erasure-test-search@example.com')).toEqual([]);
+      expect((await listUsers({ query: 'nobody-erasure-test-search@example.com' })).rows).toEqual([]);
     });
 
     it('escapes ilike wildcards: literal % in search does not match broadly', async () => {
@@ -405,7 +406,7 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       extraFixtureIds.push(userId1, userId2);
 
       // Searching for literal '%' should only match the user with % in their email
-      const results = await searchUsers('%');
+      const results = (await listUsers({ query: '%' })).rows;
       const matchedIds = results.map((r) => r.id);
       expect(matchedIds).toContain(userId1);
       expect(matchedIds).not.toContain(userId2);
@@ -418,7 +419,7 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       extraFixtureIds.push(userId1, userId2);
 
       // Searching for literal '_' should only match the user with _ in their email
-      const results = await searchUsers('_');
+      const results = (await listUsers({ query: '_' })).rows;
       const matchedIds = results.map((r) => r.id);
       expect(matchedIds).toContain(userId1);
       expect(matchedIds).not.toContain(userId2);
@@ -430,9 +431,58 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       extraFixtureIds.push(userId1);
 
       // Searching for literal backslash should match that user
-      const results = await searchUsers('\\');
+      const results = (await listUsers({ query: '\\' })).rows;
       const matchedIds = results.map((r) => r.id);
       expect(matchedIds).toContain(userId1);
+    });
+
+    it('with no query lists staff only, admins first, with the date each was added', async () => {
+      const curatorId = await upsertUser('erasure-test-list-curator@example.com', { role: 'curator' });
+      const transcriberId = await upsertUser('erasure-test-list-transcriber@example.com', { role: 'transcriber' });
+      extraFixtureIds.push(curatorId, transcriberId);
+
+      const { rows, truncated } = await listUsers({});
+      const ids = rows.map((r) => r.id);
+      expect(ids).toContain(adminId);
+      expect(ids).toContain(curatorId);
+      expect(ids).toContain(transcriberId);
+      expect(ids).not.toContain(citizenId);
+      expect(truncated).toBe(false);
+      expect(ids.indexOf(adminId)).toBeLessThan(ids.indexOf(curatorId));
+      expect(ids.indexOf(curatorId)).toBeLessThan(ids.indexOf(transcriberId));
+      expect(rows.find((r) => r.id === adminId)?.createdAt).toBeInstanceOf(Date);
+    });
+
+    it('filters by a single role', async () => {
+      const curatorId = await upsertUser('erasure-test-list-curator@example.com', { role: 'curator' });
+      const { rows } = await listUsers({ role: 'curator' });
+      expect(rows.map((r) => r.id)).toContain(curatorId);
+      expect(rows.every((r) => r.role === 'curator')).toBe(true);
+    });
+
+    it('filters by status, combined with a query', async () => {
+      const bannedId = await upsertUser('erasure-test-list-banned@example.com', { status: 'banned' });
+      const activeId = await upsertUser('erasure-test-list-active@example.com');
+      extraFixtureIds.push(bannedId, activeId);
+
+      const { rows } = await listUsers({ query: 'erasure-test-list-', status: 'banned' });
+      expect(rows.map((r) => r.id)).toEqual([bannedId]);
+    });
+
+    it('a role filter narrows a query', async () => {
+      const { rows } = await listUsers({ query: 'erasure-test-list-', role: 'transcriber' });
+      expect(rows.length).toBe(1);
+      expect(rows[0]?.role).toBe('transcriber');
+    });
+
+    it('caps a search that can include citizens at 50 rows and says so', async () => {
+      const ids: number[] = [];
+      for (let i = 0; i < 51; i++) ids.push(await upsertUser(`erasure-test-cap-${i}@example.com`));
+      extraFixtureIds.push(...ids);
+
+      const { rows, truncated } = await listUsers({ query: 'erasure-test-cap-' });
+      expect(rows).toHaveLength(50);
+      expect(truncated).toBe(true);
     });
   });
 });

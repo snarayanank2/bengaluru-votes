@@ -7,15 +7,15 @@
  * a work queue), and the EOI triage queue split by path.
  *
  * PARTNERS ARE NOT A ROLE (PRD §5.12) — this page never touches
- * `users.role`; that's `/admin/roles`
- * (src/features/pages/admin/Roles.astro). The curation-path EOI accept
+ * `users.role`; that's `/admin/users`
+ * (src/features/pages/admin/Users.astro). The curation-path EOI accept
  * form below only marks the application accepted and points the admin at
- * `/admin/roles` to actually grant the role — see
+ * `/admin/users` to actually grant the role — see
  * src/lib/partners.ts's `acceptEoiCuration` docstring (PRD §5.13, no
  * self-activation).
  *
  * CONFIRMATION (design-system.md §7.13): every mutating form here uses the
- * same REQUIRED-checkbox convention as Roles.astro/Users.astro — a create/
+ * same REQUIRED-checkbox convention as Users.astro — a create/
  * update/accept/decline all take effect immediately (curator
  * publish-style, PRD §14), so each gets an explicit "I understand..."
  * checkbox re-validated server-side by the route twin.
@@ -226,7 +226,7 @@ const messageText = message ? t(lang, message.key) : undefined;
                   <input type="hidden" name="formAction" value="accept_curation" />
                   <input type="hidden" name="eoiId" value={eoi.id} />
                   <p class="note">
-                    {t(lang, 'admin.partners.eoi.accept.curation.note')} <a href="/admin/roles">{t(lang, 'admin.console.nav.roles')}</a>
+                    {t(lang, 'admin.partners.eoi.accept.curation.note')} <a href="/admin/users">{t(lang, 'admin.console.nav.users')}</a>
                   </p>
                   <label class="checkbox">
                     <input type="checkbox" name="confirm" required />

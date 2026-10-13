@@ -1,30 +1,62 @@
 ---
 /**
  * `/admin/users` — see src/features/pages/admin/Users.astro for the
- * presentational side. This route twin owns the HTTP concerns: the `?q=`
- * GET search, dispatching the four POST form actions (`add`, `ban`,
- * `reactivate`, `erase`) — `add` to src/lib/admin.ts's addUser, the other
- * three to src/lib/erasure.ts — and no-store on every response.
+ * presentational side. This route twin owns the HTTP concerns: the
+ * `?q=`/`?role=`/`?status=` GET listing, dispatching the five POST form
+ * actions (`add`, `role`, `ban`, `reactivate`, `erase`) — `add` and `role`
+ * to src/lib/admin.ts, the other three to src/lib/erasure.ts — and
+ * no-store on every response.
  *
  * src/middleware.ts already 403s any non-admin session and redirects an
  * anonymous request to /login before this ever runs; the actor handed to
- * every src/lib/erasure.ts mutator is therefore always `role: 'admin'` in
- * practice — the `assertAdmin` re-check inside those mutators is defense
- * in depth, not something this route expects to ever trip.
+ * every mutator is therefore always `role: 'admin'` in practice — the
+ * `assertAdmin` re-check inside those mutators is defense in depth, not
+ * something this route expects to ever trip.
  *
- * AFTER A POST: redirects back to `/admin/users?q=<the same query>` on
- * success (re-running the search picks up the row's new status), or
- * re-renders in place with a 400 + friendly error AND the same search
- * results recomputed, so a rejected action (e.g. a lockout guard) doesn't
- * lose the admin's place.
+ * AFTER A POST: redirects back to the SAME listing (`q`, role and status
+ * filters carried as hidden fields) with `?notice=<kind>&nu=<user id>`,
+ * which the following GET renders as a confirmation banner; or re-renders
+ * in place with a 400 + friendly error AND the same listing recomputed, so
+ * a rejected action (e.g. a lockout guard) doesn't lose the admin's place.
+ * The notice is looked up from a fixed list and the user re-read by id, so
+ * a hand-edited URL can only ever show one of these six sentences about a
+ * real account.
  */
 import Users from '../../features/pages/admin/Users.astro';
-import { addUser, isStaffRole } from '../../lib/admin';
-import { banUser, eraseUser, reactivateUser, searchUsers, type AdminActor } from '../../lib/erasure';
+import { addUser, findUserById, grantRole, isStaffRole, revokeRole, type AdminActor, type StaffRole } from '../../lib/admin';
+import {
+  banUser,
+  eraseUser,
+  listUsers,
+  reactivateUser,
+  USER_LIST_CAP,
+  USER_ROLE_FILTERS,
+  USER_STATUS_FILTERS,
+  type UserRoleFilter,
+  type UserStatusFilter,
+} from '../../lib/erasure';
 import { loadCuratorLang } from '../../lib/curator';
 
 const session = Astro.locals.session!;
 const actor: AdminActor = { userId: session.userId, role: 'admin' };
+
+const NOTICE_KINDS = ['added', 'roleChanged', 'roleRemoved', 'banned', 'reactivated', 'erased'] as const;
+type NoticeKind = (typeof NOTICE_KINDS)[number];
+
+const ROLE_LABEL_KEYS: Record<string, string> = {
+  citizen: 'admin.users.results.roleCitizen',
+  transcriber: 'admin.users.results.roleTranscriber',
+  curator: 'admin.users.results.roleCurator',
+  admin: 'admin.users.results.roleAdmin',
+};
+
+interface Message {
+  kind: 'notice' | 'error';
+  key: string;
+  /** Interpolation values; `roleKey` is an i18n key the view resolves into `{role}`. */
+  params?: Record<string, string>;
+  roleKey?: string;
+}
 
 /** Maps a thrown Error's message to a user-facing i18n key, falling back to `fallbackKey` for anything unrecognized. */
 function errorKey(err: unknown, fallbackKey: string): string {
@@ -36,15 +68,56 @@ function errorKey(err: unknown, fallbackKey: string): string {
   if (msg === 'cannot_erase_last_admin') return 'admin.users.error.cannotEraseLastAdmin';
   if (msg === 'cannot_ban_erased') return 'admin.users.error.cannotBanErased';
   if (msg === 'cannot_reactivate_erased') return 'admin.users.error.cannotReactivateErased';
+  // Lockout-prevention guards (src/lib/admin.ts's assertNotSelfOrLastAdmin)
+  // — thrown by revokeRole and by grantRole's one demote-an-admin path.
+  if (msg === 'cannot_revoke_self') return 'admin.users.error.cannotRevokeSelf';
+  if (msg === 'cannot_revoke_last_admin') return 'admin.users.error.cannotRevokeLastAdmin';
   if (msg === 'invalid_email') return 'admin.users.error.invalidEmail';
   if (msg === 'user_exists') return 'admin.users.error.userExists';
   return fallbackKey;
 }
 
-let message: { kind: 'notice' | 'error'; key: string } | undefined;
+function parseRoleFilter(raw: unknown): UserRoleFilter | undefined {
+  return USER_ROLE_FILTERS.find((value) => value === raw);
+}
+
+function parseStatusFilter(raw: unknown): UserStatusFilter | undefined {
+  return USER_STATUS_FILTERS.find((value) => value === raw);
+}
+
+function badRequest(): Response {
+  return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+}
+
+const params = Astro.url.searchParams;
+let message: Message | undefined;
 let responseStatus = 200;
-let query = Astro.url.searchParams.get('q') ?? '';
+let query = params.get('q') ?? '';
+let roleFilter = parseRoleFilter(params.get('role'));
+let statusFilter = parseStatusFilter(params.get('status'));
 let addEmail = '';
+let addRole: StaffRole = 'transcriber';
+
+/** The current listing's URL, optionally carrying a success notice about `userId`. */
+function listingUrl(notice?: NoticeKind, userId?: number): string {
+  const out = new URLSearchParams();
+  if (query) out.set('q', query);
+  if (roleFilter) out.set('role', roleFilter);
+  if (statusFilter && statusFilter !== 'any') out.set('status', statusFilter);
+  if (notice && userId !== undefined) {
+    out.set('notice', notice);
+    out.set('nu', String(userId));
+  }
+  const qs = out.toString();
+  return qs ? `/admin/users?${qs}` : '/admin/users';
+}
+
+function redirectWithNotice(notice: NoticeKind, userId: number): Response {
+  return new Response(null, {
+    status: 302,
+    headers: { Location: listingUrl(notice, userId), 'cache-control': 'no-store' },
+  });
+}
 
 if (Astro.request.method === 'POST') {
   Astro.response.headers.set('cache-control', 'no-store');
@@ -52,27 +125,28 @@ if (Astro.request.method === 'POST') {
   const formAction = String(form.get('formAction') ?? '');
   const confirmed = form.get('confirm') != null;
   query = String(form.get('q') ?? '');
+  roleFilter = parseRoleFilter(form.get('filterRole'));
+  statusFilter = parseStatusFilter(form.get('filterStatus'));
 
   if (formAction === 'add') {
     addEmail = String(form.get('email') ?? '').trim();
     const roleRaw = String(form.get('role') ?? '');
-    if (!isStaffRole(roleRaw)) {
-      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
-    }
+    if (!isStaffRole(roleRaw)) return badRequest();
+    addRole = roleRaw;
 
-    if (!confirmed) {
-      message = { kind: 'error', key: 'admin.users.error.confirmRequired' };
+    // Only an admin account needs the explicit confirmation: it can manage
+    // every other account. Transcriber and curator are added in one step.
+    if (addRole === 'admin' && !confirmed) {
+      message = { kind: 'error', key: 'admin.users.error.confirmAdminRequired' };
       responseStatus = 400;
     } else {
       try {
-        await addUser(actor, addEmail, roleRaw);
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: `/admin/users?q=${encodeURIComponent(addEmail.toLowerCase())}`,
-            'cache-control': 'no-store',
-          },
-        });
+        const newUserId = await addUser(actor, addEmail, addRole);
+        // The new account is staff, so the unfiltered staff list shows it.
+        query = '';
+        roleFilter = undefined;
+        statusFilter = undefined;
+        return redirectWithNotice('added', newUserId);
       } catch (err) {
         // Only the two failures addUser reports on purpose become a message;
         // anything else (database down, ...) is rethrown so the middleware
@@ -85,45 +159,83 @@ if (Astro.request.method === 'POST') {
     }
   } else {
     const targetUserId = Number(form.get('targetUserId'));
-    if (!Number.isInteger(targetUserId)) {
-      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
-    }
+    if (!Number.isInteger(targetUserId)) return badRequest();
+    if (!['role', 'ban', 'reactivate', 'erase'].includes(formAction)) return badRequest();
 
-    if (!['ban', 'reactivate', 'erase'].includes(formAction)) {
-      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
-    }
+    // `role` is a staff role to set, or 'citizen' to remove staff access.
+    const roleRaw = String(form.get('role') ?? '');
+    if (formAction === 'role' && roleRaw !== 'citizen' && !isStaffRole(roleRaw)) return badRequest();
 
     if (!confirmed) {
       message = { kind: 'error', key: 'admin.users.error.confirmRequired' };
       responseStatus = 400;
     } else {
       try {
+        if (formAction === 'role') {
+          if (isStaffRole(roleRaw)) {
+            await grantRole(actor, targetUserId, roleRaw);
+            return redirectWithNotice('roleChanged', targetUserId);
+          }
+          await revokeRole(actor, targetUserId);
+          return redirectWithNotice('roleRemoved', targetUserId);
+        }
         if (formAction === 'ban') {
           const reason = String(form.get('reason') ?? '').trim();
           await banUser(actor, targetUserId, reason || undefined);
-        } else if (formAction === 'reactivate') {
-          await reactivateUser(actor, targetUserId);
-        } else {
-          await eraseUser(actor, targetUserId);
+          return redirectWithNotice('banned', targetUserId);
         }
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: query ? `/admin/users?q=${encodeURIComponent(query)}` : '/admin/users',
-            'cache-control': 'no-store',
-          },
-        });
+        if (formAction === 'reactivate') {
+          await reactivateUser(actor, targetUserId);
+          return redirectWithNotice('reactivated', targetUserId);
+        }
+        await eraseUser(actor, targetUserId);
+        return redirectWithNotice('erased', targetUserId);
       } catch (err) {
         message = { kind: 'error', key: errorKey(err, 'admin.users.error.userNotFound') };
         responseStatus = 400;
       }
     }
   }
+} else {
+  const notice = NOTICE_KINDS.find((kind) => kind === params.get('notice'));
+  const noticeUserId = Number(params.get('nu'));
+  if (notice && Number.isInteger(noticeUserId)) {
+    const user = await findUserById(noticeUserId);
+    if (user) {
+      message = {
+        kind: 'notice',
+        key: `admin.users.notice.${notice}`,
+        params: { user: user.email ?? user.phone ?? `#${user.id}`, id: String(user.id) },
+        roleKey: ROLE_LABEL_KEYS[user.role],
+      };
+    }
+  }
 }
 
-const [results, lang] = await Promise.all([searchUsers(query), loadCuratorLang(session.userId)]);
+const effectiveRole: UserRoleFilter = roleFilter ?? (query.trim() ? 'any' : 'staff');
+const effectiveStatus: UserStatusFilter = statusFilter ?? 'any';
+const [list, lang] = await Promise.all([
+  listUsers({ query, role: effectiveRole, status: effectiveStatus }),
+  loadCuratorLang(session.userId),
+]);
+const needsQuery = query.trim() === '' && (effectiveRole === 'any' || effectiveRole === 'citizen');
+
 Astro.response.headers.set('cache-control', 'no-store');
 Astro.response.status = responseStatus;
 ---
 
-<Users lang={lang} csrfToken={Astro.locals.csrfToken} query={query} results={results} message={message} addEmail={addEmail} />
+<Users
+  lang={lang}
+  csrfToken={Astro.locals.csrfToken}
+  selfId={session.userId}
+  query={query}
+  roleFilter={effectiveRole}
+  statusFilter={effectiveStatus}
+  hasExplicitRoleFilter={roleFilter !== undefined}
+  rows={list.rows}
+  truncatedAt={list.truncated ? USER_LIST_CAP : undefined}
+  needsQuery={needsQuery}
+  message={message}
+  addEmail={addEmail}
+  addRole={addRole}
+/>

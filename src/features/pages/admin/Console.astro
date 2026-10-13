@@ -6,8 +6,9 @@
  * navigation, not a dashboard — see `src/lib/admin.ts`'s `loadConsoleStats`
  * docstring.
  *
- * "Roles & access" (Task 44), "Manage users" (Task 45), "Partners &
- * coverage" (Task 46), and "Audit log" (Task 47) all link to real pages.
+ * "Manage users" (Tasks 44/45 — it absorbed the old "Roles & access"
+ * page), "Partners & coverage" (Task 46), and "Audit log" (Task 47) all
+ * link to real pages.
  *
  * No `/kn/` twin (internal tooling, noindex — see AdminLayout's
  * docstring); rendered in the signed-in admin's own saved `users.language`.
@@ -54,9 +55,6 @@ const { lang, stats } = Astro.props;
     <Card>
       <h2>{t(lang, 'admin.console.nav.heading')}</h2>
       <ul class="nav-list">
-        <li>
-          <a href="/admin/roles">{t(lang, 'admin.console.nav.roles')}</a>
-        </li>
         <li>
           <a href="/admin/users">{t(lang, 'admin.console.nav.users')}</a>
         </li>

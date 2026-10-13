@@ -291,13 +291,14 @@ Admins can add and block operators without a shell on the box.
 
 **What ships**
 
-- `/admin/users` — list, search, **add a user with a role** (transcriber, curator, admin), block and unblock. `/admin/users` today has ban, reactivate and erase only (tracker 105). Role assignment at `/admin/roles`; there is no ward scope to set on anyone (§9).
+- `/admin/users` — list, search, **add a user with a role** (transcriber, curator, admin), block and unblock. Role changes happen on the same page; there is no ward scope to set on anyone (§9).
 - **A 24-hour staff session.** Operators sign in by email OTP from `/login`, like any citizen, and stay signed in for a working day. Citizens keep the short idle timeout; staff do not re-authenticate mid-shift.
 - Blocking ends live sessions, not just future logins (tracker 107 — verify current behaviour first). With 24-hour sessions this matters more, not less: a revoked account must lose access on its next request, not at the end of the day.
 - **"Generate a sign-in link" is dropped.** It existed to decouple staff access from messaging vendors; email OTP does that job well enough (see below). Its tracker row (106) was deleted on 2026-08-15.
 - Analytics functionality for admins: **TBD on the sheet**, and unscoped here.
 - `npm run seed:admin` stays the bootstrap. It remains the only path to the first admin.
 - **Shipped 2026-10-13:** add a user with a role at `/admin/users`; the `transcriber` role in the schema, assignable at `/admin/roles`. Search, ban, reactivate and erase were already there, and banning already ends live sessions (`readSession` rejects a non-active user on every request).
+- **Shipped 2026-10-13 (later the same day):** `/admin/roles` merged into `/admin/users`, which now lists staff by default, filters by role and status, and changes a role from each account's row. `/admin/roles` redirects there.
 - **Still open:** the 24-hour staff session. Sessions are 1 hour sliding for every role.
 - **Temporary:** M6 no longer waits on M4a to be usable. Until email works for OTP, staff sign in with a shared master password (`docs/architecture.md` §7, §13).
 

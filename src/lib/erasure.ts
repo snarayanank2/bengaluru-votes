@@ -75,7 +75,7 @@
  * when it was created), but deleting on every ban call, not just once, is
  * what actually removes the row rather than leaving a dead one behind.
  */
-import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
 import { flagSubmissions, otpCodes, sessions, users, wards } from '../db/schema';
 
@@ -229,42 +229,92 @@ export interface UserSearchRow {
   role: string;
   homeWardId: number | null;
   homeWardNameEn: string | null;
+  createdAt: Date;
   flagSubmissionCount: number;
 }
 
+/** `'staff'` is every staff role at once; `'any'` adds citizens. */
+export type UserRoleFilter = 'staff' | 'any' | 'admin' | 'curator' | 'transcriber' | 'citizen';
+export type UserStatusFilter = 'any' | 'active' | 'banned' | 'erased';
+
+export const USER_ROLE_FILTERS: readonly UserRoleFilter[] = ['staff', 'any', 'admin', 'curator', 'transcriber', 'citizen'];
+export const USER_STATUS_FILTERS: readonly UserStatusFilter[] = ['any', 'active', 'banned', 'erased'];
+
+export interface UserListOptions {
+  query?: string;
+  /** Defaults to `'staff'` with no query, `'any'` with one. */
+  role?: UserRoleFilter;
+  status?: UserStatusFilter;
+}
+
+export interface UserList {
+  rows: UserSearchRow[];
+  /** More rows matched than `USER_LIST_CAP`; only the first `USER_LIST_CAP` are in `rows`. */
+  truncated: boolean;
+}
+
+/** Row cap for any listing that can include citizens. A staff-only listing is never capped. */
+export const USER_LIST_CAP = 50;
+
+const STAFF_ROLE_VALUES = ['admin', 'curator', 'transcriber'] as const;
+
 /**
- * The `/admin/users` search box (IA §6.3 "search users"): matches ANY of —
- * `id` exactly (only tried when `query` is a bare integer; a numeric
- * STRING can just as easily be a phone-number substring, e.g. "99887", so
- * this is unioned with the substring checks below rather than exclusively
- * branching on "looks numeric" — an admin typing digits gets every row
- * that could plausibly mean, not a silently-chosen interpretation), OR a
- * case-insensitive substring of `email`, OR a case-insensitive substring
- * of `phone`. An empty/whitespace-only query returns `[]` rather than
- * dumping every user — the admin must type something (same non-disclosure
- * -by-omission spirit as `findUserIdByLookup` in src/lib/admin.ts, though
- * this returns rows, not a single id). Each row includes its
- * `flag_submissions` count (IA §6.3 "view submission history") — a count
- * only; the full list lives via the flags tooling, not duplicated
- * here.
+ * The `/admin/users` list (IA §6.3 "search users"). With no query it lists
+ * STAFF (every staff role, or the one `role` names), uncapped — the page's
+ * default view. A query matches ANY of — `id` exactly (only tried when
+ * `query` is a bare integer; a numeric STRING can just as easily be a
+ * phone-number substring, e.g. "99887", so this is unioned with the
+ * substring checks below rather than exclusively branching on "looks
+ * numeric" — an admin typing digits gets every row that could plausibly
+ * mean, not a silently-chosen interpretation), OR a case-insensitive
+ * substring of `email`, OR a case-insensitive substring of `phone` — and
+ * is narrowed by `role`/`status` when given.
+ *
+ * CITIZENS ARE NEVER LISTED WITHOUT A QUERY: `role: 'any' | 'citizen'`
+ * with an empty/whitespace-only query returns no rows rather than dumping
+ * the citizen table — the admin must type something. Any listing that can
+ * include citizens is capped at `USER_LIST_CAP`, with `truncated` set when
+ * more matched.
+ *
+ * Rows sort admin, curator, transcriber, citizen, then by email. Each row
+ * includes its `flag_submissions` count (IA §6.3 "view submission
+ * history") — a count only; the full list lives via the flags tooling, not
+ * duplicated here.
  */
-export async function searchUsers(queryRaw: string): Promise<UserSearchRow[]> {
-  const query = queryRaw.trim();
-  if (!query) return [];
+export async function listUsers(options: UserListOptions): Promise<UserList> {
+  const query = (options.query ?? '').trim();
+  const role = options.role ?? (query ? 'any' : 'staff');
+  const status = options.status ?? 'any';
+  const includesCitizens = role === 'any' || role === 'citizen';
 
-  // Escape ilike wildcards: backslash must be escaped first, then % and _
-  const escapedQuery = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-  const pattern = `%${escapedQuery}%`;
+  if (!query && includesCitizens) return { rows: [], truncated: false };
 
-  const conditions = [
-    sql`${users.email} ILIKE ${pattern} ESCAPE '\\'`,
-    sql`${users.phone} ILIKE ${pattern} ESCAPE '\\'`,
-  ];
-  if (/^\d+$/.test(query)) {
-    conditions.push(eq(users.id, Number(query)));
+  const conditions: SQL[] = [];
+  if (role === 'staff') {
+    conditions.push(inArray(users.role, [...STAFF_ROLE_VALUES]));
+  } else if (role !== 'any') {
+    conditions.push(eq(users.role, role));
+  }
+  if (status !== 'any') {
+    conditions.push(eq(users.status, status));
   }
 
-  const matchRows = await db
+  if (query) {
+    // Escape ilike wildcards: backslash must be escaped first, then % and _
+    const escapedQuery = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const pattern = `%${escapedQuery}%`;
+
+    const matches = [
+      sql`${users.email} ILIKE ${pattern} ESCAPE '\\'`,
+      sql`${users.phone} ILIKE ${pattern} ESCAPE '\\'`,
+    ];
+    if (/^\d+$/.test(query)) {
+      matches.push(eq(users.id, Number(query)));
+    }
+    conditions.push(or(...matches)!);
+  }
+
+  const select = db
     .select({
       id: users.id,
       email: users.email,
@@ -273,16 +323,24 @@ export async function searchUsers(queryRaw: string): Promise<UserSearchRow[]> {
       role: users.role,
       homeWardId: users.homeWardId,
       homeWardNameEn: wards.nameEn,
+      createdAt: users.createdAt,
     })
     .from(users)
     .leftJoin(wards, eq(wards.id, users.homeWardId))
-    .where(or(...conditions))
-    .orderBy(users.id)
-    .limit(50);
+    .where(and(...conditions))
+    .orderBy(
+      sql`CASE ${users.role} WHEN 'admin' THEN 0 WHEN 'curator' THEN 1 WHEN 'transcriber' THEN 2 ELSE 3 END`,
+      users.email,
+      users.id,
+    );
 
-  if (matchRows.length === 0) return [];
+  const matchRows = includesCitizens ? await select.limit(USER_LIST_CAP + 1) : await select;
+  const truncated = includesCitizens && matchRows.length > USER_LIST_CAP;
+  const pageRows = truncated ? matchRows.slice(0, USER_LIST_CAP) : matchRows;
 
-  const ids = matchRows.map((r) => r.id);
+  if (pageRows.length === 0) return { rows: [], truncated: false };
+
+  const ids = pageRows.map((r) => r.id);
   const flagCounts = await db
     .select({ userId: flagSubmissions.userId, count: sql<number>`count(*)::int` })
     .from(flagSubmissions)
@@ -290,5 +348,8 @@ export async function searchUsers(queryRaw: string): Promise<UserSearchRow[]> {
     .groupBy(flagSubmissions.userId);
   const countByUser = new Map(flagCounts.map((f) => [f.userId, Number(f.count)]));
 
-  return matchRows.map((row) => ({ ...row, flagSubmissionCount: countByUser.get(row.id) ?? 0 }));
+  return {
+    rows: pageRows.map((row) => ({ ...row, flagSubmissionCount: countByUser.get(row.id) ?? 0 })),
+    truncated,
+  };
 }

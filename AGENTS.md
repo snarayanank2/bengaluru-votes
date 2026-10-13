@@ -50,7 +50,7 @@ Seeds (order matters — `seed:dev` depends on wards existing):
 ```sh
 npm run seed:wards          # the real 369 wards, from data/gba.geojson
 npm run seed:dev            # fictional demo content; REFUSES under NODE_ENV=production
-npm run seed:admin -- <email>   # idempotent; bootstraps the first admin (later ones: /admin/users or /admin/roles)
+npm run seed:admin -- <email>   # idempotent; bootstraps the first admin (later ones: /admin/users)
 ```
 
 ### Running the app locally

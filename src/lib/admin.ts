@@ -109,8 +109,8 @@ async function assertNotSelfOrLastAdmin(
 /**
  * Creates a NEW staff account by email. Throws `'invalid_email'`, or
  * `'user_exists'` when the address already has an account — it never
- * changes an existing account's role; that stays an explicit action on
- * /admin/roles (`grantRole`).
+ * changes an existing account's role; that stays the explicit change-role
+ * action on the same page (`grantRole`).
  */
 export async function addUser(actor: AdminActor, emailRaw: string, role: StaffRole): Promise<number> {
   assertAdmin(actor);
@@ -190,24 +190,6 @@ export async function revokeRole(actor: AdminActor, targetUserId: number): Promi
   });
 }
 
-export interface StaffRow {
-  id: number;
-  email: string | null;
-  role: StaffRole;
-  status: string;
-}
-
-/** Every staff user (transcriber, curator, admin). Feeds the Roles page's list (IA §6.2). */
-export async function listStaff(): Promise<StaffRow[]> {
-  const userRows = await db
-    .select({ id: users.id, email: users.email, role: users.role, status: users.status })
-    .from(users)
-    .where(inArray(users.role, [...STAFF_ROLES]))
-    .orderBy(users.id);
-
-  return userRows.filter((row): row is typeof row & { role: StaffRole } => isStaffRole(row.role));
-}
-
 export interface ConsoleStats {
   transcriberCount: number;
   curatorCount: number;
@@ -239,23 +221,18 @@ export async function loadConsoleStats(): Promise<ConsoleStats> {
   };
 }
 
-/**
- * Resolves the Roles page's "user by id or email" lookup field to a user
- * id, or `null` when nothing matches. Tried as a bare-integer id first
- * (an email never parses as `^\d+$`), then as an exact, case-insensitive
- * email match — `users.email` is stored lowercase (see
- * `scripts/seed-admin.ts`), so the lookup is lowercased before comparing.
- */
-export async function findUserIdByLookup(lookup: string): Promise<number | null> {
-  const trimmed = lookup.trim();
-  if (!trimmed) return null;
+export interface UserSummary {
+  id: number;
+  email: string | null;
+  phone: string | null;
+  role: string;
+}
 
-  if (/^\d+$/.test(trimmed)) {
-    const [row] = await db.select({ id: users.id }).from(users).where(eq(users.id, Number(trimmed)));
-    if (row) return row.id;
-    return null;
-  }
-
-  const [row] = await db.select({ id: users.id }).from(users).where(eq(users.email, trimmed.toLowerCase()));
-  return row?.id ?? null;
+/** One account by id, or `null`. Feeds `/admin/users`'s post-action confirmation banner. */
+export async function findUserById(userId: number): Promise<UserSummary | null> {
+  const [row] = await db
+    .select({ id: users.id, email: users.email, phone: users.phone, role: users.role })
+    .from(users)
+    .where(eq(users.id, userId));
+  return row ?? null;
 }

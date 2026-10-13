@@ -2,7 +2,7 @@
  * `/admin/partners` (Task 46, information-architecture.md §6.4; PRD
  * §5.12/§5.13/§9.1/§11). Drives every request through the REAL middleware
  * (src/middleware.ts) composed with the real page twin via Astro's
- * container API — same technique as tests/routes/admin-roles.test.ts.
+ * container API — same technique as tests/routes/admin-console.test.ts.
  *
  * COVERAGE MAP:
  *   - ADMIN-ONLY: a curator or a citizen hitting the route -> 403; an

@@ -3,7 +3,7 @@
  * Upsert an admin user by email — the root of the authorization chain
  * (architecture §14.6). Role is never inferred from the address anywhere
  * else in the app. This script bootstraps the FIRST admin; later ones come
- * from /admin/users or /admin/roles.
+ * from /admin/users.
  *
  * Usage: npm run seed:admin -- <email>
  * Running twice with the same email updates the same row (unique on email)

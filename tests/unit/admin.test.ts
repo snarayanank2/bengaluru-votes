@@ -1,8 +1,8 @@
 /**
  * Task 44 — src/lib/admin.ts: the admin-only role-management engine
- * behind the `/admin/roles` route (information-architecture.md §6.2;
+ * behind the role actions on `/admin/users` (information-architecture.md §6.2;
  * PRD §7/§10/§11/§14). Exercises the lib functions directly against a real
- * DB (no HTTP/middleware layer — that's tests/routes/admin-roles.test.ts).
+ * DB (no HTTP/middleware layer — that's tests/routes/admin-users.test.ts).
  *
  * Curators and admins are both city-wide, so there is no ward scope to
  * manage.
@@ -12,8 +12,6 @@
  *   - revokeRole: a curator -> role 'citizen'.
  *   - ADMIN-ONLY: every mutator rejects a non-admin actor before touching
  *     the DB.
- *   - listStaff / findUserIdByLookup: the small read helpers
- *     the Roles page renders from.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -33,9 +31,7 @@ import {
   addUser,
   grantRole,
   revokeRole,
-  listStaff,
   loadConsoleStats,
-  findUserIdByLookup,
   isStaffRole,
   type AdminActor,
 } from '../../src/lib/admin';
@@ -47,12 +43,11 @@ const EMAILS = {
   admin: 'admin-lib-test-admin@example.com',
   citizen: 'admin-lib-test-citizen@example.com',
   // A second, never-promoted citizen — `citizen` above IS promoted to
-  // curator by the grantRole test, so it can't also serve as "still a
-  // citizen" fixture for the listStaff exclusion check below.
+  // curator by the grantRole test, so it can't also serve as the
+  // non-admin actor in the ADMIN-ONLY checks below.
   plainCitizen: 'admin-lib-test-plain-citizen@example.com',
   curatorA: 'admin-lib-test-curator-a@example.com',
   curatorB: 'admin-lib-test-curator-b@example.com',
-  lookupCurator: 'Admin-Lib-Test-Lookup-Curator@Example.com',
   // Lockout-prevention guard fixtures (Task 44 review) — created/cleaned up
   // inline within the 'lockout guards' describe below, ids tracked in
   // `extraFixtureIds` for afterAll cleanup since they're not fixed like the
@@ -81,7 +76,6 @@ let citizenId: number;
 let plainCitizenId: number;
 let curatorAId: number;
 let curatorBId: number;
-let lookupCuratorId: number;
 let admin: AdminActor;
 // Ids created inline within the 'lockout guards' describe (below), tracked
 // here so afterAll cleans them up alongside the fixed fixtures.
@@ -96,7 +90,6 @@ describe('src/lib/admin.ts (Task 44)', () => {
     plainCitizenId = await upsertUser(EMAILS.plainCitizen, 'citizen');
     curatorAId = await upsertUser(EMAILS.curatorA, 'curator');
     curatorBId = await upsertUser(EMAILS.curatorB, 'curator');
-    lookupCuratorId = await upsertUser(EMAILS.lookupCurator, 'curator');
 
     admin = { userId: adminId, role: 'admin' };
   });
@@ -107,7 +100,6 @@ describe('src/lib/admin.ts (Task 44)', () => {
       plainCitizenId,
       curatorAId,
       curatorBId,
-      lookupCuratorId,
       ...extraFixtureIds,
     ];
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, ...userIds]));
@@ -146,32 +138,6 @@ describe('src/lib/admin.ts (Task 44)', () => {
       await expect(revokeRole(citizenActor, curatorBId)).rejects.toThrow();
       const after = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, curatorBId));
       expect(after[0]?.role).toBe(before[0]?.role);
-    });
-  });
-
-  describe('read helpers', () => {
-    it('listStaff includes curator/admin users, excludes citizens', async () => {
-      const rows = await listStaff();
-
-      const curatorRow = rows.find((r) => r.id === curatorBId);
-      expect(curatorRow).toBeDefined();
-      expect(curatorRow!.role).toBe('curator');
-      expect(rows.find((r) => r.id === adminId)?.role).toBe('admin');
-
-      expect(rows.some((r) => r.id === plainCitizenId)).toBe(false);
-    });
-
-    it('findUserIdByLookup resolves by numeric id', async () => {
-      expect(await findUserIdByLookup(String(lookupCuratorId))).toBe(lookupCuratorId);
-    });
-
-    it('findUserIdByLookup resolves by email, case-insensitively', async () => {
-      expect(await findUserIdByLookup(EMAILS.lookupCurator.toUpperCase())).toBe(lookupCuratorId);
-    });
-
-    it('findUserIdByLookup returns null for no match', async () => {
-      expect(await findUserIdByLookup('nobody-admin-lib-test@example.com')).toBeNull();
-      expect(await findUserIdByLookup('404404404')).toBeNull();
     });
   });
 
@@ -324,12 +290,6 @@ describe('src/lib/admin.ts (Task 44)', () => {
       await grantRole(admin, transcriberId, 'transcriber');
       const [row] = await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, transcriberId));
       expect(row?.role).toBe('transcriber');
-    });
-
-    it('listStaff includes the transcriber and still excludes citizens', async () => {
-      const rows = await listStaff();
-      expect(rows.find((r) => r.id === transcriberId)?.role).toBe('transcriber');
-      expect(rows.find((r) => r.id === plainCitizenId)).toBeUndefined();
     });
 
     it('loadConsoleStats counts transcribers', async () => {

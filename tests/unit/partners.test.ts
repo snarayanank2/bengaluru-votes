@@ -53,7 +53,7 @@ const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
 
 // High, task-specific ward ids. tests/unit/admin.test.ts owns
-// 99600-99609/99700-99799; tests/routes/admin-roles.test.ts owns
+// 99600-99609/99700-99799; tests/routes/admin-console.test.ts owns
 // 99610-99619; tests/unit/erasure.test.ts owns 99800-99819;
 // tests/routes/admin-users.test.ts owns 99820-99839. This suite owns
 // 99840-99849; tests/routes/admin-partners.test.ts owns 99850-99859.
@@ -294,7 +294,7 @@ describe('src/lib/partners.ts (Task 46)', () => {
       expect(partnerCountAfter).toBe(partnerCountBefore);
 
       const citizenRoleAfter = (await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, citizenId)))[0]?.role;
-      expect(citizenRoleAfter).toBe(citizenRoleBefore); // unchanged — the /admin/roles grant is a separate, manual step
+      expect(citizenRoleAfter).toBe(citizenRoleBefore); // unchanged — the /admin/users role change is a separate, manual step
 
     });
 

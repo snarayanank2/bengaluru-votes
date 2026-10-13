@@ -5,8 +5,7 @@
  * component cannot: dispatching the five POST form actions
  * (`create_partner`, `update_partner`, `accept_awareness`,
  * `accept_curation`, `decline_eoi`) to src/lib/partners.ts, parsing the
- * comma-separated `wardIds` text field (same convention as
- * src/pages/admin/roles.astro's `parseWardIdsText`), and no-store on every
+ * comma-separated `wardIds` text field, and no-store on every
  * response.
  *
  * src/middleware.ts already 403s any non-admin session and redirects an

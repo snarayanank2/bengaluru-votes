@@ -22,7 +22,7 @@
  *      partner (slug + kit page). Accepting the 'curation' path does NOT
  *      grant the curator role itself — PRD §5.13 is explicit that there is
  *      NO SELF-ACTIVATION; accepting here only records admin intent, and a
- *      separate, deliberate action on `/admin/roles` (`grantRole`,
+ *      separate, deliberate action on `/admin/users` (`grantRole`,
  *      src/lib/admin.ts) is what actually elevates the person. Keeping
  *      these two steps apart means an EOI acceptance alone can never grant
  *      any permission.
@@ -348,7 +348,7 @@ export async function acceptEoiAwareness(actor: AdminActor, eoiId: number, input
  * NOTHING ELSE. Deliberately does NOT grant the curator role
  * (PRD §5.13: "no self-activation") — this only records
  * that an admin has decided this person should become a curator; the
- * actual elevation is a SEPARATE, deliberate action on `/admin/roles`
+ * actual elevation is a SEPARATE, deliberate action on `/admin/users`
  * (`grantRole`, src/lib/admin.ts). Keeping the two steps apart means
  * accepting an EOI, by itself, can never grant any permission.
  */

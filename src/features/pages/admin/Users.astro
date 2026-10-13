@@ -1,26 +1,39 @@
 ---
 /**
- * `/admin/users` (Task 45, information-architecture.md §6.3; PRD §4/§7,
- * §5.16). The user-moderation console: search by id/email/phone, ban or
- * reactivate an account, and run the DPDP erasure routine — see
+ * `/admin/users` (Tasks 44/45, information-architecture.md §6.2/§6.3; PRD
+ * §4/§7/§10, §5.16). The one screen for accounts: staff are listed by
+ * default, a search reaches citizens, and each row carries its own
+ * actions — change role (which absorbed the old `/admin/roles` grant and
+ * revoke), ban or reactivate, and the DPDP erasure routine (see
  * src/lib/erasure.ts's module docstring for exactly what erasure
- * deletes/nulls/keeps.
+ * deletes/nulls/keeps).
  *
- * SEARCH IS A GET, NOT A POST: unlike the mutating forms below, the search
- * box submits `?q=` as a plain query-string GET (route twin reads
- * `Astro.url.searchParams`) so a results page is bookmarkable/shareable and
- * needs no CSRF token — same reasoning as src/pages/curator/queue/index.astro's
- * `?sort=`.
+ * THE LISTING IS A GET, NOT A POST: the search box and the two filters
+ * submit `?q=`/`?role=`/`?status=` as a plain query string (the route twin
+ * reads `Astro.url.searchParams`) so a view is bookmarkable/shareable and
+ * needs no CSRF token — same reasoning as
+ * src/pages/curator/queue/index.astro's `?sort=`.
  *
- * ONE ROW, UP TO TWO ACTION FORMS: an 'active' row gets a Ban form; a
- * 'banned' row gets a Reactivate form; an 'erased' row gets NEITHER (an
- * opaque tombstone has nothing left to ban/reactivate). Every row except
- * an already-erased one also gets the separate, more strongly-worded Erase
- * form — visually set apart as the one IRREVERSIBLE action here (PRD
- * §5.16, design-system.md §7.13's confirmation-dialog convention, same
- * REQUIRED-checkbox substitute src/features/pages/admin/Roles.astro uses).
- * Every action form carries a hidden `q` field so a POST redirect can
- * return to the SAME search results.
+ * ONE ROW, ACTIONS COLLAPSED: every row is a `<details>` whose `<summary>`
+ * is the scannable line (contact, role, status, date added) and whose body
+ * holds the forms, so a 50-row staff list is 50 lines, not 100 open
+ * destructive forms, with no JavaScript. Which forms a row gets: an
+ * 'active' row gets Change role and Ban; a 'banned' row gets Change role
+ * and Reactivate; an 'erased' row gets NONE (an opaque tombstone has
+ * nothing left to change). Every non-erased row also gets the Erase form —
+ * the one IRREVERSIBLE action here (PRD §5.16), and the only solid
+ * destructive button, so reversible Ban does not look like it.
+ * THE CALLER'S OWN ROW gets no form at all, only a note: src/lib/admin.ts
+ * and src/lib/erasure.ts reject every self-targeted demotion, ban and
+ * erasure, and since the caller is an active admin, "the last active
+ * admin" can only ever be that same row.
+ *
+ * CONFIRMATION (design-system.md §7.13): each per-row form keeps the
+ * REQUIRED checkbox stating its scope. Add-a-user is the deliberate
+ * exception — its checkbox is required by the SERVER only when the role is
+ * Admin (a no-JS form cannot make a checkbox conditionally `required`).
+ * Every per-row form carries the listing's `q`/filters as hidden fields so
+ * a POST redirect returns to the SAME view.
  */
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Card from '../../../components/Card.astro';
@@ -29,20 +42,49 @@ import Button from '../../../components/Button.astro';
 import FormField from '../../../components/FormField.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
-import type { UserSearchRow } from '../../../lib/erasure';
+import { STAFF_ROLES, type StaffRole } from '../../../lib/admin';
+import { USER_ROLE_FILTERS, USER_STATUS_FILTERS, type UserRoleFilter, type UserSearchRow, type UserStatusFilter } from '../../../lib/erasure';
 
 interface Props {
   lang: Lang;
   csrfToken: string;
+  /** The signed-in admin's own user id — that row offers no actions. */
+  selfId: number;
   query: string;
-  results: UserSearchRow[];
-  message?: { kind: 'notice' | 'error'; key: string };
-  /** Email typed into the add-user form, echoed back after a rejected submit. */
+  roleFilter: UserRoleFilter;
+  statusFilter: UserStatusFilter;
+  /** Whether `roleFilter` came from the URL (carried through POSTs) or is just the default for this view. */
+  hasExplicitRoleFilter: boolean;
+  rows: UserSearchRow[];
+  /** Set when more accounts matched than are shown — the number shown. */
+  truncatedAt?: number;
+  /** No query was given for a view that includes citizens, so nothing was looked up. */
+  needsQuery: boolean;
+  message?: { kind: 'notice' | 'error'; key: string; params?: Record<string, string>; roleKey?: string };
+  /** Email and role typed into the add-user form, echoed back after a rejected submit. */
   addEmail?: string;
+  addRole?: StaffRole;
 }
 
-const { lang, csrfToken, query, results, message, addEmail = '' } = Astro.props;
-const messageText = message ? t(lang, message.key) : undefined;
+const {
+  lang,
+  csrfToken,
+  selfId,
+  query,
+  roleFilter,
+  statusFilter,
+  hasExplicitRoleFilter,
+  rows,
+  truncatedAt,
+  needsQuery,
+  message,
+  addEmail = '',
+  addRole = 'transcriber',
+} = Astro.props;
+
+const messageText = message
+  ? t(lang, message.key, { ...message.params, ...(message.roleKey ? { role: t(lang, message.roleKey) } : {}) })
+  : undefined;
 
 const roleLabelKeys: Record<string, string> = {
   citizen: 'admin.users.results.roleCitizen',
@@ -51,13 +93,46 @@ const roleLabelKeys: Record<string, string> = {
   admin: 'admin.users.results.roleAdmin',
 };
 
+const roleFilterLabelKeys: Record<UserRoleFilter, string> = {
+  staff: 'admin.users.filter.roleStaff',
+  any: 'admin.users.filter.roleAny',
+  ...(roleLabelKeys as Record<'admin' | 'curator' | 'transcriber' | 'citizen', string>),
+};
+
+const statusFilterLabelKeys: Record<UserStatusFilter, string> = {
+  any: 'admin.users.filter.statusAny',
+  active: 'admin.users.status.active',
+  banned: 'admin.users.status.banned',
+  erased: 'admin.users.status.erased',
+};
+
+const addedFormat = new Intl.DateTimeFormat(lang === 'kn' ? 'kn-IN' : 'en-IN', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'Asia/Kolkata',
+});
+
+const isFiltered = query.trim() !== '' || hasExplicitRoleFilter || statusFilter !== 'any';
+
+function roleLabel(role: string): string {
+  return t(lang, roleLabelKeys[role] ?? 'admin.users.results.roleCitizen');
+}
+
 function contactDisplay(row: UserSearchRow): string {
   if (row.status === 'erased') return t(lang, 'admin.users.results.noContact');
   return [row.email, row.phone].filter(Boolean).join(' / ') || '—';
 }
 
 function userIdentifier(row: UserSearchRow): string {
-  return row.email ?? row.phone ?? String(row.id);
+  return row.email ?? row.phone ?? `#${row.id}`;
+}
+
+/** The roles a row can be moved to: every staff role but its current one, then 'citizen' (remove staff access) if it is staff. */
+function roleChoices(row: UserSearchRow): { value: string; label: string }[] {
+  const choices = STAFF_ROLES.filter((role) => role !== row.role).map((role) => ({ value: role as string, label: roleLabel(role) }));
+  if (row.role !== 'citizen') choices.push({ value: 'citizen', label: t(lang, 'admin.users.role.remove') });
+  return choices;
 }
 ---
 
@@ -79,146 +154,230 @@ function userIdentifier(row: UserSearchRow): string {
       <form method="post" action="/admin/users" class="add-form">
         <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
         <input type="hidden" name="formAction" value="add" />
-        <FormField label={t(lang, 'admin.users.add.emailLabel')} name="email" type="email" value={addEmail} required lang={lang} />
-        <div class="form-field">
-          <label class="form-label" for="add-role">
-            {t(lang, 'admin.users.add.roleLabel')}
-          </label>
-          <select id="add-role" class="form-input" name="role">
-            <option value="transcriber">{t(lang, 'admin.users.add.roleTranscriber')}</option>
-            <option value="curator">{t(lang, 'admin.users.add.roleCurator')}</option>
-            <option value="admin">{t(lang, 'admin.users.add.roleAdmin')}</option>
-          </select>
+        <div class="field-row field-row--add">
+          <FormField label={t(lang, 'admin.users.add.emailLabel')} name="email" type="email" value={addEmail} required lang={lang} />
+          <div class="form-field">
+            <label class="form-label" for="add-role">
+              {t(lang, 'admin.users.add.roleLabel')}
+            </label>
+            <select id="add-role" class="form-input" name="role">
+              {STAFF_ROLES.map((role) => (
+                <option value={role} selected={role === addRole}>
+                  {roleLabel(role)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit" variant="primary" lang={lang}>
+            {t(lang, 'admin.users.add.submit')}
+          </Button>
         </div>
         <label class="checkbox">
-          <input type="checkbox" name="confirm" required />
+          <input type="checkbox" name="confirm" />
           {t(lang, 'admin.users.add.confirmLabel')}
         </label>
-        <Button type="submit" variant="primary" lang={lang}>
-          {t(lang, 'admin.users.add.submit')}
-        </Button>
       </form>
     </Card>
 
     <Card>
-      <h2>{t(lang, 'admin.users.search.heading')}</h2>
-      <form method="get" action="/admin/users" class="search-form">
-        <FormField label={t(lang, 'admin.users.search.label')} name="q" value={query} lang={lang} />
-        <Button type="submit" variant="primary" lang={lang}>
-          {t(lang, 'admin.users.search.submit')}
-        </Button>
+      <h2>{t(lang, 'admin.users.list.heading')}</h2>
+      <form method="get" action="/admin/users" class="filter-form">
+        <div class="field-row field-row--filter">
+          <FormField label={t(lang, 'admin.users.search.label')} name="q" type="search" value={query} lang={lang} />
+          <div class="form-field">
+            <label class="form-label" for="filter-role">
+              {t(lang, 'admin.users.filter.roleLabel')}
+            </label>
+            <select id="filter-role" class="form-input" name="role">
+              {USER_ROLE_FILTERS.map((value) => (
+                <option value={value} selected={value === roleFilter}>
+                  {t(lang, roleFilterLabelKeys[value])}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="filter-status">
+              {t(lang, 'admin.users.filter.statusLabel')}
+            </label>
+            <select id="filter-status" class="form-input" name="status">
+              {USER_STATUS_FILTERS.map((value) => (
+                <option value={value} selected={value === statusFilter}>
+                  {t(lang, statusFilterLabelKeys[value])}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit" variant="secondary" lang={lang}>
+            {t(lang, 'admin.users.search.submit')}
+          </Button>
+        </div>
+        {isFiltered && <a class="filter-reset" href="/admin/users">{t(lang, 'admin.users.filter.reset')}</a>}
       </form>
-    </Card>
 
-    <Card>
-      <h2>{t(lang, 'admin.users.results.heading')}</h2>
       {
-        query.trim() === '' ? (
+        needsQuery ? (
           <p class="placeholder-note">{t(lang, 'admin.users.search.prompt')}</p>
-        ) : results.length === 0 ? (
+        ) : rows.length === 0 ? (
           <p class="placeholder-note">{t(lang, 'admin.users.search.noResults')}</p>
         ) : (
-          <div class="table-scroll">
-            <table class="dense-table">
-              <thead>
-                <tr>
-                  <th>{t(lang, 'admin.users.results.colId')}</th>
-                  <th>{t(lang, 'admin.users.results.colContact')}</th>
-                  <th>{t(lang, 'admin.users.results.colStatus')}</th>
-                  <th>{t(lang, 'admin.users.results.colRole')}</th>
-                  <th>{t(lang, 'admin.users.results.colWard')}</th>
-                  <th>{t(lang, 'admin.users.results.colFlags')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((row) => (
-                  <tr>
-                    <td>{row.id}</td>
-                    <td>{contactDisplay(row)}</td>
-                    <td>{t(lang, `admin.users.status.${row.status}`)}</td>
-                    <td>{t(lang, roleLabelKeys[row.role] ?? 'admin.users.results.roleCitizen')}</td>
-                    <td>{row.homeWardNameEn ?? t(lang, 'admin.users.results.noWard')}</td>
-                    <td>{row.flagSubmissionCount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div class="user-grid user-head" aria-hidden="true">
+              <span>{t(lang, 'admin.users.results.colContact')}</span>
+              <span>{t(lang, 'admin.users.results.colRole')}</span>
+              <span>{t(lang, 'admin.users.results.colStatus')}</span>
+              <span>{t(lang, 'admin.users.list.colAdded')}</span>
+              <span />
+            </div>
+            <ul class="user-list">
+              {rows.map((row) => (
+                <li class="user-row">
+                  <details>
+                    <summary class="user-grid user-summary">
+                      <span class="user-contact">
+                        {contactDisplay(row)} <span class="user-id">#{row.id}</span>
+                      </span>
+                      <span>
+                        <span class={`tag tag--${row.role}`}>{roleLabel(row.role)}</span>
+                      </span>
+                      <span>
+                        <span class={`tag tag--${row.status}`}>{t(lang, `admin.users.status.${row.status}`)}</span>
+                      </span>
+                      <span class="user-added">
+                        <span class="user-added-label">{t(lang, 'admin.users.list.colAdded')} </span>
+                        {addedFormat.format(row.createdAt)}
+                      </span>
+                      <span class="user-manage">{t(lang, 'admin.users.list.manage')}</span>
+                    </summary>
+
+                    <div class="user-panel">
+                      <dl class="user-facts">
+                        <div>
+                          <dt>{t(lang, 'admin.users.results.colWard')}</dt>
+                          <dd>{row.homeWardNameEn ?? t(lang, 'admin.users.results.noWard')}</dd>
+                        </div>
+                        <div>
+                          <dt>{t(lang, 'admin.users.results.colFlags')}</dt>
+                          <dd>{row.flagSubmissionCount}</dd>
+                        </div>
+                      </dl>
+
+                      {row.id === selfId ? (
+                        <p class="self-note">{t(lang, 'admin.users.list.selfNote')}</p>
+                      ) : (
+                        row.status !== 'erased' && (
+                          <div class="action-grid">
+                            <section class="action">
+                              <h3>{t(lang, 'admin.users.role.heading')}</h3>
+                              <form method="post" action="/admin/users" class="action-form">
+                                <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                                <input type="hidden" name="formAction" value="role" />
+                                <input type="hidden" name="targetUserId" value={row.id} />
+                                <input type="hidden" name="q" value={query} />
+                                {hasExplicitRoleFilter && <input type="hidden" name="filterRole" value={roleFilter} />}
+                                <input type="hidden" name="filterStatus" value={statusFilter} />
+                                <div class="form-field">
+                                  <label class="form-label" for={`role-${row.id}`}>
+                                    {t(lang, 'admin.users.role.label')}
+                                  </label>
+                                  <select id={`role-${row.id}`} class="form-input" name="role">
+                                    {roleChoices(row).map((choice) => (
+                                      <option value={choice.value}>{choice.label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <label class="checkbox">
+                                  <input type="checkbox" name="confirm" required />
+                                  {t(lang, 'admin.users.role.confirmLabel', { user: userIdentifier(row) })}
+                                </label>
+                                <Button type="submit" variant="secondary" lang={lang}>
+                                  {t(lang, 'admin.users.role.submit')}
+                                </Button>
+                              </form>
+                            </section>
+
+                            {row.status === 'active' && (
+                              <section class="action">
+                                <h3>{t(lang, 'admin.users.ban.heading')}</h3>
+                                <form method="post" action="/admin/users" class="action-form">
+                                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                                  <input type="hidden" name="formAction" value="ban" />
+                                  <input type="hidden" name="targetUserId" value={row.id} />
+                                  <input type="hidden" name="q" value={query} />
+                                  {hasExplicitRoleFilter && <input type="hidden" name="filterRole" value={roleFilter} />}
+                                  <input type="hidden" name="filterStatus" value={statusFilter} />
+                                  <div class="form-field">
+                                    <label class="form-label" for={`ban-reason-${row.id}`}>
+                                      {t(lang, 'admin.users.ban.reasonLabel')}
+                                    </label>
+                                    <input id={`ban-reason-${row.id}`} class="form-input" name="reason" type="text" />
+                                  </div>
+                                  <label class="checkbox">
+                                    <input type="checkbox" name="confirm" required />
+                                    {t(lang, 'admin.users.ban.confirmLabel', { user: userIdentifier(row) })}
+                                  </label>
+                                  <Button type="submit" variant="secondary" lang={lang}>
+                                    {t(lang, 'admin.users.ban.submit')}
+                                  </Button>
+                                </form>
+                              </section>
+                            )}
+
+                            {row.status === 'banned' && (
+                              <section class="action">
+                                <h3>{t(lang, 'admin.users.reactivate.heading')}</h3>
+                                <form method="post" action="/admin/users" class="action-form">
+                                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                                  <input type="hidden" name="formAction" value="reactivate" />
+                                  <input type="hidden" name="targetUserId" value={row.id} />
+                                  <input type="hidden" name="q" value={query} />
+                                  {hasExplicitRoleFilter && <input type="hidden" name="filterRole" value={roleFilter} />}
+                                  <input type="hidden" name="filterStatus" value={statusFilter} />
+                                  <label class="checkbox">
+                                    <input type="checkbox" name="confirm" required />
+                                    {t(lang, 'admin.users.reactivate.confirmLabel', { user: userIdentifier(row) })}
+                                  </label>
+                                  <Button type="submit" variant="secondary" lang={lang}>
+                                    {t(lang, 'admin.users.reactivate.submit')}
+                                  </Button>
+                                </form>
+                              </section>
+                            )}
+
+                            <section class="action action--erase">
+                              <h3>{t(lang, 'admin.users.erase.heading')}</h3>
+                              <p class="erase-warning">{t(lang, 'admin.users.erase.warning', { user: userIdentifier(row) })}</p>
+                              <form method="post" action="/admin/users" class="action-form">
+                                <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                                <input type="hidden" name="formAction" value="erase" />
+                                <input type="hidden" name="targetUserId" value={row.id} />
+                                <input type="hidden" name="q" value={query} />
+                                {hasExplicitRoleFilter && <input type="hidden" name="filterRole" value={roleFilter} />}
+                                <input type="hidden" name="filterStatus" value={statusFilter} />
+                                <label class="checkbox">
+                                  <input type="checkbox" name="confirm" required />
+                                  {t(lang, 'admin.users.erase.confirmLabel', { user: userIdentifier(row) })}
+                                </label>
+                                <Button type="submit" variant="destructive" lang={lang}>
+                                  {t(lang, 'admin.users.erase.submit')}
+                                </Button>
+                              </form>
+                            </section>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </details>
+                </li>
+              ))}
+            </ul>
+            {truncatedAt !== undefined && (
+              <p class="placeholder-note">{t(lang, 'admin.users.list.truncated', { count: String(truncatedAt) })}</p>
+            )}
+          </>
         )
       }
     </Card>
-
-    {
-      results.length > 0 && (
-        <Card>
-          <h2>{t(lang, 'admin.roles.manage.heading')}</h2>
-          <ul class="manage-list">
-            {results.map((row) => (
-              <li class="manage-row">
-                <p class="manage-row-title">
-                  #{row.id} — {contactDisplay(row)}
-                </p>
-
-                {row.status === 'active' && (
-                  <form method="post" action="/admin/users" class="ban-form">
-                    <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                    <input type="hidden" name="formAction" value="ban" />
-                    <input type="hidden" name="targetUserId" value={row.id} />
-                    <input type="hidden" name="q" value={query} />
-                    <FormField label={t(lang, 'admin.users.ban.reasonLabel')} name="reason" lang={lang} />
-                    <label class="checkbox">
-                      <input type="checkbox" name="confirm" required />
-                      {t(lang, 'admin.users.ban.confirmLabel', { user: userIdentifier(row) })}
-                    </label>
-                    <Button type="submit" variant="destructive" lang={lang}>
-                      {t(lang, 'admin.users.ban.submit')}
-                    </Button>
-                  </form>
-                )}
-
-                {row.status === 'banned' && (
-                  <form method="post" action="/admin/users" class="reactivate-form">
-                    <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                    <input type="hidden" name="formAction" value="reactivate" />
-                    <input type="hidden" name="targetUserId" value={row.id} />
-                    <input type="hidden" name="q" value={query} />
-                    <label class="checkbox">
-                      <input type="checkbox" name="confirm" required />
-                      {t(lang, 'admin.users.reactivate.confirmLabel', { user: userIdentifier(row) })}
-                    </label>
-                    <Button type="submit" variant="secondary" lang={lang}>
-                      {t(lang, 'admin.users.reactivate.submit')}
-                    </Button>
-                  </form>
-                )}
-
-                {row.status !== 'erased' && (
-                  <div class="erase-block">
-                    <h3>{t(lang, 'admin.users.erase.heading')}</h3>
-                    <Banner kind="notice" lang={lang}>
-                      {t(lang, 'admin.users.erase.warning', { user: userIdentifier(row) })}
-                    </Banner>
-                    <form method="post" action="/admin/users" class="erase-form">
-                      <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                      <input type="hidden" name="formAction" value="erase" />
-                      <input type="hidden" name="targetUserId" value={row.id} />
-                      <input type="hidden" name="q" value={query} />
-                      <label class="checkbox">
-                        <input type="checkbox" name="confirm" required />
-                        {t(lang, 'admin.users.erase.confirmLabel', { user: userIdentifier(row) })}
-                      </label>
-                      <Button type="submit" variant="destructive" lang={lang}>
-                        {t(lang, 'admin.users.erase.submit')}
-                      </Button>
-                    </form>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )
-    }
   </div>
 </AdminLayout>
 
@@ -245,18 +404,39 @@ function userIdentifier(row: UserSearchRow): string {
   }
 
   .placeholder-note {
-    margin: 0;
+    margin: var(--space-3) 0 0;
     color: var(--color-text-muted);
     font-size: var(--text-sm);
     font-style: italic;
   }
 
   .add-form,
-  .search-form {
+  .filter-form {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: var(--space-3);
-    max-width: 32rem;
+  }
+
+  /* One line of fields with the button on the same baseline; stacks below 48rem. */
+  .field-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    width: 100%;
+    align-items: end;
+  }
+
+  @media (min-width: 48rem) {
+    .field-row--add {
+      grid-template-columns: minmax(0, 24rem) 12rem auto;
+      justify-content: start;
+    }
+
+    .field-row--filter {
+      grid-template-columns: minmax(0, 24rem) 12rem 12rem auto;
+      justify-content: start;
+    }
   }
 
   .form-field {
@@ -283,81 +463,252 @@ function userIdentifier(row: UserSearchRow): string {
 
   .checkbox {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--space-2);
-    font-size: var(--text-base);
-  }
-
-  .table-scroll {
-    overflow-x: auto;
-  }
-
-  .dense-table {
-    width: 100%;
-    border-collapse: collapse;
     font-size: var(--text-sm);
   }
 
-  .dense-table th,
-  .dense-table td {
-    text-align: left;
-    padding: 8px;
-    border-bottom: 1px solid var(--color-border);
+  .checkbox input {
+    margin-top: 0.2em;
+    flex: none;
   }
 
-  .dense-table thead th {
-    position: sticky;
-    top: 0;
-    background: var(--color-bg);
+  .filter-reset {
+    font-size: var(--text-sm);
   }
 
-  .dense-table tbody tr:nth-child(odd) {
-    background: var(--color-surface);
+  /* Shared column template so the header row and every summary line up. */
+  .user-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1) var(--space-3);
+    align-items: center;
   }
 
-  .manage-list {
+  .user-head {
+    display: none;
+  }
+
+  @media (min-width: 48rem) {
+    .user-grid {
+      grid-template-columns: minmax(0, 1fr) 7.5rem 6.5rem 7.5rem 6rem;
+    }
+
+    .user-head {
+      display: grid;
+      margin-top: var(--space-4);
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      border-bottom: 1px solid var(--color-border);
+    }
+  }
+
+  .user-list {
     list-style: none;
     margin: 0;
     padding: 0;
+  }
+
+  .user-row {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .user-summary {
+    padding: var(--space-3);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .user-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .user-summary:hover {
+    background: var(--color-surface);
+  }
+
+  .user-summary:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+
+  .user-contact {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .user-id,
+  .user-added {
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .user-manage {
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  .user-manage::after {
+    content: ' ▾';
+  }
+
+  details[open] > .user-summary .user-manage::after {
+    content: ' ▴';
+  }
+
+  /* The date's "Added" label is in the header row on desktop; on a phone it would push Manage onto its own line, so it stays for screen readers only. */
+  .user-added-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 48rem) {
+    .user-manage {
+      text-align: right;
+    }
+  }
+
+  /* Below 48rem a row stacks: contact on its own line, then role, status, date and Manage wrap beneath it. */
+  @media (max-width: 47.99rem) {
+    .user-list {
+      margin-top: var(--space-4);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .user-summary {
+      display: flex;
+      flex-wrap: wrap;
+      padding-inline: 0;
+    }
+
+    .user-contact {
+      flex-basis: 100%;
+    }
+
+    .user-manage {
+      margin-left: auto;
+    }
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .tag--admin {
+    background: var(--color-primary-surface);
+    color: var(--color-primary);
+  }
+
+  .tag--citizen,
+  .tag--active {
+    background: transparent;
+    padding-inline: 0;
+    font-weight: 400;
+  }
+
+  .tag--banned {
+    background: var(--color-danger-surface);
+    color: var(--color-danger);
+  }
+
+  .tag--erased {
+    color: var(--color-text-muted);
+  }
+
+  .user-panel {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    padding: var(--space-3) var(--space-3) var(--space-6);
+    background: var(--color-surface);
   }
 
-  .manage-row {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
+  @media (max-width: 47.99rem) {
+    .user-panel {
+      padding-inline: var(--space-3);
+    }
+  }
+
+  .user-facts {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+    margin: 0;
+    font-size: var(--text-sm);
   }
 
-  .manage-row-title {
+  .user-facts div {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .user-facts dt {
+    color: var(--color-text-muted);
+  }
+
+  .user-facts dd {
     margin: 0;
     font-weight: 700;
   }
 
-  .ban-form,
-  .reactivate-form,
-  .erase-form {
+  .self-note {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .action {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    max-width: 32rem;
+    padding: var(--space-4);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
-  .erase-block {
-    border-top: 1px dashed var(--color-border);
-    padding-top: var(--space-3);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .erase-block h3 {
+  .action h3 {
     margin: 0;
     font-size: var(--text-base);
+  }
+
+  .action--erase h3 {
     color: var(--color-danger);
+  }
+
+  .action-form {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .action-form .form-field {
+    width: 100%;
+  }
+
+  .erase-warning {
+    margin: 0;
+    font-size: var(--text-sm);
   }
 </style>
