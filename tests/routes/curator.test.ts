@@ -16,13 +16,12 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import * as schema from '../../src/db/schema';
 import { t } from '../../src/i18n';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
-import { humanTargetLabel } from '../../src/lib/curator';
 import { onRequest } from '../../src/middleware';
 
 import CuratorIndex from '../../src/pages/curator/index.astro';
@@ -197,6 +196,9 @@ async function insertPendingItem(
   return { id: item!.id, targetRef };
 }
 
+/** How the queue names a flag on a fixture candidate's cases: "{candidate} — {field label}". */
+const CASES_LABEL = `Curator Route Test Candidate — ${t('en', 'candidate.field.cases')}`;
+
 let curatorId: number;
 let citizenId: number;
 let submitterAId: number;
@@ -206,17 +208,15 @@ let curatorAuth: { cookieValue: string; token: string };
 let citizenAuth: { cookieValue: string; token: string };
 let adminAuth: { cookieValue: string; token: string };
 
-let candidateA: number; // in WARD_A — hosts every accept/reject fixture field below
+let candidateA: number; // in WARD_A — hosts every reject fixture field below
 let candidateB: number; // in WARD_B — a second ward, to prove the queue is city-wide
 
 let itemWardB: { id: number; targetRef: string };
-let itemDedupe: { id: number; targetRef: string }; // 2 submissions — dedupe count + also the accept-test target
+let itemDedupe: { id: number; targetRef: string }; // 2 submissions — the dedupe count
 let itemRejectEmpty: { id: number; targetRef: string };
 let itemRejectValid: { id: number; targetRef: string };
 let itemCsrf: { id: number; targetRef: string };
 let itemAlreadyResolved: { id: number; targetRef: string };
-let itemAcceptMissingSource: { id: number; targetRef: string };
-let itemAcceptBadSource: { id: number; targetRef: string };
 
 async function resetFixtures(): Promise<void> {
   const userIds = [curatorId, citizenId, submitterAId, submitterBId, adminId].filter(
@@ -277,8 +277,6 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     itemRejectValid = await insertPendingItem(WARD_A.id, candidateA, 'education', [submitterAId]);
     itemCsrf = await insertPendingItem(WARD_A.id, candidateA, 'track_record', [submitterAId]);
     itemAlreadyResolved = await insertPendingItem(WARD_A.id, candidateA, 'approachability', [submitterAId]);
-    itemAcceptMissingSource = await insertPendingItem(WARD_A.id, candidateA, 'net_worth', [submitterAId]);
-    itemAcceptBadSource = await insertPendingItem(WARD_A.id, candidateA, 'contact_info', [submitterAId]);
   });
 
   afterAll(async () => {
@@ -293,13 +291,14 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
       expect(queueRes.status).toBe(200);
       const html = normalize(await queueRes.text());
 
-      expect(html).toContain(humanTargetLabel('candidate_field', itemWardB.targetRef));
-      expect(html).toContain(WARD_B.nameEn);
+      // Each row names the candidate and the flagged field, under the candidate's ward.
+      expect(html).toContain(`<td>${WARD_B.nameEn}</td><td>${CASES_LABEL}</td><td>1</td>`);
 
       // Including the dedupe count.
-      expect(html).toContain(
-        `<td>${WARD_A.nameEn}</td><td>${humanTargetLabel('candidate_field', itemDedupe.targetRef)}</td><td>2</td>`,
-      );
+      expect(html).toContain(`<td>${WARD_A.nameEn}</td><td>${CASES_LABEL}</td><td>2</td>`);
+
+      // A row older than the fixed field set has no label: its reference is shown as stored.
+      expect(html).toContain(`<td>${itemCsrf.targetRef}</td>`);
 
       const itemRes = await run(QueueItemRoute, `/curator/queue/${itemWardB.id}`, {
         cookieValue: curatorAuth.cookieValue,
@@ -329,137 +328,28 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     });
   });
 
-  describe('accept publishes + audits (PRD §6.1 step 4-5)', () => {
-    it('accepting a candidate_field flag publishes the field and marks the item accepted, atomically, with an audit row', async () => {
+  describe('the form that is posted', () => {
+    it('a formAction that is neither fix nor reject (the retired accept form) -> bare 400, nothing published, item stays pending', async () => {
       const res = await run(QueueItemRoute, `/curator/queue/${itemDedupe.id}`, {
         method: 'POST',
         cookieValue: curatorAuth.cookieValue,
         params: { id: String(itemDedupe.id) },
         fields: {
           formAction: 'accept',
-          valueEn: 'No pending cases (curator-corrected)',
+          valueEn: 'Should not publish',
           sourceUrl: 'https://example.org/curator-route-test-source',
-          sourceType: 'curator',
-          authoredLang: 'en',
           confirmPublish: 'on',
           [CSRF_FIELD_NAME]: curatorAuth.token,
         },
       });
-
-      expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe('/curator/queue');
+      expect(res.status).toBe(400);
       expect(res.headers.get('cache-control')).toBe('no-store');
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateA), eq(schema.candidateFields.fieldKey, 'cases')));
-      expect(field?.valueEn).toBe('No pending cases (curator-corrected)');
-      expect(field?.sourceUrl).toBe('https://example.org/curator-route-test-source');
+      expect(await res.text()).toBe('');
 
       const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, itemDedupe.id));
-      expect(item?.status).toBe('accepted');
-
-    });
-
-    it('accept without the confirmation checkbox -> validation error, nothing published', async () => {
-      const res = await run(QueueItemRoute, `/curator/queue/${itemAlreadyResolved.id}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(itemAlreadyResolved.id) },
-        fields: {
-          formAction: 'accept',
-          valueEn: 'Should not publish',
-          sourceUrl: 'https://example.org/curator-route-test-unconfirmed',
-          sourceType: 'curator',
-          authoredLang: 'en',
-          [CSRF_FIELD_NAME]: curatorAuth.token,
-        },
-      });
-      expect(res.status).toBe(400);
-
-      const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, itemAlreadyResolved.id));
       expect(item?.status).toBe('pending');
-    });
-
-    it('accept with sourceUrl MISSING -> validation error, item stays pending, field not published', async () => {
-      const res = await run(QueueItemRoute, `/curator/queue/${itemAcceptMissingSource.id}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(itemAcceptMissingSource.id) },
-        fields: {
-          formAction: 'accept',
-          valueEn: 'Should not publish (missing source)',
-          sourceType: 'curator',
-          authoredLang: 'en',
-          confirmPublish: 'on',
-          [CSRF_FIELD_NAME]: curatorAuth.token,
-        },
-      });
-      expect(res.status).toBe(400);
-
-      const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, itemAcceptMissingSource.id));
-      expect(item?.status).toBe('pending');
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateA), eq(schema.candidateFields.fieldKey, 'net_worth')));
-      expect(field).toBeUndefined();
-    });
-
-    it('accept with a NON-http(s) sourceUrl (javascript:) -> validation error, item stays pending, field not published', async () => {
-      const res = await run(QueueItemRoute, `/curator/queue/${itemAcceptBadSource.id}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(itemAcceptBadSource.id) },
-        fields: {
-          formAction: 'accept',
-          valueEn: 'Should not publish (bad scheme)',
-          sourceUrl: 'javascript:alert(1)',
-          sourceType: 'curator',
-          authoredLang: 'en',
-          confirmPublish: 'on',
-          [CSRF_FIELD_NAME]: curatorAuth.token,
-        },
-      });
-      expect(res.status).toBe(400);
-
-      const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, itemAcceptBadSource.id));
-      expect(item?.status).toBe('pending');
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateA), eq(schema.candidateFields.fieldKey, 'contact_info')));
-      expect(field).toBeUndefined();
-    });
-
-    it('accept with a NON-http(s) sourceUrl (ftp:) -> validation error, item stays pending, field not published', async () => {
-      const res = await run(QueueItemRoute, `/curator/queue/${itemAcceptBadSource.id}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(itemAcceptBadSource.id) },
-        fields: {
-          formAction: 'accept',
-          valueEn: 'Should not publish (ftp scheme)',
-          sourceUrl: 'ftp://x',
-          sourceType: 'curator',
-          authoredLang: 'en',
-          confirmPublish: 'on',
-          [CSRF_FIELD_NAME]: curatorAuth.token,
-        },
-      });
-      expect(res.status).toBe(400);
-
-      const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, itemAcceptBadSource.id));
-      expect(item?.status).toBe('pending');
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateA), eq(schema.candidateFields.fieldKey, 'contact_info')));
-      expect(field).toBeUndefined();
+      const fields = await db.select().from(schema.candidateFields).where(eq(schema.candidateFields.candidateId, candidateA));
+      expect(fields).toHaveLength(0);
     });
   });
 
@@ -552,8 +442,7 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
       expect(queueRes.status).toBe(200);
       const html = normalize(await queueRes.text());
 
-      expect(html).toContain(WARD_B.nameEn);
-      expect(html).toContain(humanTargetLabel('candidate_field', itemWardB.targetRef));
+      expect(html).toContain(`<td>${WARD_B.nameEn}</td><td>${CASES_LABEL}</td>`);
       expect(html).toContain(WARD_A.nameEn);
 
       const itemRes = await run(QueueItemRoute, `/curator/queue/${itemWardB.id}`, {

@@ -1,0 +1,101 @@
+---
+/**
+ * The ward a candidate belongs in, as a curator corrects it: every ward in
+ * one select with the current one chosen, the required "publishes
+ * immediately" tick, and the button. `formAction` tells the route twin
+ * which form was posted.
+ */
+import Button from './Button.astro';
+import { t, type Lang } from '../i18n';
+import { CSRF_FIELD_NAME } from '../lib/csrf';
+import type { WardOption } from '../lib/curator-fix';
+
+interface Props {
+  lang: Lang;
+  csrfToken: string;
+  formAction: string;
+  wards: WardOption[];
+  /** The ward the candidate is in now. */
+  wardId: number;
+  /** The public path the move appears on, named in the confirmation. */
+  confirmPath: string;
+  submitLabel: string;
+}
+
+const { lang, csrfToken, formAction, wards, wardId, confirmPath, submitLabel } = Astro.props;
+---
+
+<form method="post" class="ward-form">
+  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+  <input type="hidden" name="formAction" value={formAction} />
+  <div class="form-field">
+    <label class="form-label" for="fix-ward">{t(lang, 'curator.fix.wardLabel')}</label>
+    <select id="fix-ward" name="wardId" class="form-input" required>
+      {wards.map((ward) => <option value={ward.id} selected={ward.id === wardId}>{ward.label}</option>)}
+    </select>
+  </div>
+  <label class="confirm">
+    <input type="checkbox" name="confirmPublish" required />
+    <span>{t(lang, 'curator.fix.confirm', { path: confirmPath })}</span>
+  </label>
+  <div class="actions">
+    <Button type="submit" variant="primary" lang={lang}>{submitLabel}</Button>
+  </div>
+</form>
+
+<style>
+  .ward-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    max-width: 32rem;
+  }
+
+  .form-label {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .form-input {
+    min-height: 44px;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .form-input:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+    border-color: var(--color-primary);
+  }
+
+  .confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-weight: 700;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+
+  .confirm input {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    margin-top: 2px;
+    accent-color: var(--color-primary);
+  }
+</style>

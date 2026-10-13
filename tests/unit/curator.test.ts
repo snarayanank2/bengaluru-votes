@@ -1,6 +1,6 @@
 /**
  * Pure-function coverage for src/lib/curator.ts's `parseCandidateFieldTargetRef`
- * (Task 34 review gap: malformed targetRef must return `null`, never throw —
+ * and `flagFieldKey` (Task 34 review gap: malformed targetRef must return `null`, never throw —
  * a throw here would 500 the whole `/curator/queue/{id}` route for any
  * flag_item whose targetRef doesn't match the expected shape, e.g. data from
  * a future target type or a hand-edited row). No DB access needed — this is
@@ -17,7 +17,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-import { parseCandidateFieldTargetRef } from '../../src/lib/curator';
+import { flagFieldKey, parseCandidateFieldTargetRef } from '../../src/lib/curator';
 
 describe('src/lib/curator.ts — parseCandidateFieldTargetRef', () => {
   it('parses a well-formed candidate_field targetRef', () => {
@@ -40,5 +40,20 @@ describe('src/lib/curator.ts — parseCandidateFieldTargetRef', () => {
   ])('returns null (never throws) for %s — %s', (input) => {
     expect(() => parseCandidateFieldTargetRef(input)).not.toThrow();
     expect(parseCandidateFieldTargetRef(input)).toBeNull();
+  });
+});
+
+describe('src/lib/curator.ts — flagFieldKey', () => {
+  it("gives the flagged field of a candidate's flag", () => {
+    expect(flagFieldKey('candidate_field', 'candidate:42:assets')).toBe('assets');
+  });
+
+  it.each([
+    ['candidate_field', 'garbage', 'a candidate flag whose reference does not parse'],
+    ['ward_field', 'ward:5:name', 'an old ward-field row'],
+    ['ward_issue', 'ward_issue:9', 'an old ward-issue row'],
+    ['ward_issue', 'candidate:42:assets', 'a candidate-shaped reference on another target type'],
+  ] as const)('gives null for %s %s — %s', (targetType, targetRef, _why) => {
+    expect(flagFieldKey(targetType, targetRef)).toBeNull();
   });
 });

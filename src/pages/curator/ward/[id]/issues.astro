@@ -8,8 +8,8 @@
  *
  * The remove form's confirmation checkbox (`confirmRemove`) is validated
  * HERE, server-side, before `removeWardIssue` is ever called — mirrors
- * `handleAccept`'s identical `confirmPublish` belt-and-suspenders check in
- * src/lib/curator.ts (a direct POST must not be able to skip the HTML
+ * `parseFieldFix`'s identical `confirmPublish` belt-and-suspenders check in
+ * src/lib/curator-fix.ts (a direct POST must not be able to skip the HTML
  * `required` attribute).
  */
 import WardIssuesEdit from '../../../../features/pages/curator/WardIssuesEdit.astro';

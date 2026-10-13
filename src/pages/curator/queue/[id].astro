@@ -4,12 +4,15 @@
  * for the presentational side. This route twin owns:
  *   - the numeric-id existence check (404 for a non-integer id or a row
  *     that doesn't exist — same pattern as src/pages/ward/[id].astro);
- *   - dispatching the accept/reject POST via the hidden `formAction`
- *     field, and the resulting redirect/re-render status codes;
+ *   - dispatching the POST by its hidden `formAction` field (`fix` or
+ *     `reject`; anything else is a 400), and the resulting redirect or
+ *     re-render: a refused fix re-renders with 400 and what was typed;
  *   - no-store on every response.
  */
 import QueueItem from '../../../features/pages/curator/QueueItem.astro';
-import { handleAccept, handleReject, loadCuratorLang, loadQueueItem } from '../../../lib/curator';
+import { handleFlagFix, handleReject, loadCuratorLang, loadQueueItem } from '../../../lib/curator';
+import { loadWardOptions, type WardOption } from '../../../lib/curator-fix';
+import type { FieldError, RawField } from '../../../lib/affidavit-form';
 
 const session = Astro.locals.session!;
 const actor = { userId: session.userId, role: session.role as 'curator' | 'admin' };
@@ -28,15 +31,18 @@ if (!item) {
 const lang = await loadCuratorLang(session.userId);
 
 let message: { kind: 'notice' | 'error'; key: string } | undefined;
+let fixError: FieldError | undefined;
+let fixRaw: RawField | undefined;
 let status = 200;
 
 if (Astro.request.method === 'POST') {
-  Astro.response.headers.set('cache-control', 'no-store');
   const form = await Astro.request.formData();
   const formAction = String(form.get('formAction') ?? '');
+  if (formAction !== 'fix' && formAction !== 'reject') {
+    return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+  }
 
-  const outcome =
-    formAction === 'accept' ? await handleAccept(actor, item, form) : await handleReject(actor, item.id, form);
+  const outcome = formAction === 'fix' ? await handleFlagFix(actor, item, form) : await handleReject(actor, item.id, form);
 
   if (outcome.kind === 'accepted' || outcome.kind === 'rejected') {
     return new Response(null, {
@@ -51,11 +57,18 @@ if (Astro.request.method === 'POST') {
   } else {
     message = { kind: 'error', key: outcome.key };
     status = 400;
+    if (outcome.kind === 'refused') {
+      fixError = outcome.error;
+      fixRaw = outcome.raw;
+    }
   }
 }
+
+// Every ward is listed only where it is chosen from: a pending flag on the ward.
+const wards: WardOption[] = item.status === 'pending' && item.fix.kind === 'ward' ? await loadWardOptions() : [];
 
 Astro.response.headers.set('cache-control', 'no-store');
 Astro.response.status = status;
 ---
 
-<QueueItem lang={lang} csrfToken={Astro.locals.csrfToken} item={item} message={message} />
+<QueueItem lang={lang} csrfToken={Astro.locals.csrfToken} item={item} wards={wards} message={message} fixError={fixError} fixRaw={fixRaw} />

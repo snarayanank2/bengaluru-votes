@@ -1,20 +1,23 @@
 ---
 /**
- * `/curator/queue/{id}` (Task 34, information-architecture.md §5.3; PRD
- * §6.1 step 3-4) — one flag item: every collapsed `flag_submissions` row,
- * the target's current value + source, and the accept/reject actions.
+ * `/curator/queue/{id}` — one flag, seen against the affidavit. The stored
+ * PDF is on the left and stays in view (`CuratorSplit`); on the right, top
+ * to bottom: what was flagged, what each citizen said, what is published
+ * now, the fix, and the dismissal.
  *
- * ACCEPT is only offered for a `candidate_field` target (Task 34 scope —
- * `item.candidateField` is non-null exactly then; ward_field/ward_issue
- * accept-publish lands in Task 39, see src/lib/curator.ts's
- * `handleAccept`). For any other target type this renders a note instead of
- * the accept form; REJECT is always available regardless of target type.
+ * THE FIX depends on the flagged field (`item.fix`): one of the seven
+ * affidavit fields gets that field's structured inputs, the ward gets a
+ * select of every ward, and anything else (a candidate with no stored
+ * affidavit, a kind of flag that is no longer taken) can only be dismissed.
+ * Dismissal is always offered on a pending item.
  *
  * CONFIRMATION (design-system.md §7.13: "destructive and publish actions
- * get confirmation dialogs stating scope"): a required checkbox naming the
- * exact publish target (`/ward/{id}`) sits directly above the Accept
- * button — a no-JS-required confirmation step, consistent with every other
- * form on this route being a plain server-rendered POST.
+ * get confirmation dialogs stating scope"): both fix forms carry a required
+ * checkbox naming the public path the change appears on — a no-JS
+ * confirmation step, checked again server-side.
+ *
+ * After a refused fix the route twin passes `fixRaw` — exactly what was
+ * posted — and the form shows that instead of the published value.
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
@@ -22,20 +25,29 @@ import Badge from '../../../components/Badge.astro';
 import type { BadgeVariant } from '../../../components/Badge.astro';
 import Banner from '../../../components/Banner.astro';
 import Button from '../../../components/Button.astro';
-import FormField from '../../../components/FormField.astro';
-import SourceLine from '../../../components/SourceLine.astro';
+import CuratorSplit from '../../../components/CuratorSplit.astro';
+import CuratorFieldForm from '../../../components/CuratorFieldForm.astro';
+import CuratorWardForm from '../../../components/CuratorWardForm.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
+import { profileLabelKey } from '../../../lib/candidate-profile';
+import type { FieldError, RawField } from '../../../lib/affidavit-form';
 import type { QueueItemDetail } from '../../../lib/curator';
+import type { WardOption } from '../../../lib/curator-fix';
 
 interface Props {
   lang: Lang;
   csrfToken: string;
   item: QueueItemDetail;
+  /** Every ward, for the ward select; empty unless this is a ward flag. */
+  wards: WardOption[];
   message?: { kind: 'notice' | 'error'; key: string };
+  fixError?: FieldError;
+  /** What was posted, after a refused field fix. */
+  fixRaw?: RawField;
 }
 
-const { lang, csrfToken, item, message } = Astro.props;
+const { lang, csrfToken, item, wards, message, fixError, fixRaw } = Astro.props;
 const messageText = message ? t(lang, message.key) : undefined;
 
 const BADGE_VARIANT: Record<QueueItemDetail['status'], BadgeVariant> = {
@@ -44,19 +56,44 @@ const BADGE_VARIANT: Record<QueueItemDetail['status'], BadgeVariant> = {
   rejected: 'flag-rejected',
 };
 
-const wardPath = `/ward/${item.wardId}`;
+const { candidate, fix } = item;
 const isPending = item.status === 'pending';
+const confirmPath = `/ward/${item.wardId}`;
+const editorPath = candidate ? `/curator/candidate/${candidate.id}` : null;
+// Ward names are stored with their number in front ("11 - Old Baiyappanahalli"); the line shows the name alone.
+const candidateWard = candidate ? (lang === 'kn' ? candidate.wardNameKn : candidate.wardNameEn).replace(/^\d+\s*-\s*/, '') : null;
+// Rows older than the eight-field rule name something that has no label: show the reference as stored.
+const labelKey = profileLabelKey(item.fieldKey);
+const fieldLabel = labelKey ? t(lang, labelKey) : item.targetRef;
+
+const field = fix.kind === 'field' ? fix.field : null;
+const publishedText = field
+  ? (field.valueEn ??
+    (field.status === 'not_declared'
+      ? t(lang, 'common.notDeclared')
+      : field.status === 'unreadable'
+        ? t(lang, 'common.unreadable')
+        : t(lang, 'curator.queueItem.published.none')))
+  : null;
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.queueItem.meta.title')} description={t(lang, 'curator.queueItem.meta.description')}>
-  <div class="curator-page">
-    <p><a href="/curator/queue">{t(lang, 'curator.queueItem.backToQueue')}</a></p>
+  <CuratorSplit lang={lang} pdfUrl={candidate?.pdfUrl ?? null}>
+    <p class="back"><a href="/curator/queue">{t(lang, 'curator.queueItem.backToQueue')}</a></p>
     <h1>{t(lang, 'curator.queueItem.heading', { ward: lang === 'kn' ? item.wardNameKn : item.wardNameEn })}</h1>
 
     <p class="target-line">
       <Badge variant={BADGE_VARIANT[item.status]} lang={lang} />
-      <span>{item.targetLabel}</span>
+      {candidate && <span>{t(lang, 'curator.queueItem.candidateLine', { name: candidate.nameEn, ward: candidateWard! })}</span>}
+      <strong class="target-field">{fieldLabel}</strong>
     </p>
+    {
+      editorPath && (
+        <p class="back">
+          <a href={editorPath}>{t(lang, 'curator.queueItem.editCandidate')}</a>
+        </p>
+      )
+    }
 
     {
       messageText && (
@@ -100,22 +137,66 @@ const isPending = item.status === 'pending';
     </Card>
 
     {
-      item.candidateField && (
+      field && (
         <Card>
-          <h2>{t(lang, 'curator.queueItem.currentValue.heading')}</h2>
-          <p class="meta">
-            {t(lang, 'curator.queueItem.currentValue.candidate', { name: item.candidateField.candidateNameEn })}
-          </p>
-          <p class="meta">{t(lang, 'curator.queueItem.currentValue.field', { field: item.candidateField.fieldKey })}</p>
-          {item.candidateField.notDeclared ? (
-            <p>{t(lang, 'common.notDeclared')}</p>
-          ) : (
-            <>
-              <p>{item.candidateField.valueEn || t(lang, 'curator.queueItem.currentValue.none')}</p>
-              {item.candidateField.valueKn && <p lang="kn">{item.candidateField.valueKn}</p>}
-            </>
+          <h2>{t(lang, 'curator.queueItem.published.heading')}</h2>
+          <p class="published">{publishedText}</p>
+          {(field.aiExtracted || field.checked) && (
+            <p class="meta">{t(lang, field.checked ? 'curator.fix.badge.checked' : 'curator.fix.badge.ai')}</p>
           )}
-          <SourceLine sourceType={item.candidateField.sourceType} sourceUrl={item.candidateField.sourceUrl} lang={lang} />
+        </Card>
+      )
+    }
+
+    {
+      isPending && fix.kind === 'field' && (
+        <Card>
+          <h2>{t(lang, 'curator.fix.heading')}</h2>
+          <CuratorFieldForm
+            lang={lang}
+            csrfToken={csrfToken}
+            formAction="fix"
+            field={fix.field}
+            label={fieldLabel}
+            confirmPath={confirmPath}
+            submitLabel={t(lang, 'curator.fix.submit')}
+            error={fixError}
+            raw={fixRaw}
+          />
+        </Card>
+      )
+    }
+
+    {
+      isPending && fix.kind === 'ward' && (
+        <Card>
+          <h2>{t(lang, 'curator.fix.wardHeading')}</h2>
+          <CuratorWardForm
+            lang={lang}
+            csrfToken={csrfToken}
+            formAction="fix"
+            wards={wards}
+            wardId={fix.wardId}
+            confirmPath={confirmPath}
+            submitLabel={t(lang, 'curator.fix.wardSubmit')}
+          />
+        </Card>
+      )
+    }
+
+    {
+      isPending && fix.kind === 'none' && (
+        <Card>
+          {candidate && candidate.pdfUrl === null ? (
+            <>
+              <p class="note">{t(lang, 'curator.fix.noAffidavit')}</p>
+              <p class="note">
+                <a href={editorPath}>{t(lang, 'curator.fix.noAffidavitLink')}</a>
+              </p>
+            </>
+          ) : (
+            <p class="note">{t(lang, 'curator.fix.dismissOnly')}</p>
+          )}
         </Card>
       )
     }
@@ -124,7 +205,7 @@ const isPending = item.status === 'pending';
       isPending && (
         <Card>
           <h2>{t(lang, 'curator.queueItem.reject.heading')}</h2>
-          <form method="post">
+          <form method="post" class="reject-form">
             <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
             <input type="hidden" name="formAction" value="reject" />
             <div class="form-field">
@@ -133,102 +214,43 @@ const isPending = item.status === 'pending';
               </label>
               <textarea id="reject-reason" class="form-input" name="reason" required rows={3} />
             </div>
-            <Button type="submit" variant="destructive" lang={lang}>
-              {t(lang, 'curator.queueItem.reject.submit')}
-            </Button>
+            <div>
+              <Button type="submit" variant="destructive" lang={lang}>
+                {t(lang, 'curator.queueItem.reject.submit')}
+              </Button>
+            </div>
           </form>
         </Card>
       )
     }
-
-    {
-      isPending && item.candidateField && (
-        <Card>
-          <h2>{t(lang, 'curator.queueItem.accept.heading')}</h2>
-          <form method="post">
-            <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-            <input type="hidden" name="formAction" value="accept" />
-            <FormField label={t(lang, 'curator.queueItem.accept.valueEnLabel')} name="valueEn" lang={lang} />
-            <FormField label={t(lang, 'curator.queueItem.accept.valueKnLabel')} name="valueKn" lang={lang} />
-            <label class="checkbox">
-              <input type="checkbox" name="notDeclared" />
-              {t(lang, 'curator.queueItem.accept.notDeclaredLabel')}
-            </label>
-            <FormField
-              label={t(lang, 'curator.queueItem.accept.sourceUrlLabel')}
-              name="sourceUrl"
-              type="text"
-              required
-              lang={lang}
-            />
-            <div class="form-field">
-              <label class="form-label" for="accept-source-type">
-                {t(lang, 'curator.queueItem.accept.sourceTypeLabel')}
-              </label>
-              <select id="accept-source-type" class="form-input" name="sourceType">
-                <option value="curator">{t(lang, 'curator.queueItem.accept.sourceType.curator')}</option>
-                <option value="official">{t(lang, 'curator.queueItem.accept.sourceType.official')}</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label class="form-label" for="accept-authored-lang">
-                {t(lang, 'curator.queueItem.accept.authoredLangLabel')}
-              </label>
-              <select id="accept-authored-lang" class="form-input" name="authoredLang">
-                <option value="en">{t(lang, 'curator.queueItem.accept.authoredLang.en')}</option>
-                <option value="kn">{t(lang, 'curator.queueItem.accept.authoredLang.kn')}</option>
-              </select>
-            </div>
-            <label class="checkbox confirm-checkbox">
-              <input type="checkbox" name="confirmPublish" required />
-              {t(lang, 'curator.queueItem.accept.confirm', { path: wardPath })}
-            </label>
-            <Button type="submit" variant="primary" lang={lang}>
-              {t(lang, 'curator.queueItem.accept.submit')}
-            </Button>
-          </form>
-        </Card>
-      )
-    }
-
-    {
-      isPending && !item.candidateField && (
-        <Card>
-          <h2>{t(lang, 'curator.queueItem.accept.heading')}</h2>
-          <p>{t(lang, 'curator.queueItem.accept.unsupportedNote')}</p>
-        </Card>
-      )
-    }
-  </div>
+  </CuratorSplit>
 </CuratorLayout>
 
 <style>
-  .curator-page {
-    max-width: var(--container-prose);
-    margin-inline: auto;
-    padding-block: var(--space-8);
-    padding-inline: var(--container-pad-x);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .curator-page h1 {
+  /* The page's column, its width and its scrolling belong to CuratorSplit;
+     these are the pieces this page puts inside it. */
+  h1 {
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);
     margin: 0;
   }
 
-  .curator-page h2 {
+  h2 {
     font-size: var(--text-lg);
     margin: 0 0 var(--space-3);
   }
 
+  .back {
+    margin: 0;
+  }
+
   .target-line {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
     margin: 0;
+    overflow-wrap: anywhere;
   }
 
   .submissions-list {
@@ -244,6 +266,7 @@ const isPending = item.status === 'pending';
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-3);
+    overflow-wrap: anywhere;
   }
 
   .detail {
@@ -256,7 +279,21 @@ const isPending = item.status === 'pending';
     color: var(--color-text-muted);
   }
 
-  form {
+  .published {
+    margin: 0 0 var(--space-1);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .note {
+    margin: 0;
+  }
+
+  .note + .note {
+    margin-top: var(--space-2);
+  }
+
+  .reject-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -283,16 +320,5 @@ const isPending = item.status === 'pending';
     background: var(--color-bg);
     border: 1.5px solid var(--color-border);
     border-radius: var(--radius-sm);
-  }
-
-  .checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-base);
-  }
-
-  .confirm-checkbox {
-    font-weight: 700;
   }
 </style>

@@ -55,6 +55,17 @@ async function freshTargetRef(fieldKey = 'age'): Promise<string> {
   return `candidate:${row!.id}:${fieldKey}`;
 }
 
+/** The stored affidavit a fix is checked against; any path does for these tests. */
+const SOURCE_URL = '/media/1/abc';
+
+async function fieldRow(ofCandidateId: number, fieldKey: string) {
+  const [row] = await db
+    .select()
+    .from(schema.candidateFields)
+    .where(and(eq(schema.candidateFields.candidateId, ofCandidateId), eq(schema.candidateFields.fieldKey, fieldKey)));
+  return row;
+}
+
 describe('flags.ts — deduped flag queue + transactional resolution (Task 31)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
@@ -175,16 +186,16 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     expect(submissions.map((s) => s.userId).sort()).toEqual([submitterAId, submitterBId].sort());
   });
 
-  it('resolveFlag ACCEPT: publishes the candidate field AND marks the item accepted; both submitters see the same accepted status', async () => {
+  it('resolveFlag ACCEPT: publishes the fix as a structured, person-checked value AND marks the item accepted; both submitters see the same accepted status', async () => {
     const targetRef = targetRefFor('age');
 
     const first = await submitFlag(submitterAId, {
       wardId: WARD_ID,
       targetType: 'candidate_field',
       targetRef,
-      detail: 'Track record is out of date.',
-      suggestedValue: 'Two-term corporator, led road-repair drive.',
-      sourceUrl: 'https://example.org/track-record-source',
+      detail: 'The age is out of date.',
+      suggestedValue: '41',
+      sourceUrl: 'https://example.org/age-source',
     });
     await submitFlag(submitterBId, {
       wardId: WARD_ID,
@@ -193,28 +204,18 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
       detail: 'Agreed, needs updating.',
     });
 
-    await resolveFlag(
-      { userId: curatorUserId, role: 'curator' },
-      first.flagItemId,
-      {
-        accept: true,
-        publish: {
-          candidateId,
-          fieldKey: 'track_record',
-          valueEn: 'Two-term corporator, led road-repair drive.',
-          sourceUrl: 'https://example.org/track-record-source',
-          sourceType: 'curator',
-          authoredLang: 'en',
-        },
-      },
-    );
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, first.flagItemId, {
+      accept: true,
+      fix: { kind: 'field', candidateId, data: { key: 'age', status: 'value', years: 41 }, sourceUrl: SOURCE_URL },
+    });
 
-    const [field] = await db
-      .select()
-      .from(schema.candidateFields)
-      .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'track_record')));
+    const field = await fieldRow(candidateId, 'age');
     expect(field).toBeDefined();
-    expect(field!.valueEn).toBe('Two-term corporator, led road-repair drive.');
+    expect(field!.valueData).toEqual({ key: 'age', status: 'value', years: 41 });
+    expect(field!.valueEn).toBe('41');
+    expect(field!.checkedBy).toBe(curatorUserId);
+    expect(field!.aiExtracted).toBe(false);
+    expect(field!.sourceUrl).toBe(SOURCE_URL);
 
     const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, first.flagItemId));
     expect(item!.status).toBe('accepted');
@@ -411,29 +412,27 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('double resolveFlag ACCEPT on the same item: the second call throws and does NOT publish a second time', async () => {
-    const targetRef = await freshTargetRef();
+    const targetRef = await freshTargetRef('cases');
 
     const { flagItemId } = await submitFlag(submitterAId, {
       wardId: WARD_ID,
       targetType: 'candidate_field',
       targetRef,
-      detail: 'Approachability claim is stale.',
+      detail: 'The cases count is stale.',
     });
 
-    const publishInput = {
-      candidateId,
-      fieldKey: 'approachability',
-      valueEn: 'Holds a weekly ward clinic.',
-      sourceUrl: 'https://example.org/approachability-source',
-      sourceType: 'curator' as const,
-      authoredLang: 'en' as const,
-    };
+    const freshCandidateId = Number(targetRef.split(':')[1]);
+    const fixTo = (pending: number) => ({
+      accept: true as const,
+      fix: { kind: 'field' as const, candidateId: freshCandidateId, data: { key: 'cases' as const, status: 'value' as const, pending, convictions: 0 }, sourceUrl: SOURCE_URL },
+    });
 
-    await resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput });
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, fixTo(1));
 
-    await expect(
-      resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, { accept: true, publish: publishInput }),
-    ).rejects.toThrow('flag_already_resolved');
+    await expect(resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, fixTo(9))).rejects.toThrow('flag_already_resolved');
+
+    // The second, too-late fix wrote nothing.
+    expect((await fieldRow(freshCandidateId, 'cases'))!.valueData).toEqual({ key: 'cases', status: 'value', pending: 1, convictions: 0 });
 
     const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
     expect(item!.status).toBe('accepted');
@@ -467,127 +466,80 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
   });
 
   it('resolveFlag ACCEPT calls translateFieldSoon({table:"candidate_fields", id}) after the transaction commits', async () => {
-    const targetRef = await freshTargetRef();
+    const targetRef = await freshTargetRef('education');
+    const freshCandidateId = Number(targetRef.split(':')[1]);
 
     const { flagItemId } = await submitFlag(submitterAId, {
-      wardId: WARD_ID,
       targetType: 'candidate_field',
       targetRef,
-      detail: 'Cases claim needs updating.',
+      detail: 'Education needs updating.',
     });
 
     vi.mocked(translateFieldSoon).mockClear();
 
-    await resolveFlag(
-      { userId: curatorUserId, role: 'curator' },
-      flagItemId,
-      {
-        accept: true,
-        publish: {
-          candidateId,
-          fieldKey: 'cases_translate_parity',
-          valueEn: 'No pending cases as of this term.',
-          sourceUrl: 'https://example.org/cases-source',
-          sourceType: 'curator',
-          authoredLang: 'en',
-        },
-      },
-    );
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, {
+      accept: true,
+      fix: { kind: 'field', candidateId: freshCandidateId, data: { key: 'education', status: 'value', level: 'Graduate', stated: 'B.Com' }, sourceUrl: SOURCE_URL },
+    });
 
-    const [field] = await db
-      .select()
-      .from(schema.candidateFields)
-      .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'cases_translate_parity')));
+    const field = await fieldRow(freshCandidateId, 'education');
 
     expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledWith({ table: 'candidate_fields', id: field!.id });
   });
 
-  it('resolveFlag ACCEPT manual-suppression: normal accept fires translate once (pending); a later accept that only changes the OTHER language (authored unchanged) resolves to manual and does NOT fire translate (Fix 3, Task 40 review)', async () => {
-    const targetRef = await freshTargetRef();
-    const fieldKey = 'manual_suppression_field';
-
-    // --- First accept: brand-new field, no existing row -> decideTranslationStatus
-    // returns 'pending' -> translateFieldSoon fires exactly once (normal case).
-    const first = await submitFlag(submitterAId, {
-      wardId: WARD_ID,
-      targetType: 'candidate_field',
-      targetRef,
-      detail: 'Initial concern about this field.',
+  it('resolveFlag ACCEPT hands a field to translation only when its English text changed: a fix that reads the same keeps the Kannada it had', async () => {
+    const targetRef = await freshTargetRef('education');
+    const freshCandidateId = Number(targetRef.split(':')[1]);
+    const fixTo = (stated: string | null) => ({
+      accept: true as const,
+      fix: { kind: 'field' as const, candidateId: freshCandidateId, data: { key: 'education' as const, status: 'value' as const, level: 'Graduate' as const, stated }, sourceUrl: SOURCE_URL },
     });
 
+    // --- First accept: no row yet, so the English is new and translation fires once.
+    const first = await submitFlag(submitterAId, { targetType: 'candidate_field', targetRef, detail: 'Initial concern about this field.' });
     vi.mocked(translateFieldSoon).mockClear();
-
-    await resolveFlag(
-      { userId: curatorUserId, role: 'curator' },
-      first.flagItemId,
-      {
-        accept: true,
-        publish: {
-          candidateId,
-          fieldKey,
-          valueEn: 'Stable authored English text.',
-          sourceUrl: 'https://example.org/manual-suppression-source',
-          sourceType: 'curator',
-          authoredLang: 'en',
-        },
-      },
-    );
-
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, first.flagItemId, fixTo(null));
     expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledWith(
-      expect.objectContaining({ table: 'candidate_fields' }),
-    );
 
-    // Simulate MT having completed (status now 'done'), so the NEXT accept's
-    // authored-unchanged / other-language-changed diff can resolve to
-    // 'manual' rather than 'pending' (decideTranslationStatus, src/lib/publish.ts).
-    await db
-      .update(schema.candidateFields)
-      .set({ valueKn: 'ಸ್ಥಿರ ಪಠ್ಯ.', translationStatus: 'done' })
-      .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, fieldKey)));
+    // Simulate the translation having completed.
+    const published = (await fieldRow(freshCandidateId, 'education'))!;
+    expect(published.valueEn).toBe('Graduate');
+    await db.update(schema.candidateFields).set({ valueKn: 'ಪದವೀಧರ', translationStatus: 'done' }).where(eq(schema.candidateFields.id, published.id));
 
-    // A fresh flag on the same targetRef opens a new pending item (the first
-    // is already accepted — see the dedupe test above).
-    const second = await submitFlag(submitterBId, {
-      wardId: WARD_ID,
-      targetType: 'candidate_field',
-      targetRef,
-      detail: 'A curator wants to hand-fix the Kannada translation via accept.',
-    });
-
+    // --- Second accept: the qualification as stated repeats the level, so the
+    // published English is still "Graduate" — nothing to translate again.
+    const second = await submitFlag(submitterBId, { targetType: 'candidate_field', targetRef, detail: 'The affidavit states the qualification too.' });
     vi.mocked(translateFieldSoon).mockClear();
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, second.flagItemId, fixTo('Graduate'));
 
-    // --- Second accept: authored value (valueEn) UNCHANGED, only valueKn
-    // supplied differently -> decideTranslationStatus returns 'manual' ->
-    // resolveFlag must NOT fire translateFieldSoon at all (flags.ts:~270).
-    await resolveFlag(
-      { userId: curatorUserId, role: 'curator' },
-      second.flagItemId,
-      {
-        accept: true,
-        publish: {
-          candidateId,
-          fieldKey,
-          valueEn: 'Stable authored English text.', // authored value UNCHANGED
-          valueKn: 'Curator-typed manual Kannada fix via flag accept.', // other language explicitly edited
-          sourceUrl: 'https://example.org/manual-suppression-source',
-          sourceType: 'curator',
-          authoredLang: 'en',
-        },
-      },
-    );
-
-    const [field] = await db
-      .select()
-      .from(schema.candidateFields)
-      .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, fieldKey)));
-    expect(field?.translationStatus).toBe('manual');
-    expect(field?.valueKn).toBe('Curator-typed manual Kannada fix via flag accept.');
+    const field = (await fieldRow(freshCandidateId, 'education'))!;
+    expect(field.valueData).toEqual({ key: 'education', status: 'value', level: 'Graduate', stated: 'Graduate' });
+    expect(field.translationStatus).toBe('done');
+    expect(field.valueKn).toBe('ಪದವೀಧರ');
     expect(vi.mocked(translateFieldSoon)).not.toHaveBeenCalled();
 
     const [secondItem] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, second.flagItemId));
     expect(secondItem!.status).toBe('accepted');
+  });
+
+  it('resolveFlag ACCEPT with a ward fix moves the candidate, accepts the item and translates nothing', async () => {
+    const targetRef = await freshTargetRef('ward');
+    const freshCandidateId = Number(targetRef.split(':')[1]);
+    const { flagItemId } = await submitFlag(submitterAId, { targetType: 'candidate_field', targetRef, detail: 'This candidate is standing in ward B.' });
+
+    vi.mocked(translateFieldSoon).mockClear();
+    await resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, {
+      accept: true,
+      fix: { kind: 'ward', candidateId: freshCandidateId, wardId: WARD_ID_B, sourceUrl: SOURCE_URL },
+    });
+
+    const [moved] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, freshCandidateId));
+    expect(moved!.wardId).toBe(WARD_ID_B);
+    expect((await fieldRow(freshCandidateId, 'ward'))!.aiExtracted).toBe(false);
+    const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
+    expect(item!.status).toBe('accepted');
+    expect(vi.mocked(translateFieldSoon)).not.toHaveBeenCalled();
   });
 
   // -------------------------------------------------------------------------
@@ -627,7 +579,7 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
     const { flagItemId } = await submitFlag(submitterAId, {
       targetType: 'candidate_field',
       targetRef,
-      detail: 'Track record for a ward-B candidate.',
+      detail: 'Age for a ward-B candidate.',
     });
 
     const [itemBefore] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
@@ -635,21 +587,12 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
 
     await resolveFlag({ userId: curatorUserId, role: 'curator' }, flagItemId, {
       accept: true,
-      publish: {
-        candidateId: candidateBId,
-        fieldKey: 'track_record',
-        valueEn: 'Track record, curator-published in ward B.',
-        sourceUrl: 'https://example.org/curator-source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      },
+      fix: { kind: 'field', candidateId: candidateBId, data: { key: 'age', status: 'value', years: 41 }, sourceUrl: SOURCE_URL },
     });
 
-    const [field] = await db
-      .select()
-      .from(schema.candidateFields)
-      .where(and(eq(schema.candidateFields.candidateId, candidateBId), eq(schema.candidateFields.fieldKey, 'track_record')));
-    expect(field!.valueEn).toBe('Track record, curator-published in ward B.');
+    const field = await fieldRow(candidateBId, 'age');
+    expect(field!.valueData).toEqual({ key: 'age', status: 'value', years: 41 });
+    expect(field!.checkedBy).toBe(curatorUserId);
 
     const [itemAfter] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, flagItemId));
     expect(itemAfter!.status).toBe('accepted');
@@ -666,20 +609,11 @@ describe('flags.ts — deduped flag queue + transactional resolution (Task 31)',
 
     await resolveFlag({ userId: 4299, role: 'admin' }, flagItemId, {
       accept: true,
-      publish: {
-        candidateId: candidateBId,
-        fieldKey: 'assets',
-        valueEn: 'Declared assets, admin-published.',
-        sourceUrl: 'https://example.org/admin-source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      },
+      fix: { kind: 'field', candidateId: candidateBId, data: { key: 'assets', status: 'value', movableInr: 100000, immovableInr: 2500000 }, sourceUrl: SOURCE_URL },
     });
 
-    const [field] = await db
-      .select()
-      .from(schema.candidateFields)
-      .where(and(eq(schema.candidateFields.candidateId, candidateBId), eq(schema.candidateFields.fieldKey, 'assets')));
-    expect(field!.valueEn).toBe('Declared assets, admin-published.');
+    const field = await fieldRow(candidateBId, 'assets');
+    expect(field!.valueData).toEqual({ key: 'assets', status: 'value', movableInr: 100000, immovableInr: 2500000 });
+    expect(field!.checkedBy).toBe(4299);
   });
 });

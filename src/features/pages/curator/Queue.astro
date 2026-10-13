@@ -7,6 +7,7 @@
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import { t, type Lang } from '../../../i18n';
+import { profileLabelKey } from '../../../lib/candidate-profile';
 import type { QueueListItem, QueueSort } from '../../../lib/curator';
 
 interface Props {
@@ -16,6 +17,12 @@ interface Props {
 }
 
 const { lang, items, sort } = Astro.props;
+
+/** "{candidate} — {field}" for a flag on a candidate's field; the reference as stored for anything older or orphaned. */
+function targetLabel(item: QueueListItem): string {
+  const labelKey = profileLabelKey(item.fieldKey);
+  return item.candidateNameEn && labelKey ? `${item.candidateNameEn} — ${t(lang, labelKey)}` : item.targetRef;
+}
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.queue.meta.title')} description={t(lang, 'curator.queue.meta.description')}>
@@ -50,7 +57,7 @@ const { lang, items, sort } = Astro.props;
             {items.map((item) => (
               <tr>
                 <td>{lang === 'kn' ? item.wardNameKn : item.wardNameEn}</td>
-                <td>{item.targetLabel}</td>
+                <td>{targetLabel(item)}</td>
                 <td>{item.submissionCount}</td>
                 <td>{item.createdAt.toISOString()}</td>
                 <td>

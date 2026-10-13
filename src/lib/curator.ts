@@ -1,10 +1,11 @@
 /**
- * Business logic behind the curator dashboard + review-queue pages (Task 34,
- * information-architecture.md §5.1/§5.2/§5.3; PRD §6.1/§7/§9.1). Mirrors the
- * split used by src/lib/account-flow.ts: this module owns state-loading and
- * the accept/reject mutation dispatch, the page route twins
+ * Business logic behind the curator pages: the dashboard, the review queue,
+ * one flag (the fix and the dismissal), the candidate editor and the ward
+ * page. Mirrors the split used by src/lib/account-flow.ts: this module owns
+ * state-loading and the mutation dispatch, the page route twins
  * (src/pages/curator/*) own the HTTP concerns a plain module cannot
- * (redirects, no-store, 403/404 status).
+ * (redirects, no-store, 403/404 status). What a correction is, and how one
+ * is parsed and published, lives in src/lib/curator-fix.ts.
  *
  * NO WARD SCOPE: curators and admins are both city-wide (decided
  * 2026-08-15), so every query here covers every ward. src/middleware.ts
@@ -17,7 +18,7 @@
  * writes) rather than the URL — there is no URL to derive it from. See
  * `loadCuratorLang` below.
  */
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
   candidateAffidavits,
@@ -35,7 +36,10 @@ import {
   type sourceTypeEnum,
   type langEnum,
 } from '../db/schema';
-import { resolveFlag } from './flags';
+import { resolveFlag, type FlagFix } from './flags';
+import { AFFIDAVIT_FIELD_KEYS } from './affidavit-publish';
+import type { FieldError, RawField } from './affidavit-form';
+import { loadFixCandidate, loadFixFields, parseFieldFix, parseWardFix, publishedFieldData, type FixCandidate, type FixField, type StaffActor } from './curator-fix';
 import { createCandidate, publishCandidateCore, publishCandidateField } from './publish';
 import { storeMedia, type MediaStoreErrorCode } from './media';
 import { enqueueAffidavit } from './affidavit-queue';
@@ -60,7 +64,7 @@ function extractionStatusOf(state: AffidavitState): ExtractionStatus {
 const CANDIDATE_STATUSES = ['filed', 'contesting', 'rejected', 'withdrawn'] as const satisfies readonly CandidateStatus[];
 
 /** Same shape `src/middleware.ts` puts on `locals.session` for an authed request. */
-export type CuratorActor = { userId: number; role: 'curator' | 'admin' };
+export type CuratorActor = StaffActor;
 
 // ---------------------------------------------------------------------------
 // Language (see module docstring)
@@ -73,7 +77,7 @@ export async function loadCuratorLang(userId: number): Promise<Lang> {
 }
 
 // ---------------------------------------------------------------------------
-// Target ref parsing / labeling
+// Target ref parsing
 // ---------------------------------------------------------------------------
 
 /** Parses a `candidate_field` targetRef of the shape `candidate:<id>:<fieldKey>` (see src/lib/flags.ts's module docstring for the targetRef convention). `null` for anything else. */
@@ -83,19 +87,9 @@ export function parseCandidateFieldTargetRef(targetRef: string): { candidateId: 
   return { candidateId: Number(match[1]), fieldKey: match[2]! };
 }
 
-/** A short, human-readable label for a queue item's target — used in the queue list and item view. Deliberately lightweight (no extra query): the item view additionally resolves the candidate's real name for candidate_field targets (see `loadQueueItem`). */
-export function humanTargetLabel(targetType: FlagTargetType, targetRef: string): string {
-  const parts = targetRef.split(':');
-  if (targetType === 'candidate_field' && parts.length === 3) {
-    return `Candidate #${parts[1]} — ${parts[2]}`;
-  }
-  if (targetType === 'ward_field' && parts.length === 3) {
-    return `Ward #${parts[1]} — ${parts[2]}`;
-  }
-  if (targetType === 'ward_issue') {
-    return `Ward issue — ${targetRef}`;
-  }
-  return targetRef;
+/** What a queue row is about, in words: the candidate's field for today's flags, the raw reference for rows older than the eight-field rule. */
+export function flagFieldKey(targetType: FlagTargetType, targetRef: string): string | null {
+  return targetType === 'candidate_field' ? (parseCandidateFieldTargetRef(targetRef)?.fieldKey ?? null) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +122,10 @@ export interface QueueListItem {
   wardNameKn: string;
   targetType: FlagTargetType;
   targetRef: string;
-  targetLabel: string;
+  /** The flagged field's key, or null for a row that is not about a candidate's field. */
+  fieldKey: string | null;
+  /** The flagged candidate's name, or null when the row names no candidate that still exists. */
+  candidateNameEn: string | null;
   submissionCount: number;
   createdAt: Date;
 }
@@ -155,11 +152,23 @@ export async function loadQueueList(sort: QueueSort = 'recent'): Promise<QueueLi
     .groupBy(flagItems.id, wards.id)
     .orderBy(sort === 'ward' ? wards.nameEn : desc(flagItems.createdAt));
 
-  return rows.map((row) => ({
-    ...row,
-    submissionCount: Number(row.submissionCount),
-    targetLabel: humanTargetLabel(row.targetType, row.targetRef),
-  }));
+  // The candidate is named only inside `target_ref`, so the names come from a second query.
+  const targets = rows.map((row) => (row.targetType === 'candidate_field' ? parseCandidateFieldTargetRef(row.targetRef) : null));
+  const candidateIds = [...new Set(targets.flatMap((target) => (target ? [target.candidateId] : [])))];
+  const named = candidateIds.length
+    ? await db.select({ id: candidates.id, nameEn: candidates.nameEn }).from(candidates).where(inArray(candidates.id, candidateIds))
+    : [];
+  const nameById = new Map(named.map((candidate) => [candidate.id, candidate.nameEn]));
+
+  return rows.map((row, i) => {
+    const target = targets[i] ?? null;
+    return {
+      ...row,
+      submissionCount: Number(row.submissionCount),
+      fieldKey: flagFieldKey(row.targetType, row.targetRef),
+      candidateNameEn: (target && nameById.get(target.candidateId)) ?? null,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -175,18 +184,6 @@ export interface FlagSubmissionRow {
   createdAt: Date;
 }
 
-export interface CandidateFieldContext {
-  candidateId: number;
-  candidateNameEn: string;
-  fieldKey: string;
-  valueEn: string | null;
-  valueKn: string | null;
-  notDeclared: boolean;
-  sourceUrl: string | null;
-  sourceType: SourceType;
-  authoredLang: AuthoredLang;
-}
-
 export interface QueueItemDetail {
   id: number;
   wardId: number;
@@ -194,13 +191,20 @@ export interface QueueItemDetail {
   wardNameKn: string;
   targetType: FlagTargetType;
   targetRef: string;
-  targetLabel: string;
   status: FlagStatus;
   resolutionReason: string | null;
   createdAt: Date;
   submissions: FlagSubmissionRow[];
-  /** Only populated for a candidate_field target whose targetRef parses — the accept path (Task 34) only supports this target type; ward_field/ward_issue publish lands in Task 39. */
-  candidateField: CandidateFieldContext | null;
+  /** The flagged candidate; null for a row that is not about a candidate's field, or whose candidate no longer exists. */
+  candidate: FixCandidate | null;
+  /** The flagged field's key as the row carries it; null for a row that is not about a candidate's field. */
+  fieldKey: string | null;
+  /**
+   * How this flag can be fixed: one affidavit field through its structured
+   * inputs, the ward through a move, or not at all (`none`: no stored
+   * affidavit to check against, or a kind of flag that is no longer taken).
+   */
+  fix: { kind: 'field'; field: FixField } | { kind: 'ward'; wardId: number } | { kind: 'none' };
 }
 
 /** `null` when no such flag_items row exists (the route twin turns that into a 404). */
@@ -235,47 +239,29 @@ export async function loadQueueItem(id: number): Promise<QueueItemDetail | null>
     .where(eq(flagSubmissions.flagItemId, id))
     .orderBy(flagSubmissions.createdAt);
 
-  let candidateField: CandidateFieldContext | null = null;
-  if (item.targetType === 'candidate_field') {
-    const parsed = parseCandidateFieldTargetRef(item.targetRef);
-    if (parsed) {
-      const [candidate] = await db
-        .select({ id: candidates.id, nameEn: candidates.nameEn })
-        .from(candidates)
-        .where(eq(candidates.id, parsed.candidateId));
-      const [field] = await db
-        .select()
-        .from(candidateFields)
-        .where(and(eq(candidateFields.candidateId, parsed.candidateId), eq(candidateFields.fieldKey, parsed.fieldKey)));
-
-      candidateField = {
-        candidateId: parsed.candidateId,
-        candidateNameEn: candidate?.nameEn ?? `Candidate #${parsed.candidateId}`,
-        fieldKey: parsed.fieldKey,
-        valueEn: field?.valueEn ?? null,
-        valueKn: field?.valueKn ?? null,
-        notDeclared: field?.notDeclared ?? false,
-        sourceUrl: field?.sourceUrl ?? null,
-        sourceType: field?.sourceType ?? 'curator',
-        authoredLang: field?.authoredLang ?? 'en',
-      };
+  let candidate: FixCandidate | null = null;
+  let fieldKey: string | null = null;
+  let fix: QueueItemDetail['fix'] = { kind: 'none' };
+  const parsed = item.targetType === 'candidate_field' ? parseCandidateFieldTargetRef(item.targetRef) : null;
+  if (parsed) {
+    candidate = await loadFixCandidate(parsed.candidateId);
+    fieldKey = parsed.fieldKey;
+    if (candidate && candidate.pdfUrl) {
+      if (parsed.fieldKey === 'ward') fix = { kind: 'ward', wardId: candidate.wardId };
+      else if ((AFFIDAVIT_FIELD_KEYS as readonly string[]).includes(parsed.fieldKey)) {
+        fix = { kind: 'field', field: (await loadFixFields(candidate)).find((f) => f.key === parsed.fieldKey)! };
+      }
     }
   }
 
-  return {
-    ...item,
-    targetLabel: humanTargetLabel(item.targetType, item.targetRef),
-    submissions,
-    candidateField,
-  };
+  return { ...item, submissions, candidate, fieldKey, fix };
 }
 
 // ---------------------------------------------------------------------------
-// Accept / reject (IA §5.3, PRD §6.1)
+// Fix / dismiss (IA §5.3, PRD §6.1)
 // ---------------------------------------------------------------------------
 
 export type ResolveOutcome =
-  | { kind: 'accepted' }
   | { kind: 'rejected' }
   | { kind: 'already_resolved' }
   | { kind: 'validation_error'; key: string };
@@ -290,70 +276,48 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+export type FixOutcome =
+  | { kind: 'accepted' }
+  | { kind: 'already_resolved' }
+  | { kind: 'refused'; key: string; error?: FieldError; raw?: RawField };
+
 /**
- * Handles the ACCEPT form (candidate_field targets only, for now — see
- * `QueueItemDetail.candidateField`'s docstring). Validates the required
- * source + at least one value (or explicit `notDeclared`), then calls
- * `resolveFlag`, which publishes the field and marks the item accepted
- * atomically. A `flag_already_resolved` throw (someone else resolved it
- * first, e.g. another curator covering the same ward) is caught here and
- * turned into a friendly outcome rather than propagating as a 500.
+ * Handles the FIX form: the flagged field's corrected value, or the ward
+ * the candidate belongs in. The correction and the flag's acceptance are
+ * one transaction (`resolveFlag`). Refused when there is no affidavit to
+ * check against, when the flag is one that can only be dismissed, and for
+ * everything `parseFieldFix` / `parseWardFix` refuse. A
+ * `flag_already_resolved` throw (another curator resolved it first) becomes
+ * a friendly outcome rather than a 500.
  */
-export async function handleAccept(actor: CuratorActor, item: QueueItemDetail, form: FormData): Promise<ResolveOutcome> {
-  if (item.targetType !== 'candidate_field' || !item.candidateField) {
-    // ward_field/ward_issue accept-publish lands in Task 39 — see module
-    // docstring. The UI disables this form for those target types, but a
-    // direct POST is still rejected defensively rather than faking a publish.
-    return { kind: 'validation_error', key: 'curator.queueItem.error.acceptUnsupported' };
+export async function handleFlagFix(actor: CuratorActor, item: QueueItemDetail, form: FormData): Promise<FixOutcome> {
+  if (item.fix.kind === 'none' || !item.candidate) {
+    const noAffidavit = item.candidate !== null && item.candidate.pdfUrl === null;
+    return { kind: 'refused', key: noAffidavit ? 'curator.fix.error.noAffidavit' : 'curator.fix.error.unsupported' };
   }
-
-  const sourceUrl = String(form.get('sourceUrl') ?? '').trim();
-  const sourceType: SourceType = String(form.get('sourceType') ?? '') === 'official' ? 'official' : 'curator';
-  const authoredLang: AuthoredLang = String(form.get('authoredLang') ?? '') === 'kn' ? 'kn' : 'en';
-  const notDeclared = form.get('notDeclared') != null;
-  const valueEnRaw = String(form.get('valueEn') ?? '').trim();
-  const valueKnRaw = String(form.get('valueKn') ?? '').trim();
-  const confirmed = form.get('confirmPublish') != null;
-
-  // Server-side belt-and-suspenders for the "publishes immediately to
-  // /ward/{id}" confirmation checkbox (design-system.md §7.13) — the HTML
-  // `required` attribute only stops a REAL browser submission; a direct POST
-  // (or a future non-browser client) must not be able to skip it.
-  if (!confirmed) {
-    return { kind: 'validation_error', key: 'curator.queueItem.error.confirmRequired' };
+  const candidate = item.candidate;
+  const sourceUrl = candidate.pdfUrl!;
+  let fix: FlagFix;
+  if (item.fix.kind === 'ward') {
+    const parsed = await parseWardFix(form, candidate.wardId);
+    if (!parsed.ok) return { kind: 'refused', key: parsed.key };
+    fix = { kind: 'ward', candidateId: candidate.id, wardId: parsed.wardId, sourceUrl };
+  } else {
+    const key = item.fix.field.key;
+    const parsed = parseFieldFix(form, key, await publishedFieldData(candidate, key));
+    if (!parsed.ok) return { kind: 'refused', key: parsed.key, error: parsed.error, raw: parsed.raw };
+    fix = { kind: 'field', candidateId: candidate.id, data: parsed.data, sourceUrl };
   }
-  if (!sourceUrl || !isHttpUrl(sourceUrl)) {
-    return { kind: 'validation_error', key: 'curator.queueItem.error.sourceRequired' };
-  }
-  if (!notDeclared && !valueEnRaw && !valueKnRaw) {
-    return { kind: 'validation_error', key: 'curator.queueItem.error.valueRequired' };
-  }
-
   try {
-    await resolveFlag(actor, item.id, {
-      accept: true,
-      publish: {
-        candidateId: item.candidateField.candidateId,
-        fieldKey: item.candidateField.fieldKey,
-        valueEn: valueEnRaw || null,
-        valueKn: valueKnRaw || null,
-        notDeclared,
-        sourceUrl,
-        sourceType,
-        authoredLang,
-      },
-    });
+    await resolveFlag(actor, item.id, { accept: true, fix });
   } catch (err) {
-    if (err instanceof Error && err.message === 'flag_already_resolved') {
-      return { kind: 'already_resolved' };
-    }
+    if (err instanceof Error && err.message === 'flag_already_resolved') return { kind: 'already_resolved' };
     throw err;
   }
-
   return { kind: 'accepted' };
 }
 
-/** Handles the REJECT form — a reason is required (PRD §6.1 step 3); same `flag_already_resolved` handling as `handleAccept`. */
+/** Handles the REJECT form — a reason is required (PRD §6.1 step 3); same `flag_already_resolved` handling as `handleFlagFix`. */
 export async function handleReject(actor: CuratorActor, itemId: number, form: FormData): Promise<ResolveOutcome> {
   const reason = String(form.get('reason') ?? '').trim();
   if (!reason) {
@@ -620,8 +584,7 @@ export async function handleCandidateCreate(
  * Handles ONE report-card field's form on `/curator/candidate/{id}`
  * (`formAction=field:{fieldKey}`). SOURCE REQUIRED (PRD §11 — source is the
  * trust mechanism): a submission with a value (or `notDeclared`) but no
- * source is rejected before anything is published — this mirrors
- * `handleAccept`'s identical rule for the flag-queue accept path. A
+ * source is rejected before anything is published. A
  * `notDeclared` field still needs a source (the affidavit itself, even when
  * it declares nothing) — there is no path that skips this check.
  */

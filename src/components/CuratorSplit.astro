@@ -1,0 +1,59 @@
+---
+/**
+ * The curator's working layout: the affidavit on the left, staying in view,
+ * and what is being decided on the right. On a narrow screen the two stack
+ * and the scan collapses to a link. With no affidavit there is one column.
+ */
+import AffidavitScan from './AffidavitScan.astro';
+import type { Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  pdfUrl: string | null;
+}
+
+const { lang, pdfUrl } = Astro.props;
+---
+
+<div class:list={['split', { 'split--single': !pdfUrl }]}>
+  {pdfUrl && <AffidavitScan lang={lang} pdfUrl={pdfUrl} collapse />}
+  <section class="split-panel">
+    <slot />
+  </section>
+</div>
+
+<script>
+  import { initAffidavitFields } from '../islands/AffidavitFields';
+  initAffidavitFields();
+</script>
+
+<style>
+  .split-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    padding: var(--space-6) var(--container-pad-x) var(--space-8);
+  }
+
+  .split--single .split-panel {
+    max-width: var(--container-prose);
+    margin-inline: auto;
+  }
+
+  /* Side by side, filling the viewport below the 56px bar: the scan stays
+     put and only the panel scrolls, as on the transcriber's reading screen. */
+  @media (min-width: 900px) {
+    .split:not(.split--single) {
+      display: grid;
+      grid-template-columns: minmax(0, 58fr) minmax(26rem, 42fr);
+      height: calc(100vh - 56px);
+    }
+
+    .split:not(.split--single) .split-panel {
+      min-height: 0;
+      overflow-y: auto;
+      padding-inline: var(--space-6);
+    }
+  }
+</style>

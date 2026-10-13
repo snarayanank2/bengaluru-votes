@@ -30,6 +30,11 @@ export const CANDIDATE_PROFILE_LABEL_KEYS: Record<CandidateProfileFieldKey, stri
   ec_affidavit: 'candidate.field.ecAffidavit',
 };
 
+/** The i18n key of a profile field's label, or null for a key that is not a profile field (rows older than the fixed field set). */
+export function profileLabelKey(fieldKey: string | null): string | null {
+  return fieldKey !== null && Object.hasOwn(CANDIDATE_PROFILE_LABEL_KEYS, fieldKey) ? CANDIDATE_PROFILE_LABEL_KEYS[fieldKey as CandidateProfileFieldKey] : null;
+}
+
 export function pickCandidateValue(
   lang: Lang,
   valueEn: string | null | undefined,

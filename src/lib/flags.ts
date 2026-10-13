@@ -37,7 +37,7 @@ import { db, type Tx } from '../db/client';
 import { candidates, flagItems, flagSubmissions } from '../db/schema';
 import { FLAGGABLE_FIELD_KEYS } from './candidate-profile';
 import { isUniqueViolation } from './db-errors';
-import { publishCandidateFieldTx, type PublishCandidateFieldInput } from './publish';
+import { moveCandidateWard, publishAffidavitFields, type FieldData } from './affidavit-publish';
 import { translateFieldSoon } from './translate-runtime';
 
 export type FlagTargetType = 'candidate_field' | 'ward_field' | 'ward_issue';
@@ -92,9 +92,12 @@ export async function deriveTargetWardId(targetType: FlagTargetType, targetRef: 
   return row.wardId;
 }
 
-export type ResolveFlagResolution =
-  | { accept: true; publish: PublishCandidateFieldInput }
-  | { accept: false; reason: string };
+/** What accepting a flag publishes: one affidavit field's corrected value, or the candidate moved to another ward. `sourceUrl` is the stored affidavit it was checked against. */
+export type FlagFix =
+  | { kind: 'field'; candidateId: number; data: FieldData; sourceUrl: string }
+  | { kind: 'ward'; candidateId: number; wardId: number; sourceUrl: string };
+
+export type ResolveFlagResolution = { accept: true; fix: FlagFix } | { accept: false; reason: string };
 
 /** Finds the current PENDING flag_items row for `targetRef`, if any. */
 async function selectPending(tx: Tx, targetRef: string): Promise<{ id: number } | undefined> {
@@ -172,10 +175,10 @@ export async function submitFlag(userId: number, input: SubmitFlagInput): Promis
  * Resolves a queue item (curator/admin only — PRD §6.1). Both roles are
  * city-wide, so there is no per-ward check.
  *
- * ACCEPT (candidate_field targets only, for now — ward_field/ward_issue
- * accept-publish paths land in Tasks 34/39): publishes the field via
- * {@link publishCandidateFieldTx} and marks the item `accepted` in the
- * SAME transaction, so a publish can never land without its flag item
+ * ACCEPT: applies the fix — a structured field correction
+ * ({@link publishAffidavitFields}, as a value a person checked) or a ward
+ * move ({@link moveCandidateWard}) — and marks the item `accepted` in the
+ * SAME transaction, so a correction can never land without its flag item
  * being marked resolved (or vice versa).
  *
  * REJECT: marks the item `rejected` with `reason`; never publishes
@@ -205,7 +208,7 @@ export async function resolveFlag(
   flagItemId: number,
   resolution: ResolveFlagResolution,
 ): Promise<void> {
-  const published = await db.transaction(async (tx) => {
+  const translate = await db.transaction(async (tx) => {
     const [item] = await tx.select().from(flagItems).where(eq(flagItems.id, flagItemId)).for('update');
 
     if (!item || item.status !== 'pending') {
@@ -213,25 +216,20 @@ export async function resolveFlag(
     }
 
     if (resolution.accept) {
-      // Task 31 scope: accept only supports candidate_field targets, via
-      // the shared publish core. ward_field/ward_issue accept-publish
-      // paths are added by Tasks 34/39 (a discriminated union over
-      // resolution.publish's target type, once those publish helpers
-      // exist) — this is not a runtime branch yet because there is only
-      // one publish path to call.
-      const { id: fieldId, translationStatus } = await publishCandidateFieldTx(tx, actor, resolution.publish);
+      const { fix } = resolution;
+      let needsTranslation: number[] = [];
+      if (fix.kind === 'field') {
+        needsTranslation = await publishAffidavitFields(tx, actor, fix.candidateId, [fix.data], { sourceUrl: fix.sourceUrl, checked: true });
+      } else {
+        await moveCandidateWard(tx, fix.candidateId, fix.wardId, fix.sourceUrl);
+      }
 
       await tx
         .update(flagItems)
-        .set({
-          status: 'accepted',
-          resolutionReason: null,
-          resolvedBy: actor.userId,
-          resolvedAt: new Date(),
-        })
+        .set({ status: 'accepted', resolutionReason: null, resolvedBy: actor.userId, resolvedAt: new Date() })
         .where(and(eq(flagItems.id, flagItemId), eq(flagItems.status, 'pending')));
 
-      return { fieldId, translationStatus };
+      return needsTranslation;
     }
 
     await tx
@@ -244,16 +242,11 @@ export async function resolveFlag(
       })
       .where(and(eq(flagItems.id, flagItemId), eq(flagItems.status, 'pending')));
 
-    return null;
+    return [];
   });
 
-  // Mirrors publishCandidateField: only fire the (fire-and-forget)
-  // translation kickoff once the transaction has actually committed, only
-  // on the accept path (a reject never publishes anything to translate),
-  // and only when the publish-path coordination (`decideTranslationStatus`,
-  // src/lib/publish.ts) decided this was a `'pending'` change — not a
-  // `'manual'` translation edit (Task 40; architecture §9).
-  if (published !== null && published.translationStatus === 'pending') {
-    translateFieldSoon({ table: 'candidate_fields', id: published.fieldId });
-  }
+  // Only once the transaction has committed: a rolled-back fix must not
+  // start a translation for a value that was never written. A reject, a
+  // ward move and a fix whose English text did not change hand back nothing.
+  for (const fieldId of translate) translateFieldSoon({ table: 'candidate_fields', id: fieldId });
 }

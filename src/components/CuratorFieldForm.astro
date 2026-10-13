@@ -1,0 +1,128 @@
+---
+/**
+ * One affidavit field as a curator corrects it: the field's structured
+ * inputs, the required "publishes immediately" tick, and the button. A form
+ * of its own, so a page may hold one (a flag) or several (the candidate
+ * editor); `formAction` tells the route twin which was posted.
+ *
+ * After a refused save the caller passes `raw` (exactly what was posted)
+ * and the form shows that instead of the published value.
+ */
+import AffidavitFieldInputs from './AffidavitFieldInputs.astro';
+import Button from './Button.astro';
+import { t, type Lang } from '../i18n';
+import { CSRF_FIELD_NAME } from '../lib/csrf';
+import type { FieldError, RawField } from '../lib/affidavit-form';
+import type { FixField } from '../lib/curator-fix';
+
+interface Props {
+  lang: Lang;
+  csrfToken: string;
+  formAction: string;
+  field: FixField;
+  label: string;
+  /** The public path the value appears on, named in the confirmation. */
+  confirmPath: string;
+  submitLabel: string;
+  error?: FieldError;
+  raw?: RawField;
+}
+
+const { lang, csrfToken, formAction, field, label, confirmPath, submitLabel, error, raw } = Astro.props;
+---
+
+<form method="post">
+  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+  <input type="hidden" name="formAction" value={formAction} />
+  <fieldset class:list={['field', { 'field--error': error }]} data-field={field.key}>
+    <legend>
+      <span class="field-name">{label}</span>
+      {
+        (field.aiExtracted || field.checked) && (
+          <span class:list={['badge', field.checked ? 'badge--checked' : 'badge--ai']}>
+            {t(lang, field.checked ? 'curator.fix.badge.checked' : 'curator.fix.badge.ai')}
+          </span>
+        )
+      }
+    </legend>
+    <AffidavitFieldInputs lang={lang} fieldKey={field.key} status={raw?.status ?? field.status} inputs={raw?.inputs ?? field.inputs} error={error} />
+    <label class="confirm">
+      <input type="checkbox" name="confirmPublish" required />
+      <span>{t(lang, 'curator.fix.confirm', { path: confirmPath })}</span>
+    </label>
+    <div class="actions">
+      <Button type="submit" variant="primary" lang={lang}>{submitLabel}</Button>
+    </div>
+  </fieldset>
+</form>
+
+<style>
+  form {
+    min-width: 0;
+  }
+
+  .field {
+    margin: 0;
+    padding: var(--space-4);
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .field--error {
+    border-color: var(--color-danger);
+  }
+
+  .field legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+    margin-left: calc(-1 * var(--space-2));
+  }
+
+  .field-name {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: var(--text-lg);
+  }
+
+  .badge {
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .badge--ai {
+    background: var(--color-accent-surface);
+    color: var(--color-text);
+  }
+
+  .badge--checked {
+    background: var(--color-primary-surface);
+    color: var(--color-primary);
+  }
+
+  .confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-weight: 700;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+
+  .confirm input {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    margin-top: 2px;
+    accent-color: var(--color-primary);
+  }
+</style>
