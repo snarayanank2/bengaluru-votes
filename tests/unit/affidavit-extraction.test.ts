@@ -17,6 +17,12 @@ function good(): AffidavitExtraction {
     education: { status: 'value', level: 'Graduate', stated: 'B.Com, Bangalore University, 1994' },
     assets: { status: 'value', movableInr: 23456789, immovableInr: 100000000, totalInr: 123456789, note: 'Movable 23456789; immovable 100000000' },
     cases: { status: 'value', pending: 0, convictions: 0, note: 'Affidavit states nil' },
+    identity: {
+      name: { status: 'value', text: 'Demo Candidate' },
+      ward: { status: 'value', number: 23, name: 'Jogpalya', corporation: 'central' },
+      party: { status: 'value', text: 'Independent' },
+      gender: { status: 'value', gender: 'female' },
+    },
     confidence: 85,
   };
 }
@@ -91,7 +97,43 @@ describe('checkExtraction', () => {
   });
 });
 
+describe('checkExtraction identity', () => {
+  it('accepts a ward with only a number', () => {
+    const e = good();
+    e.identity.ward = { status: 'value', number: 23, name: null, corporation: null };
+    expect(checkExtraction(e)).toBeNull();
+  });
+
+  it('accepts a ward that is not declared', () => {
+    const e = good();
+    e.identity.ward = { status: 'not_declared', number: null, name: null, corporation: null };
+    expect(checkExtraction(e)).toBeNull();
+  });
+
+  it.each([
+    ['a name with status value and null text', (e: AffidavitExtraction) => { e.identity.name.text = null; }],
+    ['an empty name', (e: AffidavitExtraction) => { e.identity.name.text = '  '; }],
+    ['an empty party', (e: AffidavitExtraction) => { e.identity.party.text = ''; }],
+    ['a gender set when unreadable', (e: AffidavitExtraction) => { e.identity.gender = { status: 'unreadable', gender: 'male' }; }],
+    ['a ward with status value and no number', (e: AffidavitExtraction) => { e.identity.ward.number = null; }],
+    ['a ward number set when not declared', (e: AffidavitExtraction) => { e.identity.ward = { status: 'not_declared', number: 4, name: null, corporation: null }; }],
+    ['a ward name set when not declared', (e: AffidavitExtraction) => { e.identity.ward = { status: 'not_declared', number: null, name: 'X', corporation: null }; }],
+    ['a ward number of zero', (e: AffidavitExtraction) => { e.identity.ward.number = 0; }],
+  ])('rejects %s', (_name, mutate) => {
+    const e = good();
+    mutate(e);
+    expect(checkExtraction(e)).toMatch(/identity/);
+  });
+});
+
 describe('extractAffidavit', () => {
+  it('rejects a response with no identity', async () => {
+    const { identity: _dropped, ...rest } = wire(good());
+    const { client } = fakeClient(message(JSON.stringify(rest)));
+    const outcome = await extractAffidavit(PDF, 'claude-opus-5-5', client);
+    expect(outcome).toMatchObject({ ok: false, failure: 'invalid_output' });
+  });
+
   it('returns the extraction and usage on a valid response', async () => {
     const { client, create } = fakeClient(message(JSON.stringify(wire(good()))));
     const outcome = await extractAffidavit(PDF, 'claude-haiku-5-5', client);

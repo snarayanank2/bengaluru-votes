@@ -3,9 +3,9 @@
  * one expected entry in, five scored values out. No I/O.
  */
 import * as z from 'zod/v4';
-import { EDUCATION_LEVELS, type AffidavitExtraction } from '../../src/lib/affidavit-extraction';
+import { EDUCATION_LEVELS, GENDERS, type AffidavitExtraction } from '../../src/lib/affidavit-extraction';
 
-export const SCORED_KEYS = ['age', 'educationLevel', 'assetsTotalInr', 'casesPending', 'casesConvictions'] as const;
+export const SCORED_KEYS = ['age', 'educationLevel', 'assetsTotalInr', 'casesPending', 'casesConvictions', 'name', 'party', 'gender'] as const;
 export type ScoredKey = (typeof SCORED_KEYS)[number];
 
 /** `unscored`: there is no expected value, so the model is not judged on it. */
@@ -19,6 +19,10 @@ export const expectedEntrySchema = z.strictObject({
   assetsTotalInr: z.number().int().nullable(),
   casesPending: z.number().int().nullable(),
   casesConvictions: z.number().int().nullable(),
+  /** Identity. Absent or null means there is no expected value and it is unscored. */
+  name: z.string().nullable().optional(),
+  party: z.string().nullable().optional(),
+  gender: z.enum(GENDERS).nullable().optional(),
   sourceUrl: z.string(),
   retrievedOn: z.string(),
   verifiedBy: z.strictObject({
@@ -27,6 +31,9 @@ export const expectedEntrySchema = z.strictObject({
     assetsTotalInr: verifier,
     casesPending: verifier,
     casesConvictions: verifier,
+    name: verifier.optional(),
+    party: verifier.optional(),
+    gender: verifier.optional(),
   }),
   /** One line per value Siva overruled, keyed by scored key. */
   reasons: z.record(z.string(), z.string()).optional(),
@@ -66,8 +73,42 @@ function score(
   return { outcome: got === expected ? 'correct' : 'wrong', got, expected };
 }
 
+/** Lower-case, letters and digits only, words sorted: "C.Govindaraj" equals "Govindaraj C". */
+export function normalizeName(name: string): string {
+  return name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).sort().join(' ');
+}
+
+/** Abbreviations MyNeta uses, mapped to the full names an affidavit states. */
+const PARTY_ALIASES: Record<string, string> = {
+  bjp: 'bharatiyajanataparty',
+  inc: 'indiannationalcongress',
+  jds: 'janatadalsecular',
+  aap: 'aamaadmiparty',
+  ind: 'independent',
+};
+
+export function normalizeParty(party: string): string {
+  const squashed = party.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  return PARTY_ALIASES[squashed] ?? squashed;
+}
+
+/** Scores a text value after normalising both sides; reports the raw strings. */
+function scoreText(
+  status: Status | undefined,
+  got: string | null,
+  expected: string | null | undefined,
+  normalize: (value: string) => string,
+): Score {
+  if (expected == null || status === undefined) return { outcome: 'unscored', got, expected: expected ?? null };
+  if (status === 'unreadable') return { outcome: 'abstained', got, expected };
+  if (status === 'not_declared' || got === null) return { outcome: 'wrong', got, expected };
+  return { outcome: normalize(got) === normalize(expected) ? 'correct' : 'wrong', got, expected };
+}
+
 export function grade(extraction: AffidavitExtraction, expected: ExpectedEntry): GradeResult {
   const { age, education, assets, cases } = extraction;
+  // Results saved before identity existed have none; those values stay unscored.
+  const identity = extraction.identity as AffidavitExtraction['identity'] | undefined;
 
   let assetsWithin1Percent: boolean | null = null;
   if (assets.totalInr !== null && expected.assetsTotalInr !== null) {
@@ -82,6 +123,9 @@ export function grade(extraction: AffidavitExtraction, expected: ExpectedEntry):
       assetsTotalInr: score(assets.status, assets.totalInr, expected.assetsTotalInr),
       casesPending: score(cases.status, cases.pending, expected.casesPending, true),
       casesConvictions: score(cases.status, cases.convictions, expected.casesConvictions, true),
+      name: scoreText(identity?.name.status, identity?.name.text ?? null, expected.name, normalizeName),
+      party: scoreText(identity?.party.status, identity?.party.text ?? null, expected.party, normalizeParty),
+      gender: scoreText(identity?.gender.status, identity?.gender.gender ?? null, expected.gender, (v) => v),
     },
     assetsWithin1Percent,
   };

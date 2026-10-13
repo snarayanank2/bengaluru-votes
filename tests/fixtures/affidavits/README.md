@@ -38,7 +38,7 @@ f1ff05a0be05b8fd3b6a25693dd94ff2c336c8004576f812bb9d6bd811eeab4f  test-affidavit
 
 ## Expected values
 
-`expected.json` holds the expected extraction for each PDF, keyed by filename: age, education level, total assets in rupees, pending criminal cases and convictions. Values come from each candidate's page on [MyNeta](https://myneta.info/Karnataka2023/) (`sourceUrl`, `retrievedOn`), which transcribes the same affidavits independently.
+`expected.json` holds the expected extraction for each PDF, keyed by filename: age, education level, total assets in rupees, pending criminal cases and convictions, plus the candidate's name and party as MyNeta spells them. `gender` is `null` throughout because MyNeta does not state it, so the evaluation leaves it unscored; names are compared ignoring case, punctuation and word order, and party abbreviations are matched to full names. Values come from each candidate's page on [MyNeta](https://myneta.info/Karnataka2023/) (`sourceUrl`, `retrievedOn`), which transcribes the same affidavits independently.
 
 `verifiedBy` records the authority for each value: `myneta`, or `siva` where Siva read the PDF and overruled MyNeta, with a one-line entry in `reasons`. A `null` value means there is no expected figure and the evaluation leaves it unscored.
 

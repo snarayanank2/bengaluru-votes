@@ -38,6 +38,11 @@ export type EducationLevel = (typeof EDUCATION_LEVELS)[number];
 
 const status = z.enum(['value', 'not_declared', 'unreadable']);
 
+/** The five GBA corporations, as `wards.corporation` spells them. */
+export const CORPORATIONS = ['north', 'south', 'east', 'west', 'central'] as const;
+export const GENDERS = ['male', 'female', 'other'] as const;
+export type Gender = (typeof GENDERS)[number];
+
 /**
  * Flat objects with nullable values rather than a union per status:
  * structured outputs support only a subset of JSON Schema, and this shape
@@ -61,6 +66,18 @@ export const extractionSchema = z.strictObject({
     pending: z.number().int().nullable(),
     convictions: z.number().int().nullable(),
     note: z.string().nullable(),
+  }),
+  /** Who the affidavit is for. Ties an uploaded PDF to a candidate and ward. */
+  identity: z.strictObject({
+    name: z.strictObject({ status, text: z.string().nullable() }),
+    ward: z.strictObject({
+      status,
+      number: z.number().int().nullable(),
+      name: z.string().nullable(),
+      corporation: z.enum(CORPORATIONS).nullable(),
+    }),
+    party: z.strictObject({ status, text: z.string().nullable() }),
+    gender: z.strictObject({ status, gender: z.enum(GENDERS).nullable() }),
   }),
   confidence: z.number().int(),
 });
@@ -93,6 +110,26 @@ export function checkExtraction(e: AffidavitExtraction): string | null {
       if (fieldStatus !== 'value' && value !== null) return `${name}.${key} is set but status is ${fieldStatus}`;
     }
   }
+  // Identity. A ward needs only its number; the name and corporation are
+  // extra evidence the affidavit may not give.
+  const { name, ward, party, gender } = e.identity;
+  const required: Array<[string, string, number | string | null]> = [
+    ['identity.name.text', name.status, name.text],
+    ['identity.party.text', party.status, party.text],
+    ['identity.gender.gender', gender.status, gender.gender],
+    ['identity.ward.number', ward.status, ward.number],
+  ];
+  for (const [path, fieldStatus, value] of required) {
+    if (fieldStatus === 'value' && value === null) return `${path} is null but status is value`;
+    if (fieldStatus !== 'value' && value !== null) return `${path} is set but status is ${fieldStatus}`;
+  }
+  if (ward.status !== 'value' && (ward.name !== null || ward.corporation !== null)) {
+    return `identity.ward is set but status is ${ward.status}`;
+  }
+  if (name.text !== null && name.text.trim() === '') return 'identity.name.text is empty';
+  if (party.text !== null && party.text.trim() === '') return 'identity.party.text is empty';
+  if (ward.number !== null && ward.number < 1) return 'identity.ward.number is out of range';
+
   if (e.age.years !== null && (e.age.years < 1 || e.age.years > 120)) return 'age.years is out of range';
   if (e.assets.movableInr !== null && e.assets.movableInr < 0) return 'assets.movableInr is negative';
   if (e.assets.immovableInr !== null && e.assets.immovableInr < 0) return 'assets.immovableInr is negative';
@@ -141,7 +178,11 @@ Fields:
 - education: "stated" is the highest qualification as the affidavit states it, written in English. "level" is the closest of: Illiterate, Literate, 5th Pass, 8th Pass, 10th Pass, 12th Pass, Graduate, Graduate Professional, Post Graduate, Doctorate, Others. Use "Graduate Professional" for professional degrees such as LLB, MBBS, BE or CA. PUC, pre-university, intermediate and 10+2 are "12th Pass"; SSLC, matriculation and high school are "10th Pass".
 - assets: "movableInr" and "immovableInr" are the total values in whole rupees of movable assets and of immovable assets, each added together for the candidate, spouse, dependents and HUF. Do not subtract liabilities and do not add the two together. Use the totals the affidavit itself prints; do not re-add individual line items yourself. Where the summary page (Part B) and a total printed in the detailed tables disagree, use the total printed in the detailed tables and say so in the note. Take each stated value at face value: where a person holds only a share of a property, use the value the affidavit gives without scaling it, and if it is unclear whether that value is for the whole property or for the share, say so in the note and lower your confidence. "note" is one line giving each person's movable and immovable figures you used.
 - cases: "pending" is the number of pending criminal cases and "convictions" is the number of cases with a conviction. Count a case with a conviction only under "convictions", never under "pending", even when an appeal against it is pending. If the affidavit says nil, none or not applicable, that is status "value" with 0 and 0. "note" is one line, for example the sections cited, or that the affidavit states nil.
-- confidence: one whole number from 0 to 100 for how confident you are that every value above is correct for this document.
+- identity.name: "text" is the candidate's full name in English letters, as the affidavit declares it.
+- identity.ward: the local-body ward this nomination is for. "number" is the ward number as a whole number. "name" is the ward name in English, or null if not given. "corporation" is the city corporation the ward belongs to, one of north, south, east, west, central, or null if the affidavit does not say. An Assembly or Parliamentary constituency is not a ward: for an affidavit filed for such an election set the status to "not_declared".
+- identity.party: "text" is the name of the political party that set up the candidate, in English. Use "Independent" when the candidate has no party.
+- identity.gender: one of male, female, other, only as the affidavit states or plainly shows it (for example "son of", "wife of"). Do not guess from the name.
+- confidence: one whole number from 0 to 100 for how confident you are that every value above, identity included, is correct for this document.
 
 Write every value and note in English, converting Kannada text and numerals.`;
 

@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import type { AffidavitExtraction } from '../../src/lib/affidavit-extraction';
-import { grade, expectedFileSchema, type ExpectedEntry } from '../../scripts/eval-extraction/grade';
+import { grade, normalizeName, normalizeParty, expectedFileSchema, type ExpectedEntry } from '../../scripts/eval-extraction/grade';
 
 function extraction(): AffidavitExtraction {
   return {
@@ -11,6 +11,12 @@ function extraction(): AffidavitExtraction {
     education: { status: 'value', level: 'Graduate', stated: 'B.Com' },
     assets: { status: 'value', movableInr: 0, immovableInr: 1000000, totalInr: 1000000, note: null },
     cases: { status: 'value', pending: 2, convictions: 0, note: null },
+    identity: {
+      name: { status: 'value', text: 'Govindaraj C' },
+      ward: { status: 'not_declared', number: null, name: null, corporation: null },
+      party: { status: 'value', text: 'Janata Dal (Secular)' },
+      gender: { status: 'value', gender: 'male' },
+    },
     confidence: 80,
   };
 }
@@ -38,7 +44,7 @@ describe('grade', () => {
   it('marks every value correct on an exact match', () => {
     const result = grade(extraction(), expected());
     expect(Object.values(result.scores).map((s) => s.outcome)).toEqual([
-      'correct', 'correct', 'correct', 'correct', 'correct',
+      'correct', 'correct', 'correct', 'correct', 'correct', 'unscored', 'unscored', 'unscored',
     ]);
     expect(result.assetsWithin1Percent).toBe(true);
   });
@@ -105,6 +111,41 @@ describe('grade', () => {
     expect(grade(e, x).assetsWithin1Percent).toBe(true);
     e.assets.totalInr = 10;
     expect(grade(e, x).assetsWithin1Percent).toBe(false);
+  });
+});
+
+describe('identity grading', () => {
+  it('ignores case, punctuation and word order in names', () => {
+    expect(normalizeName('C.Govindaraj')).toBe(normalizeName('govindaraj c'));
+    expect(normalizeName('B. A. Basavaraja')).not.toBe(normalizeName('BA Basavaraj'));
+  });
+
+  it('treats a party abbreviation and its full name as the same party', () => {
+    expect(normalizeParty('JD(S)')).toBe(normalizeParty('Janata Dal (Secular)'));
+    expect(normalizeParty('BJP')).toBe(normalizeParty('Bharatiya Janata Party'));
+    expect(normalizeParty('INC')).not.toBe(normalizeParty('AAP'));
+  });
+
+  it('scores name, party and gender when expected values exist', () => {
+    const x = { ...expected(), name: 'C.Govindaraj', party: 'JD(S)', gender: 'male' as const };
+    const { scores } = grade(extraction(), x);
+    expect(scores.name.outcome).toBe('correct');
+    expect(scores.party.outcome).toBe('correct');
+    expect(scores.gender.outcome).toBe('correct');
+  });
+
+  it('marks a different name wrong and an unreadable one abstained', () => {
+    const x = { ...expected(), name: 'Someone Else' };
+    expect(grade(extraction(), x).scores.name.outcome).toBe('wrong');
+    const e = extraction();
+    e.identity.name = { status: 'unreadable', text: null };
+    expect(grade(e, x).scores.name.outcome).toBe('abstained');
+  });
+
+  it('leaves identity unscored for a saved result that predates it', () => {
+    const { identity: _dropped, ...old } = extraction();
+    const x = { ...expected(), name: 'C.Govindaraj' };
+    expect(grade(old as AffidavitExtraction, x).scores.name.outcome).toBe('unscored');
   });
 });
 

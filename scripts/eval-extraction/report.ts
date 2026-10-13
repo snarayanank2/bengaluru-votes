@@ -75,10 +75,18 @@ export function pendingPairs(files: string[], models: readonly ExtractionModel[]
   return pending;
 }
 
+/** A row saved before a scored key existed has no score for it; such a value is simply not counted. */
+function scoreOf(row: ResultRow, key: ScoredKey) {
+  return row.grade.scores[key] as GradeResult['scores'][ScoredKey] | undefined;
+}
+
 function tally(rows: ResultRow[]): Record<Outcome, number> {
   const counts: Record<Outcome, number> = { correct: 0, wrong: 0, abstained: 0, unscored: 0 };
   for (const row of rows) {
-    for (const key of SCORED_KEYS) counts[row.grade.scores[key].outcome] += 1;
+    for (const key of SCORED_KEYS) {
+      const s = scoreOf(row, key);
+      if (s) counts[s.outcome] += 1;
+    }
   }
   return counts;
 }
@@ -158,7 +166,11 @@ export function summarize(rows: ResultRow[], errors: ErrorRow[]): string {
     const mine = rows.filter((r) => r.model === model);
     for (const key of SCORED_KEYS) {
       const counts: Record<Outcome, number> = { correct: 0, wrong: 0, abstained: 0, unscored: 0 };
-      for (const r of mine) counts[r.grade.scores[key].outcome] += 1;
+      for (const r of mine) {
+        const s = scoreOf(r, key);
+        if (s) counts[s.outcome] += 1;
+      }
+      if (counts.correct + counts.wrong + counts.abstained + counts.unscored === 0) continue;
       lines.push(`| ${model} | ${key} | ${counts.correct} | ${counts.wrong} | ${counts.abstained} | ${counts.unscored} |`);
     }
   }
@@ -203,6 +215,9 @@ const NOTE_FOR: Record<ScoredKey, (e: AffidavitExtraction) => string | null> = {
   assetsTotalInr: (e) => e.assets.note,
   casesPending: (e) => e.cases.note,
   casesConvictions: (e) => e.cases.note,
+  name: () => null,
+  party: () => null,
+  gender: () => null,
 };
 
 export function disagreements(rows: ResultRow[]): string {
@@ -220,7 +235,8 @@ export function disagreements(rows: ResultRow[]): string {
     const ordered = EXTRACTION_MODELS.flatMap((m) => mine.filter((r) => r.model === m));
     for (const row of ordered) {
       for (const key of SCORED_KEYS) {
-        const s = row.grade.scores[key];
+        const s = scoreOf(row, key);
+        if (!s) continue;
         if (s.outcome === 'correct' && !s.flag) continue;
         if (s.outcome === 'unscored') continue;
         const what =
