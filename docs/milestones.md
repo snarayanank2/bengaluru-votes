@@ -297,6 +297,9 @@ Admins can add and block operators without a shell on the box.
 - **"Generate a sign-in link" is dropped.** It existed to decouple staff access from messaging vendors; email OTP does that job well enough (see below). Its tracker row (106) was deleted on 2026-08-15.
 - Analytics functionality for admins: **TBD on the sheet**, and unscoped here.
 - `npm run seed:admin` stays the bootstrap. It remains the only path to the first admin.
+- **Shipped 2026-10-13:** add a user with a role at `/admin/users`; the `transcriber` role in the schema, assignable at `/admin/roles`. Search, ban, reactivate and erase were already there, and banning already ends live sessions (`readSession` rejects a non-active user on every request).
+- **Still open:** the 24-hour staff session. Sessions are 1 hour sliding for every role.
+- **Temporary:** M6 no longer waits on M4a to be usable. Until email works for OTP, staff sign in with a shared master password (`docs/architecture.md` §7, §13).
 
 **Testable when** an admin can invite a transcriber and a curator, watch each sign in by email OTP, confirm a staff session survives a working day and a citizen's does not, then block one and watch that person lose access on their next request.
 

@@ -50,7 +50,7 @@ Seeds (order matters — `seed:dev` depends on wards existing):
 ```sh
 npm run seed:wards          # the real 369 wards, from data/gba.geojson
 npm run seed:dev            # fictional demo content; REFUSES under NODE_ENV=production
-npm run seed:admin -- <email>   # idempotent; the ONLY place a user becomes 'admin'
+npm run seed:admin -- <email>   # idempotent; bootstraps the first admin (later ones: /admin/users or /admin/roles)
 ```
 
 ### Running the app locally
@@ -160,9 +160,9 @@ Register/Login (fallback page `/login`) and Flag are **modals** that overlay wit
 
 ### Roles
 
-Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Data curator (**city-wide**, no ward or zone assignment) · Admin (city-wide). `roleEnum` in the schema is the authority on what exists today; `src/middleware.ts` is the authority on what each can do. There is no written permissions matrix at present.
+Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Transcriber · Data curator (**city-wide**, no ward or zone assignment) · Admin (city-wide). `roleEnum` in the schema is the authority on what exists today; `src/middleware.ts` is the authority on what each can do. There is no written permissions matrix at present.
 
-A fifth role, **transcriber**, is planned but not built: city-wide, and authorized by assignment rather than by role alone — "does an open assignment for this affidavit belong to this caller". That is a change to the enforcement model, not a new row in a table — see `docs/milestones.md` §10 before implementing it.
+**Transcriber** exists in `roleEnum` and can be assigned (2026-10-13), but has no routes yet: it can sign in and reach `/account` only. Its screens and its assignment-based authorization are still to build. It is city-wide, and authorized by assignment rather than by role alone — "does an open assignment for this affidavit belong to this caller". That is a change to the enforcement model, not a new row in a table — see `docs/milestones.md` §10 before implementing it.
 
 ## Gotchas that bite silently
 
@@ -175,7 +175,7 @@ A fifth role, **transcriber**, is planned but not built: city-wide, and authoriz
 
 ## Fixed decisions (don't relitigate without asking)
 
-- **Auth:** one email / WhatsApp OTP mechanism for *all* roles. No passwords, no 2FA, no sign-in links. **Staff (admin, curator, transcriber) are email-only**; only citizens get the WhatsApp channel. **Sessions: 24h for staff, 1h sliding idle for citizens.** `npm run seed:admin` bootstraps the first admin. Consequence worth holding: **SendGrid gates the entire curator/transcriber operation**, not just the campaign sends — but Meta/WhatsApp does not, so the 40-day queue is not in that path.
+- **Auth:** one email / WhatsApp OTP mechanism for *all* roles. No passwords, no 2FA, no sign-in links. **Staff (admin, curator, transcriber) are email-only**; only citizens get the WhatsApp channel. **Sessions: 24h for staff, 1h sliding idle for citizens.** `npm run seed:admin` bootstraps the first admin. Consequence worth holding: **SendGrid gates the entire curator/transcriber operation**, not just the campaign sends — but Meta/WhatsApp does not, so the 40-day queue is not in that path. **Temporary exception (2026-10-13): while there is no email sending, `MASTER_PASSWORD` turns `/login` into a shared-password form that signs in as any existing account, and parks citizen registration. It is removed when email works for OTP — `docs/architecture.md` §7, §13.** Sessions are 1h sliding for everyone in code today; the 24h staff session is not built.
 - **Curator publish:** trusted; immediate, no approval gate.
 - **Bilingual:** EN at root, KN under `/kn/`, each with its own URL.
 - **Deployment:** one Hostinger VPS (Mumbai, 4 vCPU / 16 GB) runs production Compose, from `/root/src/bengaluru-votes-production`. The staging site/stack was retired on 2026-09-18 and removed from the repo on 2026-10-13; production is the only environment. **There is no CI and no registry** (removed 2026-08-13): images are built on the box, and production deploys are run by hand with `deploy/deploy.sh production <tag>`. “Deploy” means production; there is no staging step. Nothing fires on push, merge or release. `deploy/runbook.md` ("Deploying") is the procedure; `architecture.md` §14.3/§14.4 is the design. Moved off the never-provisioned DigitalOcean Droplet on 2026-08-13.

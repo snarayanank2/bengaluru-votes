@@ -82,6 +82,10 @@ services:
       # `send_failed`. Set here for the e2e path and for the day a sandbox
       # SendGrid key gets added; it is not a working local login on its own.
       OTP_TEST_SINK: 'true'
+      # TEMPORARY master-password sign-in (src/lib/master-login.ts), in place
+      # until email works for OTP. Local-only value; with it set, /login takes
+      # any seeded account's email plus this password.
+      MASTER_PASSWORD: local-dev-only-master-password
       RETENTION_ENABLED: 'false'
       # Explicitly scoped to a loopback SITE_ORIGIN by recaptcha.ts; lets the
       # production-mode local container exercise anonymous forms without a key.

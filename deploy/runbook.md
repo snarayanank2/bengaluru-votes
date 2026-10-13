@@ -439,6 +439,7 @@ here in the same PR.
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | yes | Read by the `postgres:16` image itself to initialize, and by its healthcheck (`pg_isready -U ... -d ...`). Keep in sync with `DATABASE_URL`. |
 | `SITE_ORIGIN` | yes | `https://bengaluruvotes.opencity.in` — same-origin check in `src/middleware.ts` for unsafe methods, and CSP/absolute-URL building. |
 | `SESSION_SECRET` | yes | 32+ random bytes (e.g. `openssl rand -hex 32`). HMACs session cookies and peppers OTP code hashes (`src/lib/session.ts`, `src/lib/otp.ts`). App refuses to start without it when `NODE_ENV=production`. |
+| `MASTER_PASSWORD` | **temporary** — set until email works for OTP | `src/lib/master-login.ts`. When set (16+ characters, else the app throws on every request), `/login` becomes an email-or-phone plus password form, anyone holding the password can sign in as **any existing active account**, `/api/otp/*` answers 404 and citizen registration is hidden. Unset it to return to OTP. Generate with `openssl rand -hex 16`; avoid `#`, `$` and quotes, which env files can mangle. Shared by everyone who has it: removing one person means rotating it for all. |
 | `SENDGRID_API_KEY` | yes (real sends) | Email OTP + campaign sends (`src/lib/send/sendgrid.ts`). |
 | `SENDGRID_FROM_EMAIL` | yes (real sends) | Verified sender address for SendGrid. |
 | `SENDGRID_WEBHOOK_PUBLIC_KEY` | yes (real sends) | Verifies SendGrid's event-webhook signature (`src/pages/api/webhooks/sendgrid.ts`). |
@@ -476,6 +477,20 @@ log instead of sending. It exists for the local stack
 (`deploy/compose.local.yml`), where it guarantees nothing can message a real
 person. It must not be set in `.env.production`. (The staging environment
 that used to carry it, with vendor keys omitted, was retired on 2026-09-18.)
+
+### Rotating or removing the master password (temporary)
+
+The master password exists only until email works for OTP.
+
+Rotate (also how you remove one person's access):
+
+1. `openssl rand -hex 16`, and put the new value in `MASTER_PASSWORD` in `.env.production`.
+2. Restart the app: `docker compose -f deploy/compose.production.yml up -d app`.
+3. Share the new value out of band. Existing sessions stay valid for up to an hour of activity; to end them now, ban and reactivate the account at `/admin/users`, or rotate `SESSION_SECRET`, which signs everyone out.
+
+Remove (when email OTP works): delete the `MASTER_PASSWORD` line, restart the app, and confirm `/login` asks for a code again.
+
+First admin on a fresh box: `docker compose run --rm app npm run seed:admin -- <email>`, then sign in at `/login` with that email and the master password.
 
 ---
 

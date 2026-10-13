@@ -158,7 +158,7 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 ## 7. Language & access highlights
 
 - **Bilingual by default** — the whole platform works in **English and Kannada**; each language has its own shareable URL (Kannada under `/kn/`), with a toggle available to everyone and a saved preference for registered users.
-- **One simple login for everyone** — a one-time code, no passwords and no 2FA. Citizens can use email or WhatsApp; **staff always use email**. What differs is how long the session lasts: **24 hours for staff**, so a transcriber signs in once a working day, against a short idle timeout for citizens.
+- **One simple login for everyone** — a one-time code, no passwords and no 2FA. Citizens can use email or WhatsApp; **staff always use email**. What differs is how long the session lasts: **24 hours for staff**, so a transcriber signs in once a working day, against a short idle timeout for citizens. **Temporarily (from 2026-10-13, until email sending works) sign-in is by a shared master password instead, and citizen registration is paused.**
 - **No redirects** — registration and flagging are popups, so users stay on the page they were reading.
 - **Distinct URLs** — every page has its own shareable link under `bengaluruvotes.opencity.in`.
 
@@ -169,7 +169,7 @@ The correction loop connects citizens and curators. Both flagging and voting hap
 | Decision | Resolution |
 |---|---|
 | Curator publish gate | Curators are trusted; edits go live immediately, no second approval. |
-| Authentication | **One OTP mechanism for every role.** Citizens by email or WhatsApp; staff — admins, curators, transcribers — by **email only**. No passwords, no 2FA, no sign-in links. The first admin is bootstrapped with `npm run seed:admin`. |
+| Authentication | **One OTP mechanism for every role.** Citizens by email or WhatsApp; staff — admins, curators, transcribers — by **email only**. No passwords, no 2FA, no sign-in links. The first admin is bootstrapped with `npm run seed:admin`. **Temporarily (from 2026-10-13, until email sending works) sign-in is by a shared master password instead, and citizen registration is paused.** |
 | Registration & flagging | Both are popups — no redirection. |
 | Anonymous contribution | Issue voting needs no account; flagging still prompts for registration. |
 | Issue-vote visibility | Counts and percentages are returned only after that browser has voted in the ward. |
