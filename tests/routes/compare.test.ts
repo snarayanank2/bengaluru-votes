@@ -137,7 +137,6 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       const existing = await db.select({ id: schema.candidates.id }).from(schema.candidates).where(eq(schema.candidates.wardId, wardId));
       const ids = existing.map((c) => c.id);
       if (ids.length > 0) {
-        await db.delete(schema.candidateNewsLinks).where(inArray(schema.candidateNewsLinks.candidateId, ids));
         await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.candidateId, ids));
         await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, ids));
       }
@@ -258,7 +257,6 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       const existing = await db.select({ id: schema.candidates.id }).from(schema.candidates).where(eq(schema.candidates.wardId, wardId));
       const ids = existing.map((c) => c.id);
       if (ids.length > 0) {
-        await db.delete(schema.candidateNewsLinks).where(inArray(schema.candidateNewsLinks.candidateId, ids));
         await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.candidateId, ids));
         await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, ids));
       }

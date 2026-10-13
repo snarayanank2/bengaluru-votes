@@ -34,8 +34,8 @@ import { addWardIssue, renameWardIssue, removeWardIssue, listWardIssues } from '
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
 
-// High, task-specific ward ids (Task 39 brief) — readiness.test.ts owns
-// 99480-99492; this suite owns 99493-99499.
+// High, task-specific ward ids (Task 39 brief) — this suite owns
+// 99493-99499.
 const WARD_A = {
   id: 99493,
   nameEn: 'Ward Issues Test Ward A',

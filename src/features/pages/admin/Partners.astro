@@ -4,8 +4,7 @@
  * §5.12/§5.13/§9.1/§11). The distribution/reach operating dashboard: the
  * partner roster (add/edit, with slug + ward coverage), the ward-coverage
  * matrix (covered vs the 369-ward city, with the UNCOVERED set surfaced as
- * a work queue), the held-wards list (PRD §9.1's comms send-gate, with a
- * per-ward admin override), and the EOI triage queue split by path.
+ * a work queue), and the EOI triage queue split by path.
  *
  * PARTNERS ARE NOT A ROLE (PRD §5.12) — this page never touches
  * `users.role`; that's `/admin/roles`
@@ -17,7 +16,7 @@
  *
  * CONFIRMATION (design-system.md §7.13): every mutating form here uses the
  * same REQUIRED-checkbox convention as Roles.astro/Users.astro — a create/
- * update/override/accept/decline all take effect immediately (curator
+ * update/accept/decline all take effect immediately (curator
  * publish-style, PRD §14), so each gets an explicit "I understand..."
  * checkbox re-validated server-side by the route twin.
  */
@@ -25,31 +24,23 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Card from '../../../components/Card.astro';
 import Banner from '../../../components/Banner.astro';
 import Button from '../../../components/Button.astro';
-import Badge from '../../../components/Badge.astro';
 import FormField from '../../../components/FormField.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
-import type { PartnerRosterRow, PartnerCoverage, HeldWard, EoiRow } from '../../../lib/partners';
+import type { PartnerRosterRow, PartnerCoverage, EoiRow } from '../../../lib/partners';
 
 interface Props {
   lang: Lang;
   csrfToken: string;
   partners: PartnerRosterRow[];
   coverage: PartnerCoverage;
-  held: HeldWard[];
   eoisAwareness: EoiRow[];
   eoisCuration: EoiRow[];
   message?: { kind: 'notice' | 'error'; key: string };
 }
 
-const { lang, csrfToken, partners, coverage, held, eoisAwareness, eoisCuration, message } = Astro.props;
+const { lang, csrfToken, partners, coverage, eoisAwareness, eoisCuration, message } = Astro.props;
 const messageText = message ? t(lang, message.key) : undefined;
-
-const reasonLabelKeys: Record<HeldWard['reason'], string> = {
-  incomplete: 'admin.partners.held.reason.incomplete',
-  unsigned: 'admin.partners.held.reason.unsigned',
-  cleared: 'admin.partners.held.reason.cleared',
-};
 ---
 
 <AdminLayout lang={lang} title={t(lang, 'admin.partners.meta.title')} description={t(lang, 'admin.partners.meta.description')}>
@@ -164,61 +155,6 @@ const reasonLabelKeys: Record<HeldWard['reason'], string> = {
             <p>{t(lang, 'admin.partners.coverage.uncoveredCount', { count: coverage.uncovered.length })}</p>
             <p class="ward-id-list">{coverage.uncovered.join(', ')}</p>
           </>
-        )
-      }
-    </Card>
-
-    <Card>
-      <h2>{t(lang, 'admin.partners.held.heading')}</h2>
-      {
-        held.length === 0 ? (
-          <p class="placeholder-note">{t(lang, 'admin.partners.held.empty')}</p>
-        ) : (
-          <div class="table-scroll">
-            <table class="dense-table">
-              <thead>
-                <tr>
-                  <th>{t(lang, 'admin.partners.held.colWard')}</th>
-                  <th>{t(lang, 'admin.partners.held.colReason')}</th>
-                  <th>{t(lang, 'admin.partners.held.colStatus')}</th>
-                  <th>{t(lang, 'admin.partners.held.colAction')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {held.map((w) => (
-                  <tr>
-                    <td>{w.wardName}</td>
-                    <td>{t(lang, reasonLabelKeys[w.reason])}</td>
-                    <td>
-                      {w.overridden ? (
-                        <Badge variant="ward-ready" lang={lang}>
-                          {t(lang, 'admin.partners.held.overriddenLabel')}
-                        </Badge>
-                      ) : (
-                        <Badge variant="ward-held" lang={lang} />
-                      )}
-                    </td>
-                    <td>
-                      {!w.overridden && (
-                        <form method="post" action="/admin/partners" class="inline-form">
-                          <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                          <input type="hidden" name="formAction" value="override_hold" />
-                          <input type="hidden" name="wardId" value={w.wardId} />
-                          <label class="checkbox">
-                            <input type="checkbox" name="confirm" required />
-                            {t(lang, 'admin.partners.held.override.confirmLabel', { ward: w.wardName })}
-                          </label>
-                          <Button type="submit" variant="destructive" lang={lang}>
-                            {t(lang, 'admin.partners.held.override.submit')}
-                          </Button>
-                        </form>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         )
       }
     </Card>

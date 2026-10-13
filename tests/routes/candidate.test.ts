@@ -13,8 +13,6 @@
  *     field's source link points at the stored `/media/{id}/{hash}` PDF,
  *     not some other URL.
  *   - AI-EXTRACTED badge vs. curator-confirmed Affidavit badge.
- *   - NEWS GUARD (the Task 38 boundary, re-asserted here): an approved link
- *     renders; a suggested link never does.
  *   - CASES renders in plain ink — no alarm/danger styling.
  *   - Person JSON-LD with `sameAs` + a curator-authored '<' properly
  *     escaped (no raw '<' inside the script tag).
@@ -112,7 +110,6 @@ let mainCandidateId: number;
 let affidavitMediaUrl: string;
 
 async function deleteCandidateTree(candidateId: number): Promise<void> {
-  await db.delete(schema.candidateNewsLinks).where(eq(schema.candidateNewsLinks.candidateId, candidateId));
   await db.delete(schema.candidateAffidavits).where(eq(schema.candidateAffidavits.candidateId, candidateId));
   await db.delete(schema.candidateFields).where(eq(schema.candidateFields.candidateId, candidateId));
 }

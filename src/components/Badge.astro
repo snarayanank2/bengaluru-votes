@@ -2,14 +2,12 @@
 /**
  * Badge — design-system.md §7.7, the RESERVED chip set (excluding
  * provenance, which SourceLine.astro owns). Radius-full, 13px, 4px/10px
- * padding. Exactly five variants exist; do not invent a sixth without a
+ * padding. Exactly three variants exist; do not invent a sixth without a
  * design decision in design-system.md §7.7 first:
  *
  *   - flag-pending  : gray-600 on --gray-100     (a flagged correction awaits curator review)
  *   - flag-accepted : forest on --forest-tint    (curator accepted + published the correction)
  *   - flag-rejected : brick on --brick-tint      (curator reviewed and rejected it)
- *   - ward-ready    : white on solid --oc-forest (curator/admin: ward meets the publish bar)
- *   - ward-held     : ink on solid --oc-sun      (curator/admin: ward held — a work state, not an error)
  *
  * Default content is the variant's spec'd label (t()-resolved); the
  * default slot can override it for a caller that needs different wording
@@ -18,7 +16,7 @@
  */
 import { t, type Lang } from '../i18n';
 
-export type BadgeVariant = 'flag-pending' | 'flag-accepted' | 'flag-rejected' | 'ward-ready' | 'ward-held';
+export type BadgeVariant = 'flag-pending' | 'flag-accepted' | 'flag-rejected';
 
 interface Props {
   variant: BadgeVariant;
@@ -31,8 +29,6 @@ const labelKeys: Record<BadgeVariant, string> = {
   'flag-pending': 'common.badge.flagPending',
   'flag-accepted': 'common.badge.flagAccepted',
   'flag-rejected': 'common.badge.flagRejected',
-  'ward-ready': 'common.badge.wardReady',
-  'ward-held': 'common.badge.wardHeld',
 };
 
 const defaultLabel = t(lang, labelKeys[variant]);
@@ -64,15 +60,5 @@ const defaultLabel = t(lang, labelKeys[variant]);
   .badge-chip--flag-rejected {
     color: var(--color-danger);
     background: var(--color-danger-surface);
-  }
-
-  .badge-chip--ward-ready {
-    color: var(--color-on-primary);
-    background: var(--color-primary);
-  }
-
-  .badge-chip--ward-held {
-    color: var(--color-on-accent);
-    background: var(--color-accent);
   }
 </style>

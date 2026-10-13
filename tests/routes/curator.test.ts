@@ -23,8 +23,6 @@ import { t } from '../../src/i18n';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
 import { humanTargetLabel } from '../../src/lib/curator';
-import { signOffWard } from '../../src/lib/readiness';
-import { publishCandidateCore } from '../../src/lib/publish';
 import { onRequest } from '../../src/middleware';
 
 import CuratorIndex from '../../src/pages/curator/index.astro';
@@ -241,7 +239,6 @@ async function resetFixtures(): Promise<void> {
       ALL_WARDS.map((w) => w.id),
     ),
   );
-  await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARDS.map((w) => w.id)));
 }
 
 /** Final teardown only — drops the fixture user rows themselves (resetFixtures leaves them in place since their ids are reused stably across a beforeAll/afterAll pair). */
@@ -282,28 +279,6 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     itemAlreadyResolved = await insertPendingItem(WARD_A.id, candidateA, 'approachability', [submitterAId]);
     itemAcceptMissingSource = await insertPendingItem(WARD_A.id, candidateA, 'net_worth', [submitterAId]);
     itemAcceptBadSource = await insertPendingItem(WARD_A.id, candidateA, 'contact_info', [submitterAId]);
-
-    // WARD_A: produce a GENUINE "signed off, then cleared by a real
-    // candidate-set change" ward_readiness row by driving it through the
-    // actual write paths — src/lib/readiness.ts's `signOffWard`, then a
-    // status flip via src/lib/publish.ts's `publishCandidateCore` (a
-    // "candidate-set change", PRD §9.1) which clears the sign-off — rather
-    // than hand-crafting a row with both `signedOffAt` and `clearedAt` set,
-    // which those two functions never actually produce together
-    // (mutually exclusive by construction — see readiness.ts's
-    // `wasClearedByChange` docstring). A hand-crafted "both set" row is
-    // exactly what let the dashboard's old, broken formula pass unnoticed.
-    await signOffWard({ userId: curatorId, role: 'curator' }, WARD_A.id);
-    await publishCandidateCore({ userId: curatorId, role: 'curator' }, { candidateId: candidateA, status: 'contesting' });
-
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    await db.insert(schema.wardReadiness).values([
-      // Fully signed off, never cleared — must NOT appear in the
-      // awaiting-sign-off list at all.
-      { wardId: WARD_E_FULLY_SIGNED_OFF.id, signedOffAt: yesterday, clearedAt: null },
-      // WARD_D gets no ward_readiness row at all — "never signed off" is
-      // the other awaiting-sign-off case (no row == needs sign-off).
-    ]);
   });
 
   afterAll(async () => {
@@ -335,7 +310,7 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
   });
 
   describe('dashboard (IA §5.1)', () => {
-    it('queue count matches every pending item; cleared-by-change ward is called out first; fully-signed-off ward never appears', async () => {
+    it('queue count matches every pending item; there is no awaiting-sign-off list', async () => {
       const [countRow] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(schema.flagItems)
@@ -349,25 +324,8 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
       const html = normalize(await res.text());
       expect(html).toContain(t('en', 'curator.dashboard.queueCount', { count: expectedCount }));
 
-      const idxA = html.indexOf(WARD_A.nameEn);
-      const idxD = html.indexOf(WARD_D_NEVER_SIGNED_OFF.nameEn);
-      expect(idxA).toBeGreaterThan(-1);
-      expect(idxD).toBeGreaterThan(-1);
-      expect(idxA).toBeLessThan(idxD); // cleared-by-change ward (WARD_A) called out first
-
-      // The cleared-by-change flag itself must actually be true for WARD_A
-      // (not just "sorted first by coincidence") — the "was signed off, now
-      // cleared" note (curator.dashboard.signOff.clearedNote) renders right
-      // next to WARD_A's row, and must NOT render next to WARD_D's (which
-      // was simply never signed off — a different state entirely).
-      const clearedNote = t('en', 'curator.dashboard.signOff.clearedNote');
-      const idxClearedNote = html.indexOf(clearedNote);
-      expect(idxClearedNote).toBeGreaterThan(-1);
-      expect(idxClearedNote).toBeGreaterThan(idxA);
-      expect(idxClearedNote).toBeLessThan(idxD);
-      expect(html.indexOf(clearedNote, idxD)).toBe(-1); // no second occurrence after WARD_D's row
-
-      expect(html).not.toContain(WARD_E_FULLY_SIGNED_OFF.nameEn); // fully signed off — excluded entirely
+      expect(html).not.toContain('Awaiting sign-off');
+      expect(html).not.toContain(WARD_D_NEVER_SIGNED_OFF.nameEn);
     });
   });
 

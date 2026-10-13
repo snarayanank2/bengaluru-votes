@@ -8,9 +8,8 @@
  * COVERAGE MAP:
  *   - SOURCE REQUIRED (PRD §11): a report-card field publish with a value
  *     but no source is rejected, nothing written.
- *   - STATUS CHANGE / NEW CANDIDATE CLEARS SIGN-OFF (architecture §6, PRD
- *     §9.1): exercised end-to-end through the real POST handlers (the
- *     lib-level atomicity/slug coverage lives in
+ *   - STATUS CHANGE / NEW CANDIDATE: exercised end-to-end through the
+ *     real POST handlers (the lib-level slug coverage lives in
  *     tests/unit/publish-candidate.test.ts).
  *   - CITY-WIDE: a curator with no ward assignment of any kind can open
  *     any candidate and start a new one in any ward.
@@ -186,7 +185,7 @@ let curatorId: number;
 let curatorAuth: { cookieValue: string; token: string };
 
 let candidateA: number; // WARD_A — hosts core/field/photo/CSRF tests
-let candidateStatusClear: number; // WARD_STATUS_CLEAR — signed off
+let candidateStatusClear: number; // WARD_STATUS_CLEAR — hosts the status-transition test
 
 async function resetFixtures(): Promise<void> {
   if (typeof curatorId === 'number') {
@@ -199,7 +198,6 @@ async function resetFixtures(): Promise<void> {
     await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, candidateIds));
   }
   await db.delete(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARDS.map((w) => w.id)));
-  await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARDS.map((w) => w.id)));
 }
 
 describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4', () => {
@@ -217,9 +215,6 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
 
     candidateA = await insertCandidate(WARD_A.id, 'Original Name');
     candidateStatusClear = await insertCandidate(WARD_STATUS_CLEAR.id, 'Status Clear Candidate');
-
-    const signedOffAt = new Date(Date.now() - 60_000);
-    await db.insert(schema.wardReadiness).values({ wardId: WARD_STATUS_CLEAR.id, signedOffAt, signedOffBy: 1 });
   });
 
   afterAll(async () => {
@@ -327,8 +322,8 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
     });
   });
 
-  describe('core form — name/party edit, and status-change sign-off clear', () => {
-    it('renaming (no status change) publishes but leaves ward sign-off untouched', async () => {
+  describe('core form — name/party edit, and status change', () => {
+    it('renaming (no status change) publishes', async () => {
       const form = coreForm({ nameEn: 'Renamed Candidate', partyEn: 'Independent', status: 'filed' }, curatorAuth.token);
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
         method: 'POST',
@@ -340,9 +335,6 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
       expect(candidate?.nameEn).toBe('Renamed Candidate');
-
-      const [readiness] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_A.id));
-      expect(readiness).toBeUndefined(); // never had one, still doesn't — no candidate-set change happened
     });
 
     it('missing required nameEn -> 400 validation error', async () => {
@@ -356,10 +348,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
       expect(res.status).toBe(400);
     });
 
-    it('a STATUS transition on a SIGNED-OFF ward clears sign-off, audit-logged', async () => {
-      const before = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_STATUS_CLEAR.id));
-      expect(before[0]?.signedOffAt).not.toBeNull();
-
+    it('a STATUS transition is published', async () => {
       const form = coreForm({ nameEn: 'Status Clear Candidate', partyEn: 'Independent', status: 'contesting' }, curatorAuth.token);
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateStatusClear}`, {
         method: 'POST',
@@ -371,22 +360,11 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateStatusClear));
       expect(candidate?.status).toBe('contesting');
-
-      const [readiness] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_STATUS_CLEAR.id));
-      expect(readiness?.signedOffAt).toBeNull();
-      expect(readiness?.clearedAt).not.toBeNull();
-
     });
   });
 
-  describe('new-candidate creation clears sign-off too', () => {
-    it('creating a candidate in a SIGNED-OFF ward clears that ward sign-off and redirects to the edit page', async () => {
-      const signedOffAt = new Date(Date.now() - 60_000);
-      await db
-        .insert(schema.wardReadiness)
-        .values({ wardId: WARD_NEW_CANDIDATE.id, signedOffAt, signedOffBy: 1 })
-        .onConflictDoUpdate({ target: schema.wardReadiness.wardId, set: { signedOffAt, clearedAt: null, signedOffBy: 1 } });
-
+  describe('new-candidate creation', () => {
+    it('creating a candidate redirects to the edit page', async () => {
       const form = coreForm({ nameEn: 'Brand New Filing', partyEn: 'Independent' }, curatorAuth.token);
       const res = await run(CandidateNewRoute, '/curator/candidate/new', {
         method: 'POST',
@@ -397,9 +375,6 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
       expect(res.status).toBe(302);
       expect(res.headers.get('location')).toMatch(/^\/curator\/candidate\/\d+$/);
 
-      const [readiness] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_NEW_CANDIDATE.id));
-      expect(readiness?.signedOffAt).toBeNull();
-      expect(readiness?.clearedAt).not.toBeNull();
     });
   });
 

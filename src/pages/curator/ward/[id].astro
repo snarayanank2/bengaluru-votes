@@ -2,16 +2,14 @@
 /**
  * `/curator/ward/{id}` — see src/features/pages/curator/WardEdit.astro for
  * the presentational side. This route twin owns the numeric-id existence
- * check (404), dispatching the
- * `formAction=sign_off` POST via `handleWardSignOff`, and no-store on
- * every response — same conventions as
- * src/pages/curator/candidate/[id].astro.
+ * check (404) and no-store on every response — same conventions as
+ * src/pages/curator/candidate/[id].astro. The page is read-only: there is
+ * no ward sign-off (dropped 2026-08-15), so any POST is a 400.
  */
 import WardEdit from '../../../features/pages/curator/WardEdit.astro';
-import { handleWardSignOff, loadCuratorLang, loadWardForEdit } from '../../../lib/curator';
+import { loadCuratorLang, loadWardForEdit } from '../../../lib/curator';
 
 const session = Astro.locals.session!;
-const actor = { userId: session.userId, role: session.role as 'curator' | 'admin' };
 
 const idParam = Astro.params.id;
 const wardId = Number(idParam);
@@ -19,35 +17,17 @@ if (!idParam || !Number.isInteger(wardId)) {
   return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
 }
 
-let ward = await loadWardForEdit(wardId);
+const ward = await loadWardForEdit(wardId);
 if (!ward) {
   return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
 }
 
-const lang = await loadCuratorLang(session.userId);
-
-let message: { kind: 'notice' | 'error'; key: string } | undefined;
-let responseStatus = 200;
-
 if (Astro.request.method === 'POST') {
-  Astro.response.headers.set('cache-control', 'no-store');
-  const form = await Astro.request.formData();
-  const formAction = String(form.get('formAction') ?? '');
-
-  if (formAction === 'sign_off') {
-    await handleWardSignOff(actor, wardId);
-    return new Response(null, {
-      status: 302,
-      headers: { Location: `/curator/ward/${wardId}`, 'cache-control': 'no-store' },
-    });
-  }
-
   return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
 }
 
-ward = (await loadWardForEdit(wardId))!;
+const lang = await loadCuratorLang(session.userId);
 Astro.response.headers.set('cache-control', 'no-store');
-Astro.response.status = responseStatus;
 ---
 
-<WardEdit lang={lang} csrfToken={Astro.locals.csrfToken} ward={ward} message={message} />
+<WardEdit lang={lang} ward={ward} />

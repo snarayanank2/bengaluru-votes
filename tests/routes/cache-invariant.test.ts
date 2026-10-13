@@ -21,9 +21,7 @@
  *   2. NO-STORE ON NON-PUBLIC ROUTES: `/api/me`, `/account`, `/curator`,
  *      `/admin` all respond with a `cache-control` header containing
  *      `no-store`.
- *   3. PROFILE FIELD BOUNDARY: candidate public HTML contains only the
- *      defined nine-field profile, so neither approved nor suggested news
- *      links leak into it.
+ *   3. (removed with the candidate news-link feature, 2026-10-13.)
  *   4. WEBHOOKS REJECT UNSIGNED: `/api/webhooks/sendgrid` and
  *      `/api/webhooks/twilio` 403 an invalid/missing signature and write no
  *      suppression row.
@@ -91,10 +89,7 @@ const WARD = {
 };
 
 const CANDIDATE_SLUG = 'cache-invariant-guard-candidate';
-const APPROVED_NEWS_URL = 'https://news.example.com/cache-invariant-approved';
-const APPROVED_NEWS_TITLE = 'Approved coverage — must appear';
-const SUGGESTED_NEWS_URL = 'https://news.example.com/cache-invariant-suggested';
-const SUGGESTED_NEWS_TITLE = 'Suggested unapproved coverage — must NEVER appear';
+
 
 const CITIZEN_EMAIL = 'cache-invariant-citizen@example.test';
 const CURATOR_EMAIL = 'cache-invariant-curator@example.test';
@@ -230,7 +225,6 @@ describe('§12 cache-invariant + security guard suite', () => {
       .from(schema.candidates)
       .where(eq(schema.candidates.slug, CANDIDATE_SLUG));
     if (existingCandidate) {
-      await db.delete(schema.candidateNewsLinks).where(eq(schema.candidateNewsLinks.candidateId, existingCandidate.id));
       await db.delete(schema.candidates).where(eq(schema.candidates.id, existingCandidate.id));
     }
 
@@ -247,25 +241,6 @@ describe('§12 cache-invariant + security guard suite', () => {
       .returning({ id: schema.candidates.id });
     candidateId = candidateRow!.id;
 
-    await db.insert(schema.candidateNewsLinks).values([
-      {
-        candidateId,
-        url: APPROVED_NEWS_URL,
-        title: APPROVED_NEWS_TITLE,
-        domain: 'news.example.com',
-        origin: 'curator',
-        status: 'approved',
-      },
-      {
-        candidateId,
-        url: SUGGESTED_NEWS_URL,
-        title: SUGGESTED_NEWS_TITLE,
-        domain: 'news.example.com',
-        origin: 'auto',
-        status: 'suggested',
-      },
-    ]);
-
     await upsertUser(CITIZEN_EMAIL, { role: 'citizen' });
     await upsertUser(CURATOR_EMAIL, { role: 'curator' });
     await upsertUser(ADMIN_EMAIL, { role: 'admin' });
@@ -276,7 +251,6 @@ describe('§12 cache-invariant + security guard suite', () => {
   });
 
   afterAll(async () => {
-    await db.delete(schema.candidateNewsLinks).where(eq(schema.candidateNewsLinks.candidateId, candidateId));
     await db.delete(schema.candidates).where(eq(schema.candidates.id, candidateId));
 
     const fixtureUsers = await db
@@ -410,24 +384,6 @@ describe('§12 cache-invariant + security guard suite', () => {
       const res = await renderThroughMiddleware(AdminIndexPage, '/admin', { cookieValue });
       expect(res.status).toBe(200);
       expect(res.headers.get('cache-control')).toContain('no-store');
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Guard 3: public candidate profile is limited to the nine fields
-  // -------------------------------------------------------------------------
-  describe('Guard 3 — news links do not extend the nine-field public profile', () => {
-    it('the candidate page renders neither approved nor suggested news links', async () => {
-      const res = await renderThroughMiddleware(CandidatePage, `/candidate/${CANDIDATE_SLUG}`, {
-        params: { slug: CANDIDATE_SLUG },
-      });
-      expect(res.status).toBe(200);
-      const html = await res.text();
-
-      expect(html).not.toContain(APPROVED_NEWS_URL);
-      expect(html).not.toContain(APPROVED_NEWS_TITLE);
-      expect(html).not.toContain(SUGGESTED_NEWS_URL);
-      expect(html).not.toContain(SUGGESTED_NEWS_TITLE);
     });
   });
 

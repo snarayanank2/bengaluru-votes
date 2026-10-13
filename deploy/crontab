@@ -25,14 +25,8 @@
 
 # Campaign calendar runner (Task 54) — the seven-send comms calendar
 # (registration reminders, candidate-set notices, election-day/logistics
-# sends), ward-gated on readiness and the election-silence guardrail.
+# sends), subject to the election-silence guardrail. No per-ward gate.
 30 3 * * * cd /app && tsx jobs/run-campaign.ts >> /var/log/gba-jobs/run-campaign.log 2>&1
-
-# News-link suggestions — Google Programmable Search over the domain
-# allowlist for every filed/contesting candidate, budget-capped; a no-op
-# until GOOGLE_SEARCH_API_KEY/GOOGLE_SEARCH_CX are configured. Every ~2
-# days (architecture §7's "a 2-3 day refresh").
-0 4 */2 * * cd /app && tsx jobs/news-suggest.ts >> /var/log/gba-jobs/news-suggest.log 2>&1
 
 # Suppression reconciliation — safety net against a lost SendGrid webhook
 # event; a no-op until SENDGRID_API_KEY is configured.

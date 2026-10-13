@@ -1,72 +1,30 @@
 ---
 /**
- * `/curator/ward/{id}` (Task 39, PRD §9.1; design-system.md §7.13) — the
- * curator ward editor: read-only ward metadata (nameEn/nameKn are official
- * data, boundary is a static reference to `data/gba.geojson` — neither is
- * editable from this task), the READINESS PANEL, and the "Mark ward ready"
- * sign-off control. Links out to `/curator/ward/{id}/issues` for the
- * ward-issues editor.
- *
- * READINESS PANEL (design-system.md §7.13, the load-bearing visual rule):
- * "forest tint when passing, sun tint with a listed gap-set when held —
- * NEVER red, because 'not ready' is a work state, not an error." This is
- * why Badge.astro's `ward-ready`/`ward-held` variants exist as the ONLY two
- * states rendered here — there is no third (error/red) path, by
- * construction: `complete` is a boolean, and the sun-tint branch always
- * renders SOMETHING informative (either the gap list, or, for a ward with
- * zero filed/contesting candidates, a distinct explanatory note — see
- * `noCandidates` below) rather than an empty/alarming state.
- *
- * SIGN-OFF STATUS: distinguishes three states — signed off (shows
- * when/who), cleared-by-change (was signed off, a later candidate-set
- * change cleared it), and never-signed-off (both null). "Cleared by
- * change" is computed via the shared `wasClearedByChange` helper
- * (src/lib/readiness.ts) — the same one the dashboard's `loadDashboard`
- * (src/lib/curator.ts) uses, so the two views can't independently drift
- * out of sync.
+ * `/curator/ward/{id}` (Task 39) — the curator ward page: read-only ward
+ * metadata (nameEn/nameKn are official data, boundary is a static
+ * reference to `data/gba.geojson`), with links out to
+ * `/curator/ward/{id}/issues` for the ward-issues editor and to "add a
+ * candidate". There is no readiness panel or sign-off: both were dropped
+ * on 2026-08-15.
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
-import Badge from '../../../components/Badge.astro';
-import Banner from '../../../components/Banner.astro';
-import Button from '../../../components/Button.astro';
 import { t, type Lang } from '../../../i18n';
-import { CSRF_FIELD_NAME } from '../../../lib/csrf';
 import type { WardEditData } from '../../../lib/curator';
-import { wasClearedByChange } from '../../../lib/readiness';
 
 interface Props {
   lang: Lang;
-  csrfToken: string;
   ward: WardEditData;
-  message?: { kind: 'notice' | 'error'; key: string };
 }
 
-const { lang, csrfToken, ward, message } = Astro.props;
+const { lang, ward } = Astro.props;
 const wardName = lang === 'kn' ? ward.nameKn : ward.nameEn;
-const messageText = message ? t(lang, message.key) : undefined;
-
-const { complete, gaps } = ward.readiness;
-const noCandidates = !complete && gaps.length === 0;
-
-// See module docstring: the shared readiness.ts helper, so this and the
-// dashboard's copy can't independently drift out of sync.
-const clearedByChange = wasClearedByChange(ward);
-const signedOffByLabel = ward.signedOffByEmail ?? (ward.signedOffByUserId != null ? String(ward.signedOffByUserId) : '');
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.wardEdit.meta.title')} description={t(lang, 'curator.wardEdit.meta.description')}>
   <div class="curator-page">
     <p><a href="/curator">{t(lang, 'curator.wardEdit.backToDashboard')}</a></p>
     <h1>{t(lang, 'curator.wardEdit.heading', { ward: wardName })}</h1>
-
-    {
-      messageText && (
-        <Banner kind={message!.kind === 'error' ? 'error' : 'notice'} lang={lang}>
-          {messageText}
-        </Banner>
-      )
-    }
 
     <Card>
       <h2>{t(lang, 'curator.wardEdit.meta.heading')}</h2>
@@ -88,48 +46,6 @@ const signedOffByLabel = ward.signedOffByEmail ?? (ward.signedOffByUserId != nul
           <dd>{ward.boundaryRef}</dd>
         </div>
       </dl>
-    </Card>
-
-    <Card>
-      <h2>{t(lang, 'curator.wardEdit.readiness.heading')}</h2>
-      <p class="readiness-badge-line">
-        {complete ? <Badge variant="ward-ready" lang={lang} /> : <Badge variant="ward-held" lang={lang} />}
-      </p>
-
-      {
-        !complete &&
-          (noCandidates ? (
-            <p>{t(lang, 'curator.wardEdit.readiness.noCandidates')}</p>
-          ) : (
-            <>
-              <h3>{t(lang, 'curator.wardEdit.readiness.gapsHeading')}</h3>
-              <ul class="gap-list">
-                {gaps.map((gap) => (
-                  <li>{t(lang, 'curator.wardEdit.readiness.gapItem', { name: gap.candidateName, fields: gap.missing.join(', ') })}</li>
-                ))}
-              </ul>
-            </>
-          ))
-      }
-
-      <h3>{t(lang, 'curator.wardEdit.signOff.heading')}</h3>
-      {
-        ward.signedOffAt ? (
-          <p>{t(lang, 'curator.wardEdit.signOff.signedOffLine', { at: ward.signedOffAt.toISOString(), by: signedOffByLabel })}</p>
-        ) : clearedByChange ? (
-          <p>{t(lang, 'curator.wardEdit.signOff.clearedByChange')}</p>
-        ) : (
-          <p>{t(lang, 'curator.wardEdit.signOff.notSignedOff')}</p>
-        )
-      }
-
-      <form method="post" action={`/curator/ward/${ward.id}`}>
-        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-        <input type="hidden" name="formAction" value="sign_off" />
-        <Button type="submit" variant="primary" lang={lang}>
-          {t(lang, 'curator.wardEdit.signOff.submit')}
-        </Button>
-      </form>
     </Card>
 
     <Card>
@@ -162,11 +78,6 @@ const signedOffByLabel = ward.signedOffByEmail ?? (ward.signedOffByUserId != nul
     margin: 0 0 var(--space-3);
   }
 
-  .curator-page h3 {
-    font-size: var(--text-base);
-    margin: var(--space-4) 0 var(--space-1);
-  }
-
   .meta-list {
     margin: 0;
     display: grid;
@@ -185,19 +96,6 @@ const signedOffByLabel = ward.signedOffByEmail ?? (ward.signedOffByUserId != nul
 
   .meta-list dd {
     margin: 0;
-  }
-
-  .readiness-badge-line {
-    margin: 0 0 var(--space-2);
-  }
-
-  .gap-list {
-    margin: 0 0 var(--space-2);
-    padding-left: var(--space-5);
-  }
-
-  form {
-    margin-top: var(--space-3);
   }
 
   .link-sep {

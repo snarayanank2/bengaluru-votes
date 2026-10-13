@@ -85,7 +85,7 @@ These follow from §3 alone and hold regardless of when N falls.
 
 **No final list of contesting candidates exists before N+15.** Anything pulled between N+12 and N+15 is a superset — it holds candidates who will be rejected at scrutiny and candidates who will withdraw.
 
-**The working window is eight days**, from the final list at N+15 to the poll at N+23. Measured from the first complete affidavit set at N+12 it is eleven. Any work that depends on candidate records — extraction, verification, review, sign-off — has to fit inside that, and eight days is the figure to plan against, because it is the only window in which the list being worked from is the right one.
+**The list is final for eight days**, from N+15 to the poll at N+23. Measured from the first complete affidavit set at N+12 it is eleven. **Work on candidate records does not wait for N+15** (revised 2026-09-20, `docs/candidate-data.md` §5): loading, extraction and transcription start on initial availability and overlap, and rejections and withdrawals are reconciled when the final list arrives. The planning envelope is three days of extraction plus five of transcription — done around N+20 from a complete set at N+12, around N+23 from one at N+15.
 
 **The last two days are unusable.** Silence begins at N+21 and the poll is at N+23.
 

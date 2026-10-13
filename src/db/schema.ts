@@ -1,6 +1,6 @@
 import {
   pgTable, pgEnum, serial, integer, text, boolean, timestamp,
-  jsonb, uniqueIndex, index, primaryKey, customType, date, check,
+  uniqueIndex, index, primaryKey, customType, date, check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -14,8 +14,6 @@ export const candidateStatusEnum = pgEnum('candidate_status', ['filed', 'contest
 export const sourceTypeEnum = pgEnum('source_type', ['official', 'curator']);
 export const translationStatusEnum = pgEnum('translation_status', ['pending', 'done', 'manual']);
 export const extractionStatusEnum = pgEnum('extraction_status', ['pending', 'done', 'failed']);
-export const newsOriginEnum = pgEnum('news_origin', ['auto', 'curator']);
-export const newsStatusEnum = pgEnum('news_status', ['suggested', 'approved']);
 export const channelEnum = pgEnum('channel', ['email', 'whatsapp']);
 export const otpPurposeEnum = pgEnum('otp_purpose', ['auth', 'add_contact']);
 export const suppressionReasonEnum = pgEnum('suppression_reason', ['bounce', 'complaint', 'stop']);
@@ -134,18 +132,6 @@ export const candidateAffidavits = pgTable('candidate_affidavits', {
   extractionStatus: extractionStatusEnum('extraction_status').notNull().default('pending'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
-
-export const candidateNewsLinks = pgTable('candidate_news_links', {
-  id: serial('id').primaryKey(),
-  candidateId: integer('candidate_id').notNull().references(() => candidates.id),
-  url: text('url').notNull(),
-  title: text('title').notNull(),
-  domain: text('domain').notNull(),
-  origin: newsOriginEnum('origin').notNull(),
-  status: newsStatusEnum('status').notNull().default('suggested'),
-  approvedBy: integer('approved_by'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-}, (t) => [uniqueIndex('news_link_uq').on(t.candidateId, t.url)]);
 
 export const wardIssues = pgTable('ward_issues', {
   id: serial('id').primaryKey(),
@@ -314,15 +300,6 @@ export const eoiSubmissions = pgTable('eoi_submissions', {
   message: text('message'),
   status: eoiStatusEnum('status').notNull().default('new'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-});
-
-export const wardReadiness = pgTable('ward_readiness', {
-  wardId: integer('ward_id').primaryKey().references(() => wards.id),
-  completenessSnapshot: jsonb('completeness_snapshot'),   // {complete, gaps[]} at sign-off time
-  signedOffBy: integer('signed_off_by'),
-  signedOffAt: timestamp('signed_off_at'),                // null = not signed off (or cleared)
-  clearedAt: timestamp('cleared_at'),                     // set when candidate-set change clears it
-  commsHoldOverride: boolean('comms_hold_override').notNull().default(false),  // admin release
 });
 
 export const campaignSends = pgTable('campaign_sends', {  // send-once ledger per user × code

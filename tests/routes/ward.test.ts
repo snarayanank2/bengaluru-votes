@@ -137,7 +137,6 @@ async function deleteWardCandidates(): Promise<void> {
   const rows = await db.select({ id: schema.candidates.id }).from(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
   const ids = rows.map((row) => row.id);
   if (ids.length > 0) {
-    await db.delete(schema.candidateNewsLinks).where(inArray(schema.candidateNewsLinks.candidateId, ids));
     await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.candidateId, ids));
     await db.delete(schema.candidateStances).where(inArray(schema.candidateStances.candidateId, ids));
     await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, ids));

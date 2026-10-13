@@ -87,11 +87,10 @@ async function existingSend(
     .select({ status: campaignSends.status })
     .from(campaignSends)
     .where(and(eq(campaignSends.code, code), eq(campaignSends.userId, userId), eq(campaignSends.channel, channel)));
-  // 'held' rows are a ward-readiness gate a caller may have written before
-  // calling sendToUser at all (out of this function's scope) — treat
-  // anything other than the three statuses this module writes as "not yet
-  // actually sent", so a held row doesn't permanently block a later real
-  // send once the hold clears.
+  // 'held' is a LEGACY status: the per-ward readiness gate that wrote it was
+  // dropped on 2026-08-15 and nothing writes it any more. Treat anything
+  // other than the three statuses this module writes as "not yet actually
+  // sent", so a leftover held row never blocks a real send.
   if (row?.status === 'sent' || row?.status === 'failed' || row?.status === 'suppressed') {
     return row.status;
   }
@@ -109,11 +108,9 @@ async function recordSend(
   // The pre-check in sendToUser (existingSend) is the primary send-once
   // mechanism; this insert is the backstop for a genuine concurrent race
   // (two callers both pass the pre-check before either inserts) AND the
-  // held->terminal UPGRADE path (Task 54): a calendar run may have written
-  // a 'held' row for (code, userId, channel) before the ward's readiness
-  // gate cleared (src/lib/send/calendar.ts's recordWardHeld) — the
-  // existingSend check above treats 'held' as "not yet sent" precisely so
-  // that a later real send still reaches this insert once the hold lifts.
+  // held->terminal UPGRADE path: a leftover legacy 'held' row for
+  // (code, userId, channel) — see existingSend above — is treated as "not
+  // yet sent", so a real send still reaches this insert and replaces it.
   //
   // ON CONFLICT ... DO UPDATE ... WHERE status = 'held' (the `setWhere`
   // clause) means: if the existing row is 'held', overwrite it with this

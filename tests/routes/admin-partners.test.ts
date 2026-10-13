@@ -7,12 +7,11 @@
  * COVERAGE MAP:
  *   - ADMIN-ONLY: a curator or a citizen hitting the route -> 403; an
  *     anonymous request redirects to /login.
- *   - RENDER: admin GET renders the roster, coverage summary, held-wards
- *     table, and both EOI queue sections.
+ *   - RENDER: admin GET renders the roster, coverage summary, and both
+ *     EOI queue sections; there is no held-wards table (dropped 2026-08-15).
  *   - CREATE/UPDATE PARTNER: POST formAction=create_partner /
  *     update_partner actually writes partners/partner_wards rows, audited.
- *   - OVERRIDE: POST formAction=override_hold sets commsHoldOverride,
- *     audited.
+ *   - NO OVERRIDE: POST formAction=override_hold is rejected (400).
  *   - EOI TRIAGE: accept_awareness provisions a partner; accept_curation
  *     accepts WITHOUT any role grant; decline_eoi declines.
  *   - CSRF: POST without the token -> 403, DB unaffected.
@@ -161,9 +160,6 @@ describe('/admin/partners (Task 46)', () => {
     adminAuth = await sessionFor(adminId);
     curatorAuth = await sessionFor(curatorId);
     citizenAuth = await sessionFor(citizenId);
-
-    // WARD_HELD: zero candidates -> incomplete -> shows up in the held-wards table.
-    // WARD_OVERRIDE: same (incomplete) -- overridden by a test below.
   });
 
   afterAll(async () => {
@@ -174,7 +170,6 @@ describe('/admin/partners (Task 46)', () => {
       await db.delete(schema.partnerWards).where(inArray(schema.partnerWards.partnerId, createdPartnerIds));
       await db.delete(schema.partners).where(inArray(schema.partners.id, createdPartnerIds));
     }
-    await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARD_IDS));
     await db.delete(schema.sessions).where(inArray(schema.sessions.userId, [adminId, curatorId, citizenId]));
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, curatorId, citizenId]));
     await db.delete(schema.wards).where(inArray(schema.wards.id, ALL_WARD_IDS));
@@ -205,7 +200,7 @@ describe('/admin/partners (Task 46)', () => {
       const html = normalize(await res.text());
       expect(html).toContain('Partner roster');
       expect(html).toContain('Ward coverage');
-      expect(html).toContain('Wards held from candidate comms');
+      expect(html).not.toContain('Wards held from candidate comms');
       expect(html).toContain('Expressions of interest');
     });
   });
@@ -262,25 +257,11 @@ describe('/admin/partners (Task 46)', () => {
     });
   });
 
-  describe('held wards + override', () => {
-    it('an incomplete ward shows up in the rendered held-wards table', async () => {
-      const res = await run(PartnersRoute, '/admin/partners', { cookieValue: adminAuth.cookieValue });
-      const html = normalize(await res.text());
-      expect(html).toContain(WARD_HELD.nameEn);
-    });
-
-    it('POST formAction=override_hold releases the ward, audited', async () => {
+  describe('no held-wards override (the per-ward send gate was dropped)', () => {
+    it('POST formAction=override_hold -> 400', async () => {
       const form = formWithToken({ formAction: 'override_hold', wardId: String(WARD_OVERRIDE.id), confirm: 'on' }, adminAuth.token);
       const res = await run(PartnersRoute, '/admin/partners', { method: 'POST', cookieValue: adminAuth.cookieValue, form });
-      expect(res.status).toBe(302);
-
-      const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_OVERRIDE.id));
-      expect(row?.commsHoldOverride).toBe(true);
-
-      const afterRes = await run(PartnersRoute, '/admin/partners', { cookieValue: adminAuth.cookieValue });
-      const html = normalize(await afterRes.text());
-      expect(html).toContain(WARD_OVERRIDE.nameEn);
-      expect(html).toContain('Released (override)');
+      expect(res.status).toBe(400);
     });
   });
 

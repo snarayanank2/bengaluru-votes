@@ -2,8 +2,8 @@
 /**
  * `/admin/partners` — see src/features/pages/admin/Partners.astro for the
  * presentational side. This route twin owns the HTTP concerns a plain
- * component cannot: dispatching the six POST form actions
- * (`create_partner`, `update_partner`, `override_hold`, `accept_awareness`,
+ * component cannot: dispatching the five POST form actions
+ * (`create_partner`, `update_partner`, `accept_awareness`,
  * `accept_curation`, `decline_eoi`) to src/lib/partners.ts, parsing the
  * comma-separated `wardIds` text field (same convention as
  * src/pages/admin/roles.astro's `parseWardIdsText`), and no-store on every
@@ -21,8 +21,6 @@ import {
   updatePartner,
   partnerCoverage,
   listPartners,
-  heldWards,
-  overrideCommsHold,
   listEois,
   acceptEoiAwareness,
   acceptEoiCuration,
@@ -115,20 +113,6 @@ if (Astro.request.method === 'POST') {
         }
       }
     }
-  } else if (formAction === 'override_hold') {
-    const wardId = Number(form.get('wardId'));
-    if (!Number.isInteger(wardId)) {
-      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
-    }
-    if (requireConfirm()) {
-      try {
-        await overrideCommsHold(actor, wardId);
-        return new Response(null, { status: 302, headers: { Location: '/admin/partners', 'cache-control': 'no-store' } });
-      } catch (err) {
-        message = { kind: 'error', key: errorKey(err, 'admin.partners.error.invalidWardId') };
-        responseStatus = 400;
-      }
-    }
   } else if (formAction === 'accept_awareness') {
     const eoiId = Number(form.get('eoiId'));
     if (!Number.isInteger(eoiId)) {
@@ -178,10 +162,9 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const [partners, coverage, held, eoisAwareness, eoisCuration, lang] = await Promise.all([
+const [partners, coverage, eoisAwareness, eoisCuration, lang] = await Promise.all([
   listPartners(),
   partnerCoverage(),
-  heldWards(),
   listEois('new').then((rows) => rows.filter((r) => r.path === 'awareness')),
   listEois('new').then((rows) => rows.filter((r) => r.path === 'curation')),
   loadCuratorLang(session.userId),
@@ -195,7 +178,6 @@ Astro.response.status = responseStatus;
   csrfToken={Astro.locals.csrfToken}
   partners={partners}
   coverage={coverage}
-  held={held}
   eoisAwareness={eoisAwareness}
   eoisCuration={eoisCuration}
   message={message}

@@ -339,8 +339,6 @@ describe('Badge', () => {
     ['flag-pending', 'common.badge.flagPending'],
     ['flag-accepted', 'common.badge.flagAccepted'],
     ['flag-rejected', 'common.badge.flagRejected'],
-    ['ward-ready', 'common.badge.wardReady'],
-    ['ward-held', 'common.badge.wardHeld'],
   ];
 
   it.each(cases)('renders the spec\'d label and class for variant %s', async (variant, i18nKey) => {

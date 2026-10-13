@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
-import { candidateFields, candidateStances, candidates, wardReadiness, type candidateStatusEnum } from '../db/schema';
+import { candidateFields, candidateStances, candidates, type candidateStatusEnum } from '../db/schema';
 import { translateFieldSoon } from './translate-runtime';
 
 export type Actor = {
@@ -181,9 +181,7 @@ export async function publishCandidateField(actor: Actor, input: PublishCandidat
 
 // ---------------------------------------------------------------------------
 // Candidate core fields + lifecycle status (Task 36; architecture §6;
-// PRD §5.2/§9.1) — name/party/photo/status, and the sign-off-clearing side
-// effect of a "candidate-set change" (a status transition, or a brand-new
-// candidate landing in a ward).
+// PRD §5.2/§9.1) — name/party/photo/status.
 // ---------------------------------------------------------------------------
 
 /**
@@ -230,31 +228,6 @@ async function generateUniqueSlug(tx: Tx, wardId: number, nameEn: string): Promi
   }
 }
 
-/**
- * Clears ward `wardId`'s sign-off (PRD §9.1: "sign-off clears on
- * candidate-set change"; architecture §6) — sets `signedOffAt = null`,
- * `clearedAt = now`, upserting the `ward_readiness` row if the ward has
- * never had one. Always runs
- * inside the CALLER's transaction, atomically with the candidate-set change
- * that triggered it — a status flip or a new candidate must never land
- * without this clear landing too.
- *
- * Idempotent: re-clearing an already-cleared (or never-signed-off) ward is
- * harmless — `clearedAt` simply advances to `now` and `signedOffAt` stays
- * null, so `src/lib/curator.ts`'s dashboard `clearedByChange` check (which
- * requires `signedOffAt` to have been non-null) correctly does not treat a
- * ward that was never signed off as "held by a clear".
- */
-async function clearWardSignOff(tx: Tx, wardId: number): Promise<void> {
-  const now = new Date();
-
-  await tx
-    .insert(wardReadiness)
-    .values({ wardId, signedOffAt: null, clearedAt: now })
-    .onConflictDoUpdate({ target: wardReadiness.wardId, set: { signedOffAt: null, clearedAt: now } });
-
-}
-
 export type PublishCandidateCoreInput = {
   candidateId: number;
   nameEn?: string;
@@ -270,14 +243,6 @@ export type PublishCandidateCoreInput = {
  * lifecycle status in one transaction. Any field
  * left `undefined` is left unchanged; pass `null` for `nameKn`/`partyKn`/
  * `photoMediaId` to explicitly clear them.
- *
- * CANDIDATE-SET CHANGE: a STATUS transition (the new `status`, when given,
- * differs from the stored one) is exactly the "candidate-set change" this
- * function can produce (a new candidate is the other one — see
- * {@link createCandidate}), so it clears the ward's sign-off in the SAME
- * transaction as the status write (architecture §6, PRD §9.1). A core edit
- * that does NOT touch status (e.g. just correcting a spelling) is not a
- * candidate-set change and leaves sign-off untouched.
  */
 export async function publishCandidateCore(_actor: Actor, input: PublishCandidateCoreInput): Promise<void> {
   await db.transaction(async (tx) => {
@@ -297,11 +262,6 @@ export async function publishCandidateCore(_actor: Actor, input: PublishCandidat
     };
 
     await tx.update(candidates).set(next).where(eq(candidates.id, input.candidateId));
-
-    const statusChanged = input.status !== undefined && input.status !== existing.status;
-    if (statusChanged) {
-      await clearWardSignOff(tx, existing.wardId);
-    }
   });
 }
 
@@ -315,9 +275,7 @@ export type CreateCandidateInput = {
 };
 
 /**
- * Creates a brand-new candidate row — a new filing is itself a
- * "candidate-set change" (architecture §6, PRD §9.1), so this ALWAYS clears
- * the ward's sign-off, in the same transaction as the insert. Status is
+ * Creates a brand-new candidate row. Status is
  * always the schema default (`'filed'`) — lifecycle transitions happen
  * afterwards via {@link publishCandidateCore}. See {@link generateUniqueSlug}
  * for the slug scheme.
@@ -342,11 +300,7 @@ export async function createCandidate(
       })
       .returning({ id: candidates.id });
 
-    const id = row!.id;
-
-    await clearWardSignOff(tx, input.wardId);
-
-    return { id, slug };
+    return { id: row!.id, slug };
   });
 }
 

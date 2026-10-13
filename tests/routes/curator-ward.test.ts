@@ -6,12 +6,9 @@
  * tests/routes/curator-candidate.test.ts.
  *
  * COVERAGE MAP:
- *   - READINESS PANEL: a complete ward renders the forest `ward-ready`
- *     badge; a held ward renders the sun `ward-held` badge PLUS its gap
- *     list — and NEVER any error/red styling (`badge-chip--flag-rejected`,
- *     `banner--error`) for the "not ready" state itself.
- *   - SIGN-OFF: "Mark ward ready" POST actually signs the ward off
- *     (ward_readiness row updated); a POST with no CSRF token gets 403.
+ *   - NO READINESS OR SIGN-OFF (dropped 2026-08-15): the ward page shows
+ *     metadata and links only; a sign_off POST is rejected (400), and a
+ *     POST with no CSRF token gets 403.
  *   - WARD ISSUES: add/rename/remove all work end-to-end.
  *   The curator here has no ward assignment of any kind — curators are
  *   city-wide.
@@ -43,8 +40,8 @@ const SITE_URL = new URL(SITE_ORIGIN);
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
 
-// High, task-specific ward ids (Task 39 brief) — tests/unit/readiness.test.ts
-// owns 99480-99492, tests/unit/ward-issues.test.ts owns 99493-99494; this
+// High, task-specific ward ids (Task 39 brief) —
+// tests/unit/ward-issues.test.ts owns 99493-99494; this
 // route suite owns 99495-99499.
 const WARD_COMPLETE = {
   id: 99495,
@@ -81,8 +78,6 @@ const WARD_CSRF = {
 const ALL_WARDS = [WARD_COMPLETE, WARD_HELD, WARD_ISSUES, WARD_CSRF];
 
 const EMAILS = { curator: 'curator-ward-route-test-curator@example.com' };
-const SOURCE = 'https://example.org/curator-ward-route-test-source';
-
 function normalize(html: string): string {
   return html
     .replace(/\s+data-astro-cid-\w+/g, '')
@@ -173,18 +168,6 @@ async function insertCandidate(wardId: number, overrides: Partial<typeof schema.
   return row!.id;
 }
 
-async function insertCompleteFields(candidateId: number): Promise<void> {
-  for (const fieldKey of ['cases', 'assets', 'education']) {
-    await db.insert(schema.candidateFields).values({
-      candidateId,
-      fieldKey,
-      valueEn: `${fieldKey} value`,
-      sourceUrl: SOURCE,
-      sourceType: 'curator',
-    });
-  }
-}
-
 let curatorId: number;
 let curatorAuth: { cookieValue: string; token: string };
 
@@ -208,7 +191,6 @@ async function resetFixtures(): Promise<void> {
     await db.delete(schema.issueVoteSelections).where(inArray(schema.issueVoteSelections.wardIssueId, issueIds));
   }
   await db.delete(schema.wardIssues).where(inArray(schema.wardIssues.wardId, ALL_WARDS.map((w) => w.id)));
-  await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARDS.map((w) => w.id)));
   if (typeof curatorId === 'number') {
     await db.delete(schema.sessions).where(eq(schema.sessions.userId, curatorId));
   }
@@ -227,18 +209,8 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
 
     curatorAuth = await sessionFor(curatorId);
 
-    const completeCandidate = await insertCandidate(WARD_COMPLETE.id, { nameEn: 'Complete Ward Candidate' });
-    await insertCompleteFields(completeCandidate);
-
-    // WARD_HELD's candidate is missing 'assets' and 'education' entirely.
-    const heldCandidate = await insertCandidate(WARD_HELD.id, { nameEn: 'Held Ward Candidate' });
-    await db.insert(schema.candidateFields).values({
-      candidateId: heldCandidate,
-      fieldKey: 'cases',
-      valueEn: 'No pending cases.',
-      sourceUrl: SOURCE,
-      sourceType: 'curator',
-    });
+    // A candidate with missing fields — the ward page must not report on it.
+    await insertCandidate(WARD_HELD.id, { nameEn: 'Held Ward Candidate' });
   });
 
   afterAll(async () => {
@@ -274,39 +246,24 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
     });
   });
 
-  describe('readiness panel — forest pass / sun held + gap list, NEVER red', () => {
-    it('a complete ward renders the forest ward-ready badge, no gap list', async () => {
-      const res = await run(WardEditRoute, `/curator/ward/${WARD_COMPLETE.id}`, {
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(WARD_COMPLETE.id) },
-      });
-      const html = normalize(await res.text());
-
-      expect(html).toContain('badge-chip--ward-ready');
-      expect(html).not.toContain('badge-chip--ward-held');
-      expect(html).not.toContain('badge-chip--flag-rejected');
-      expect(html).not.toContain('banner--error');
-    });
-
-    it('a held ward renders the sun ward-held badge PLUS the gap list, never red/error styling', async () => {
+  describe('no readiness panel or sign-off', () => {
+    it('the ward page shows no readiness badge, gap list or sign-off form', async () => {
       const res = await run(WardEditRoute, `/curator/ward/${WARD_HELD.id}`, {
         cookieValue: curatorAuth.cookieValue,
         params: { id: String(WARD_HELD.id) },
       });
+      expect(res.status).toBe(200);
       const html = normalize(await res.text());
 
-      expect(html).toContain('badge-chip--ward-held');
+      expect(html).toContain(WARD_HELD.nameEn);
       expect(html).not.toContain('badge-chip--ward-ready');
-      expect(html).not.toContain('badge-chip--flag-rejected');
-      expect(html).not.toContain('banner--error');
-      expect(html).toContain('Held Ward Candidate');
-      expect(html).toContain('assets');
-      expect(html).toContain('education');
+      expect(html).not.toContain('badge-chip--ward-held');
+      expect(html).not.toContain('value="sign_off"');
+      expect(html).not.toContain('Held Ward Candidate');
+      expect(html).toContain(`/curator/ward/${WARD_HELD.id}/issues`);
     });
-  });
 
-  describe('sign-off', () => {
-    it('POST formAction=sign_off signs the ward off (ward_readiness updated)', async () => {
+    it('POST formAction=sign_off -> 400 (the action no longer exists)', async () => {
       const form = formWithToken({ formAction: 'sign_off' }, curatorAuth.token);
       const res = await run(WardEditRoute, `/curator/ward/${WARD_COMPLETE.id}`, {
         method: 'POST',
@@ -314,15 +271,10 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
         params: { id: String(WARD_COMPLETE.id) },
         form,
       });
-      expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe(`/curator/ward/${WARD_COMPLETE.id}`);
-
-      const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_COMPLETE.id));
-      expect(row?.signedOffAt).not.toBeNull();
-      expect(row?.signedOffBy).toBe(curatorId);
+      expect(res.status).toBe(400);
     });
 
-    it('POST without the CSRF token -> 403, ward unaffected', async () => {
+    it('POST without the CSRF token -> 403', async () => {
       const fd = new FormData();
       fd.set('formAction', 'sign_off');
 
@@ -333,9 +285,6 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
         form: fd,
       });
       expect(res.status).toBe(403);
-
-      const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_CSRF.id));
-      expect(row).toBeUndefined();
     });
   });
 

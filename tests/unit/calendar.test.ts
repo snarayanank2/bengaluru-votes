@@ -4,9 +4,10 @@
  * Two layers of coverage, matching the module's own split:
  *   1. PURE — `scheduleFor`/`dueSends`/`guardrailViolations` need no DB at
  *      all (no `describe` block below touches the database for these).
- *   2. DB-BACKED — `runCampaign`'s ward-gating, send-time audience
- *      resolution, held-row writing, and (the most important case) the
- *      held->terminal UPGRADE fix to `recordSend` (src/lib/send/send.ts).
+ *   2. DB-BACKED — `runCampaign`'s send-time audience resolution, the
+ *      absence of any per-ward gate (dropped 2026-08-15), and the
+ *      held->terminal UPGRADE of a leftover legacy 'held' row in
+ *      `recordSend` (src/lib/send/send.ts).
  *
  * `runCampaign`'s audience query is GLOBAL (every active user with a home
  * ward, not scoped to any one ward), so assertions below are always scoped
@@ -30,7 +31,6 @@ import { sendEmail } from '../../src/lib/send/sendgrid';
 import { sendWhatsAppTemplate } from '../../src/lib/send/twilio';
 import { scheduleFor, dueSends, guardrailViolations, runCampaign } from '../../src/lib/send/calendar';
 import * as sendModule from '../../src/lib/send/send';
-import * as readinessModule from '../../src/lib/readiness';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -147,7 +147,7 @@ async function setSettings(cfg: Record<string, string | null>): Promise<void> {
  * `runCampaign`'s audience query is intentionally GLOBAL (every active user
  * with a home ward, city-wide — that's the real production behaviour this
  * suite is testing). In this shared, long-lived test DB that means a
- * config that makes a gated code due can incidentally write a `'held'`
+ * config that makes a code due can incidentally write a
  * campaign_sends row for a STRAY leftover "active" user from a wholly
  * unrelated suite's fixtures (debris other suites didn't fully clean up
  * from an earlier run) — and since `campaign_sends.user_id` has no
@@ -167,7 +167,6 @@ async function sweepStrayCampaignSends(): Promise<void> {
 async function resetAll(): Promise<void> {
   await sweepStrayCampaignSends();
   await db.delete(schema.campaignSends).where(inArray(schema.campaignSends.wardId, ALL_WARD_IDS));
-  await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARD_IDS));
   await db.delete(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARD_IDS));
   await db.delete(schema.booths).where(inArray(schema.booths.wardId, ALL_WARD_IDS));
   await db.delete(schema.users).where(like(schema.users.email, 'calendar-test-%'));
@@ -218,13 +217,6 @@ async function addBooth(wardId: number) {
   });
 }
 
-async function markReady(wardId: number): Promise<void> {
-  await db
-    .insert(schema.wardReadiness)
-    .values({ wardId, commsHoldOverride: true })
-    .onConflictDoUpdate({ target: schema.wardReadiness.wardId, set: { commsHoldOverride: true } });
-}
-
 async function sendRowsFor(userId: number, code: string) {
   return db
     .select()
@@ -254,11 +246,10 @@ describe('src/lib/send/calendar.ts — runCampaign (DB-backed)', () => {
     vi.mocked(sendWhatsAppTemplate).mockResolvedValue({ ok: false, status: 'not_configured' });
   });
 
-  it('L1 (gated): a not-ready ward is HELD (no send); an override-ready ward sends (not held)', async () => {
-    await markReady(WARD_READY.id);
+  it('L1 has NO per-ward gate: wards with and without candidate data both send', async () => {
     await addCandidate(WARD_READY.id, 1);
     const readyUser = await makeUser(WARD_READY.id);
-    const heldUser = await makeUser(WARD_HELD.id);
+    const heldUser = await makeUser(WARD_HELD.id); // a ward with no candidates at all — would once have been held
 
     const now = new Date('2026-08-01T00:00:00.000Z');
     await setSettings({ scrutiny_complete_date: '2026-07-25', election_date: '2030-01-01' });
@@ -267,60 +258,60 @@ describe('src/lib/send/calendar.ts — runCampaign (DB-backed)', () => {
     expect(summary.due).toContain('L1');
     expect(summary.guardrailTripped).not.toContain('L1');
 
-    const heldRows = await sendRowsFor(heldUser.id, 'L1');
-    expect(heldRows).toHaveLength(2); // email + whatsapp, both eligible
-    expect(heldRows.every((r) => r.status === 'held')).toBe(true);
-    expect(vi.mocked(sendEmail).mock.calls.some((c) => c[0] === heldUser.email)).toBe(false);
+    const otherRows = await sendRowsFor(heldUser.id, 'L1');
+    expect(otherRows).toHaveLength(2); // email + whatsapp, both eligible
+    expect(otherRows.some((r) => r.status === 'held')).toBe(false);
+    expect(otherRows.find((r) => r.channel === 'email')?.status).toBe('sent');
+    expect(vi.mocked(sendEmail).mock.calls.some((c) => c[0] === heldUser.email)).toBe(true);
 
     const readyRows = await sendRowsFor(readyUser.id, 'L1');
     expect(readyRows.find((r) => r.channel === 'email')?.status).toBe('sent');
     expect(vi.mocked(sendEmail).mock.calls.some((c) => c[0] === readyUser.email)).toBe(true);
   });
 
-  it('THE UPGRADE REGRESSION TEST: held -> ward clears -> sent exactly once -> never resent', async () => {
+  it('LEGACY HELD ROWS: a leftover held row is sent exactly once -> never resent', async () => {
     await addCandidate(WARD_UPGRADE.id, 1);
     const user = await makeUser(WARD_UPGRADE.id);
 
     const now = new Date('2026-08-01T00:00:00.000Z');
     await setSettings({ scrutiny_complete_date: '2026-07-25', election_date: '2030-01-01' });
 
-    // RUN 1 — ward not ready yet: held, not sent.
+    // Nothing writes 'held' any more; seed the rows the old per-ward gate
+    // would have left behind.
+    await db.insert(schema.campaignSends).values([
+      { code: 'L1', userId: user.id, wardId: WARD_UPGRADE.id, channel: 'email', language: 'en', status: 'held' },
+      { code: 'L1', userId: user.id, wardId: WARD_UPGRADE.id, channel: 'whatsapp', language: 'en', status: 'held' },
+    ]);
+
+    // RUN 1 — the held rows must be UPGRADED to a terminal status
+    // (recordSend's onConflictDoUpdate/setWhere), not left 'held'.
     await runCampaign(now);
     let rows = await sendRowsFor(user.id, 'L1');
-    expect(rows).toHaveLength(2);
-    expect(rows.every((r) => r.status === 'held')).toBe(true);
-    expect(sendEmail).not.toHaveBeenCalled();
-    expect(sendWhatsAppTemplate).not.toHaveBeenCalled();
-
-    // Ward clears.
-    await markReady(WARD_UPGRADE.id);
-
-    // RUN 2 — the held row must be UPGRADED to a terminal status (this is
-    // recordSend's onConflictDoUpdate/setWhere fix), not left 'held'.
-    await runCampaign(now);
-    rows = await sendRowsFor(user.id, 'L1');
     expect(rows).toHaveLength(2); // still exactly 2 rows — UPDATE, not a second INSERT
     const emailRow = rows.find((r) => r.channel === 'email')!;
     const waRow = rows.find((r) => r.channel === 'whatsapp')!;
     expect(emailRow.status).toBe('sent');
     expect(waRow.status).toBe('failed'); // mocked not_configured
-    expect(sendEmail).toHaveBeenCalledTimes(1);
-    expect(sendWhatsAppTemplate).toHaveBeenCalledTimes(1);
-    const sentAtAfterRun2 = emailRow.sentAt.getTime();
+    // Scoped to THIS user: with no per-ward gate, L1 also goes to every
+    // other active user in the shared test DB.
+    const emailCalls = () => vi.mocked(sendEmail).mock.calls.filter((c) => c[0] === user.email).length;
+    const waCalls = () => vi.mocked(sendWhatsAppTemplate).mock.calls.filter((c) => c[0] === user.phone).length;
+    expect(emailCalls()).toBe(1);
+    expect(waCalls()).toBe(1);
+    const sentAtAfterRun1 = emailRow.sentAt.getTime();
 
-    // RUN 3 — now terminal ('sent'/'failed'): must NOT be resent, and the
+    // RUN 2 — now terminal ('sent'/'failed'): must NOT be resent, and the
     // row must NOT be touched again (send-once holds).
     await runCampaign(now);
     rows = await sendRowsFor(user.id, 'L1');
     expect(rows).toHaveLength(2);
     expect(rows.find((r) => r.channel === 'email')!.status).toBe('sent');
-    expect(rows.find((r) => r.channel === 'email')!.sentAt.getTime()).toBe(sentAtAfterRun2);
-    expect(sendEmail).toHaveBeenCalledTimes(1); // still 1, not 2
-    expect(sendWhatsAppTemplate).toHaveBeenCalledTimes(1); // still 1, not 2
+    expect(rows.find((r) => r.channel === 'email')!.sentAt.getTime()).toBe(sentAtAfterRun1);
+    expect(emailCalls()).toBe(1); // still 1, not 2
+    expect(waCalls()).toBe(1); // still 1, not 2
   });
 
-  it('ungated codes (R1, C1, F1) send regardless of ward readiness, with real per-user vars', async () => {
-    // WARD_UNGATED is never signed off / never has a commsHoldOverride row.
+  it('R1, C1 and F1 send with real per-user vars', async () => {
     const user = await makeUser(WARD_UNGATED.id, { language: 'en' });
     await addBooth(WARD_UNGATED.id);
 
@@ -341,7 +332,7 @@ describe('src/lib/send/calendar.ts — runCampaign (DB-backed)', () => {
     for (const code of ['R1', 'C1', 'F1']) {
       const rows = await sendRowsFor(user.id, code);
       expect(rows.length).toBeGreaterThan(0);
-      expect(rows.every((r) => r.status !== 'held')).toBe(true); // ungated -> never held
+      expect(rows.every((r) => r.status !== 'held')).toBe(true);
     }
 
     // The F1 email actually rendered with the real booth name from the DB
@@ -398,9 +389,6 @@ describe('src/lib/send/calendar.ts — runCampaign (DB-backed)', () => {
   });
 
   it('a due-but-guardrail-violating code is refused and alarmed: no rows written for it, ever', async () => {
-    // WARD_HELD is never signed off/overridden here — irrelevant to this
-    // test, since the guardrail check refuses L1 BEFORE readiness is even
-    // consulted.
     const user = await makeUser(WARD_HELD.id);
 
     // election_date (poll close) = Sep 20; scrutiny_complete_date = Sep 19
@@ -438,7 +426,7 @@ describe('src/lib/send/calendar.ts — runCampaign (DB-backed)', () => {
     const userBad = await makeUser(WARD_UNGATED.id);
 
     const now = new Date('2026-08-25T00:00:00.000Z');
-    await setSettings({ roll_deadline: '2026-09-01' }); // R1 fireAt = 2026-08-25 == now (ungated — no readiness gating involved)
+    await setSettings({ roll_deadline: '2026-09-01' }); // R1 fireAt = 2026-08-25 == now
 
     const originalSendToUser = sendModule.sendToUser;
     const spy = vi
@@ -468,47 +456,6 @@ describe('src/lib/send/calendar.ts — runCampaign (DB-backed)', () => {
       const badRows = await sendRowsFor(userBad.id, 'R1');
       expect(badRows).toHaveLength(0);
       expect(vi.mocked(sendEmail).mock.calls.some((c) => c[0] === userBad.email)).toBe(false);
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
-  it('PER-CODE ISOLATION: one due code failing outright does not stop a different due code from processing, and runCampaign resolves', async () => {
-    const l1User = await makeUser(WARD_HELD.id); // WARD_HELD's readiness check is the one forced to throw below
-    const c1User = await makeUser(WARD_UNGATED.id); // C1 is ungated — never calls isWardReadyForComms, so it's unaffected
-
-    const now = new Date('2026-08-30T00:00:00.000Z');
-    await setSettings({
-      scrutiny_complete_date: '2026-08-23', // L1 fireAt = 2026-08-23 (due)
-      election_date: '2026-09-20', // C1 fireAt = election_date - 21d = 2026-08-30 == now (due); guardrail window starts 2026-09-18, well after both
-    });
-
-    const spy = vi.spyOn(readinessModule, 'isWardReadyForComms').mockImplementation(async (wardId: number) => {
-      if (wardId === WARD_HELD.id) throw new Error('simulated readiness-check failure (e.g. a DB blip)');
-      return false;
-    });
-
-    try {
-      const summary = await runCampaign(now); // must resolve, not reject
-
-      expect(summary.due).toEqual(expect.arrayContaining(['L1', 'C1']));
-      expect(summary.guardrailTripped).toEqual([]);
-
-      // L1's whole-code processing failed outright: never meaningfully
-      // processed (perCode entry left unset — the same convention a
-      // guardrail refusal already uses), and it's counted in the top-level
-      // error total.
-      expect(summary.perCode.L1).toBeUndefined();
-      expect(summary.errors).toBeGreaterThan(0);
-      const l1Rows = await sendRowsFor(l1User.id, 'L1');
-      expect(l1Rows).toHaveLength(0); // no held row, no sent row — L1 never got far enough to write one
-
-      // C1 — a DIFFERENT due code in the SAME run — still processed fully,
-      // unaffected by L1's failure.
-      expect(summary.perCode.C1?.sent).toBeGreaterThan(0);
-      const c1Rows = await sendRowsFor(c1User.id, 'C1');
-      expect(c1Rows.length).toBeGreaterThan(0);
-      expect(vi.mocked(sendEmail).mock.calls.some((c) => c[0] === c1User.email)).toBe(true);
     } finally {
       spy.mockRestore();
     }

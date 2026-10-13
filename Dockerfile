@@ -206,7 +206,7 @@ EXPOSE 4321
 # non-root `appuser`, so supercronic's `sh -c` cannot open (let alone create)
 # that redirect target unless the directory exists AND is appuser-writable.
 # Without this, EVERY cron job fails with ENOENT before its command even runs
-# (backups, run-campaign, retention, sitemaps, news-suggest,
+# (backups, run-campaign, retention, sitemaps,
 # reconcile-suppressions, translate-retry). Created here, owned by appuser,
 # BEFORE the USER switch below (mkdir/chown need root).
 RUN mkdir -p /var/log/gba-jobs && chown appuser:appuser /var/log/gba-jobs

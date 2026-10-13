@@ -31,7 +31,7 @@ interface Props {
 
 const { lang, wardId } = Astro.props as Props;
 
-// See module docstring: local copy of readiness.ts's ACTIVE_CANDIDATE_STATUSES.
+// See module docstring: the statuses that count as an active candidate.
 const COMPARABLE_STATUSES = ['filed', 'contesting'] as const;
 
 const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));

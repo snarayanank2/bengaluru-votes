@@ -13,10 +13,6 @@
  * accept/reject split):
  *   - `formAction=core` — name/party/photo/status (or, on the `new` route,
  *     name/party/photo only — status is always the schema default there).
- *     A STATUS change clears the ward's sign-off (src/lib/publish.ts's
- *     `publishCandidateCore`) — a static warning sits next to the status
- *     select rather than a JS-conditional one, consistent with every other
- *     form on `/curator/*` being a plain no-JS server round trip.
  *   - `formAction=field:{fieldKey}`, one per report-card field
  *     (track_record/cases/assets/education/approachability) — SOURCE IS
  *     REQUIRED on every one of these (PRD §11): the source url field is
@@ -34,16 +30,6 @@
  * curator re-confirms one — Task 5's rule, unchanged here). The stored
  * affidavit list shows each PDF's link, its source (uploaded vs. the EC URL
  * it came from), and its extraction status.
- *
- * NEWS LINKS (Task 38; PRD §5.2; architecture §7): a curator-add form
- * (`formAction=news_link_add`) plus, per link, either an "approved" badge
- * or — for a `suggested` link (auto-suggested, origin `'auto'`) — a
- * "suggested, not yet public" badge with its own approve form
- * (`formAction=news_link_approve`). SUGGESTED links render ONLY here, on
- * this curator-only editor — never on any public page (the data-level
- * guard lives in src/lib/news.ts's `listNewsLinks({ approvedOnly: true })`,
- * which the public report card — Task 42 — calls instead of the default,
- * ALL-links view this page uses).
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
@@ -54,7 +40,6 @@ import SourceLine from '../../../components/SourceLine.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
 import { REPORT_CARD_FIELD_KEYS, type CandidateEditData, type ReportCardFieldKey } from '../../../lib/curator';
-import type { NewsLink } from '../../../lib/news';
 
 interface Props {
   lang: Lang;
@@ -64,12 +49,10 @@ interface Props {
   wardNameKn: string;
   /** Present in EDIT mode (an existing candidate); absent on the `new` route. */
   candidate?: CandidateEditData;
-  /** Present in EDIT mode — ALL of the candidate's links, suggested + approved (src/lib/news.ts's `listNewsLinks` default view). Absent on the `new` route (no candidate to hang links off of yet). */
-  newsLinks?: NewsLink[];
   message?: { kind: 'notice' | 'error'; key: string };
 }
 
-const { lang, csrfToken, wardId, wardNameEn, wardNameKn, candidate, newsLinks, message } = Astro.props;
+const { lang, csrfToken, wardId, wardNameEn, wardNameKn, candidate, message } = Astro.props;
 const isNew = candidate === undefined;
 const wardName = lang === 'kn' ? wardNameKn : wardNameEn;
 const messageText = message ? t(lang, message.key) : undefined;
@@ -167,7 +150,6 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
                   </option>
                 ))}
               </select>
-              <p class="form-helper">{t(lang, 'curator.candidateEdit.core.statusWarning')}</p>
             </div>
           )
         }
@@ -320,60 +302,6 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
       )
     }
 
-    {
-      !isNew && (
-        <Card>
-          <h2>{t(lang, 'curator.candidateEdit.newsLinks.heading')}</h2>
-
-          <h3>{t(lang, 'curator.candidateEdit.newsLinks.existingHeading')}</h3>
-          {newsLinks && newsLinks.length > 0 ? (
-            <ul class="news-link-list">
-              {newsLinks.map((link) => (
-                <li class="news-link-item">
-                  <div class="news-link-main">
-                    <a href={link.url} target="_blank" rel="noopener noreferrer">
-                      {link.title}
-                    </a>
-                    <span class="meta">{link.domain}</span>
-                    <span class={`status-badge ${link.status === 'approved' ? 'status-approved' : 'status-suggested'}`}>
-                      {t(
-                        lang,
-                        link.status === 'approved'
-                          ? 'curator.candidateEdit.newsLinks.approvedBadge'
-                          : 'curator.candidateEdit.newsLinks.suggestedBadge',
-                      )}
-                    </span>
-                  </div>
-                  {link.status === 'suggested' && (
-                    <form method="post" action={formTarget}>
-                      <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                      <input type="hidden" name="formAction" value="news_link_approve" />
-                      <input type="hidden" name="linkId" value={link.id} />
-                      <Button type="submit" variant="secondary" lang={lang}>
-                        {t(lang, 'curator.candidateEdit.newsLinks.approveSubmit')}
-                      </Button>
-                    </form>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p class="placeholder-note">{t(lang, 'curator.candidateEdit.newsLinks.noneYet')}</p>
-          )}
-
-          <h3>{t(lang, 'curator.candidateEdit.newsLinks.addHeading')}</h3>
-          <form method="post" action={formTarget}>
-            <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-            <input type="hidden" name="formAction" value="news_link_add" />
-            <FormField label={t(lang, 'curator.candidateEdit.newsLinks.urlLabel')} name="url" type="text" required lang={lang} />
-            <FormField label={t(lang, 'curator.candidateEdit.newsLinks.titleLabel')} name="title" type="text" required lang={lang} />
-            <Button type="submit" variant="secondary" lang={lang}>
-              {t(lang, 'curator.candidateEdit.newsLinks.addSubmit')}
-            </Button>
-          </form>
-        </Card>
-      )
-    }
   </div>
 </CuratorLayout>
 
@@ -512,42 +440,5 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
   .status-badge.status-failed {
     background: var(--color-danger-surface);
     color: var(--color-danger);
-  }
-
-  .status-badge.status-approved {
-    background: var(--color-primary-surface);
-    color: var(--color-primary);
-  }
-
-  .status-badge.status-suggested {
-    background: var(--color-accent-surface);
-    color: var(--color-on-accent);
-  }
-
-  .news-link-list {
-    list-style: none;
-    margin: 0 0 var(--space-4);
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .news-link-item {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--color-border);
-    font-size: var(--text-sm);
-  }
-
-  .news-link-main {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
   }
 </style>

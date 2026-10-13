@@ -1,7 +1,7 @@
 ---
 /**
  * `/curator` (Task 34, information-architecture.md §5.1) — a curator's
- * home: review-queue count and the awaiting-sign-off list, city-wide.
+ * home: the city-wide review-queue count.
  *
  * No `/kn/` twin — curator/admin routes are internal tooling (noindex, see
  * src/middleware.ts), rendered in the signed-in user's OWN saved
@@ -17,8 +17,7 @@
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
-import Badge from '../../../components/Badge.astro';
-import { t, localePath, type Lang } from '../../../i18n';
+import { t, type Lang } from '../../../i18n';
 import type { DashboardData } from '../../../lib/curator';
 
 interface Props {
@@ -27,7 +26,7 @@ interface Props {
 }
 
 const { lang, data } = Astro.props;
-const { queueCount, awaitingSignOff } = data;
+const { queueCount } = data;
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.dashboard.meta.title')} description={t(lang, 'curator.dashboard.meta.description')}>
@@ -38,25 +37,6 @@ const { queueCount, awaitingSignOff } = data;
       <h2>{t(lang, 'curator.dashboard.queueHeading')}</h2>
       <p class="queue-count">{t(lang, 'curator.dashboard.queueCount', { count: queueCount })}</p>
       <a href="/curator/queue">{t(lang, 'curator.dashboard.queueLink')}</a>
-    </Card>
-
-    <Card>
-      <h2>{t(lang, 'curator.dashboard.signOff.heading')}</h2>
-      {
-        awaitingSignOff.length === 0 ? (
-          <p>{t(lang, 'curator.dashboard.signOff.empty')}</p>
-        ) : (
-          <ul class="sign-off-list">
-            {awaitingSignOff.map((ward) => (
-              <li class="sign-off-row">
-                {ward.clearedByChange && <Badge variant="ward-held" lang={lang} />}
-                <a href={localePath(lang, `/ward/${ward.wardId}`)}>{lang === 'kn' ? ward.nameKn : ward.nameEn}</a>
-                {ward.clearedByChange && <span class="cleared-note">{t(lang, 'curator.dashboard.signOff.clearedNote')}</span>}
-              </li>
-            ))}
-          </ul>
-        )
-      }
     </Card>
 
     <Card>
@@ -99,7 +79,6 @@ const { queueCount, awaitingSignOff } = data;
     margin: 0 0 var(--space-2);
   }
 
-  .sign-off-list,
   .quick-links {
     list-style: none;
     margin: 0;
@@ -107,17 +86,6 @@ const { queueCount, awaitingSignOff } = data;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-  }
-
-  .sign-off-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .cleared-note {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
   }
 
   .quick-links-pending {

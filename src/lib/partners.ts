@@ -1,6 +1,6 @@
 /**
  * Business logic behind the admin console's partners, ward-coverage,
- * held-wards override, and EOI triage (Task 46, information-architecture.md
+ * and EOI triage (Task 46, information-architecture.md
  * §6.4; PRD §5.12/§5.13/§9.1/§11).
  *
  * PARTNERS ARE NOT A ROLE (PRD §5.12): a `partners` row is purely a
@@ -11,19 +11,13 @@
  * of its own and is entirely separate from `users.role`
  * (src/lib/admin.ts) — a partner is not a user account.
  *
- * THREE WORK QUEUES this module surfaces for the admin console:
+ * TWO WORK QUEUES this module surfaces for the admin console:
  *   1. COVERAGE (`partnerCoverage`) — which of the 369 wards have >=1
  *      partner covering them, and which don't (the UNCOVERED set — the
  *      early-warning signal for central-Bengaluru distribution skew, IA
  *      §6.4). Per-partner attributed registrations let an admin see which
  *      partnerships are actually converting sign-ups.
- *   2. HELD WARDS (`heldWards`) — wards that would be held back from
- *      candidate-comms sends (PRD §9.1's `isWardReadyForComms` gate,
- *      src/lib/readiness.ts) because they're incomplete, never signed off,
- *      or cleared by a later candidate-set change. This is the early
- *      warning for curator gaps: a held ward is a send that won't go out.
- *      `overrideCommsHold` is the admin's release valve.
- *   3. EOI QUEUE (`listEois` + the triage actions) — expressions of
+ *   2. EOI QUEUE (`listEois` + the triage actions) — expressions of
  *      interest split by path. Accepting the 'awareness' path PROVISIONS a
  *      partner (slug + kit page). Accepting the 'curation' path does NOT
  *      grant the curator role itself — PRD §5.13 is explicit that there is
@@ -40,9 +34,8 @@
  */
 import { eq, inArray, sql } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
-import { eoiSubmissions, partners, partnerWards, users, wardReadiness, wards } from '../db/schema';
+import { eoiSubmissions, partners, partnerWards, users, wards } from '../db/schema';
 import { isUniqueViolation } from './db-errors';
-import { computeReadiness, wasClearedByChange } from './readiness';
 import type { AdminActor } from './admin';
 
 export type { AdminActor };
@@ -271,97 +264,6 @@ export async function listPartners(): Promise<PartnerRosterRow[]> {
     wardIds: coverageByPartnerId.get(partner.id)?.wardIds ?? [],
     registrations: coverageByPartnerId.get(partner.id)?.registrations ?? 0,
   }));
-}
-
-// ---------------------------------------------------------------------------
-// Held wards + comms-hold override (PRD §9.1)
-// ---------------------------------------------------------------------------
-
-export type HeldWardReason = 'incomplete' | 'unsigned' | 'cleared';
-
-export interface HeldWard {
-  wardId: number;
-  wardName: string;
-  reason: HeldWardReason;
-  /** Whether an admin has already released this hold via `overrideCommsHold` — a held ward can still appear here even when overridden, so the admin sees the override state at a glance (IA §6.4). */
-  overridden: boolean;
-}
-
-/**
- * Every ward that would be HELD from candidate comms — i.e. the underlying
- * mechanical state (ignoring any `commsHoldOverride`) is NOT "complete AND
- * signed off AND not cleared since" (`src/lib/readiness.ts`'s
- * `isWardReadyForComms`, minus its override escape hatch). A ward that
- * genuinely meets that bar never appears here, override flag or not.
- *
- * `reason` priority: incompleteness (`computeReadiness`) always wins the
- * label even if the ward also happens to be unsigned; among complete
- * wards, 'cleared' (signed off once, then cleared by a later candidate-set
- * change — `wasClearedByChange`) is distinguished from 'unsigned' (never
- * signed off at all, no `ward_readiness` row or a null `signedOffAt` with
- * no `clearedAt`).
- *
- * PERFORMANCE NOTE: this calls `computeReadiness` once per ward (a query
- * against `candidates`/`candidate_fields` each) — acceptable for an
- * admin-only page viewed occasionally against a fixed 369-ward city, not
- * something read on any citizen-facing hot path.
- */
-export async function heldWards(): Promise<HeldWard[]> {
-  const [wardRows, readinessRows] = await Promise.all([
-    db.select({ id: wards.id, nameEn: wards.nameEn }).from(wards).orderBy(wards.id),
-    db.select().from(wardReadiness),
-  ]);
-  const readinessByWard = new Map(readinessRows.map((r) => [r.wardId, r]));
-
-  const results: HeldWard[] = [];
-  for (const ward of wardRows) {
-    const row = readinessByWard.get(ward.id);
-    const overridden = row?.commsHoldOverride ?? false;
-
-    const { complete } = await computeReadiness(ward.id);
-    if (!complete) {
-      results.push({ wardId: ward.id, wardName: ward.nameEn, reason: 'incomplete', overridden });
-      continue;
-    }
-
-    if (row && wasClearedByChange(row)) {
-      results.push({ wardId: ward.id, wardName: ward.nameEn, reason: 'cleared', overridden });
-      continue;
-    }
-
-    if (!row || row.signedOffAt == null) {
-      results.push({ wardId: ward.id, wardName: ward.nameEn, reason: 'unsigned', overridden });
-    }
-    // else: complete + signed off + not cleared -> genuinely ready, not held; omitted.
-  }
-
-  return results;
-}
-
-/**
- * RELEASES the comms send for `wardId`: sets `ward_readiness.commsHoldOverride
- * = true` (upserting the row if a ward has never had one). This is a
- * WARD-LEVEL flag — every future send
- * for this ward is released, per `isWardReadyForComms`'s override escape
- * hatch (src/lib/readiness.ts), not a one-time/per-send toggle; there is no
- * separate "re-hold" action here because the flag is meant to stay released
- * once an admin has made this judgement call (PRD §9.1's oversight valve).
- */
-export async function overrideCommsHold(actor: AdminActor, wardId: number): Promise<void> {
-  assertAdmin(actor);
-
-  await db.transaction(async (tx) => {
-    const [wardRow] = await tx.select({ id: wards.id }).from(wards).where(eq(wards.id, wardId));
-    if (!wardRow) {
-      throw new Error('invalid_ward_id');
-    }
-
-    await tx
-      .insert(wardReadiness)
-      .values({ wardId, commsHoldOverride: true })
-      .onConflictDoUpdate({ target: wardReadiness.wardId, set: { commsHoldOverride: true } });
-
-  });
 }
 
 // ---------------------------------------------------------------------------

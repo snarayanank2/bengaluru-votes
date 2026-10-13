@@ -5,14 +5,6 @@
  * source-required / scope / photo-upload / CSRF behaviors live in the
  * route-level suite, tests/routes/curator-candidate.test.ts, since those
  * need the real middleware + multipart form parsing.
- *
- * SIGN-OFF-CLEAR (architecture §6, PRD §9.1): a STATUS transition or a
- * brand-new candidate is a "candidate-set change" that clears
- * `ward_readiness.signedOffAt`/sets `clearedAt` — the tests below are the
- * authoritative coverage for that atomicity (same transaction as the
- * candidate write, both land or neither does — no separate rollback test is
- * needed beyond what tests/unit/audit.test.ts already covers for the
- * append-only mechanics themselves).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -60,15 +52,7 @@ const WARD_OTHER = {
   zone: 'Zone T',
   boundaryRef: 'publish-candidate-test-ward-other',
 };
-const WARD_NO_READINESS_ROW = {
-  id: 99433,
-  nameEn: 'Publish Candidate Test Ward No Readiness Row',
-  nameKn: 'ಪ್ರಕಟಣೆ ಅಭ್ಯರ್ಥಿ ಪರೀಕ್ಷಾ ವಾರ್ಡ್ ಡಿ',
-  corporation: 'south' as const,
-  zone: 'Zone T',
-  boundaryRef: 'publish-candidate-test-ward-no-readiness',
-};
-const ALL_WARDS = [WARD_SIGNED_OFF, WARD_PLAIN, WARD_OTHER, WARD_NO_READINESS_ROW];
+const ALL_WARDS = [WARD_SIGNED_OFF, WARD_PLAIN, WARD_OTHER];
 
 const ACTOR = { userId: 88801, role: 'curator' as const };
 
@@ -92,11 +76,10 @@ describe('src/lib/publish.ts — publishCandidateCore / createCandidate / publis
     }
     await db.delete(schema.wardIssues).where(inArray(schema.wardIssues.wardId, ALL_WARDS.map((w) => w.id)));
     await db.delete(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARDS.map((w) => w.id)));
-    await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARDS.map((w) => w.id)));
     await client.end();
   });
 
-  describe('publishCandidateCore — status change clears sign-off; a non-status edit does not', () => {
+  describe('publishCandidateCore — core edits and status transitions', () => {
     let candidateId: number;
 
     beforeAll(async () => {
@@ -111,73 +94,28 @@ describe('src/lib/publish.ts — publishCandidateCore / createCandidate / publis
         })
         .returning({ id: schema.candidates.id });
       candidateId = row!.id;
-
-      const signedOffAt = new Date(Date.now() - 60_000);
-      await db
-        .insert(schema.wardReadiness)
-        .values({ wardId: WARD_SIGNED_OFF.id, signedOffAt, signedOffBy: 1 })
-        .onConflictDoUpdate({ target: schema.wardReadiness.wardId, set: { signedOffAt, clearedAt: null, signedOffBy: 1 } });
     });
 
-    it('a core edit that does NOT touch status leaves sign-off untouched', async () => {
+    it('a core edit that does NOT touch status updates the field and leaves status alone', async () => {
       await publishCandidateCore(ACTOR, { candidateId, partyEn: 'Renamed Party' });
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateId));
       expect(candidate?.partyEn).toBe('Renamed Party');
-
-      const [readiness] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_SIGNED_OFF.id));
-      expect(readiness?.signedOffAt).not.toBeNull();
-      expect(readiness?.clearedAt).toBeNull();
+      expect(candidate?.status).toBe('filed');
     });
 
-    it('a STATUS transition clears the ward sign-off atomically, audit-logged', async () => {
+    it('a STATUS transition is written', async () => {
       await publishCandidateCore(ACTOR, { candidateId, status: 'contesting' });
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateId));
       expect(candidate?.status).toBe('contesting');
-
-      const [readiness] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_SIGNED_OFF.id));
-      expect(readiness?.signedOffAt).toBeNull();
-      expect(readiness?.clearedAt).not.toBeNull();
-
     });
   });
 
-  describe('publishCandidateCore — a status "change" to the SAME value never clears an unrelated never-signed-off ward', () => {
-    it('setting status to its current value on a ward with no ward_readiness row at all creates no row', async () => {
-      const [row] = await db
-        .insert(schema.candidates)
-        .values({
-          slug: `publish-core-noop-test-${randomUUID()}`,
-          wardId: WARD_NO_READINESS_ROW.id,
-          nameEn: 'No-op Status Candidate',
-          partyEn: 'Independent',
-          status: 'filed',
-        })
-        .returning({ id: schema.candidates.id });
-      const candidateId = row!.id;
-
-      await publishCandidateCore(ACTOR, { candidateId, status: 'filed' });
-
-      const [readiness] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_NO_READINESS_ROW.id));
-      expect(readiness).toBeUndefined();
-    });
-  });
-
-  describe('createCandidate — new candidate is itself a candidate-set change; slug scheme', () => {
-    it('a new candidate in a SIGNED OFF ward clears that ward sign-off', async () => {
-      const signedOffAt = new Date(Date.now() - 60_000);
-      await db
-        .insert(schema.wardReadiness)
-        .values({ wardId: WARD_PLAIN.id, signedOffAt, signedOffBy: 1 })
-        .onConflictDoUpdate({ target: schema.wardReadiness.wardId, set: { signedOffAt, clearedAt: null, signedOffBy: 1 } });
-
+  describe('createCandidate — status default; slug scheme', () => {
+    it('a new candidate starts as filed', async () => {
       const { id } = await createCandidate(ACTOR, { wardId: WARD_PLAIN.id, nameEn: 'Fresh Filing', partyEn: 'Independent' });
       expect(id).toBeGreaterThan(0);
-
-      const [readiness] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_PLAIN.id));
-      expect(readiness?.signedOffAt).toBeNull();
-      expect(readiness?.clearedAt).not.toBeNull();
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, id));
       expect(candidate?.status).toBe('filed');

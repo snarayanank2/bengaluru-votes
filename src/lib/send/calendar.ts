@@ -2,7 +2,8 @@
  * The campaign calendar runner (Task 54; docs/prd.md §9.3, §9.2; IA's send
  * calendar). Fires the seven scheduled campaign sends (W1 excepted — that
  * one fires from the registration flow, src/lib/auth-flow.ts, not here)
- * over the election timeline, gated per ward by data readiness.
+ * over the election timeline. There is no per-ward readiness gate (dropped
+ * 2026-08-15): every due code goes to every ward at once.
  *
  * THREE LAYERS, kept deliberately separate so the scheduling/guardrail math
  * is unit-testable with no DB at all:
@@ -28,18 +29,8 @@
  *
  *   3. `runCampaign` — the DB-touching orchestrator: resolves the audience
  *      AT SEND TIME (PRD §9: not a snapshot taken when the anchor was set),
- *      gates L1/C2/C3 per ward on `isWardReadyForComms` (R1/C1/F1 are
- *      ungated — they carry no candidate-specific content), builds each
- *      code's template vars per user (language + home ward determine
- *      them), and calls `sendToUser` once per eligible user. A ward that
- *      isn't ready for a gated code is HELD — `recordWardHeld` writes a
- *      `'held'` campaign_sends row per eligible (user, channel) as an audit
- *      trail of what this run held back, WITHOUT sending. `send.ts`'s
- *      `existingSend` already treats `'held'` as "not yet sent", so once
- *      the ward clears, the NEXT run's `sendToUser` call actually sends —
- *      and `recordSend`'s held->terminal UPGRADE (this task's fix to
- *      send.ts) ensures that real send is recorded exactly once, not
- *      resent on every subsequent run.
+ *      builds each code's template vars per user (language + home ward
+ *      determine them), and calls `sendToUser` once per eligible user.
  *
  * F1's CONTENT GAP (booth name/address + poll open/close time, docs/
  * messages.md §10): this platform has no per-citizen booth resolution (a
@@ -61,13 +52,12 @@
  */
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { booths, campaignSends, candidates, users, wards } from '../../db/schema';
+import { booths, candidates, users, wards } from '../../db/schema';
 import type { Lang } from '../../i18n';
 import { localePath } from '../../i18n';
 import { logEvent } from '../log';
-import { isWardReadyForComms } from '../readiness';
 import { getSettings } from '../settings';
-import type { Channel, SendCode } from './render';
+import type { SendCode } from './render';
 import { sendToUser, type SendToUserUser } from './send';
 
 const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
@@ -91,9 +81,6 @@ export interface ScheduledSend {
   code: SendCode;
   fireAt: Date;
 }
-
-/** L1/C2/C3 carry candidate-specific content and are gated on `isWardReadyForComms`; R1/C1/F1 carry no candidate content and are ungated. */
-const GATED_CODES: ReadonlySet<SendCode> = new Set(['L1', 'C2', 'C3']);
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const GUARDRAIL_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -166,51 +153,7 @@ export function guardrailViolations(settings: CalendarSettings): SendCode[] {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Held rows (the ward-readiness hold's audit trail)
-// ---------------------------------------------------------------------------
-
-/**
- * Writes a `'held'` campaign_sends row for every (user, channel) in
- * `wardUsers` that WOULD be eligible for `code` — same eligibility rule
- * `sendToUser` uses (email if `email && emailEnabled`, whatsapp if
- * `phone && whatsappEnabled`) — so the row set matches exactly what a
- * later real send would touch.
- *
- * `onConflictDoNothing`: a held write must never disturb an existing row —
- * in particular it must never downgrade an already-'sent' row back to
- * 'held' (e.g. a re-run after the ward already cleared and sent earlier in
- * the same job invocation). Only an absent row gets the 'held' insert.
- */
-async function recordWardHeld(code: SendCode, wardUsers: SendToUserUser[], wardId: number): Promise<void> {
-  const rows: {
-    code: SendCode;
-    userId: number;
-    wardId: number;
-    channel: Channel;
-    language: Lang;
-    status: 'held';
-  }[] = [];
-
-  for (const user of wardUsers) {
-    if (user.email && user.emailEnabled) {
-      rows.push({ code, userId: user.id, wardId, channel: 'email', language: user.language, status: 'held' });
-    }
-    if (user.phone && user.whatsappEnabled) {
-      rows.push({ code, userId: user.id, wardId, channel: 'whatsapp', language: user.language, status: 'held' });
-    }
-  }
-  if (rows.length === 0) return;
-
-  await db
-    .insert(campaignSends)
-    .values(rows)
-    .onConflictDoNothing({ target: [campaignSends.code, campaignSends.userId, campaignSends.channel] });
-
-  logEvent('campaign_ward_held', { code, wardId, userCount: wardUsers.length });
-}
-
-// ---------------------------------------------------------------------------
-// 3. Per-user template vars
+// 2. Per-user template vars
 // ---------------------------------------------------------------------------
 
 const EN_MONTHS = [
@@ -399,15 +342,14 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
 }
 
 // ---------------------------------------------------------------------------
-// 4. runCampaign
+// 3. runCampaign
 // ---------------------------------------------------------------------------
 
 export interface CodeRunSummary {
   sent: number;
-  held: number;
-  /** Users skipped because `buildVars` deferred (today: only possible for F1's content gap) — distinct from `held`, which is a ward-readiness gate. */
+  /** Users skipped because `buildVars` deferred (today: only possible for F1's content gap). */
   deferred: number;
-  /** Per-user (buildVars+sendToUser) and per-ward (recordWardHeld) failures caught and logged for this code — the run continued past every one of them. See `logEvent('campaign_send_error', ...)`. */
+  /** Per-user (buildVars+sendToUser) failures caught and logged for this code — the run continued past every one of them. See `logEvent('campaign_send_error', ...)`. */
   errors: number;
 }
 
@@ -418,7 +360,7 @@ export interface CampaignRunSummary {
   /**
    * Total error count across this run: every `perCode[code].errors` PLUS
    * one for each due code whose processing itself failed outright (audience
-   * query, ward-readiness resolution, etc. — caught by the per-code
+   * query, etc. — caught by the per-code
    * try/catch, logged as `campaign_code_error`, `perCode[code]` left unset
    * for that code since it was never meaningfully processed). Zero on a
    * clean run; the job entrypoint should log/exit-nonzero when this is
@@ -430,25 +372,23 @@ export interface CampaignRunSummary {
 /**
  * Runs one campaign pass at instant `now`: reads the election anchors,
  * computes which codes are due, refuses+alarms any guardrail violation,
- * resolves the registered-citizen audience AT SEND TIME, gates L1/C2/C3 per
- * ward on `isWardReadyForComms`, and sends. Never logs PII — the summary
- * and every `logEvent` call carry only codes/counts/ids.
+ * resolves the registered-citizen audience AT SEND TIME, and sends. Never
+ * logs PII — the summary and every `logEvent` call carry only
+ * codes/counts/ids.
  *
  * FAILURE ISOLATION (Task 54 review): a transient failure anywhere in the
  * per-user send chain (buildVars, isSuppressed, recordSend, sendToUser's
- * transport calls, etc.) or in a single ward's held-row write must not
- * abort every other user/ward/code in this invocation — a DB blip on one
- * user out of thousands must not cost every other due code its send this
- * run. Two isolation boundaries, both catch-log-continue (never rethrow):
- *   - PER USER: the `buildVars` + `sendToUser` call for a sendable user,
- *     and the `recordWardHeld` write for a not-ready ward, are each wrapped
- *     individually — one user's (or one ward's held-write) failure logs
- *     `campaign_send_error` and moves on to the next user/ward.
+ * transport calls, etc.) must not abort every other user/code in this
+ * invocation — a DB blip on one user out of thousands must not cost every
+ * other due code its send this run. Two isolation boundaries, both
+ * catch-log-continue (never rethrow):
+ *   - PER USER: the `buildVars` + `sendToUser` call for a user is wrapped
+ *     individually — one user's failure logs `campaign_send_error` and
+ *     moves on to the next user.
  *   - PER CODE: everything else in a due code's processing (the audience
- *     query itself, `isWardReadyForComms`'s resolution) is wrapped as a
- *     whole — a failure there logs `campaign_code_error` and moves on to
- *     the next due code, exactly as the guardrail/gating refusals already
- *     do (those stay untouched: a refusal is not an error).
+ *     query itself) is wrapped as a whole — a failure there logs
+ *     `campaign_code_error` and moves on to the next due code, exactly as
+ *     the guardrail refusal already does (a refusal is not an error).
  */
 export async function runCampaign(now: Date): Promise<CampaignRunSummary> {
   const settingsRows = await getSettings([
@@ -495,84 +435,33 @@ export async function runCampaign(now: Date): Promise<CampaignRunSummary> {
         .where(and(eq(users.status, 'active'), isNotNull(users.homeWardId)));
       const audience: SendToUserUser[] = audienceRows;
 
-      if (GATED_CODES.has(code)) {
-        const byWard = new Map<number, SendToUserUser[]>();
-        for (const user of audience) {
-          const wardId = user.homeWardId!;
-          if (!byWard.has(wardId)) byWard.set(wardId, []);
-          byWard.get(wardId)!.push(user);
-        }
-
-        let sent = 0;
-        let held = 0;
-        let deferred = 0;
-        let errors = 0;
-        for (const [wardId, wardUsers] of byWard) {
-          // Readiness resolution itself is NOT individually isolated — a
-          // failure here escapes to this code's outer catch below (same
-          // "audience query failing" bucket), which is fine: it costs this
-          // ONE due code the rest of its wards, not every other due code.
-          const ready = await isWardReadyForComms(wardId);
-          if (!ready) {
-            // PER-WARD isolation: one ward's held-row write failing must
-            // not skip every other ward's held write (or sends) for this
-            // code.
-            try {
-              await recordWardHeld(code, wardUsers, wardId);
-              held += wardUsers.length;
-            } catch {
-              logEvent('campaign_send_error', { code, wardId });
-              errors++;
-            }
+      let sent = 0;
+      let deferred = 0;
+      let errors = 0;
+      for (const user of audience) {
+        // PER-USER isolation: one user's send failing (a transient DB
+        // error in buildVars's lookups, isSuppressed, recordSend, or an
+        // unexpected throw anywhere in sendToUser's chain) must not skip
+        // every other user for this code.
+        try {
+          const vars = await buildVars(code, user, ctx);
+          if (!vars) {
+            deferred++;
             continue;
           }
-          for (const user of wardUsers) {
-            // PER-USER isolation: one user's send failing (a transient DB
-            // error in buildVars's lookups, isSuppressed, recordSend, or an
-            // unexpected throw anywhere in sendToUser's chain) must not
-            // skip every other user in this ward/code.
-            try {
-              const vars = await buildVars(code, user, ctx);
-              if (!vars) {
-                deferred++;
-                continue;
-              }
-              await sendToUser(user, code, vars);
-              sent++;
-            } catch {
-              logEvent('campaign_send_error', { code, wardId, userId: user.id });
-              errors++;
-            }
-          }
+          await sendToUser(user, code, vars);
+          sent++;
+        } catch {
+          logEvent('campaign_send_error', { code, userId: user.id });
+          errors++;
         }
-        summary.perCode[code] = { sent, held, deferred, errors };
-        summary.errors += errors;
-      } else {
-        let sent = 0;
-        let deferred = 0;
-        let errors = 0;
-        for (const user of audience) {
-          // PER-USER isolation — same rationale as the gated branch above.
-          try {
-            const vars = await buildVars(code, user, ctx);
-            if (!vars) {
-              deferred++;
-              continue;
-            }
-            await sendToUser(user, code, vars);
-            sent++;
-          } catch {
-            logEvent('campaign_send_error', { code, userId: user.id });
-            errors++;
-          }
-        }
-        summary.perCode[code] = { sent, held: 0, deferred, errors };
-        summary.errors += errors;
       }
+      summary.perCode[code] = { sent, deferred, errors };
+      summary.errors += errors;
     } catch {
-      // PER-CODE isolation: an error escaping the per-user/per-ward
-      // handling above (the audience query itself, or `isWardReadyForComms`
-      // resolution) must not abort every other due code in this run.
+      // PER-CODE isolation: an error escaping the per-user handling above
+      // (the audience query itself) must not abort every other due code in
+      // this run.
       // `perCode[code]` is deliberately left unset — this code was never
       // meaningfully processed, same convention the guardrail refusal above
       // already uses.

@@ -1,6 +1,6 @@
 /**
  * Task 46 — src/lib/partners.ts: partner roster + ward-coverage matrix +
- * held-wards/comms-hold override + EOI triage (information-architecture.md
+ * EOI triage (information-architecture.md
  * §6.4; PRD §5.12/§5.13/§9.1/§11). Exercises the lib functions directly
  * against a real DB (no HTTP/middleware layer — that's
  * tests/routes/admin-partners.test.ts).
@@ -17,11 +17,6 @@
  *     vitest.config.ts, but still avoid brittle exact-array assertions),
  *     per-partner ward set + attributed-registration count
  *     (`users.srcAttribution === slug`).
- *   - heldWards: incomplete / unsigned / cleared reasons; a ready+signed
- *     ward does NOT appear; an overridden held ward still appears with
- *     `overridden: true`.
- *   - overrideCommsHold: sets `commsHoldOverride`, audited, RELEASES the
- *     send (`isWardReadyForComms` flips to true).
  *   - EOI triage: acceptEoiAwareness provisions a partner; acceptEoiCuration
  *     accepts WITHOUT creating a partner or granting any role (no
  *     self-activation, PRD §5.13); declineEoi; already-processed/not-found
@@ -46,8 +41,6 @@ import {
   updatePartner,
   partnerCoverage,
   listPartners,
-  heldWards,
-  overrideCommsHold,
   listEois,
   acceptEoiAwareness,
   acceptEoiCuration,
@@ -55,7 +48,6 @@ import {
   isValidPartnerSlug,
   type AdminActor,
 } from '../../src/lib/partners';
-import { isWardReadyForComms } from '../../src/lib/readiness';
 
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
@@ -90,34 +82,6 @@ const SLUG_ALPHA = 'partners-test-alpha';
 const SLUG_DUP = 'partners-test-dup-target';
 const SLUG_UPDATE = 'partners-test-update-target';
 const SLUG_AWARENESS = 'partners-test-awareness-accept';
-const SOURCE = 'https://example.org/partners-test-source';
-
-async function insertCandidate(wardId: number): Promise<number> {
-  const [row] = await db
-    .insert(schema.candidates)
-    .values({
-      slug: `partners-test-cand-${wardId}-${Math.random().toString(36).slice(2)}`,
-      wardId,
-      nameEn: 'Partners Test Candidate',
-      partyEn: 'Independent',
-      status: 'contesting',
-    })
-    .returning({ id: schema.candidates.id });
-  return row!.id;
-}
-
-async function insertCompleteFields(candidateId: number): Promise<void> {
-  for (const fieldKey of ['cases', 'assets', 'education']) {
-    await db.insert(schema.candidateFields).values({ candidateId, fieldKey, sourceUrl: SOURCE, sourceType: 'curator', valueEn: 'Declared.' });
-  }
-}
-
-/** Inserts a complete (readiness-wise) candidate for `wardId` so `computeReadiness` reports complete=true. */
-async function makeWardComplete(wardId: number): Promise<void> {
-  const candidateId = await insertCandidate(wardId);
-  await insertCompleteFields(candidateId);
-}
-
 async function upsertUser(email: string, role: 'citizen' | 'admin', srcAttribution?: string): Promise<number> {
   const [row] = await db
     .insert(schema.users)
@@ -148,18 +112,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
 
     admin = { userId: adminId, role: 'admin' };
 
-    // Readiness fixtures.
-    await makeWardComplete(WARD_HELD_UNSIGNED.id); // complete, no ward_readiness row at all -> 'unsigned'
-    // WARD_HELD_INCOMPLETE: zero candidates -> incomplete by construction, nothing to insert.
-
-    await makeWardComplete(WARD_HELD_CLEARED.id);
-    await db.insert(schema.wardReadiness).values({ wardId: WARD_HELD_CLEARED.id, signedOffAt: null, clearedAt: new Date() });
-
-    await makeWardComplete(WARD_READY.id);
-    await db.insert(schema.wardReadiness).values({ wardId: WARD_READY.id, signedOffAt: new Date(), clearedAt: null, signedOffBy: adminId });
-
-    await makeWardComplete(WARD_OVERRIDE.id);
-    // Left unsigned deliberately — overrideCommsHold is exercised in a test below.
   });
 
   afterAll(async () => {
@@ -170,13 +122,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
       await db.delete(schema.partnerWards).where(inArray(schema.partnerWards.partnerId, createdPartnerIds));
       await db.delete(schema.partners).where(inArray(schema.partners.id, createdPartnerIds));
     }
-    const candidateRows = await db.select({ id: schema.candidates.id }).from(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARD_IDS));
-    const candidateIds = candidateRows.map((r) => r.id);
-    if (candidateIds.length > 0) {
-      await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, candidateIds));
-    }
-    await db.delete(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARD_IDS));
-    await db.delete(schema.wardReadiness).where(inArray(schema.wardReadiness.wardId, ALL_WARD_IDS));
     await db.delete(schema.users).where(inArray(schema.users.id, [adminId, citizenId]));
     await db.delete(schema.users).where(inArray(schema.users.email, [EMAILS.regUserA1, EMAILS.regUserA2]));
     await db.delete(schema.wards).where(inArray(schema.wards.id, ALL_WARD_IDS));
@@ -308,59 +253,6 @@ describe('src/lib/partners.ts (Task 46)', () => {
       expect(alpha).toBeDefined();
       expect(alpha!.wardIds.length).toBe(2);
       expect(alpha!.registrations).toBe(2);
-    });
-  });
-
-  describe('heldWards + overrideCommsHold', () => {
-    it('an incomplete ward (zero active candidates) appears with reason "incomplete"', async () => {
-      const rows = await heldWards();
-      const row = rows.find((r) => r.wardId === WARD_HELD_INCOMPLETE.id);
-      expect(row).toBeDefined();
-      expect(row!.reason).toBe('incomplete');
-      expect(row!.overridden).toBe(false);
-    });
-
-    it('a complete-but-never-signed ward appears with reason "unsigned"', async () => {
-      const rows = await heldWards();
-      const row = rows.find((r) => r.wardId === WARD_HELD_UNSIGNED.id);
-      expect(row).toBeDefined();
-      expect(row!.reason).toBe('unsigned');
-      expect(row!.overridden).toBe(false);
-    });
-
-    it('a complete-but-cleared-by-change ward appears with reason "cleared"', async () => {
-      const rows = await heldWards();
-      const row = rows.find((r) => r.wardId === WARD_HELD_CLEARED.id);
-      expect(row).toBeDefined();
-      expect(row!.reason).toBe('cleared');
-      expect(row!.overridden).toBe(false);
-    });
-
-    it('a complete + signed-off + not-cleared ward does NOT appear', async () => {
-      const rows = await heldWards();
-      expect(rows.find((r) => r.wardId === WARD_READY.id)).toBeUndefined();
-    });
-
-    it('OVERRIDE AUDITED: overrideCommsHold sets commsHoldOverride true, audits it, releases the send, and still shows in heldWards with overridden:true', async () => {
-      expect(await isWardReadyForComms(WARD_OVERRIDE.id)).toBe(false);
-
-      await overrideCommsHold(admin, WARD_OVERRIDE.id);
-
-      const [row] = await db.select().from(schema.wardReadiness).where(eq(schema.wardReadiness.wardId, WARD_OVERRIDE.id));
-      expect(row?.commsHoldOverride).toBe(true);
-
-      expect(await isWardReadyForComms(WARD_OVERRIDE.id)).toBe(true);
-
-      const held = await heldWards();
-      const heldRow = held.find((r) => r.wardId === WARD_OVERRIDE.id);
-      expect(heldRow).toBeDefined();
-      expect(heldRow!.overridden).toBe(true);
-    });
-
-    it('rejects a non-admin actor, and an unknown ward id', async () => {
-      const citizenActor = { userId: citizenId, role: 'citizen' } as unknown as AdminActor;
-      await expect(overrideCommsHold(citizenActor, WARD_HELD_INCOMPLETE.id)).rejects.toThrow('admin_only');
-      await expect(overrideCommsHold(admin, WARD_INVALID)).rejects.toThrow('invalid_ward_id');
     });
   });
 

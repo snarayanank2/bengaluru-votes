@@ -22,13 +22,11 @@ import { db } from '../db/client';
 import {
   candidateAffidavits,
   candidateFields,
-  candidateNewsLinks,
   candidates,
   flagItems,
   flagSubmissions,
   media,
   users,
-  wardReadiness,
   wards,
   type candidateStatusEnum,
   type extractionStatusEnum,
@@ -43,8 +41,6 @@ import { storeMedia, type MediaStoreErrorCode } from './media';
 import { checkDefaultLimit } from './rate-limit';
 import { fetchAffidavitFromEc, type AffidavitFetchErrorCode } from './affidavit-fetch';
 import { extractAffidavitFields } from './extract';
-import { addNewsLink, approveNewsLink } from './news';
-import { computeReadiness, signOffWard, wasClearedByChange, type ReadinessResult } from './readiness';
 import type { Lang } from '../i18n';
 
 type FlagTargetType = (typeof flagTargetEnum.enumValues)[number];
@@ -98,17 +94,8 @@ export function humanTargetLabel(targetType: FlagTargetType, targetRef: string):
 // Dashboard (IA §5.1)
 // ---------------------------------------------------------------------------
 
-export interface AwaitingSignOffWard {
-  wardId: number;
-  nameEn: string;
-  nameKn: string;
-  /** true = this ward WAS signed off, but a later candidate-set change cleared it (IA §5.1: called out first — a curator who doesn't know a ward is held won't sign it off). */
-  clearedByChange: boolean;
-}
-
 export interface DashboardData {
   queueCount: number;
-  awaitingSignOff: AwaitingSignOffWard[];
 }
 
 export async function loadDashboard(): Promise<DashboardData> {
@@ -117,36 +104,7 @@ export async function loadDashboard(): Promise<DashboardData> {
     .from(flagItems)
     .where(eq(flagItems.status, 'pending'));
 
-  const wardRows = await db
-    .select({
-      wardId: wards.id,
-      nameEn: wards.nameEn,
-      nameKn: wards.nameKn,
-      signedOffAt: wardReadiness.signedOffAt,
-      clearedAt: wardReadiness.clearedAt,
-    })
-    .from(wards)
-    .leftJoin(wardReadiness, eq(wardReadiness.wardId, wards.id));
-
-  const awaitingSignOff: AwaitingSignOffWard[] = [];
-  for (const row of wardRows) {
-    // wasClearedByChange (src/lib/readiness.ts) is the shared, correct
-    // formula — signedOffAt and clearedAt are mutually exclusive by
-    // construction (see that helper's docstring), so clearedByChange
-    // already implies signedOffAt == null; `needsSignOff` is written as an
-    // explicit OR anyway as defense-in-depth against a future write path
-    // that might not preserve that invariant.
-    const clearedByChange = wasClearedByChange(row);
-    const needsSignOff = row.signedOffAt == null || clearedByChange;
-    if (needsSignOff) {
-      awaitingSignOff.push({ wardId: row.wardId, nameEn: row.nameEn, nameKn: row.nameKn, clearedByChange });
-    }
-  }
-  // Cleared-by-change wards FIRST (IA §5.1) — a stable sort keeps the
-  // never-signed-off wards in their original (ward-id) order behind them.
-  awaitingSignOff.sort((a, b) => Number(b.clearedByChange) - Number(a.clearedByChange));
-
-  return { queueCount: Number(countRow?.count ?? 0), awaitingSignOff };
+  return { queueCount: Number(countRow?.count ?? 0) };
 }
 
 // ---------------------------------------------------------------------------
@@ -410,9 +368,7 @@ export async function handleReject(actor: CuratorActor, itemId: number, form: Fo
 // Candidate editor (Task 36; IA §5.4; PRD §5.2/§9.1/§11) — create/correct a
 // candidate's core record + report-card fields. Edits publish immediately
 // (curator trust, no approval gate); every report-card field carries a
-// required source. A status transition or a brand-new candidate is a
-// "candidate-set change" that clears the ward's sign-off — see
-// src/lib/publish.ts's `publishCandidateCore`/`createCandidate`.
+// required source.
 // ---------------------------------------------------------------------------
 
 /** The five report-card fields (PRD §5.2) — fixed set, in display order. */
@@ -599,10 +555,7 @@ async function parseCandidateCoreForm(
  * Handles the CORE form on `/curator/candidate/{id}` (name/party/photo/
  * status). A photo file is only read (and stored) when one was actually
  * chosen — an empty file input leaves the existing photo untouched, it does
- * NOT clear it. Publishes via `publishCandidateCore`, which itself clears
- * the ward's sign-off atomically IF `status` actually changed (see that
- * function's docstring) — this handler doesn't need to know or care which
- * case applies.
+ * NOT clear it. Publishes via `publishCandidateCore`.
  *
  * INVARIANT: status is validated BEFORE parseCandidateCoreForm runs, so an
  * invalid status → 400 with NO media row created and NO rate-limit consumed.
@@ -803,77 +756,8 @@ export async function handleCandidateAffidavitPublish(
 }
 
 // ---------------------------------------------------------------------------
-// News links (Task 38; PRD §5.2 "News & coverage"; architecture §7) — the
-// `formAction=news_link_add` / `formAction=news_link_approve` forms on
-// `/curator/candidate/{id}`. The engine (write-time http(s) validation,
-// curator-added-vs-auto-suggested lifecycles, the public `approvedOnly`
-// guard) lives in src/lib/news.ts; these two handlers only own the
-// FormData parsing + the link-belongs-to-this-candidate guard described below.
-// ---------------------------------------------------------------------------
-
-export type NewsLinkOutcome = { kind: 'saved' } | { kind: 'validation_error'; key: string };
-
-/**
- * Handles the "add a link" form. A curator-added link publishes directly
- * (src/lib/news.ts's `addNewsLink`) — no approval step. `url`/`title` are
- * re-validated here for a nicer inline error message; `addNewsLink` itself
- * re-validates the URL independently regardless (defense in depth — see
- * its docstring).
- */
-export async function handleNewsLinkAdd(actor: CuratorActor, candidateId: number, form: FormData): Promise<NewsLinkOutcome> {
-  const url = String(form.get('url') ?? '').trim();
-  const title = String(form.get('title') ?? '').trim();
-
-  if (!title) {
-    return { kind: 'validation_error', key: 'curator.candidateEdit.newsLinks.error.titleRequired' };
-  }
-  if (!url || !isHttpUrl(url)) {
-    return { kind: 'validation_error', key: 'curator.candidateEdit.newsLinks.error.urlInvalid' };
-  }
-
-  try {
-    await addNewsLink(actor, candidateId, url, title);
-  } catch (err) {
-    if (err instanceof Error && err.message === 'duplicate_url') {
-      return { kind: 'validation_error', key: 'curator.candidateEdit.newsLinks.error.duplicateUrl' };
-    }
-    throw err;
-  }
-
-  return { kind: 'saved' };
-}
-
-/**
- * Handles the "approve" form on a `suggested` link. Re-selects the link
- * and confirms its `candidateId` matches the page's `candidateId` before
- * calling `approveNewsLink`, so a form on one candidate's page can never
- * approve a link that belongs to a different candidate.
- */
-export async function handleNewsLinkApprove(actor: CuratorActor, candidateId: number, form: FormData): Promise<NewsLinkOutcome> {
-  const linkId = Number(form.get('linkId'));
-  if (!Number.isInteger(linkId)) {
-    return { kind: 'validation_error', key: 'curator.candidateEdit.newsLinks.error.notFound' };
-  }
-
-  const [link] = await db
-    .select({ candidateId: candidateNewsLinks.candidateId })
-    .from(candidateNewsLinks)
-    .where(eq(candidateNewsLinks.id, linkId));
-  if (!link || link.candidateId !== candidateId) {
-    return { kind: 'validation_error', key: 'curator.candidateEdit.newsLinks.error.notFound' };
-  }
-
-  await approveNewsLink(actor, linkId);
-  return { kind: 'saved' };
-}
-
-// ---------------------------------------------------------------------------
-// Ward editor + readiness panel (Task 39; IA §5.5-adjacent; PRD §9.1;
-// design-system.md §7.13) — `/curator/ward/{id}`'s data-loading side. The
-// mechanical completeness check, sign-off, and the comms send-gate
-// themselves live in src/lib/readiness.ts; this module only assembles the
-// page-level view model (ward metadata + the current readiness/sign-off
-// state) and dispatches the "Mark ward ready" POST.
+// Ward page (Task 39) — `/curator/ward/{id}`'s data-loading side: read-only
+// ward metadata, with links out to the issues editor and "add candidate".
 // ---------------------------------------------------------------------------
 
 export interface WardEditData {
@@ -883,41 +767,16 @@ export interface WardEditData {
   corporation: string;
   zone: string;
   boundaryRef: string;
-  readiness: ReadinessResult;
-  signedOffAt: Date | null;
-  /** The signing curator/admin's email, when resolvable — falls back to their raw user id in the view (WardEdit.astro) when a user row no longer resolves. */
-  signedOffByEmail: string | null;
-  signedOffByUserId: number | null;
-  clearedAt: Date | null;
 }
 
 /**
- * Loads everything `/curator/ward/{id}` needs to render: the ward's own
- * (official, curator-read-only in this task) metadata, the live
- * `computeReadiness` result, and the current `ward_readiness` sign-off
- * state. `null` when no such ward exists — the route twin turns that into
- * a 404.
+ * Loads the ward's own (official, read-only) metadata for
+ * `/curator/ward/{id}`. `null` when no such ward exists — the route twin
+ * turns that into a 404.
  */
 export async function loadWardForEdit(wardId: number): Promise<WardEditData | null> {
   const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
   if (!ward) return null;
-
-  const [readinessRow] = await db
-    .select({
-      signedOffAt: wardReadiness.signedOffAt,
-      signedOffBy: wardReadiness.signedOffBy,
-      clearedAt: wardReadiness.clearedAt,
-    })
-    .from(wardReadiness)
-    .where(eq(wardReadiness.wardId, wardId));
-
-  let signedOffByEmail: string | null = null;
-  if (readinessRow?.signedOffBy != null) {
-    const [signer] = await db.select({ email: users.email }).from(users).where(eq(users.id, readinessRow.signedOffBy));
-    signedOffByEmail = signer?.email ?? null;
-  }
-
-  const readiness = await computeReadiness(wardId);
 
   return {
     id: ward.id,
@@ -926,18 +785,5 @@ export async function loadWardForEdit(wardId: number): Promise<WardEditData | nu
     corporation: ward.corporation,
     zone: ward.zone,
     boundaryRef: ward.boundaryRef,
-    readiness,
-    signedOffAt: readinessRow?.signedOffAt ?? null,
-    signedOffByEmail,
-    signedOffByUserId: readinessRow?.signedOffBy ?? null,
-    clearedAt: readinessRow?.clearedAt ?? null,
   };
-}
-
-/**
- * Handles the "Mark ward ready" form: `signOffWard` (src/lib/readiness.ts)
- * writes the readiness snapshot.
- */
-export async function handleWardSignOff(actor: CuratorActor, wardId: number): Promise<void> {
-  await signOffWard(actor, wardId);
 }

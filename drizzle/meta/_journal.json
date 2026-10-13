@@ -71,6 +71,13 @@
       "when": 1791861340407,
       "tag": "0009_remove_curator_scopes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791864398273,
+      "tag": "0010_remove_ward_readiness_and_news_links",
+      "breakpoints": true
     }
   ]
 }

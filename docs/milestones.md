@@ -33,7 +33,7 @@ This document replaces the nine-milestone plan of 2026-08-14, which itself repla
 Two consequences run through everything below:
 
 - **Nothing about a candidate exists before N+5, and no affidavit before N+12.** M5, M7, M8 and M9 are therefore built against dummy data on purpose — that is not a shortcut, it is the only way they can exist before the announcement.
-- **The working window on real candidate data is eight days**, from the final list at N+15 to the poll at N+23, and the last two of those are silence. §16 works out what that does to M11 and M13, and the answer is not comfortable.
+- **Candidate-data work starts on initial availability, not at the final list** (`docs/candidate-data.md` §5, revised 2026-09-20). Three days of extraction and five of transcription finish around N+20 if a complete set is ready at N+12, and around N+23 if it is only ready at N+15. The final list at N+15 is reconciled against work already done. Silence begins at N+21. §16 works out what that does to M11 and M13, and the answer is not comfortable.
 
 **N is not known.** No nomination or poll date has been notified in any verifiable source as of 15 August 2026 (`docs/ksec-data-risk.md` §4). Tracking it is tracker 71, unassigned.
 
@@ -240,7 +240,7 @@ Scripts that can send WhatsApp messages to citizens, from an approved sender aga
 **What ships**
 
 - A registered WhatsApp sender and sixteen approved templates — 7 sends plus the citizen OTP, in English and Kannada (tracker 47, 48).
-- The WhatsApp side of the comms engine. **There is no per-ward readiness gate**: the ward sign-off and completeness gate were dropped on 2026-08-15, so candidate sends go out on the campaign calendar to every ward at once. That puts the weight on *when* the candidate sends are scheduled — they have to sit late enough that the transcription queue has drained, because nothing else will hold them back. `scripts/` has no send job at all today (tracker 120).
+- The WhatsApp side of the comms engine. **There is no per-ward readiness gate**: the ward sign-off and completeness gate were dropped on 2026-08-15 and removed from the code on 2026-10-13 (migration `0010`), so candidate sends go out on the campaign calendar to every ward at once. That puts the weight on *when* the candidate sends are scheduled — they have to sit late enough that the transcription queue has drained, because nothing else will hold them back. `scripts/` has no send job at all today (tracker 120).
 
 **Testable when** a script sends a bilingual message to a test list over WhatsApp, from an approved template, and it arrives on a phone.
 
@@ -501,7 +501,7 @@ The demo data is replaced by real candidates, and the report cards stop being a 
 
 **This is the milestone the whole project is for, and it is the one with the weakest foundation.** Its two-day estimate assumes the affidavits arrive in a form that can be poured into a pipeline. Today there is no such form: KSEC publishes no filled affidavits, and the realistic acquisition routes are an RTI on a 30-day clock and volunteers at returning-officer notice boards across five corporations inside a seven-to-ten-day window (`ksec-data-risk.md` §5). **If it is a collection operation rather than a download, two days buys the tooling for work that is mostly not engineering** — and the collection has to be staffed and rehearsed *before* N, because the window closes and does not reopen.
 
-**It used to block on M10, and that dependency was deleted on 2026-08-15.** Real candidate data does not technically need accounts, and blocking it on M10 put the project's central deliverable behind a milestone the sheet elsewhere contemplates dropping outright (§6, §12). The sheet's Blocked-on cell for M11 is now empty and this document follows it. **Note what does not change:** M11 still cannot start before the affidavits exist at N+12 and is not worth running before the final list at N+15, so the earliest M11 can finish is unmoved at N+17 (§16). Deleting the blocker removes a way the plan could have failed for no reason; it does not buy a single day.
+**It used to block on M10, and that dependency was deleted on 2026-08-15.** Real candidate data does not technically need accounts, and blocking it on M10 put the project's central deliverable behind a milestone the sheet elsewhere contemplates dropping outright (§6, §12). The sheet's Blocked-on cell for M11 is now empty and this document follows it. **Note what does not change:** M11 still cannot start before affidavits exist — the complete set at N+12 — but it no longer waits for the final list at N+15: loading starts on initial availability and rejections and withdrawals are reconciled afterwards (`docs/candidate-data.md` §1, §5). What that does to the dates is in §16. Deleting the blocker removes a way the plan could have failed for no reason; it does not buy a single day.
 
 **Blind spot: candidate status.** Between N+12 and N+15 the candidate set is a superset — it includes people who will be rejected at scrutiny and people who will withdraw. Report cards must carry filed / contesting / rejected / withdrawn, keep their URL with a status banner, and drop out of compare and readiness when they stop contesting (tracker 124). Nothing on the sheet covers this.
 
@@ -561,19 +561,20 @@ Citizens can see the result in each ward.
 | M3 fires | N | needs the announcement |
 | M10 done | N+6 | M3 (3d) → M10 (3d) |
 | Affidavits exist | **N+12** | nominations close |
-| Final contesting list | **N+15** | withdrawals close |
-| M11 done | **N+17** | 2 days on the final list, at best |
-| M13 done | **N+24** | 7 days from M11 |
+| M11 loaded | **N+14** | 2 days from N+12, on the provisional list (revised 2026-10-13: no longer waits for N+15) |
+| Final contesting list | **N+15** | withdrawals close; reconciled against what is already loaded |
+| Extraction and transcription done | **N+20** | 3 + 5 days from a complete set at N+12 (`docs/candidate-data.md` §5) |
+| M13 done | **N+21 at the earliest** | 7 days from M11 at N+14, on data still being checked |
 | **Silence begins** | **N+21** | campaigning ends |
 | **Poll** | **N+23** | — |
 
-**Dropping M11's blocker on M10 does not move this table** (§13). M11 was never actually waiting on M10 — it waits on the withdrawal deadline at N+15, which is three days later than M10's earliest completion at N+6. The dependency was slack the whole time, which is exactly why deleting it is cheap and why deleting it fixes nothing below.
+**Dropping M11's blocker on M10 does not move this table** (§13). M11 was never actually waiting on M10 — it waits on affidavits existing at N+12, which is six days later than M10's earliest completion at N+6. The dependency was slack the whole time, which is exactly why deleting it is cheap and why deleting it fixes nothing below.
 
-**The hard launch finishes after the election.** Even with every prerequisite met, every estimate honoured and no slippage anywhere, M13's seven days start after M11 and end past the silence period. To land before N+21, M13 must begin by N+14 — **before the final candidate list exists.**
+**The hard launch only just fits, and on unchecked data.** Starting on initial availability moved M11 from N+17 to N+14, so M13's seven days can end at N+21 — the day silence begins, with no slack at all. But it starts **before the final candidate list exists** and runs while transcription is still in progress: human-checked data is not complete until about N+20. A one-day slip anywhere puts the campaign inside the silence period.
 
-Three ways out, and they should be chosen deliberately rather than discovered at N+15:
+Three levers, and they should be chosen deliberately rather than discovered at N+15:
 
-1. **Run M13 against the provisional list from N+12**, accepting that some candidates promoted in the campaign will be rejected at scrutiny or withdraw. This is what candidate status (tracker 124) exists for.
+1. **Run M13 against the provisional list from N+12** — now the plan of record, since the data operation no longer waits for the final list — accepting that some candidates promoted in the campaign will be rejected at scrutiny or withdraw, and that many report cards will still be AI-marked. This is what candidate status (tracker 124) exists for.
 2. **Shorten M13.** Seven days of campaign push compressed into six is a smaller change than everything else here.
 3. **Decouple the booth half from the candidate half.** "Find your polling booth" needs no candidate data and can run from N+7; only "Know your candidates" waits on M11.
 
@@ -631,7 +632,7 @@ Several things this plan depends on have no home on disk right now and are not r
 - **The transcription rows were re-scoped on 2026-08-15.** They had specified `transcription_readings`, `field_disputes`, consensus resolution, a `/curator/disputes` screen, and a unique index enforcing "one transcriber never reads the same affidavit twice" — roughly half a build that no longer exists. 108 now names only `transcription_assignments`, a two-state marker and `corrected_after_check`; 109 is retitled *prioritized* and records that there is deliberately **no** unique index; 112 is the one city-wide flag queue; 113 measures accuracy rather than agreement, derived from the field row now that there is no change log; 115 records that `canEditWard` has no callers left at all. Rows 111 and 114 were deleted.
 - **Rows 58 and 60 were re-sized on 2026-08-15.** Row 58 is now "enroll 4 curators and 36 transcribers (target 50)", against the old "curator lead and 15–20 transcribers". Row 60 records that there is no sign-off step to document and that the two jobs need different words.
 - **Row 58 was re-scoped on 2026-10-13, and a budget row now exists.** Row 58 reads "hire 23 transcribers and enrol 2 curators" (`docs/overview.md` §8, §11): 23 hired readers for five days at ₹3,500 a head, and 2 curators at ₹5,000 each; it still covers both roles in one row, though they are recruited separately. **Row 166 tracks the ₹80,500 transcription and ₹10,000 curator budget**, beside 140 (the ₹3L WhatsApp spend), and it gates M8 having anyone to use it. Row 113 (the transcriber performance view) is closed as dropped, and row 115 records that the curator half of the authorization change is done.
-- **"Mark candidate complete" fed a ward readiness gate that no longer exists**, and its row (114) was deleted on 2026-08-15. If the `/data` page is still to publish coverage figures (`docs/overview.md` §8, "Public metrics"), something has to compute them — that is now untracked.
+- **"Mark candidate complete" fed a ward readiness gate that no longer exists**, and its row (114) was deleted on 2026-08-15. The gate's code — the sign-off panel, the held-wards override, the `ward_readiness` table — was removed on 2026-10-13, together with candidate news links. If the `/data` page is still to publish coverage figures (`docs/overview.md` §8, "Public metrics"), something has to compute them — that is now untracked.
 - **M11's blocker on M10 was deleted on 2026-08-15**, on the sheet and here (§13). It had put the project's central deliverable behind a milestone the sheet elsewhere contemplates dropping. It was slack rather than a real constraint, so nothing in §16's arithmetic moves.
 - **The sheet's M9 said Google Cloud Storage while `architecture.md` said Postgres `bytea`.** Resolved 2026-08-15 in favour of GCS; `architecture.md` was rewritten to match and §11 records what that commits to. **Tracker 123 was re-scoped on 2026-08-15** from Postgres dump size to bucket throughput and egress cost, and row **135** was added to provision the bucket itself (`project-dependencies.md` §6.19).
 - **Row 106 ("generate a sign-in link") contradicted a locked decision** and the sheet's M6 description carried it. The description was corrected on 2026-08-15 — staff sign in by email OTP, and there are no sign-in links (§8, `docs/overview.md` §8) — and the row was deleted from the Tasks tab rather than built.

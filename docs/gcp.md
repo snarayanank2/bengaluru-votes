@@ -89,7 +89,7 @@ without their cooperation.
 | **Maps JavaScript API** | the ward map renderer | new |
 | **Places API (New)** | address autocomplete on the ward lookup | new |
 | **Maps Static API** | pre-rendered ward images for `/partner-kit` | optional |
-| **Custom Search API** | news-link suggestions (`jobs/news-suggest.ts`) | already in use |
+| **Custom Search API** | none — news-link suggestions were dropped 2026-08-15 and the job removed 2026-10-13 (§8) | can be disabled |
 
 Note **Places API (New)**. The legacy Places API is a separate product with a
 separate SKU and a different client surface; enabling the wrong one produces
@@ -259,7 +259,8 @@ This section provisioned a Programmable Search engine and
 suggestions**. That feature was dropped from the plan on 2026-08-15 and its
 dependency row (formerly `project-dependencies.md` §6.15) was deleted with
 it. **Do not provision these keys.** Nothing in the milestones needs them,
-and the register no longer carries a row to point at.
+and the register no longer carries a row to point at. The job that read
+them (`jobs/news-suggest.ts`) was removed from the code on 2026-10-13.
 
 Kept as a stub rather than removed so the section numbering below does not
 shift under anything citing it.
