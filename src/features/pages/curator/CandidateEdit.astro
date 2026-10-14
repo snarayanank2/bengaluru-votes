@@ -8,16 +8,28 @@
  * files' docstrings and src/lib/curator.ts's module docstring for the same
  * convention used by the queue-item editor (Task 34).
  *
- * THREE INDEPENDENT FORMS, each its own `<form>` posting back to the same
- * URL with a distinct hidden `formAction` value (mirrors QueueItem.astro's
+ * LAYOUT: with a stored affidavit the scan stays on the left and the forms
+ * are on the right (`CuratorSplit`); without one, or on the `new` route,
+ * there is one column.
+ *
+ * INDEPENDENT FORMS, each its own `<form>` posting back to the same URL
+ * with a distinct hidden `formAction` value (mirrors QueueItem.astro's
  * accept/reject split):
- *   - `formAction=core` — name/party/photo/status (or, on the `new` route,
- *     name/party/photo only — status is always the schema default there).
- *   - `formAction=field:{fieldKey}`, one per report-card field
- *     (track_record/cases/assets/education/approachability) — SOURCE IS
- *     REQUIRED on every one of these (PRD §11): the source url field is
- *     marked `required` and the server re-validates regardless (see
- *     `handleCandidateFieldPublish`).
+ *   - `formAction=core` — Kannada name and party, photo and status (or, on
+ *     the `new` route, English and Kannada name and party and the photo;
+ *     status is always the schema default there). The English name and
+ *     party are the `full_name` and `party` fields below, which have one
+ *     writer.
+ *   - `formAction=field:{key}`, one per affidavit field (name, party,
+ *     gender, age, education, assets, cases): that field's structured
+ *     inputs, checked against the stored affidavit, with the required
+ *     "publishes immediately" tick. With no affidavit there is nothing to
+ *     check against, so these forms are replaced by a line asking for it.
+ *   - `formAction=ward` — the ward the candidate belongs in.
+ *
+ * After a refused save the route twin passes `refused` (which form, and
+ * exactly what was posted) and that form shows it instead of the
+ * published value.
  *
  * AFFIDAVIT (Task 37, architecture §7/§13, PRD §5.2): TWO independent forms
  * (`formAction=affidavit`, disambiguated server-side by which of
@@ -36,10 +48,15 @@ import Card from '../../../components/Card.astro';
 import Banner from '../../../components/Banner.astro';
 import Button from '../../../components/Button.astro';
 import FormField from '../../../components/FormField.astro';
-import SourceLine from '../../../components/SourceLine.astro';
+import CuratorSplit from '../../../components/CuratorSplit.astro';
+import CuratorFieldForm from '../../../components/CuratorFieldForm.astro';
+import CuratorWardForm from '../../../components/CuratorWardForm.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
-import { REPORT_CARD_FIELD_KEYS, type CandidateEditData, type ReportCardFieldKey } from '../../../lib/curator';
+import { CANDIDATE_PROFILE_LABEL_KEYS } from '../../../lib/candidate-profile';
+import type { FieldError, RawField } from '../../../lib/affidavit-form';
+import type { CandidateEditData } from '../../../lib/curator';
+import type { WardOption } from '../../../lib/curator-fix';
 
 interface Props {
   lang: Lang;
@@ -49,21 +66,19 @@ interface Props {
   wardNameKn: string;
   /** Present in EDIT mode (an existing candidate); absent on the `new` route. */
   candidate?: CandidateEditData;
+  /** Every ward, for the ward select; empty when there is no stored affidavit. */
+  wards?: WardOption[];
   message?: { kind: 'notice' | 'error'; key: string };
+  /** The form that was refused and what was posted into it. */
+  refused?: { formAction: string; error?: FieldError; raw?: RawField };
 }
 
-const { lang, csrfToken, wardId, wardNameEn, wardNameKn, candidate, message } = Astro.props;
+const { lang, csrfToken, wardId, wardNameEn, wardNameKn, candidate, wards = [], message, refused } = Astro.props;
 const isNew = candidate === undefined;
 const wardName = lang === 'kn' ? wardNameKn : wardNameEn;
 const messageText = message ? t(lang, message.key) : undefined;
 
-const FIELD_LABEL_KEYS: Record<ReportCardFieldKey, string> = {
-  track_record: 'curator.candidateEdit.field.trackRecord',
-  cases: 'curator.candidateEdit.field.cases',
-  assets: 'curator.candidateEdit.field.assets',
-  education: 'curator.candidateEdit.field.education',
-  approachability: 'curator.candidateEdit.field.approachability',
-};
+const confirmPath = `/ward/${wardId}`;
 
 const pageHeading = isNew
   ? t(lang, 'curator.candidateEdit.new.heading', { ward: wardName })
@@ -76,7 +91,7 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
 ---
 
 <CuratorLayout lang={lang} title={pageTitle} description={pageDescription}>
-  <div class="curator-page">
+  <CuratorSplit lang={lang} pdfUrl={candidate?.pdfUrl ?? null}>
     <p><a href="/curator">{t(lang, 'curator.candidateEdit.backToDashboard')}</a></p>
     <h1>{pageHeading}</h1>
     <p class="ward-line">{t(lang, 'curator.candidateEdit.wardLine', { ward: wardName })}</p>
@@ -95,26 +110,22 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
         <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
         <input type="hidden" name="formAction" value="core" />
 
-        <FormField
-          label={t(lang, 'curator.candidateEdit.core.nameEnLabel')}
-          name="nameEn"
-          required
-          value={candidate?.nameEn}
-          lang={lang}
-        />
+        {
+          isNew && (
+            <FormField label={t(lang, 'curator.candidateEdit.core.nameEnLabel')} name="nameEn" required lang={lang} />
+          )
+        }
         <FormField
           label={t(lang, 'curator.candidateEdit.core.nameKnLabel')}
           name="nameKn"
           value={candidate?.nameKn ?? undefined}
           lang={lang}
         />
-        <FormField
-          label={t(lang, 'curator.candidateEdit.core.partyEnLabel')}
-          name="partyEn"
-          required
-          value={candidate?.partyEn}
-          lang={lang}
-        />
+        {
+          isNew && (
+            <FormField label={t(lang, 'curator.candidateEdit.core.partyEnLabel')} name="partyEn" required lang={lang} />
+          )
+        }
         <FormField
           label={t(lang, 'curator.candidateEdit.core.partyKnLabel')}
           name="partyKn"
@@ -164,78 +175,38 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
       !isNew && (
         <Card>
           <h2>{t(lang, 'curator.candidateEdit.fields.heading')}</h2>
-          <div class="field-cards">
-            {REPORT_CARD_FIELD_KEYS.map((key) => {
-              const field = candidate!.fields[key];
-              return (
-                <div class="field-card">
-                  <h3>{t(lang, FIELD_LABEL_KEYS[key])}</h3>
-                  <SourceLine sourceType={field.sourceType} sourceUrl={field.sourceUrl} lang={lang} />
-                  <form method="post" action={formTarget}>
-                    <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                    <input type="hidden" name="formAction" value={`field:${key}`} />
-                    <div class="form-field">
-                      <label class="form-label" for={`field-${key}-valueEn`}>
-                        {t(lang, 'curator.candidateEdit.field.valueEnLabel')}
-                      </label>
-                      <textarea id={`field-${key}-valueEn`} class="form-input" name="valueEn" rows={2}>
-                        {field.valueEn ?? ''}
-                      </textarea>
-                    </div>
-                    <div class="form-field">
-                      <label class="form-label" for={`field-${key}-valueKn`}>
-                        {t(lang, 'curator.candidateEdit.field.valueKnLabel')}
-                      </label>
-                      <textarea id={`field-${key}-valueKn`} class="form-input" name="valueKn" rows={2}>
-                        {field.valueKn ?? ''}
-                      </textarea>
-                    </div>
-                    <label class="checkbox">
-                      <input type="checkbox" name="notDeclared" checked={field.notDeclared} />
-                      {t(lang, 'curator.queueItem.accept.notDeclaredLabel')}
-                    </label>
-                    <FormField
-                      label={t(lang, 'curator.queueItem.accept.sourceUrlLabel')}
-                      name="sourceUrl"
-                      type="text"
-                      required
-                      value={field.sourceUrl ?? undefined}
-                      lang={lang}
-                    />
-                    <div class="form-field">
-                      <label class="form-label" for={`field-${key}-sourceType`}>
-                        {t(lang, 'curator.queueItem.accept.sourceTypeLabel')}
-                      </label>
-                      <select id={`field-${key}-sourceType`} class="form-input" name="sourceType">
-                        <option value="curator" selected={field.sourceType === 'curator'}>
-                          {t(lang, 'curator.queueItem.accept.sourceType.curator')}
-                        </option>
-                        <option value="official" selected={field.sourceType === 'official'}>
-                          {t(lang, 'curator.queueItem.accept.sourceType.official')}
-                        </option>
-                      </select>
-                    </div>
-                    <div class="form-field">
-                      <label class="form-label" for={`field-${key}-authoredLang`}>
-                        {t(lang, 'curator.queueItem.accept.authoredLangLabel')}
-                      </label>
-                      <select id={`field-${key}-authoredLang`} class="form-input" name="authoredLang">
-                        <option value="en" selected={field.authoredLang === 'en'}>
-                          {t(lang, 'curator.queueItem.accept.authoredLang.en')}
-                        </option>
-                        <option value="kn" selected={field.authoredLang === 'kn'}>
-                          {t(lang, 'curator.queueItem.accept.authoredLang.kn')}
-                        </option>
-                      </select>
-                    </div>
-                    <Button type="submit" variant="secondary" lang={lang}>
-                      {t(lang, 'curator.candidateEdit.field.submit')}
-                    </Button>
-                  </form>
-                </div>
-              );
-            })}
-          </div>
+          {candidate!.pdfUrl ? (
+            <div class="field-cards">
+              {candidate!.fields.map((field) => {
+                const formAction = `field:${field.key}`;
+                const own = refused?.formAction === formAction;
+                return (
+                  <CuratorFieldForm
+                    lang={lang}
+                    csrfToken={csrfToken}
+                    formAction={formAction}
+                    field={field}
+                    label={t(lang, CANDIDATE_PROFILE_LABEL_KEYS[field.key])}
+                    confirmPath={confirmPath}
+                    submitLabel={t(lang, 'curator.candidateEdit.field.submit')}
+                    error={own ? refused?.error : undefined}
+                    raw={own ? refused?.raw : undefined}
+                  />
+                );
+              })}
+              <CuratorWardForm
+                lang={lang}
+                csrfToken={csrfToken}
+                formAction="ward"
+                wards={wards}
+                wardId={candidate!.wardId}
+                confirmPath={confirmPath}
+                submitLabel={t(lang, 'curator.fix.wardSubmit')}
+              />
+            </div>
+          ) : (
+            <p class="placeholder-note">{t(lang, 'curator.candidateEdit.fields.needAffidavit')}</p>
+          )}
         </Card>
       )
     }
@@ -302,32 +273,22 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
       )
     }
 
-  </div>
+  </CuratorSplit>
 </CuratorLayout>
 
 <style>
-  .curator-page {
-    max-width: var(--container-prose);
-    margin-inline: auto;
-    padding-block: var(--space-8);
-    padding-inline: var(--container-pad-x);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .curator-page h1 {
+  h1 {
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);
     margin: 0;
   }
 
-  .curator-page h2 {
+  h2 {
     font-size: var(--text-lg);
     margin: 0 0 var(--space-3);
   }
 
-  .curator-page h3 {
+  h3 {
     font-size: var(--text-base);
     margin: 0 0 var(--space-1);
   }
@@ -379,28 +340,10 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
     border-radius: var(--radius-sm);
   }
 
-  textarea.form-input {
-    min-height: 5.5rem;
-    resize: vertical;
-  }
-
-  .checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-base);
-  }
-
   .field-cards {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
-  }
-
-  .field-card {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
   }
 
   .placeholder-note {

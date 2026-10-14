@@ -22,7 +22,6 @@ import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
   candidateAffidavits,
-  candidateFields,
   candidates,
   flagItems,
   flagSubmissions,
@@ -33,14 +32,12 @@ import {
   type affidavitStateEnum,
   type flagStatusEnum,
   type flagTargetEnum,
-  type sourceTypeEnum,
-  type langEnum,
 } from '../db/schema';
 import { resolveFlag, type FlagFix } from './flags';
-import { AFFIDAVIT_FIELD_KEYS } from './affidavit-publish';
+import { AFFIDAVIT_FIELD_KEYS, type AffidavitFieldKey } from './affidavit-publish';
 import type { FieldError, RawField } from './affidavit-form';
-import { loadFixCandidate, loadFixFields, parseFieldFix, parseWardFix, publishedFieldData, type FixCandidate, type FixField, type StaffActor } from './curator-fix';
-import { createCandidate, publishCandidateCore, publishCandidateField } from './publish';
+import { loadFixCandidate, loadFixFields, parseFieldFix, parseWardFix, publishedFieldData, saveFieldFix, saveWardFix, type FixCandidate, type FixField, type StaffActor } from './curator-fix';
+import { createCandidate, publishCandidateCore } from './publish';
 import { storeMedia, type MediaStoreErrorCode } from './media';
 import { enqueueAffidavit } from './affidavit-queue';
 import { checkDefaultLimit } from './rate-limit';
@@ -49,8 +46,6 @@ import type { Lang } from '../i18n';
 
 type FlagTargetType = (typeof flagTargetEnum.enumValues)[number];
 type FlagStatus = (typeof flagStatusEnum.enumValues)[number];
-type SourceType = (typeof sourceTypeEnum.enumValues)[number];
-type AuthoredLang = (typeof langEnum.enumValues)[number];
 type CandidateStatus = (typeof candidateStatusEnum.enumValues)[number];
 type AffidavitState = (typeof affidavitStateEnum.enumValues)[number];
 /** What the editor shows for a stored affidavit: waiting on the worker or an admin match, extracted, or failed. */
@@ -266,16 +261,6 @@ export type ResolveOutcome =
   | { kind: 'already_resolved' }
   | { kind: 'validation_error'; key: string };
 
-/** True iff `value` parses as an absolute http: or https: URL — same rule as src/pages/api/flags.ts's `sourceUrl` validation, kept local so this module doesn't reach into an API route file. */
-function isHttpUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 export type FixOutcome =
   | { kind: 'accepted' }
   | { kind: 'already_resolved' }
@@ -343,20 +328,6 @@ export async function handleReject(actor: CuratorActor, itemId: number, form: Fo
 // required source.
 // ---------------------------------------------------------------------------
 
-/** The five report-card fields (PRD §5.2) — fixed set, in display order. */
-export const REPORT_CARD_FIELD_KEYS = ['track_record', 'cases', 'assets', 'education', 'approachability'] as const;
-export type ReportCardFieldKey = (typeof REPORT_CARD_FIELD_KEYS)[number];
-
-export interface ReportCardFieldEditRow {
-  fieldKey: ReportCardFieldKey;
-  valueEn: string | null;
-  valueKn: string | null;
-  notDeclared: boolean;
-  sourceUrl: string | null;
-  sourceType: SourceType;
-  authoredLang: AuthoredLang;
-}
-
 /** One row of the affidavit ingestion history (Task 37) — newest first. `mediaUrl` is the stored PDF's public, content-hashed URL (the source every extracted field points back to). */
 export interface CandidateAffidavitRow {
   id: number;
@@ -379,11 +350,14 @@ export interface CandidateEditData {
   photoMediaId: number | null;
   photoUrl: string | null;
   status: CandidateStatus;
-  fields: Record<ReportCardFieldKey, ReportCardFieldEditRow>;
+  /** The stored affidavit every value is checked against; null for a candidate with none. */
+  pdfUrl: string | null;
+  /** The seven affidavit fields as their forms open; empty when there is no affidavit. */
+  fields: FixField[];
   affidavits: CandidateAffidavitRow[];
 }
 
-/** Loads everything `/curator/candidate/{id}` needs to render: the candidate's core row (+ ward name) and its five report-card fields, defaulting any field with no `candidate_fields` row yet to an empty, not-yet-declared state. `null` when no such candidate exists — the route twin turns that into a 404. */
+/** Loads everything `/curator/candidate/{id}` needs to render: the candidate's core row (+ ward name) and its seven affidavit fields as the structured forms open them. `null` when no such candidate exists — the route twin turns that into a 404. */
 export async function loadCandidateForEdit(candidateId: number): Promise<CandidateEditData | null> {
   const [row] = await db
     .select({
@@ -406,24 +380,7 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
     .where(eq(candidates.id, candidateId));
   if (!row) return null;
 
-  const fieldRows = await db.select().from(candidateFields).where(eq(candidateFields.candidateId, candidateId));
-  const byKey = new Map(fieldRows.map((f) => [f.fieldKey, f]));
-
-  const fields = Object.fromEntries(
-    REPORT_CARD_FIELD_KEYS.map((key) => {
-      const f = byKey.get(key);
-      const editRow: ReportCardFieldEditRow = {
-        fieldKey: key,
-        valueEn: f?.valueEn ?? null,
-        valueKn: f?.valueKn ?? null,
-        notDeclared: f?.notDeclared ?? false,
-        sourceUrl: f?.sourceUrl ?? null,
-        sourceType: f?.sourceType ?? 'curator',
-        authoredLang: f?.authoredLang ?? 'en',
-      };
-      return [key, editRow];
-    }),
-  ) as Record<ReportCardFieldKey, ReportCardFieldEditRow>;
+  const fixCandidate = (await loadFixCandidate(candidateId))!;
 
   const affidavitRows = await db
     .select({
@@ -460,7 +417,8 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
     photoMediaId: row.photoMediaId,
     photoUrl: row.photoMediaId != null && row.photoHash ? `/media/${row.photoMediaId}/${row.photoHash.slice(0, 16)}` : null,
     status: row.status,
-    fields,
+    pdfUrl: fixCandidate.pdfUrl,
+    fields: fixCandidate.pdfUrl ? await loadFixFields(fixCandidate) : [],
     affidavits,
   };
 }
@@ -473,7 +431,6 @@ export async function loadWardBasic(wardId: number): Promise<{ id: number; nameE
 
 export type CandidateCoreOutcome = { kind: 'saved' } | { kind: 'validation_error'; key: string };
 export type CandidateCreateOutcome = { kind: 'created'; id: number } | { kind: 'validation_error'; key: string };
-export type CandidateFieldOutcome = { kind: 'saved' } | { kind: 'validation_error'; key: string };
 
 /** Error key for a `storeMedia` throw — shared by the core-publish and create paths below. */
 function photoErrorKey(err: unknown): string {
@@ -482,7 +439,22 @@ function photoErrorKey(err: unknown): string {
   return 'curator.candidateEdit.error.photoUnsupported';
 }
 
-/** Reads+validates the shared name/party/photo fields off a multipart `form` (used by both the core-edit and create paths). Returns a validation-error key, or the parsed values plus a freshly stored `photoMediaId` (`undefined` when no file was chosen — the caller decides what "no file" means for its path). */
+/** Stores the photo chosen on a candidate form, if any: `photoMediaId` is `undefined` when no file was chosen (the caller decides what "no file" means for its path), else a freshly stored media id. */
+async function storePhotoFrom(actor: { userId: number }, form: FormData): Promise<{ ok: true; photoMediaId?: number } | { ok: false; key: string }> {
+  const photo = form.get('photo');
+  if (!(photo instanceof File) || photo.size === 0) return { ok: true };
+  const allowed = await checkDefaultLimit(actor.userId, 'upload');
+  if (!allowed) return { ok: false, key: 'curator.candidateEdit.error.uploadRateLimited' };
+  try {
+    const bytes = Buffer.from(await photo.arrayBuffer());
+    const stored = await storeMedia(actor, { bytes, declaredType: photo.type }, 'photo');
+    return { ok: true, photoMediaId: stored.id };
+  } catch (err) {
+    return { ok: false, key: photoErrorKey(err) };
+  }
+}
+
+/** Reads+validates the name/party/photo fields of the create form. Returns a validation-error key, or the parsed values plus a freshly stored `photoMediaId` (`undefined` when no file was chosen). */
 async function parseCandidateCoreForm(
   actor: { userId: number },
   form: FormData,
@@ -498,20 +470,8 @@ async function parseCandidateCoreForm(
   if (!nameEn) return { ok: false, key: 'curator.candidateEdit.error.nameRequired' };
   if (!partyEn) return { ok: false, key: 'curator.candidateEdit.error.partyRequired' };
 
-  let photoMediaId: number | undefined;
-  const photo = form.get('photo');
-  if (photo instanceof File && photo.size > 0) {
-    const allowed = await checkDefaultLimit(actor.userId, 'upload');
-    if (!allowed) return { ok: false, key: 'curator.candidateEdit.error.uploadRateLimited' };
-
-    try {
-      const bytes = Buffer.from(await photo.arrayBuffer());
-      const stored = await storeMedia(actor, { bytes, declaredType: photo.type }, 'photo');
-      photoMediaId = stored.id;
-    } catch (err) {
-      return { ok: false, key: photoErrorKey(err) };
-    }
-  }
+  const photo = await storePhotoFrom(actor, form);
+  if (!photo.ok) return photo;
 
   return {
     ok: true,
@@ -519,17 +479,19 @@ async function parseCandidateCoreForm(
     nameKn: nameKnRaw || null,
     partyEn,
     partyKn: partyKnRaw || null,
-    ...(photoMediaId !== undefined ? { photoMediaId } : {}),
+    ...(photo.photoMediaId !== undefined ? { photoMediaId: photo.photoMediaId } : {}),
   };
 }
 
 /**
- * Handles the CORE form on `/curator/candidate/{id}` (name/party/photo/
- * status). A photo file is only read (and stored) when one was actually
+ * Handles the CORE form on `/curator/candidate/{id}`: the Kannada name and
+ * party, the photo and the status. The English name and party are the
+ * `full_name` and `party` affidavit fields, which have one writer
+ * (`handleCandidateFieldFix`), so a posted `nameEn`/`partyEn` is ignored. A photo file is only read (and stored) when one was actually
  * chosen — an empty file input leaves the existing photo untouched, it does
  * NOT clear it. Publishes via `publishCandidateCore`.
  *
- * INVARIANT: status is validated BEFORE parseCandidateCoreForm runs, so an
+ * INVARIANT: status is validated BEFORE the photo is stored, so an
  * invalid status → 400 with NO media row created and NO rate-limit consumed.
  */
 export async function handleCandidateCorePublish(
@@ -543,17 +505,15 @@ export async function handleCandidateCorePublish(
     return { kind: 'validation_error', key: 'curator.candidateEdit.error.statusInvalid' };
   }
 
-  const parsed = await parseCandidateCoreForm(actor, form);
-  if (!parsed.ok) return { kind: 'validation_error', key: parsed.key };
+  const photo = await storePhotoFrom(actor, form);
+  if (!photo.ok) return { kind: 'validation_error', key: photo.key };
 
   await publishCandidateCore(actor, {
     candidateId,
-    nameEn: parsed.nameEn,
-    nameKn: parsed.nameKn,
-    partyEn: parsed.partyEn,
-    partyKn: parsed.partyKn,
+    nameKn: String(form.get('nameKn') ?? '').trim() || null,
+    partyKn: String(form.get('partyKn') ?? '').trim() || null,
     status,
-    ...(parsed.photoMediaId !== undefined ? { photoMediaId: parsed.photoMediaId } : {}),
+    ...(photo.photoMediaId !== undefined ? { photoMediaId: photo.photoMediaId } : {}),
   });
 
   return { kind: 'saved' };
@@ -580,45 +540,24 @@ export async function handleCandidateCreate(
   return { kind: 'created', id };
 }
 
-/**
- * Handles ONE report-card field's form on `/curator/candidate/{id}`
- * (`formAction=field:{fieldKey}`). SOURCE REQUIRED (PRD §11 — source is the
- * trust mechanism): a submission with a value (or `notDeclared`) but no
- * source is rejected before anything is published. A
- * `notDeclared` field still needs a source (the affidavit itself, even when
- * it declares nothing) — there is no path that skips this check.
- */
-export async function handleCandidateFieldPublish(
-  actor: CuratorActor,
-  candidateId: number,
-  fieldKey: ReportCardFieldKey,
-  form: FormData,
-): Promise<CandidateFieldOutcome> {
-  const sourceUrl = String(form.get('sourceUrl') ?? '').trim();
-  const sourceType: SourceType = String(form.get('sourceType') ?? '') === 'official' ? 'official' : 'curator';
-  const authoredLang: AuthoredLang = String(form.get('authoredLang') ?? '') === 'kn' ? 'kn' : 'en';
-  const notDeclared = form.get('notDeclared') != null;
-  const valueEnRaw = String(form.get('valueEn') ?? '').trim();
-  const valueKnRaw = String(form.get('valueKn') ?? '').trim();
+export type EditFixOutcome = { kind: 'saved' } | { kind: 'refused'; key: string; error?: FieldError; raw?: RawField };
 
-  if (!sourceUrl || !isHttpUrl(sourceUrl)) {
-    return { kind: 'validation_error', key: 'curator.candidateEdit.error.sourceRequired' };
-  }
-  if (!notDeclared && !valueEnRaw && !valueKnRaw) {
-    return { kind: 'validation_error', key: 'curator.candidateEdit.error.valueRequired' };
-  }
+/** Saves one affidavit field from the editor: the same rules as a flag fix, with no flag involved. */
+export async function handleCandidateFieldFix(actor: CuratorActor, candidate: CandidateEditData, key: AffidavitFieldKey, form: FormData): Promise<EditFixOutcome> {
+  if (!candidate.pdfUrl) return { kind: 'refused', key: 'curator.fix.error.noAffidavit' };
+  const fixCandidate = (await loadFixCandidate(candidate.id))!;
+  const parsed = parseFieldFix(form, key, await publishedFieldData(fixCandidate, key));
+  if (!parsed.ok) return { kind: 'refused', key: parsed.key, error: parsed.error, raw: parsed.raw };
+  await saveFieldFix(actor, candidate.id, parsed.data, candidate.pdfUrl);
+  return { kind: 'saved' };
+}
 
-  await publishCandidateField(actor, {
-    candidateId,
-    fieldKey,
-    valueEn: valueEnRaw || null,
-    valueKn: valueKnRaw || null,
-    notDeclared,
-    sourceUrl,
-    sourceType,
-    authoredLang,
-  });
-
+/** Moves the candidate to another ward from the editor. */
+export async function handleCandidateWardFix(candidate: CandidateEditData, form: FormData): Promise<EditFixOutcome> {
+  if (!candidate.pdfUrl) return { kind: 'refused', key: 'curator.fix.error.noAffidavit' };
+  const parsed = await parseWardFix(form, candidate.wardId);
+  if (!parsed.ok) return { kind: 'refused', key: parsed.key };
+  await saveWardFix(candidate.id, parsed.wardId, candidate.pdfUrl);
   return { kind: 'saved' };
 }
 

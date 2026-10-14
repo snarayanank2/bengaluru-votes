@@ -27,7 +27,7 @@ vi.mock('../../src/lib/translate-runtime', async (importOriginal) => {
 });
 
 import { translateFieldNow, translateFieldSoon, buildFieldTranslationPrompt } from '../../src/lib/translate-runtime';
-import { publishCandidateField, publishStance } from '../../src/lib/publish';
+import { publishStance } from '../../src/lib/publish';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -268,153 +268,9 @@ describe('src/lib/translate-runtime.ts — runtime MT of curator data (Task 40)'
   });
 
   // -------------------------------------------------------------------------
-  // publish-path coordination — decideTranslationStatus (src/lib/publish.ts)
-  // -------------------------------------------------------------------------
-
-  describe('publish-path manual-override + source-change-regeneration coordination', () => {
-    it('a fresh authored publish stays pending and DOES fire translateFieldSoon', async () => {
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_fresh',
-        valueEn: 'Original English text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'publish_fresh')));
-      expect(field?.translationStatus).toBe('pending');
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledWith({ table: 'candidate_fields', id: field!.id });
-    });
-
-    it('MANUAL set on publish: a manual OTHER-language edit (same authored value, new valueKn) sets manual and does NOT fire translateFieldSoon', async () => {
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_manual',
-        valueEn: 'Stable English source text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_manual',
-        valueEn: 'Stable English source text.', // authored value UNCHANGED
-        valueKn: 'Curator-typed manual Kannada fix.', // other language explicitly edited
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'publish_manual')));
-      expect(field?.translationStatus).toBe('manual');
-      expect(field?.valueKn).toBe('Curator-typed manual Kannada fix.');
-      expect(vi.mocked(translateFieldSoon)).not.toHaveBeenCalled();
-    });
-
-    it('SOURCE-CHANGE regeneration: editing the AUTHORED value after a manual fix flips back to pending and fires translateFieldSoon', async () => {
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_regenerate',
-        valueEn: 'First version of the source text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_regenerate',
-        valueEn: 'First version of the source text.', // unchanged
-        valueKn: 'Manually patched translation of the FIRST version.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [manualField] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'publish_regenerate')));
-      expect(manualField?.translationStatus).toBe('manual');
-
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_regenerate',
-        valueEn: 'SECOND, updated version of the source text.', // authored value changes
-        valueKn: 'Manually patched translation of the FIRST version.', // stale — describes the OLD source
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [regeneratedField] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'publish_regenerate')));
-      expect(regeneratedField?.translationStatus).toBe('pending');
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledWith({ table: 'candidate_fields', id: regeneratedField!.id });
-    });
-
-    it('an identical re-publish (nothing changed) preserves the existing status and does not fire translateFieldSoon', async () => {
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_noop',
-        valueEn: 'Unchanging text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      // Simulate MT having already completed, so status is 'done'.
-      await db
-        .update(schema.candidateFields)
-        .set({ valueKn: 'ಬದಲಾಗದ ಪಠ್ಯ.', translationStatus: 'done' })
-        .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'publish_noop')));
-
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishCandidateField(ACTOR, {
-        candidateId,
-        fieldKey: 'publish_noop',
-        valueEn: 'Unchanging text.',
-        valueKn: 'ಬದಲಾಗದ ಪಠ್ಯ.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, 'publish_noop')));
-      expect(field?.translationStatus).toBe('done');
-      expect(vi.mocked(translateFieldSoon)).not.toHaveBeenCalled();
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // publishStance coordination (Fix 2, Task 40 review) — mirrors the
-  // publishCandidateField coordination tests above, but through
-  // publishStance, whose wiring of decideTranslationStatus /
-  // translateFieldSoon was previously untested. Each test uses a FRESH ward
-  // issue (rather than a fresh fieldKey, as candidate_fields tests do above)
-  // since a stance's natural key is (wardIssueId, candidateId).
+  // publishStance coordination (Fix 2, Task 40 review) — publishStance's wiring of
+  // decideTranslationStatus / translateFieldSoon. Each test uses a FRESH ward
+  // issue since a stance's natural key is (wardIssueId, candidateId).
   // -------------------------------------------------------------------------
 
   describe('publishStance manual-override + source-change-regeneration coordination', () => {

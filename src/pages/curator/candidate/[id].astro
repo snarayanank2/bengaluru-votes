@@ -5,22 +5,25 @@
  * side. This route twin owns:
  *   - the numeric-id existence check (404 for a non-integer id or a row
  *     that doesn't exist — same pattern as src/pages/curator/queue/[id].astro);
- *   - dispatching the core-edit / per-field POSTs via the hidden
- *     `formAction` field (`core`, `field:{fieldKey}`, `affidavit`),
- *     and the resulting
- *     redirect/re-render/400 status;
+ *   - dispatching the POSTs via the hidden `formAction` field (`core`,
+ *     `field:{affidavitFieldKey}`, `ward`, `affidavit`), and the resulting
+ *     redirect/re-render/400 status: a refused field save re-renders with
+ *     400 and exactly what was typed;
  *   - no-store on every response.
  */
 import CandidateEdit from '../../../features/pages/curator/CandidateEdit.astro';
 import {
-  REPORT_CARD_FIELD_KEYS,
   handleCandidateAffidavitPublish,
   handleCandidateCorePublish,
-  handleCandidateFieldPublish,
+  handleCandidateFieldFix,
+  handleCandidateWardFix,
   loadCandidateForEdit,
   loadCuratorLang,
-  type ReportCardFieldKey,
+  type EditFixOutcome,
 } from '../../../lib/curator';
+import type { FieldError, RawField } from '../../../lib/affidavit-form';
+import { loadWardOptions } from '../../../lib/curator-fix';
+import { AFFIDAVIT_FIELD_KEYS, type AffidavitFieldKey } from '../../../lib/affidavit-publish';
 
 const session = Astro.locals.session!;
 const actor = { userId: session.userId, role: session.role as 'curator' | 'admin' };
@@ -40,6 +43,8 @@ const lang = await loadCuratorLang(session.userId);
 
 let message: { kind: 'notice' | 'error'; key: string } | undefined;
 let responseStatus = 200;
+/** Which form was refused, and what was typed into it. */
+let refused: { formAction: string; error?: FieldError; raw?: RawField } | undefined;
 
 if (Astro.request.method === 'POST') {
   Astro.response.headers.set('cache-control', 'no-store');
@@ -56,12 +61,17 @@ if (Astro.request.method === 'POST') {
     }
     message = { kind: 'error', key: outcome.key };
     responseStatus = 400;
-  } else if (formAction.startsWith('field:')) {
-    const fieldKey = formAction.slice('field:'.length);
-    if (!(REPORT_CARD_FIELD_KEYS as readonly string[]).includes(fieldKey)) {
-      return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+  } else if (formAction.startsWith('field:') || formAction === 'ward') {
+    let outcome: EditFixOutcome;
+    if (formAction === 'ward') {
+      outcome = await handleCandidateWardFix(candidate, form);
+    } else {
+      const fieldKey = formAction.slice('field:'.length);
+      if (!(AFFIDAVIT_FIELD_KEYS as readonly string[]).includes(fieldKey)) {
+        return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+      }
+      outcome = await handleCandidateFieldFix(actor, candidate, fieldKey as AffidavitFieldKey, form);
     }
-    const outcome = await handleCandidateFieldPublish(actor, candidateId, fieldKey as ReportCardFieldKey, form);
     if (outcome.kind === 'saved') {
       return new Response(null, {
         status: 302,
@@ -69,6 +79,7 @@ if (Astro.request.method === 'POST') {
       });
     }
     message = { kind: 'error', key: outcome.key };
+    refused = { formAction, error: outcome.error, raw: outcome.raw };
     responseStatus = 400;
   } else if (formAction === 'affidavit') {
     const outcome = await handleCandidateAffidavitPublish(actor, candidateId, form);
@@ -88,6 +99,8 @@ if (Astro.request.method === 'POST') {
 }
 
 
+const wards = !candidate.pdfUrl ? [] : await loadWardOptions();
+
 Astro.response.headers.set('cache-control', 'no-store');
 Astro.response.status = responseStatus;
 ---
@@ -99,5 +112,7 @@ Astro.response.status = responseStatus;
   wardNameEn={candidate.wardNameEn}
   wardNameKn={candidate.wardNameKn}
   candidate={candidate}
+  wards={wards}
   message={message}
+  refused={refused}
 />

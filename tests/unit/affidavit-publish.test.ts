@@ -20,7 +20,6 @@ import {
   moveCandidateWard,
   type FieldData,
 } from '../../src/lib/affidavit-publish';
-import { publishCandidateField } from '../../src/lib/publish';
 import type { AffidavitExtraction } from '../../src/lib/affidavit-extraction';
 
 if (!process.env.DATABASE_URL) {
@@ -266,15 +265,6 @@ describe('publishAffidavitFields', () => {
       await reset();
       expect(await field('age')).toMatchObject({ aiExtracted: true, checkedBy: null, checkedAt: null, confirmedAi: null, valueEn: '52' });
     });
-
-    it('clears the check marks when a curator rewrites the text by hand', async () => {
-      await reset();
-      await appDb.transaction((tx) =>
-        publishAffidavitFields(tx, transcriber, candidateId, [{ key: 'age', status: 'value', years: 53 }], { sourceUrl: SOURCE, checked: true, aiFields: ai }),
-      );
-      await publishCandidateField({ userId: 1, role: 'curator' }, { candidateId, fieldKey: 'age', valueEn: '54', sourceUrl: SOURCE, sourceType: 'official', authoredLang: 'en' });
-      expect(await field('age')).toMatchObject({ valueEn: '54', aiExtracted: false, confirmedAi: null, valueData: null });
-    });
   });
 
   it('records a curator as the person who checked a value', async () => {
@@ -342,16 +332,5 @@ describe('publishAffidavitFields', () => {
       expect(await wardOf(resolved.id)).toBe(WARD.id);
       expect(await wardOf(others.id)).toBe(WARD.id);
     });
-  });
-
-  it("drops the structured value when a curator edits the field's text by hand", async () => {
-    await publishCandidateField(
-      { userId: 1, role: 'curator' },
-      { candidateId, fieldKey: 'cases', valueEn: 'One pending case, per the corrected affidavit', sourceUrl: SOURCE, sourceType: 'official', authoredLang: 'en' },
-    );
-    const cases = await field('cases');
-    expect(cases.valueData).toBeNull();
-    expect(cases.unreadable).toBe(false);
-    expect(cases.aiExtracted).toBe(false);
   });
 });

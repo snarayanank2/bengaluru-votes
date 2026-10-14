@@ -22,7 +22,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
@@ -147,14 +147,6 @@ function coreForm(fields: Record<string, string>, token: string): FormData {
   return fd;
 }
 
-function fieldForm(fieldKey: string, fields: Record<string, string>, token: string): FormData {
-  const fd = new FormData();
-  fd.set('formAction', `field:${fieldKey}`);
-  fd.set(CSRF_FIELD_NAME, token);
-  for (const [k, v] of Object.entries(fields)) fd.set(k, v);
-  return fd;
-}
-
 async function sessionFor(userId: number): Promise<{ cookieValue: string; token: string }> {
   const { id, cookieValue } = await createSession(userId);
   return { cookieValue, token: issueCsrfToken(id) };
@@ -257,99 +249,9 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
     });
   });
 
-  describe('report-card field publish — SOURCE REQUIRED (PRD §11)', () => {
-    it('a value with NO source -> 400 validation error, no candidate_fields row written', async () => {
-      const form = fieldForm('cases', { valueEn: 'No pending cases.', sourceType: 'curator', authoredLang: 'en' }, curatorAuth.token);
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateA) },
-        form,
-      });
-      expect(res.status).toBe(400);
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateA), eq(schema.candidateFields.fieldKey, 'cases')));
-      expect(field).toBeUndefined();
-    });
-
-    it('a notDeclared field with NO source is ALSO rejected — the affidavit is the source even for "not declared"', async () => {
-      const form = fieldForm('assets', { notDeclared: 'on', sourceType: 'official', authoredLang: 'en' }, curatorAuth.token);
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateA) },
-        form,
-      });
-      expect(res.status).toBe(400);
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateA), eq(schema.candidateFields.fieldKey, 'assets')));
-      expect(field).toBeUndefined();
-    });
-
-    it('a value WITH a valid source -> published, field row set correctly', async () => {
-      const form = fieldForm(
-        'track_record',
-        {
-          valueEn: 'Two-term corporator, led road-repair drive.',
-          sourceUrl: 'https://example.org/candidate-editor-source',
-          sourceType: 'curator',
-          authoredLang: 'en',
-        },
-        curatorAuth.token,
-      );
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateA) },
-        form,
-      });
-      expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe(`/curator/candidate/${candidateA}`);
-
-      const [field] = await db
-        .select()
-        .from(schema.candidateFields)
-        .where(and(eq(schema.candidateFields.candidateId, candidateA), eq(schema.candidateFields.fieldKey, 'track_record')));
-      expect(field?.valueEn).toBe('Two-term corporator, led road-repair drive.');
-      expect(field?.sourceUrl).toBe('https://example.org/candidate-editor-source');
-      expect(field?.sourceType).toBe('curator');
-    });
-  });
-
-  describe('core form — name/party edit, and status change', () => {
-    it('renaming (no status change) publishes', async () => {
-      const form = coreForm({ nameEn: 'Renamed Candidate', partyEn: 'Independent', status: 'filed' }, curatorAuth.token);
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateA) },
-        form,
-      });
-      expect(res.status).toBe(302);
-
-      const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(candidate?.nameEn).toBe('Renamed Candidate');
-    });
-
-    it('missing required nameEn -> 400 validation error', async () => {
-      const form = coreForm({ nameEn: '', partyEn: 'Independent', status: 'filed' }, curatorAuth.token);
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateA) },
-        form,
-      });
-      expect(res.status).toBe(400);
-    });
-
+  describe('core form — Kannada name/party, and status change', () => {
     it('a STATUS transition is published', async () => {
-      const form = coreForm({ nameEn: 'Status Clear Candidate', partyEn: 'Independent', status: 'contesting' }, curatorAuth.token);
+      const form = coreForm({ status: 'contesting' }, curatorAuth.token);
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateStatusClear}`, {
         method: 'POST',
         cookieValue: curatorAuth.cookieValue,
@@ -380,7 +282,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
 
   describe('photo upload — storeMedia', () => {
     it('a valid PNG sets photoMediaId', async () => {
-      const form = coreForm({ nameEn: 'Renamed Candidate', partyEn: 'Independent', status: 'filed' }, curatorAuth.token);
+      const form = coreForm({ nameKn: 'ಮರುನಾಮಕರಣ', status: 'filed' }, curatorAuth.token);
       form.set('photo', new File([PNG_BYTES], 'photo.png', { type: 'image/png' }));
 
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
@@ -401,7 +303,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
     it('an SVG masquerading as a photo is rejected — no corruption, candidate unchanged', async () => {
       const [before] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
 
-      const form = coreForm({ nameEn: 'Should Not Apply', partyEn: 'Independent', status: 'filed' }, curatorAuth.token);
+      const form = coreForm({ nameKn: 'Should Not Apply', status: 'filed' }, curatorAuth.token);
       form.set('photo', new File([SVG_MASQUERADING_AS_PHOTO], 'photo.png', { type: 'image/png' }));
 
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
@@ -413,7 +315,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
       expect(res.status).toBe(400);
 
       const [after] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(after?.nameEn).toBe(before?.nameEn);
+      expect(after?.nameKn).toBe(before?.nameKn);
       expect(after?.photoMediaId).toBe(before?.photoMediaId);
     });
 
@@ -424,7 +326,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
         .from(schema.media);
 
       const form = coreForm(
-        { nameEn: 'Should Not Apply Either', partyEn: 'Independent', status: 'bogus' },
+        { nameKn: 'Should Not Apply Either', status: 'bogus' },
         curatorAuth.token,
       );
       form.set('photo', new File([PNG_BYTES], 'photo.png', { type: 'image/png' }));
@@ -438,7 +340,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
       expect(res.status).toBe(400);
 
       const [after] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(after?.nameEn).toBe(before?.nameEn);
+      expect(after?.nameKn).toBe(before?.nameKn);
       expect(after?.photoMediaId).toBe(before?.photoMediaId);
 
       const [mediaCountAfter] = await db
@@ -452,8 +354,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
     it('POST without the token -> 403, candidate unaffected', async () => {
       const fd = new FormData();
       fd.set('formAction', 'core');
-      fd.set('nameEn', 'Should Not Apply Either');
-      fd.set('partyEn', 'Independent');
+      fd.set('nameKn', 'Should Not Apply Either');
       fd.set('status', 'filed');
 
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
@@ -465,7 +366,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4
       expect(res.status).toBe(403);
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(candidate?.nameEn).not.toBe('Should Not Apply Either');
+      expect(candidate?.nameKn).not.toBe('Should Not Apply Either');
     });
   });
 });
