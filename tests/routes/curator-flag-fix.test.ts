@@ -92,6 +92,28 @@ describe('a flag on an affidavit field', () => {
     expect((await fieldRow(c.candidateId, 'assets'))!.checkedBy).toBeNull();
   });
 
+  it('publishes a correction that changes only the capitals of a name', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    await db.update(schema.candidates).set({ nameEn: 'RAVI KUMAR (FICTIONAL)' }).where(eq(schema.candidates.id, c.candidateId));
+    const id = await flag(c.candidateId, 'full_name');
+    const res = await item(id, curator, fix({ 'status.full_name': 'value', name: 'Ravi Kumar (Fictional)' }));
+    expect(res.status).toBe(302);
+    expect((await db.select().from(schema.candidates).where(eq(schema.candidates.id, c.candidateId)))[0].nameEn).toBe('Ravi Kumar (Fictional)');
+    expect((await fieldRow(c.candidateId, 'full_name'))!.valueData).toEqual({ key: 'full_name', status: 'value', text: 'Ravi Kumar (Fictional)' });
+    expect((await flagRow(id)).status).toBe('accepted');
+  });
+
+  it('refuses the published name typed again with only space around it', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    const name = c.extraction.identity.name.text!;
+    const id = await flag(c.candidateId, 'full_name');
+    const res = await item(id, curator, fix({ 'status.full_name': 'value', name: `  ${name}  ` }));
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain(t('en', 'curator.fix.error.unchanged'));
+    expect((await flagRow(id)).status).toBe('pending');
+    expect((await fieldRow(c.candidateId, 'full_name'))!.checkedBy).toBeNull();
+  });
+
   it('refuses an invalid value, writes nothing, and shows back what was typed', async () => {
     const c = await fx.candidateWithAffidavit(WARD_A.id);
     const id = await flag(c.candidateId, 'age');

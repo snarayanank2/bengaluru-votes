@@ -10,7 +10,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db/client';
 import { candidateAffidavits, candidateFields, candidates, media, wards } from '../db/schema';
-import { AFFIDAVIT_FIELD_KEYS, moveCandidateWard, publishAffidavitFields, sameFieldData, type AffidavitFieldKey, type FieldData, type FieldStatus } from './affidavit-publish';
+import { AFFIDAVIT_FIELD_KEYS, moveCandidateWard, publishAffidavitFields, type AffidavitFieldKey, type FieldData, type FieldStatus } from './affidavit-publish';
 import { FIELD_INPUTS, errorFor, fieldFromInputs, inputsOf, readFieldForm, storedFieldData, type FieldError, type RawField } from './affidavit-form';
 import { translateFieldSoon } from './translate-runtime';
 
@@ -113,6 +113,21 @@ export async function publishedFieldData(candidate: FixCandidate, key: Affidavit
   return structured(candidate, key, stored);
 }
 
+/**
+ * Whether a correction is exactly what is published already: the same
+ * answer and the same value in every part, text compared after trimming
+ * only. Unlike `sameFieldData` this is case-sensitive, because changing
+ * "RAVI KUMAR" to "Ravi Kumar" is a correction. Compared part by part, not
+ * as serialised JSON: a stored value comes back from `jsonb` with its keys
+ * in another order. Blank text and a missing part are the same nothing.
+ */
+function unchanged(data: FieldData, published: FieldData): boolean {
+  const part = (value: unknown) => (typeof value === 'string' ? value.trim() || null : (value ?? null));
+  const a = data as Record<string, unknown>;
+  const b = published as Record<string, unknown>;
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].every((name) => part(a[name]) === part(b[name]));
+}
+
 /** One field's posted correction: refused without the confirmation tick, when invalid, or when it is what is published already. */
 export function parseFieldFix(form: FormData, key: AffidavitFieldKey, published: FieldData | null): ParsedField {
   const raw = readFieldForm(form, key);
@@ -120,7 +135,7 @@ export function parseFieldFix(form: FormData, key: AffidavitFieldKey, published:
   const data = fieldFromInputs(key, raw.status, raw.inputs);
   const error = errorFor(data, raw.inputs);
   if (error) return { ok: false, key: `transcribe.error.${error}`, error, raw };
-  if (published && sameFieldData(data, published)) return { ok: false, key: 'curator.fix.error.unchanged', raw };
+  if (published && unchanged(data, published)) return { ok: false, key: 'curator.fix.error.unchanged', raw };
   return { ok: true, data };
 }
 
