@@ -1,0 +1,15 @@
+---
+/**
+ * `/curator/guide` — the curator onboarding page; see
+ * src/features/pages/curator/Guide.astro. Static text in the signed-in
+ * user's saved language. src/middleware.ts admits only a curator or an
+ * admin.
+ */
+import Guide from '../../features/pages/curator/Guide.astro';
+import { loadCuratorLang } from '../../lib/curator';
+
+const lang = await loadCuratorLang(Astro.locals.session!.userId);
+Astro.response.headers.set('cache-control', 'no-store');
+---
+
+<Guide lang={lang} />

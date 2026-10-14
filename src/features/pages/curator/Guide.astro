@@ -1,0 +1,85 @@
+---
+/**
+ * `/curator/guide` — what a curator is asked to do and the standard they
+ * work to (docs/milestones.md §9, docs/candidate-data.md §4). Read once
+ * before the first shift and again when a case is unclear.
+ */
+import CuratorLayout from '../../../layouts/CuratorLayout.astro';
+import { t, type Lang } from '../../../i18n';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const STEPS = ['1', '2', '3', '4'];
+const SECTIONS = ['reason', 'never', 'ward', 'matching', 'notYours', 'contact'];
+---
+
+<CuratorLayout lang={lang} title={t(lang, 'curator.guide.meta.title')} description={t(lang, 'curator.guide.meta.description')}>
+  <article class="guide">
+    <p><a href="/curator">{t(lang, 'curator.guide.back')}</a></p>
+    <h1>{t(lang, 'curator.guide.heading')}</h1>
+    <p class="lead">{t(lang, 'curator.guide.lead')}</p>
+
+    <h2>{t(lang, 'curator.guide.flags.heading')}</h2>
+    <ol>
+      {STEPS.map((step) => <li>{t(lang, `curator.guide.flags.${step}`)}</li>)}
+    </ol>
+
+    {
+      SECTIONS.map((section) => (
+        <section class:list={{ never: section === 'never' }}>
+          <h2>{t(lang, `curator.guide.${section}.heading`)}</h2>
+          <p>{t(lang, `curator.guide.${section}.body`)}</p>
+        </section>
+      ))
+    }
+  </article>
+</CuratorLayout>
+
+<style>
+  .guide {
+    max-width: 44rem;
+    margin-inline: auto;
+    padding-block: var(--space-8);
+    padding-inline: var(--container-pad-x);
+  }
+
+  .guide h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: var(--space-2) 0 0;
+  }
+
+  .guide h2 {
+    font-size: var(--text-lg);
+    margin: var(--space-8) 0 var(--space-2);
+  }
+
+  .lead {
+    margin-top: var(--space-3);
+    font-size: var(--text-lg);
+    line-height: var(--leading-lg);
+  }
+
+  .guide li + li {
+    margin-top: var(--space-2);
+  }
+
+  .never {
+    margin-top: var(--space-8);
+    padding: var(--space-4);
+    background: var(--color-accent-surface);
+    border-left: 4px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+  }
+
+  .never h2 {
+    margin-top: 0;
+  }
+
+  .never p {
+    margin: 0;
+  }
+</style>

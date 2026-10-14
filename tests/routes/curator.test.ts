@@ -27,6 +27,7 @@ import { onRequest } from '../../src/middleware';
 import CuratorIndex from '../../src/pages/curator/index.astro';
 import QueueIndex from '../../src/pages/curator/queue/index.astro';
 import QueueItemRoute from '../../src/pages/curator/queue/[id].astro';
+import GuideRoute from '../../src/pages/curator/guide.astro';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -457,6 +458,28 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     it('a citizen hitting /curator -> 403', async () => {
       const res = await run(CuratorIndex, '/curator', { cookieValue: citizenAuth.cookieValue });
       expect(res.status).toBe(403);
+    });
+  });
+
+  describe('/curator/guide', () => {
+    it('shows a curator the guide, uncached and unindexed', async () => {
+      const res = await run(GuideRoute, '/curator/guide', { cookieValue: curatorAuth.cookieValue });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      const html = await res.text();
+      expect(html).toContain(t('en', 'curator.guide.heading'));
+      expect(html).toContain(t('en', 'curator.guide.never.heading'));
+      expect(html).toContain(t('en', 'curator.guide.matching.heading'));
+      expect(html).toContain('<meta name="robots" content="noindex"');
+    });
+
+    it('refuses a citizen', async () => {
+      expect((await run(GuideRoute, '/curator/guide', { cookieValue: citizenAuth.cookieValue })).status).toBe(403);
+    });
+
+    it('links to every section from the bar', async () => {
+      const html = await (await run(GuideRoute, '/curator/guide', { cookieValue: curatorAuth.cookieValue })).text();
+      for (const href of ['/curator/queue', '/curator/matching', '/curator/guide']) expect(html).toContain(`href="${href}"`);
     });
   });
 });
