@@ -62,7 +62,7 @@ const { lang, rows, message } = Astro.props;
                       </p>
                     )}
                   </td>
-                  <td>{row.name}</td>
+                  <td>{row.nameRead ?? '—'}</td>
                   <td>{row.wardRead ?? t(lang, 'admin.affidavits.match.wardNotRead')}</td>
                   <td>{row.confidence === null ? '—' : `${row.confidence}%`}</td>
                   <td>

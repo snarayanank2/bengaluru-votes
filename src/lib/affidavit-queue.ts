@@ -328,6 +328,9 @@ export interface MatchRow {
   confidence: number | null;
   name: string;
   party: string;
+  /** The name and party as the AI read them, whatever `name` and `party` hold now; null when it read none. */
+  nameRead: string | null;
+  partyRead: string | null;
   gender: string | null;
   /** The ward as the AI read it, for the admin to compare against the PDF; null when it read none. */
   wardRead: string | null;
@@ -418,6 +421,8 @@ async function matchRows(where: SQL): Promise<MatchRow[]> {
       confidence: row.confidence,
       name,
       party: current?.partyEn ?? identity?.party.text ?? '',
+      nameRead: identity?.name.text ?? null,
+      partyRead: identity?.party.text ?? null,
       gender: identity?.gender.gender ?? null,
       wardRead: wardReadText(identity?.ward),
       candidateId: row.candidateId,
@@ -439,6 +444,7 @@ export async function loadMatchItem(id: number): Promise<MatchRow | null> {
   return (await matchRows(eq(candidateAffidavits.id, id)))[0] ?? null;
 }
 
+/** How many affidavits are waiting to be matched: the number on the curator's dashboard. */
 export async function countWaitingMatches(): Promise<number> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(candidateAffidavits).where(eq(candidateAffidavits.state, 'needs_matching'));
   return row?.n ?? 0;
@@ -548,7 +554,7 @@ export async function confirmMatch(actor: { userId: number; role: 'curator' | 'a
   });
 
   for (const fieldId of result.translate) translateFieldSoon({ table: 'candidate_fields', id: fieldId });
-  logEvent('affidavit_matched', { affidavitId: id, by: actor.userId });
+  logEvent('affidavit_matched', { affidavitId: id, by: actor.userId, role: actor.role });
   return { candidateId: result.candidateId };
 }
 

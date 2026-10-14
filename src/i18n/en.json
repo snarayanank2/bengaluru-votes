@@ -843,6 +843,8 @@
   "curator.matching.item.heading": "Match affidavit #{id}",
   "curator.matching.item.back": "Back to the matching list",
   "curator.matching.item.read.heading": "What the AI read",
+  "curator.matching.item.read.name": "Name the AI read:",
+  "curator.matching.item.read.party": "Party the AI read:",
   "curator.matching.item.candidateLink": "The candidate it is published on",
   "curator.matching.item.form.heading": "Confirm who this is",
   "curator.matching.item.attachExisting": "Same person as {name} in {ward}",

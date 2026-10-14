@@ -318,6 +318,17 @@ describe('processOne', () => {
     expect((await affidavit(id)).state).toBe('published');
   });
 
+  it('refuses a ward or candidate id that is not a number an id can be, leaving the affidavit waiting', async () => {
+    const id = await queued();
+    await processOne(ok(extraction({ ward: { status: 'unreadable', number: null, name: null, corporation: null } })));
+    const actor = { userId: curatorId, role: 'curator' as const };
+    const input = { wardId: WARD_WEST.id, name: 'Unplaced Person', party: 'Independent' };
+
+    for (const wardId of [NaN, 99999999999]) await expect(confirmMatch(actor, id, { ...input, wardId })).rejects.toThrow('unknown_ward');
+    for (const attachToCandidateId of [NaN, 99999999999]) await expect(confirmMatch(actor, id, { ...input, attachToCandidateId })).rejects.toThrow('unknown_candidate');
+    expect(await affidavit(id)).toMatchObject({ state: 'needs_matching', candidateId: null });
+  });
+
   it(`retries a failed call and gives up after ${MAX_ATTEMPTS} attempts, publishing nothing`, async () => {
     const id = await queued();
     for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt += 1) {

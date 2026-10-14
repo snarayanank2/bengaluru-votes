@@ -6,6 +6,7 @@ import { Fixtures, client, db, fieldRow, run, schema, tokenForm, ward, type Auth
 import { t } from '../../src/i18n';
 import ListRoute from '../../src/pages/curator/matching/index.astro';
 import ItemRoute from '../../src/pages/curator/matching/[id].astro';
+import { handleMatchConfirm } from '../../src/lib/curator-matching';
 
 // This suite owns ward ids 99441 and 99442.
 const WARD_A = ward(99441, 'Matching Test Ward A');
@@ -19,6 +20,8 @@ const confirm = (fields: Record<string, string>) => tokenForm(curator, { formAct
 const affidavitRow = async (id: number) => (await db.select().from(schema.candidateAffidavits).where(eq(schema.candidateAffidavits.id, id)))[0];
 /** Astro writes an apostrophe in text as `&#39;`. */
 const rendered = (text: string) => text.replaceAll("'", '&#39;');
+/** `text` as the whole content of one `tag` element, whatever attributes Astro's scoped styles add to it. */
+const cell = (tag: 'dd' | 'td', text: string) => new RegExp(`<${tag}[^>]*>${text.replace(/[()]/g, '\\$&')}</${tag}>`);
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: './drizzle' });
@@ -54,6 +57,12 @@ describe('the list', () => {
     for (const reason of ['ward_unresolved', 'possible_duplicate', 'reported_by_transcriber']) expect(html).toContain(t('en', `curator.matching.reason.${reason}`));
     expect(html).toContain(unresolved.extraction.identity.name.text!);
     expect(html).toContain('This is ward B');
+  });
+
+  it('shows the name the AI read on a sent-back row, not the name published since', async () => {
+    const published = await fx.candidateWithAffidavit(WARD_A.id);
+    await fx.waitingAffidavit({ wardId: WARD_A.id, reason: 'reported_by_transcriber', candidateId: published.candidateId, name: 'Listed As Read (FICTIONAL)' });
+    expect(await (await list()).text()).toMatch(cell('td', 'Listed As Read (FICTIONAL)'));
   });
 
   it('shows a notice only from the fixed list', async () => {
@@ -110,6 +119,33 @@ describe('one waiting affidavit', () => {
     const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, published.candidateId));
     expect(candidate.wardId).toBe(WARD_B.id);
     expect(candidate.nameEn).toBe('Renamed Person (FICTIONAL)');
+  });
+
+  it('shows the name and party the AI read on a sent-back affidavit, beside the published ones in the form', async () => {
+    const published = await fx.candidateWithAffidavit(WARD_A.id);
+    await db.update(schema.candidates).set({ partyEn: 'Published Party' }).where(eq(schema.candidates.id, published.candidateId));
+    const a = await fx.waitingAffidavit({ wardId: WARD_A.id, reason: 'reported_by_transcriber', candidateId: published.candidateId, name: 'Card As Read (FICTIONAL)' });
+    const html = await (await item(a.affidavitId)).text();
+    expect(html).toMatch(cell('dd', 'Card As Read (FICTIONAL)'));
+    expect(html).toMatch(cell('dd', 'Demo Party A'));
+    expect(html).toContain(`value="${published.extraction.identity.name.text}"`);
+    expect(html).toContain('value="Published Party"');
+  });
+
+  it('still shows what the AI read after a refused confirm', async () => {
+    const a = await fx.waitingAffidavit({ wardId: WARD_A.id, reason: 'ward_unresolved' });
+    const res = await item(a.affidavitId, confirm({ name: 'Typed Over (FICTIONAL)', party: '', wardId: String(WARD_A.id) }));
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toMatch(cell('dd', a.extraction.identity.name.text!));
+    expect(html).toMatch(cell('dd', 'Demo Party A'));
+  });
+
+  it('reports an affidavit that is no longer waiting as gone', async () => {
+    const published = await fx.candidateWithAffidavit(WARD_A.id);
+    const form = confirm({ name: 'N', party: 'P', wardId: String(WARD_A.id) });
+    expect(await handleMatchConfirm({ userId: curator.userId, role: 'curator' }, published.affidavitId, form)).toEqual({ kind: 'gone' });
+    expect((await affidavitRow(published.affidavitId)).state).toBe('published');
   });
 
   it.each([

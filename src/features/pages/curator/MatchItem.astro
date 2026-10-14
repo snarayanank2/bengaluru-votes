@@ -2,8 +2,10 @@
 /**
  * `/curator/matching/{id}` — one waiting affidavit, matched against its
  * PDF. The stored PDF is on the left and stays in view (`CuratorSplit`); on
- * the right, top to bottom: why it waits, what the AI read, and the form
- * that says who this is and which ward they are contesting.
+ * the right, top to bottom: why it waits, what the AI read (the name and
+ * party too, which the form's inputs stop showing once they hold a
+ * published or a typed value), and the form that says who this is and
+ * which ward they are contesting.
  *
  * THREE KINDS OF ROW, one form. An affidavit the worker could not place
  * creates a candidate. A possible duplicate also offers the candidates of
@@ -66,6 +68,14 @@ const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ??
     <Card>
       <h2>{t(lang, 'curator.matching.item.read.heading')}</h2>
       <dl class="read">
+        <div>
+          <dt>{t(lang, 'curator.matching.item.read.name')}</dt>
+          <dd>{row.nameRead ?? '—'}</dd>
+        </div>
+        <div>
+          <dt>{t(lang, 'curator.matching.item.read.party')}</dt>
+          <dd>{row.partyRead ?? '—'}</dd>
+        </div>
         <div>
           <dt>{t(lang, 'admin.affidavits.match.wardRead')}</dt>
           <dd>{row.wardRead ?? t(lang, 'admin.affidavits.match.wardNotRead')}</dd>
