@@ -110,4 +110,18 @@ function targetLabel(item: QueueListItem): string {
   .queue-table tbody tr:nth-child(odd) {
     background: var(--color-surface);
   }
+
+  /* A raw target reference ("candidate:12:some_key") has no spaces to wrap at. */
+  .queue-table td:nth-child(2) {
+    overflow-wrap: anywhere;
+  }
+
+  /* On a phone the table is wider than the screen with the timestamp in it;
+     the list is already in the chosen order, so that column is dropped. */
+  @media (max-width: 599px) {
+    .queue-table th:nth-child(4),
+    .queue-table td:nth-child(4) {
+      display: none;
+    }
+  }
 </style>

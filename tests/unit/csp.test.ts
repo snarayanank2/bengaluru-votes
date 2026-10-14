@@ -40,7 +40,26 @@ describe('src/lib/csp.ts#buildCsp', () => {
       expect(buildCsp(NONCE, pathname)).toContain("frame-src 'self'");
     });
 
-    it.each(['/transcribe', '/transcribe/guide', '/transcribe/abc', '/admin/affidavits', '/curator/candidate/3'])('%s may frame nothing', (pathname) => {
+    it.each(['/curator/queue/7', '/curator/candidate/3', '/curator/matching/9', '/curator/matching/9/'])(
+      'the curator screen %s may frame the affidavit from this site only',
+      (pathname) => {
+        expect(buildCsp(NONCE, pathname)).toContain("frame-src 'self'");
+      },
+    );
+
+    it.each([
+      '/transcribe',
+      '/transcribe/guide',
+      '/transcribe/abc',
+      '/admin/affidavits',
+      '/curator',
+      '/curator/queue',
+      '/curator/matching',
+      '/curator/guide',
+      '/curator/candidate/new',
+      '/curator/ward/5',
+      '/curator/queue/7/extra',
+    ])('%s may frame nothing', (pathname) => {
       expect(buildCsp(NONCE, pathname)).toContain("frame-src 'none'");
     });
 

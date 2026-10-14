@@ -40,6 +40,14 @@ function isTranscribeReadingPath(pathname: string): boolean {
 }
 
 /** `/media/{id}/{hash}`: a stored photo or affidavit PDF. */
+/**
+ * The curator screens that show the affidavit PDF in a frame beside the form
+ * (`CuratorSplit`): one flag, the candidate editor, one waiting affidavit.
+ */
+function isCuratorAffidavitPath(pathname: string): boolean {
+  return /^\/curator\/(queue|candidate|matching)\/\d+$/.test(stripTrailingSlash(pathname));
+}
+
 function isMediaPath(pathname: string): boolean {
   return /^\/media\/[^/]+\/[^/]+$/.test(pathname);
 }
@@ -138,12 +146,12 @@ export function buildCsp(nonce: string, pathname: string): string {
     frameSrc = 'https://www.google.com';
   }
 
-  // The transcriber's reading screen frames the affidavit, so that one
-  // screen may frame this site's own pages and a stored file may be framed
-  // by them. Both stay same-origin: no other site can frame anything here,
-  // and no page here can frame another site (the ward page's reCAPTCHA
-  // frame above is the one exception).
-  if (isTranscribeReadingPath(pathname)) frameSrc = "'self'";
+  // The transcriber's reading screen and the curator's three affidavit
+  // screens frame the affidavit, so those screens may frame this site's own
+  // pages and a stored file may be framed by them. Both stay same-origin: no
+  // other site can frame anything here, and no page here can frame another
+  // site (the ward page's reCAPTCHA frame above is the one exception).
+  if (isTranscribeReadingPath(pathname) || isCuratorAffidavitPath(pathname)) frameSrc = "'self'";
   const frameAncestors = isMediaPath(pathname) ? "'self'" : "'none'";
 
   const directives = [

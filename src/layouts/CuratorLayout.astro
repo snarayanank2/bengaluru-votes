@@ -64,8 +64,11 @@ const { lang, title, description } = Astro.props;
 </html>
 
 <style>
+  /* Exactly 56px, on one row at every width: CuratorSplit sizes itself
+     against this height. On a narrow screen the wordmark gives way (it
+     shortens with an ellipsis) so the three section links always fit. */
   .curator-bar {
-    min-height: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
     gap: var(--space-6);
@@ -75,10 +78,11 @@ const { lang, title, description } = Astro.props;
   }
 
   .curator-nav {
+    flex: none;
     display: flex;
-    flex-wrap: wrap;
     gap: var(--space-4);
     font-size: var(--text-sm);
+    white-space: nowrap;
   }
 
   .curator-nav a {
@@ -88,10 +92,29 @@ const { lang, title, description } = Astro.props;
   }
 
   .wordmark {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--font-heading);
     font-weight: 700;
     font-size: var(--text-lg);
     color: var(--color-primary);
     text-decoration: none;
+  }
+
+  @media (max-width: 599px) {
+    .curator-bar {
+      gap: var(--space-3);
+    }
+
+    .curator-nav {
+      gap: var(--space-3);
+    }
+
+    .wordmark {
+      font-size: var(--text-base);
+    }
   }
 </style>

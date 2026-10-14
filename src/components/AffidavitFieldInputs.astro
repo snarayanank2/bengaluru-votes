@@ -145,6 +145,13 @@ function assetsTotal(movable: string, immovable: string): string {
     cursor: pointer;
   }
 
+  /* Where the panes stack (a phone or small tablet) the pills are touch targets. */
+  @media (max-width: 899px) {
+    .status-option {
+      min-height: 44px;
+    }
+  }
+
   .status-option:has(input:checked) {
     border-color: var(--color-primary);
     background: var(--color-primary-surface);
