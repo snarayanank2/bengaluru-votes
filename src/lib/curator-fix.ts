@@ -30,8 +30,10 @@ export interface FixCandidate {
   wardId: number;
   wardNameEn: string;
   wardNameKn: string;
-  /** The stored affidavit every value points to; null for a candidate created by hand. */
+  /** The stored affidavit every value points to; null for a candidate with no published affidavit. */
   pdfUrl: string | null;
+  /** With no published affidavit: the candidate's affidavit that waits in Matching, if there is one. */
+  waitingAffidavitId: number | null;
 }
 
 /** One field as the fix form shows it. */
@@ -71,6 +73,21 @@ export async function latestAffidavitOf(candidateId: number): Promise<{ pdfUrl: 
   return row ? { pdfUrl: `/media/${row.mediaId}/${row.sha256.slice(0, 16)}` } : null;
 }
 
+/**
+ * The candidate's most recent affidavit that waits in Matching, or null:
+ * one a transcriber sent back keeps its candidate but is no longer
+ * `published`, so `latestAffidavitOf` does not see it.
+ */
+export async function waitingAffidavitOf(candidateId: number): Promise<number | null> {
+  const [row] = await db
+    .select({ id: candidateAffidavits.id })
+    .from(candidateAffidavits)
+    .where(and(eq(candidateAffidavits.candidateId, candidateId), eq(candidateAffidavits.state, 'needs_matching')))
+    .orderBy(desc(candidateAffidavits.createdAt), desc(candidateAffidavits.id))
+    .limit(1);
+  return row?.id ?? null;
+}
+
 export async function loadFixCandidate(candidateId: number): Promise<FixCandidate | null> {
   const [row] = await db
     .select({ id: candidates.id, slug: candidates.slug, nameEn: candidates.nameEn, partyEn: candidates.partyEn, wardId: wards.id, wardNameEn: wards.nameEn, wardNameKn: wards.nameKn })
@@ -78,7 +95,8 @@ export async function loadFixCandidate(candidateId: number): Promise<FixCandidat
     .innerJoin(wards, eq(wards.id, candidates.wardId))
     .where(eq(candidates.id, candidateId));
   if (!row) return null;
-  return { ...row, pdfUrl: (await latestAffidavitOf(candidateId))?.pdfUrl ?? null };
+  const pdfUrl = (await latestAffidavitOf(candidateId))?.pdfUrl ?? null;
+  return { ...row, pdfUrl, waitingAffidavitId: pdfUrl ? null : await waitingAffidavitOf(candidateId) };
 }
 
 /** What is published for `key` as a structured value. Name and party come from the candidate row, which is what the public page shows. */

@@ -9,6 +9,8 @@
  * affidavit fields gets that field's structured inputs, the ward gets a
  * select of every ward, and anything else (a candidate with no stored
  * affidavit, a kind of flag that is no longer taken) can only be dismissed.
+ * A candidate whose affidavit a transcriber sent back has none published:
+ * the page points to it in Matching instead of asking for it again.
  * Dismissal is always offered on a pending item.
  *
  * CONFIRMATION (design-system.md §7.13: "destructive and publish actions
@@ -55,6 +57,9 @@ const BADGE_VARIANT: Record<QueueItemDetail['status'], BadgeVariant> = {
   accepted: 'flag-accepted',
   rejected: 'flag-rejected',
 };
+
+/** A citizen's source is whatever they typed: only a web address becomes a link, anything else is shown as text. */
+const WEB_ADDRESS = /^https?:\/\//i;
 
 const { candidate, fix } = item;
 const isPending = item.status === 'pending';
@@ -125,9 +130,13 @@ const publishedText = field
             {submission.sourceUrl && (
               <p class="meta">
                 {t(lang, 'curator.queueItem.submissions.sourceLabel')}:{' '}
-                <a href={submission.sourceUrl} target="_blank" rel="noopener noreferrer">
-                  {submission.sourceUrl}
-                </a>
+                {WEB_ADDRESS.test(submission.sourceUrl) ? (
+                  <a href={submission.sourceUrl} target="_blank" rel="noopener noreferrer">
+                    {submission.sourceUrl}
+                  </a>
+                ) : (
+                  submission.sourceUrl
+                )}
               </p>
             )}
             <p class="meta">{submission.createdAt.toISOString()}</p>
@@ -187,7 +196,14 @@ const publishedText = field
     {
       isPending && fix.kind === 'none' && (
         <Card>
-          {candidate && candidate.pdfUrl === null ? (
+          {candidate && candidate.waitingAffidavitId !== null ? (
+            <>
+              <p class="note">{t(lang, 'curator.fix.affidavitWaiting')}</p>
+              <p class="note">
+                <a href={`/curator/matching/${candidate.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
+              </p>
+            </>
+          ) : candidate && candidate.pdfUrl === null ? (
             <>
               <p class="note">{t(lang, 'curator.fix.noAffidavit')}</p>
               <p class="note">

@@ -354,6 +354,8 @@ export interface CandidateEditData {
   status: CandidateStatus;
   /** The stored affidavit every value is checked against; null for a candidate with none. */
   pdfUrl: string | null;
+  /** With no published affidavit: the candidate's affidavit that waits in Matching, if there is one. */
+  waitingAffidavitId: number | null;
   /** The seven affidavit fields as their forms open; empty when there is no affidavit. */
   fields: FixField[];
   affidavits: CandidateAffidavitRow[];
@@ -420,6 +422,7 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
     photoUrl: row.photoMediaId != null && row.photoHash ? `/media/${row.photoMediaId}/${row.photoHash.slice(0, 16)}` : null,
     status: row.status,
     pdfUrl: fixCandidate.pdfUrl,
+    waitingAffidavitId: fixCandidate.waitingAffidavitId,
     fields: fixCandidate.pdfUrl ? await loadFixFields(fixCandidate) : [],
     affidavits,
   };
@@ -710,10 +713,11 @@ function likePattern(q: string): string {
 /**
  * Candidates and wards whose name contains `q` (a ward also by its id). A
  * few thousand candidates and 369 wards: a sequential scan is enough.
- * Null for a query under two characters.
+ * Null for a query under two characters. A NUL byte is dropped (Postgres
+ * refuses one in a bind parameter) and the query is cut at 100 characters.
  */
 export async function searchCurator(q: string): Promise<CuratorSearch | null> {
-  const term = q.trim();
+  const term = q.replace(/\0/g, '').trim().slice(0, 100);
   if (term.length < 2) return null;
   const pattern = likePattern(term);
 

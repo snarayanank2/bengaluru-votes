@@ -61,6 +61,16 @@ it('says so when nothing matches', async () => {
   expect(await (await search('zzznomatchzzz')).text()).toContain('zzznomatchzzz');
 });
 
+it('drops a NUL byte from the query instead of failing', async () => {
+  const res = await search('Qqsearch\0 Alp');
+  expect(res.status).toBe(200);
+  expect(await res.text()).toContain(`href="/curator/candidate/${alphaId}"`);
+});
+
+it('limits the search box to 100 characters', async () => {
+  expect(await (await run(DashboardRoute, '/curator', { auth: curator })).text()).toContain('maxlength="100"');
+});
+
 it('stops at the cap and says so', async () => {
   for (let i = 0; i < SEARCH_CAP + 1; i += 1) await fx.bareCandidate(WARD.id, `Capsearch Person ${String(i).padStart(2, '0')} (FICTIONAL)`);
   const html = await (await search('Capsearch')).text();

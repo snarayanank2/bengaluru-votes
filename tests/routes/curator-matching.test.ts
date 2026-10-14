@@ -22,6 +22,8 @@ const affidavitRow = async (id: number) => (await db.select().from(schema.candid
 const rendered = (text: string) => text.replaceAll("'", '&#39;');
 /** `text` as the whole content of one `tag` element, whatever attributes Astro's scoped styles add to it. */
 const cell = (tag: 'dd' | 'td', text: string) => new RegExp(`<${tag}[^>]*>${text.replace(/[()]/g, '\\$&')}</${tag}>`);
+/** `text` as the whole content of the link to one waiting affidavit, itself the whole content of a list cell. */
+const nameLink = (affidavitId: number, text: string) => new RegExp(`<td[^>]*><a href="/curator/matching/${affidavitId}"[^>]*>${text.replace(/[()]/g, '\\$&')}</a></td>`);
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: './drizzle' });
@@ -59,10 +61,13 @@ describe('the list', () => {
     expect(html).toContain('This is ward B');
   });
 
-  it('shows the name the AI read on a sent-back row, not the name published since', async () => {
+  it('shows the name the AI read on a sent-back row, not the name published since, as the link that opens it', async () => {
     const published = await fx.candidateWithAffidavit(WARD_A.id);
-    await fx.waitingAffidavit({ wardId: WARD_A.id, reason: 'reported_by_transcriber', candidateId: published.candidateId, name: 'Listed As Read (FICTIONAL)' });
-    expect(await (await list()).text()).toMatch(cell('td', 'Listed As Read (FICTIONAL)'));
+    const sentBack = await fx.waitingAffidavit({ wardId: WARD_A.id, reason: 'reported_by_transcriber', candidateId: published.candidateId, name: 'Listed As Read (FICTIONAL)' });
+    const html = await (await list()).text();
+    expect(html).toMatch(nameLink(sentBack.affidavitId, 'Listed As Read (FICTIONAL)'));
+    expect(html.match(new RegExp(`href="/curator/matching/${sentBack.affidavitId}"`, 'g'))).toHaveLength(1);
+    expect(html).not.toMatch(/<th[^>]*><\/th>/);
   });
 
   it('shows a notice only from the fixed list', async () => {

@@ -2,8 +2,9 @@
 /**
  * `/curator/matching` — every affidavit the worker read but could not
  * publish, or a transcriber sent back, oldest first: why it waits, and the
- * name, ward and confidence as the AI read them. Each opens on its own page
- * (MatchItem.astro), where it is compared with the PDF and confirmed.
+ * name, ward and confidence as the AI read them. The name is the link to the
+ * affidavit's own page (MatchItem.astro), where it is compared with the PDF
+ * and confirmed.
  *
  * The table sits in its own horizontally scrolling wrapper, so on a phone
  * the table scrolls and the page does not. See Dashboard.astro's docstring
@@ -48,7 +49,6 @@ const { lang, rows, message } = Astro.props;
                 <th>{t(lang, 'curator.matching.colName')}</th>
                 <th>{t(lang, 'curator.matching.colWard')}</th>
                 <th>{t(lang, 'curator.matching.colConfidence')}</th>
-                <th />
               </tr>
             </thead>
             <tbody>
@@ -62,12 +62,9 @@ const { lang, rows, message } = Astro.props;
                       </p>
                     )}
                   </td>
-                  <td>{row.nameRead ?? '—'}</td>
+                  <td><a href={`/curator/matching/${row.id}`}>{row.nameRead ?? '—'}</a></td>
                   <td>{row.wardRead ?? t(lang, 'admin.affidavits.match.wardNotRead')}</td>
                   <td>{row.confidence === null ? '—' : `${row.confidence}%`}</td>
-                  <td>
-                    <a href={`/curator/matching/${row.id}`}>{t(lang, 'curator.matching.open')}</a>
-                  </td>
                 </tr>
               ))}
             </tbody>

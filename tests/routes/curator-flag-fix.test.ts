@@ -190,7 +190,36 @@ describe('a flag on the ward', () => {
   });
 });
 
+describe('the source a citizen gave', () => {
+  const flagWithSource = async (sourceUrl: string) => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    const { flagItemId } = await submitFlag(citizen.userId, { targetType: 'candidate_field', targetRef: `candidate:${c.candidateId}:age`, detail: 'See the source', sourceUrl });
+    return (await item(flagItemId, curator)).text();
+  };
+
+  it('is a link when it is a web address', async () => {
+    expect(await flagWithSource('https://example.com/affidavit')).toContain('href="https://example.com/affidavit"');
+  });
+
+  it('is plain text when it is anything else', async () => {
+    const html = await flagWithSource('javascript:alert(1)');
+    expect(html).toContain('javascript:alert(1)');
+    expect(html).not.toContain('href="javascript:');
+  });
+});
+
 describe('flags that cannot be fixed here', () => {
+  it('points to Matching when the only affidavit was sent back by a transcriber', async () => {
+    const candidateId = await fx.bareCandidate(WARD_A.id);
+    const waiting = await fx.waitingAffidavit({ wardId: WARD_A.id, reason: 'reported_by_transcriber', candidateId });
+    const html = await (await item(await flag(candidateId, 'age'), curator)).text();
+    // Astro escapes the apostrophe in text.
+    expect(html).toContain(t('en', 'curator.fix.affidavitWaiting').replace("'", '&#39;'));
+    expect(html).toContain(`href="/curator/matching/${waiting.affidavitId}"`);
+    expect(html).not.toContain(t('en', 'curator.fix.noAffidavitLink'));
+    expect(html).not.toContain('value="fix"');
+  });
+
   it('offers only dismissal for a candidate with no stored affidavit, and refuses a fix posted anyway', async () => {
     const candidateId = await fx.bareCandidate(WARD_A.id);
     const id = await flag(candidateId, 'age');

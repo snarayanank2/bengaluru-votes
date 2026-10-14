@@ -101,6 +101,17 @@ describe('the candidate editor on structured fields', () => {
     expect(await fieldRow(candidateId, 'age')).toBeUndefined();
   });
 
+  it('points to Matching when the only affidavit was sent back by a transcriber', async () => {
+    const candidateId = await fx.bareCandidate(WARD_A.id);
+    const waiting = await fx.waitingAffidavit({ wardId: WARD_A.id, reason: 'reported_by_transcriber', candidateId });
+    const html = await (await page(candidateId)).text();
+    // Astro escapes the apostrophe in text.
+    expect(html).toContain(t('en', 'curator.fix.affidavitWaiting').replace("'", '&#39;'));
+    expect(html).toContain(`href="/curator/matching/${waiting.affidavitId}"`);
+    expect(html).not.toContain(t('en', 'curator.candidateEdit.fields.needAffidavit').replace("'", '&#39;'));
+    expect(html).not.toContain('value="field:age"');
+  });
+
   it('keeps the English name when the core card is saved', async () => {
     const c = await fx.candidateWithAffidavit(WARD_A.id);
     const before = (await candidateRow(c.candidateId)).nameEn;

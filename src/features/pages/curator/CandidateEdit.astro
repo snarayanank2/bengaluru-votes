@@ -24,7 +24,8 @@
  *     gender, age, education, assets, cases): that field's structured
  *     inputs, checked against the stored affidavit, with the required
  *     "publishes immediately" tick. With no affidavit there is nothing to
- *     check against, so these forms are replaced by a line asking for it.
+ *     check against, so these forms are replaced by a line asking for it
+ *     (or, when a transcriber sent it back, pointing to it in Matching).
  *   - `formAction=ward` — the ward the candidate belongs in.
  *
  * After a refused save the route twin passes `refused` (which form, and
@@ -204,6 +205,10 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
                 submitLabel={t(lang, 'curator.fix.wardSubmit')}
               />
             </div>
+          ) : candidate!.waitingAffidavitId !== null ? (
+            <p class="placeholder-note">
+              {t(lang, 'curator.fix.affidavitWaiting')} <a href={`/curator/matching/${candidate!.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
+            </p>
           ) : (
             <p class="placeholder-note">{t(lang, 'curator.candidateEdit.fields.needAffidavit')}</p>
           )}

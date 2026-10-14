@@ -39,15 +39,12 @@ function isTranscribeReadingPath(pathname: string): boolean {
   return /^\/transcribe\/\d+$/.test(stripTrailingSlash(pathname));
 }
 
-/** `/media/{id}/{hash}`: a stored photo or affidavit PDF. */
-/**
- * The curator screens that show the affidavit PDF in a frame beside the form
- * (`CuratorSplit`): one flag, the candidate editor, one waiting affidavit.
- */
+/** `/curator/{queue|candidate|matching}/{id}`: the curator screens that show the affidavit PDF in a frame beside the form (`CuratorSplit`). */
 function isCuratorAffidavitPath(pathname: string): boolean {
   return /^\/curator\/(queue|candidate|matching)\/\d+$/.test(stripTrailingSlash(pathname));
 }
 
+/** `/media/{id}/{hash}`: a stored photo or affidavit PDF. */
 function isMediaPath(pathname: string): boolean {
   return /^\/media\/[^/]+\/[^/]+$/.test(pathname);
 }

@@ -56,7 +56,7 @@ const { queueCount, matchCount } = data;
       <form method="get" action="/curator" role="search" class="search-form">
         <label for="curator-search-q">{t(lang, 'curator.dashboard.search.label')}</label>
         <div class="search-row">
-          <input id="curator-search-q" type="search" name="q" value={q} class="form-input" />
+          <input id="curator-search-q" type="search" name="q" value={q} maxlength="100" class="form-input" />
           <Button type="submit" variant="primary" lang={lang}>{t(lang, 'curator.dashboard.search.submit')}</Button>
         </div>
       </form>
