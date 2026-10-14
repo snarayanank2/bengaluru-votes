@@ -1,0 +1,64 @@
+---
+/**
+ * `/curator/matching/{id}` — see src/features/pages/curator/MatchItem.astro
+ * for the presentational side. This route twin owns:
+ *   - the existence check: 404 for a non-integer id and for an affidavit
+ *     that is not waiting (unknown, published, failed, or already matched);
+ *   - the one POST action, `match` (anything else, including the admin's
+ *     `upload`, `retry` and `discard`, is a 400), and what follows it: a
+ *     confirmed match redirects to the list, as does one somebody else
+ *     confirmed first (that affidavit can no longer be shown here); a
+ *     refusal re-renders with 400 and what was typed;
+ *   - no-store on every response.
+ */
+import MatchItem from '../../../features/pages/curator/MatchItem.astro';
+import { loadMatchItem } from '../../../lib/affidavit-queue';
+import { loadCuratorLang } from '../../../lib/curator';
+import { loadWardOptions } from '../../../lib/curator-fix';
+import { handleMatchConfirm } from '../../../lib/curator-matching';
+
+const session = Astro.locals.session!;
+const actor = { userId: session.userId, role: session.role as 'curator' | 'admin' };
+
+const idParam = Astro.params.id;
+const affidavitId = Number(idParam);
+if (!idParam || !Number.isInteger(affidavitId)) {
+  return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
+}
+
+const row = await loadMatchItem(affidavitId);
+if (!row) {
+  return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
+}
+
+let message: { kind: 'notice' | 'error'; key: string } | undefined;
+let posted: { name: string; party: string; wardId: string; attachToCandidateId: string } | undefined;
+let status = 200;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (String(form.get('formAction') ?? '') !== 'match') {
+    return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
+  }
+
+  const outcome = await handleMatchConfirm(actor, row.id, form);
+  if (outcome.kind !== 'refused') {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: `/curator/matching?notice=${outcome.kind}`, 'cache-control': 'no-store' },
+    });
+  }
+
+  message = { kind: 'error', key: outcome.key };
+  status = 400;
+  const typed = (name: string) => String(form.get(name) ?? '');
+  posted = { name: typed('name'), party: typed('party'), wardId: typed('wardId'), attachToCandidateId: typed('attachToCandidateId') };
+}
+
+const [lang, wards] = await Promise.all([loadCuratorLang(session.userId), loadWardOptions()]);
+
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.status = status;
+---
+
+<MatchItem lang={lang} csrfToken={Astro.locals.csrfToken} row={row} wards={wards} message={message} posted={posted} />

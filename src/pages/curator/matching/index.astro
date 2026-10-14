@@ -1,0 +1,23 @@
+---
+/**
+ * `/curator/matching` — see src/features/pages/curator/MatchList.astro for
+ * the presentational side. Route-twin concerns only: no-store, the signed-in
+ * user's saved render language, and the `?notice=` a confirm redirects back
+ * with, looked up from a fixed list so a hand-edited URL can only show one
+ * of these sentences.
+ */
+import MatchList from '../../../features/pages/curator/MatchList.astro';
+import { loadMatchList } from '../../../lib/affidavit-queue';
+import { loadCuratorLang } from '../../../lib/curator';
+
+const session = Astro.locals.session!;
+const [rows, lang] = await Promise.all([loadMatchList(), loadCuratorLang(session.userId)]);
+
+const NOTICE_KINDS = ['matched', 'gone'] as const;
+const notice = NOTICE_KINDS.find((kind) => kind === Astro.url.searchParams.get('notice'));
+const message = notice ? { kind: 'notice' as const, key: `curator.matching.notice.${notice}` } : undefined;
+
+Astro.response.headers.set('cache-control', 'no-store');
+---
+
+<MatchList lang={lang} rows={rows} message={message} />

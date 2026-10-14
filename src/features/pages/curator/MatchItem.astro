@@ -1,0 +1,265 @@
+---
+/**
+ * `/curator/matching/{id}` — one waiting affidavit, matched against its
+ * PDF. The stored PDF is on the left and stays in view (`CuratorSplit`); on
+ * the right, top to bottom: why it waits, what the AI read, and the form
+ * that says who this is and which ward they are contesting.
+ *
+ * THREE KINDS OF ROW, one form. An affidavit the worker could not place
+ * creates a candidate. A possible duplicate also offers the candidates of
+ * the same name to publish onto instead. One a transcriber sent back
+ * (`row.candidateId` set) already has a published candidate: the form
+ * starts from what is published and saving moves or renames that candidate.
+ *
+ * CONFIRMATION: the required "publishes immediately" tick, checked again
+ * server-side, as on every curator publish. After a refusal the route twin
+ * passes `posted` — what was typed — and the form shows that back.
+ *
+ * Retrying and discarding an affidavit are the admin's (/admin/affidavits);
+ * the last line says what to do with a document that should not be matched.
+ */
+import CuratorLayout from '../../../layouts/CuratorLayout.astro';
+import Card from '../../../components/Card.astro';
+import Banner from '../../../components/Banner.astro';
+import Button from '../../../components/Button.astro';
+import CuratorSplit from '../../../components/CuratorSplit.astro';
+import { t, type Lang } from '../../../i18n';
+import { CSRF_FIELD_NAME } from '../../../lib/csrf';
+import type { MatchRow } from '../../../lib/affidavit-queue';
+import type { WardOption } from '../../../lib/curator-fix';
+
+interface Props {
+  lang: Lang;
+  csrfToken: string;
+  row: MatchRow;
+  /** Every ward, for the ward select. */
+  wards: WardOption[];
+  message?: { kind: 'notice' | 'error'; key: string };
+  /** What was posted, after a refused confirm. */
+  posted?: { name: string; party: string; wardId: string; attachToCandidateId: string };
+}
+
+const { lang, csrfToken, row, wards, message, posted } = Astro.props;
+
+const isCorrection = row.candidateId !== null;
+const name = posted?.name ?? row.name;
+const party = posted?.party ?? row.party;
+const wardValue = posted ? posted.wardId : row.currentWardId === null ? '' : String(row.currentWardId);
+const attachValue = posted?.attachToCandidateId ?? '';
+const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ?? String(id);
+---
+
+<CuratorLayout lang={lang} title={t(lang, 'curator.matching.item.meta.title')} description={t(lang, 'curator.matching.meta.description')}>
+  <CuratorSplit lang={lang} pdfUrl={row.pdfUrl}>
+    <p class="back"><a href="/curator/matching">{t(lang, 'curator.matching.item.back')}</a></p>
+    <h1>{t(lang, 'curator.matching.item.heading', { id: row.id })}</h1>
+    <p class="reason">{t(lang, `curator.matching.reason.${row.reason}`)}</p>
+
+    {
+      message && (
+        <Banner kind={message.kind} lang={lang}>
+          {t(lang, message.key)}
+        </Banner>
+      )
+    }
+
+    <Card>
+      <h2>{t(lang, 'curator.matching.item.read.heading')}</h2>
+      <dl class="read">
+        <div>
+          <dt>{t(lang, 'admin.affidavits.match.wardRead')}</dt>
+          <dd>{row.wardRead ?? t(lang, 'admin.affidavits.match.wardNotRead')}</dd>
+        </div>
+        <div>
+          <dt>{t(lang, 'admin.affidavits.match.gender')}</dt>
+          <dd>{row.gender ?? '—'}</dd>
+        </div>
+        <div>
+          <dt>{t(lang, 'admin.affidavits.match.confidence')}</dt>
+          <dd>{row.confidence === null ? '—' : `${row.confidence}%`}</dd>
+        </div>
+      </dl>
+    </Card>
+
+    {
+      isCorrection && (
+        <Card>
+          {row.note && (
+            <p class="note">
+              <strong>{t(lang, 'admin.affidavits.match.transcriberNote')}</strong> {row.note}
+            </p>
+          )}
+          <p class="note">{t(lang, 'admin.affidavits.match.stillPublished')}</p>
+          <p class="note">
+            <a href={`/curator/candidate/${row.candidateId}`}>{t(lang, 'curator.matching.item.candidateLink')}</a>
+          </p>
+        </Card>
+      )
+    }
+
+    <Card>
+      <h2>{t(lang, 'curator.matching.item.form.heading')}</h2>
+      <form method="post" class="match-form">
+        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+        <input type="hidden" name="formAction" value="match" />
+        <div class="form-field">
+          <label class="form-label" for="match-name">{t(lang, 'admin.affidavits.match.name')}</label>
+          <input id="match-name" class="form-input" type="text" name="name" value={name} required />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="match-party">{t(lang, 'admin.affidavits.match.party')}</label>
+          <input id="match-party" class="form-input" type="text" name="party" value={party} required />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="match-ward">{t(lang, 'admin.affidavits.match.ward')}</label>
+          <select id="match-ward" class="form-input" name="wardId" required>
+            <option value="">{t(lang, 'admin.affidavits.match.wardChoose')}</option>
+            {wards.map((ward) => <option value={ward.id} selected={String(ward.id) === wardValue}>{ward.label}</option>)}
+          </select>
+        </div>
+        {
+          !isCorrection && row.sameName.length > 0 && (
+            <div class="form-field">
+              <label class="form-label" for="match-attach">{t(lang, 'admin.affidavits.match.attach')}</label>
+              <select id="match-attach" class="form-input" name="attachToCandidateId">
+                <option value="">{t(lang, 'admin.affidavits.match.attachNew')}</option>
+                {row.sameName.map((c) => (
+                  <option value={c.id} selected={String(c.id) === attachValue}>
+                    {t(lang, 'curator.matching.item.attachExisting', { name: c.nameEn, ward: wardLabel(c.wardId) })}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        }
+        <label class="confirm">
+          <input type="checkbox" name="confirmPublish" required />
+          <span>{t(lang, 'curator.matching.item.confirm')}</span>
+        </label>
+        <div class="actions">
+          <Button type="submit" variant="primary" lang={lang}>
+            {t(lang, isCorrection ? 'admin.affidavits.match.submitCorrection' : 'admin.affidavits.match.submit')}
+          </Button>
+        </div>
+      </form>
+    </Card>
+
+    <p class="unusable">{t(lang, 'curator.matching.item.unusable')}</p>
+  </CuratorSplit>
+</CuratorLayout>
+
+<style>
+  /* The page's column, its width and its scrolling belong to CuratorSplit;
+     these are the pieces this page puts inside it. */
+  h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: 0;
+  }
+
+  h2 {
+    font-size: var(--text-lg);
+    margin: 0 0 var(--space-3);
+  }
+
+  .back,
+  .reason {
+    margin: 0;
+  }
+
+  .reason {
+    font-weight: 700;
+  }
+
+  .read {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+  }
+
+  .read div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .read dt {
+    color: var(--color-text-muted);
+  }
+
+  .read dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .note {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .note + .note {
+    margin-top: var(--space-2);
+  }
+
+  .match-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    max-width: 32rem;
+  }
+
+  .form-label {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .form-input {
+    min-height: 44px;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .form-input:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+    border-color: var(--color-primary);
+  }
+
+  .confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-weight: 700;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+
+  .confirm input {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    margin-top: 2px;
+    accent-color: var(--color-primary);
+  }
+
+  .unusable {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+</style>

@@ -1,0 +1,135 @@
+---
+/**
+ * `/curator/matching` — every affidavit the worker read but could not
+ * publish, or a transcriber sent back, oldest first: why it waits, and the
+ * name, ward and confidence as the AI read them. Each opens on its own page
+ * (MatchItem.astro), where it is compared with the PDF and confirmed.
+ *
+ * The table sits in its own horizontally scrolling wrapper, so on a phone
+ * the table scrolls and the page does not. See Dashboard.astro's docstring
+ * for the language and noindex rationale shared by every curator page.
+ */
+import CuratorLayout from '../../../layouts/CuratorLayout.astro';
+import Banner from '../../../components/Banner.astro';
+import { t, type Lang } from '../../../i18n';
+import type { MatchRow } from '../../../lib/affidavit-queue';
+
+interface Props {
+  lang: Lang;
+  rows: MatchRow[];
+  message?: { kind: 'notice' | 'error'; key: string };
+}
+
+const { lang, rows, message } = Astro.props;
+---
+
+<CuratorLayout lang={lang} title={t(lang, 'curator.matching.meta.title')} description={t(lang, 'curator.matching.meta.description')}>
+  <div class="curator-page">
+    <h1>{t(lang, 'curator.matching.heading')}</h1>
+    <p class="intro">{t(lang, 'curator.matching.intro')}</p>
+
+    {
+      message && (
+        <Banner kind={message.kind} lang={lang}>
+          {t(lang, message.key)}
+        </Banner>
+      )
+    }
+
+    {
+      rows.length === 0 ? (
+        <p>{t(lang, 'curator.matching.none')}</p>
+      ) : (
+        <div class="table-scroll">
+          <table class="match-table">
+            <thead>
+              <tr>
+                <th>{t(lang, 'curator.matching.colReason')}</th>
+                <th>{t(lang, 'curator.matching.colName')}</th>
+                <th>{t(lang, 'curator.matching.colWard')}</th>
+                <th>{t(lang, 'curator.matching.colConfidence')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr>
+                  <td>
+                    {t(lang, `curator.matching.reason.${row.reason}`)}
+                    {row.note && (
+                      <p class="row-note">
+                        <strong>{t(lang, 'admin.affidavits.match.transcriberNote')}</strong> {row.note}
+                      </p>
+                    )}
+                  </td>
+                  <td>{row.name}</td>
+                  <td>{row.wardRead ?? t(lang, 'admin.affidavits.match.wardNotRead')}</td>
+                  <td>{row.confidence === null ? '—' : `${row.confidence}%`}</td>
+                  <td>
+                    <a href={`/curator/matching/${row.id}`}>{t(lang, 'curator.matching.open')}</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </div>
+</CuratorLayout>
+
+<style>
+  .curator-page {
+    max-width: var(--container-app);
+    margin-inline: auto;
+    padding-block: var(--space-8);
+    padding-inline: var(--container-pad-x);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .curator-page h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: 0;
+  }
+
+  .intro {
+    margin: 0;
+    max-width: var(--container-prose);
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  .match-table {
+    width: 100%;
+    min-width: 36rem;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+
+  .match-table th,
+  .match-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .match-table tbody tr:nth-child(odd) {
+    background: var(--color-surface);
+  }
+
+  .match-table td:last-child {
+    white-space: nowrap;
+  }
+
+  .row-note {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+  }
+</style>

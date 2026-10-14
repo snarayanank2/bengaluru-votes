@@ -15,7 +15,7 @@
  * Logs carry ids, states and counts only — never a name or a value.
  */
 import { createHash } from 'node:crypto';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, type SQL } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
 import { candidateAffidavits, candidates, media, wards } from '../db/schema';
 import type { AffidavitExtraction, ExtractionFailure, ExtractionOutcome } from './affidavit-extraction';
@@ -353,58 +353,50 @@ export interface AffidavitAdminData {
   failed: FailedRow[];
 }
 
+/** A value a serial `integer` id can hold: anything else, typed into a URL or a form, matches no row. */
+function isRowId(value: number): boolean {
+  return Number.isInteger(value) && value >= 1 && value <= 2147483647;
+}
+
 function wardReadText(ward: AffidavitExtraction['identity']['ward'] | undefined): string | null {
   if (!ward || ward.status !== 'value') return null;
   return [ward.number, ward.name, ward.corporation].filter((part) => part !== null).join(' · ');
 }
 
-export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
-  const counts: Record<AffidavitState, number> = { queued: 0, extracting: 0, needs_matching: 0, published: 0, failed: 0 };
-  const countRows = await db
-    .select({ state: candidateAffidavits.state, n: sql<number>`count(*)::int` })
-    .from(candidateAffidavits)
-    .groupBy(candidateAffidavits.state);
-  for (const row of countRows) counts[row.state] = row.n;
-
+/**
+ * The waiting (`needs_matching`) affidavits matching `where`, oldest first,
+ * each as the form shows it.
+ */
+async function matchRows(where: SQL): Promise<MatchRow[]> {
   const waiting = await db
     .select({
       id: candidateAffidavits.id,
       mediaId: candidateAffidavits.mediaId,
       sha256: media.sha256,
-      state: candidateAffidavits.state,
       matchReason: candidateAffidavits.matchReason,
       matchNote: candidateAffidavits.matchNote,
       confidence: candidateAffidavits.confidence,
       extraction: candidateAffidavits.extraction,
-      failure: candidateAffidavits.failure,
-      attempts: candidateAffidavits.attempts,
       candidateId: candidateAffidavits.candidateId,
     })
     .from(candidateAffidavits)
     .innerJoin(media, eq(media.id, candidateAffidavits.mediaId))
-    .where(sql`${candidateAffidavits.state} IN ('needs_matching', 'failed')`)
+    .where(and(eq(candidateAffidavits.state, 'needs_matching'), where))
     .orderBy(candidateAffidavits.id);
+  if (waiting.length === 0) return [];
 
   // Every candidate's name, read once, for the "same person as" suggestions
   // (not once per waiting row: there may be hundreds of rows and thousands
   // of candidates).
   const byName = new Map<string, Array<{ id: number; nameEn: string; wardId: number }>>();
-  if (waiting.some((row) => row.state === 'needs_matching')) {
-    const all = await db.select({ id: candidates.id, nameEn: candidates.nameEn, wardId: candidates.wardId }).from(candidates);
-    for (const c of all) {
-      const key = normalizeForMatch(c.nameEn);
-      byName.set(key, [...(byName.get(key) ?? []), c]);
-    }
+  const all = await db.select({ id: candidates.id, nameEn: candidates.nameEn, wardId: candidates.wardId }).from(candidates);
+  for (const c of all) {
+    const key = normalizeForMatch(c.nameEn);
+    byName.set(key, [...(byName.get(key) ?? []), c]);
   }
 
-  const needsMatching: MatchRow[] = [];
-  const failed: FailedRow[] = [];
+  const rows: MatchRow[] = [];
   for (const row of waiting) {
-    const pdfUrl = sourceUrlOf(row.mediaId, row.sha256);
-    if (row.state === 'failed') {
-      failed.push({ id: row.id, pdfUrl, failure: row.failure ?? '', attempts: row.attempts, canDiscard: row.candidateId === null });
-      continue;
-    }
     const identity = (row.extraction as AffidavitExtraction | null)?.identity;
     // A sent-back affidavit already has a candidate, possibly renamed since
     // the AI read it: the form starts from what is published, so saving a
@@ -418,9 +410,9 @@ export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
             .where(eq(candidates.id, row.candidateId));
     const name = current?.nameEn ?? identity?.name.text ?? '';
     const sameName = name === '' ? [] : (byName.get(normalizeForMatch(name)) ?? []).filter((c) => c.id !== row.candidateId);
-    needsMatching.push({
+    rows.push({
       id: row.id,
-      pdfUrl,
+      pdfUrl: sourceUrlOf(row.mediaId, row.sha256),
       reason: (row.matchReason as MatchReason | null) ?? 'ward_unresolved',
       note: row.matchNote,
       confidence: row.confidence,
@@ -433,8 +425,55 @@ export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
       sameName,
     });
   }
+  return rows;
+}
 
-  return { counts, needsMatching, failed };
+/** Every affidavit waiting for a person to say who it is and where, oldest first. */
+export async function loadMatchList(): Promise<MatchRow[]> {
+  return matchRows(sql`true`);
+}
+
+/** One waiting affidavit, or null unless it is waiting (unknown, published, failed, or resolved a moment ago). */
+export async function loadMatchItem(id: number): Promise<MatchRow | null> {
+  if (!isRowId(id)) return null;
+  return (await matchRows(eq(candidateAffidavits.id, id)))[0] ?? null;
+}
+
+export async function countWaitingMatches(): Promise<number> {
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(candidateAffidavits).where(eq(candidateAffidavits.state, 'needs_matching'));
+  return row?.n ?? 0;
+}
+
+export async function loadAffidavitAdmin(): Promise<AffidavitAdminData> {
+  const counts: Record<AffidavitState, number> = { queued: 0, extracting: 0, needs_matching: 0, published: 0, failed: 0 };
+  const countRows = await db
+    .select({ state: candidateAffidavits.state, n: sql<number>`count(*)::int` })
+    .from(candidateAffidavits)
+    .groupBy(candidateAffidavits.state);
+  for (const row of countRows) counts[row.state] = row.n;
+
+  const failedRows = await db
+    .select({
+      id: candidateAffidavits.id,
+      mediaId: candidateAffidavits.mediaId,
+      sha256: media.sha256,
+      failure: candidateAffidavits.failure,
+      attempts: candidateAffidavits.attempts,
+      candidateId: candidateAffidavits.candidateId,
+    })
+    .from(candidateAffidavits)
+    .innerJoin(media, eq(media.id, candidateAffidavits.mediaId))
+    .where(eq(candidateAffidavits.state, 'failed'))
+    .orderBy(candidateAffidavits.id);
+  const failed: FailedRow[] = failedRows.map((row) => ({
+    id: row.id,
+    pdfUrl: sourceUrlOf(row.mediaId, row.sha256),
+    failure: row.failure ?? '',
+    attempts: row.attempts,
+    canDiscard: row.candidateId === null,
+  }));
+
+  return { counts, needsMatching: await loadMatchList(), failed };
 }
 
 export type AdminActionError = 'not_waiting' | 'unknown_ward' | 'name_required' | 'party_required' | 'unknown_candidate' | 'attached' | 'not_failed';
@@ -461,7 +500,7 @@ export async function confirmMatch(actor: { userId: number; role: 'curator' | 'a
   const party = input.party.trim();
   if (name === '') throw new Error('name_required' satisfies AdminActionError);
   if (party === '') throw new Error('party_required' satisfies AdminActionError);
-  const [ward] = Number.isInteger(input.wardId) ? await db.select({ id: wards.id }).from(wards).where(eq(wards.id, input.wardId)) : [];
+  const [ward] = isRowId(input.wardId) ? await db.select({ id: wards.id }).from(wards).where(eq(wards.id, input.wardId)) : [];
   if (!ward) throw new Error('unknown_ward' satisfies AdminActionError);
 
   const result = await db.transaction(async (tx) => {
@@ -500,7 +539,7 @@ export async function confirmMatch(actor: { userId: number; role: 'curator' | 'a
     }
 
     if (input.attachToCandidateId !== undefined) {
-      const [existing] = await tx.select({ id: candidates.id }).from(candidates).where(eq(candidates.id, input.attachToCandidateId));
+      const [existing] = isRowId(input.attachToCandidateId) ? await tx.select({ id: candidates.id }).from(candidates).where(eq(candidates.id, input.attachToCandidateId)) : [];
       if (!existing) throw new Error('unknown_candidate' satisfies AdminActionError);
       return publishExtractionTx(tx, row, extraction, { kind: 'existing', candidateId: existing.id, identity: false });
     }

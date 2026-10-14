@@ -39,7 +39,7 @@ import type { FieldError, RawField } from './affidavit-form';
 import { loadFixCandidate, loadFixFields, parseFieldFix, parseWardFix, publishedFieldData, saveFieldFix, saveWardFix, type FixCandidate, type FixField, type StaffActor } from './curator-fix';
 import { createCandidate, publishCandidateCore } from './publish';
 import { storeMedia, type MediaStoreErrorCode } from './media';
-import { enqueueAffidavit } from './affidavit-queue';
+import { countWaitingMatches, enqueueAffidavit } from './affidavit-queue';
 import { checkDefaultLimit } from './rate-limit';
 import { fetchAffidavitFromEc, type AffidavitFetchErrorCode } from './affidavit-fetch';
 import type { Lang } from '../i18n';
@@ -93,6 +93,8 @@ export function flagFieldKey(targetType: FlagTargetType, targetRef: string): str
 
 export interface DashboardData {
   queueCount: number;
+  /** Affidavits waiting for a person to match them to a candidate and ward. */
+  matchCount: number;
 }
 
 export async function loadDashboard(): Promise<DashboardData> {
@@ -101,7 +103,7 @@ export async function loadDashboard(): Promise<DashboardData> {
     .from(flagItems)
     .where(eq(flagItems.status, 'pending'));
 
-  return { queueCount: Number(countRow?.count ?? 0) };
+  return { queueCount: Number(countRow?.count ?? 0), matchCount: await countWaitingMatches() };
 }
 
 // ---------------------------------------------------------------------------

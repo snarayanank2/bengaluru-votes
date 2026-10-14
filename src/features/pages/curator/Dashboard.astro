@@ -1,7 +1,8 @@
 ---
 /**
  * `/curator` (Task 34, information-architecture.md §5.1) — a curator's
- * home: the city-wide review-queue count.
+ * home: the city-wide review-queue count, and how many affidavits wait to
+ * be matched to a candidate and ward.
  *
  * No `/kn/` twin — curator/admin routes are internal tooling (noindex, see
  * src/middleware.ts), rendered in the signed-in user's OWN saved
@@ -31,7 +32,7 @@ interface Props {
 const { lang, data, q, search } = Astro.props;
 /** "014 - Name" -> "Name" (the number is shown separately by the page). */
 const bareWard = (name: string) => name.replace(/^\d+\s*-\s*/, '');
-const { queueCount } = data;
+const { queueCount, matchCount } = data;
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.dashboard.meta.title')} description={t(lang, 'curator.dashboard.meta.description')}>
@@ -42,6 +43,12 @@ const { queueCount } = data;
       <h2>{t(lang, 'curator.dashboard.queueHeading')}</h2>
       <p class="queue-count">{t(lang, 'curator.dashboard.queueCount', { count: queueCount })}</p>
       <a href="/curator/queue">{t(lang, 'curator.dashboard.queueLink')}</a>
+    </Card>
+
+    <Card>
+      <h2>{t(lang, 'curator.dashboard.matchHeading')}</h2>
+      <p class="queue-count">{t(lang, 'curator.dashboard.matchCount', { count: matchCount })}</p>
+      <a href="/curator/matching">{t(lang, 'curator.dashboard.matchLink')}</a>
     </Card>
 
     <Card>
