@@ -22,6 +22,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
+import { t } from '../../src/i18n';
 import { onRequest } from '../../src/middleware';
 
 import WardEditRoute from '../../src/pages/curator/ward/[id].astro';
@@ -246,6 +247,24 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
     });
   });
 
+  describe('candidate list', () => {
+    it('lists the ward\'s candidates with party and editor link, and no other ward\'s', async () => {
+      const mine = await insertCandidate(WARD_ISSUES.id, { nameEn: 'Listed Ward Candidate', partyEn: 'Listed Party' });
+      const res = await run(WardEditRoute, `/curator/ward/${WARD_ISSUES.id}`, { cookieValue: curatorAuth.cookieValue, params: { id: String(WARD_ISSUES.id) } });
+      const html = normalize(await res.text());
+      expect(html).toContain(`href="/curator/candidate/${mine}"`);
+      expect(html).toContain('Listed Ward Candidate');
+      expect(html).toContain('Listed Party');
+      expect(html).not.toContain('Held Ward Candidate');
+      expect(html).not.toContain(t('en', 'curator.wardEdit.candidates.none'));
+    });
+
+    it('says so for a ward with no candidates', async () => {
+      const res = await run(WardEditRoute, `/curator/ward/${WARD_COMPLETE.id}`, { cookieValue: curatorAuth.cookieValue, params: { id: String(WARD_COMPLETE.id) } });
+      expect(await res.text()).toContain(t('en', 'curator.wardEdit.candidates.none'));
+    });
+  });
+
   describe('no readiness panel or sign-off', () => {
     it('the ward page shows no readiness badge, gap list or sign-off form', async () => {
       const res = await run(WardEditRoute, `/curator/ward/${WARD_HELD.id}`, {
@@ -259,7 +278,6 @@ describe('/curator/ward/{id}, /curator/ward/{id}/issues (Task 39)', () => {
       expect(html).not.toContain('badge-chip--ward-ready');
       expect(html).not.toContain('badge-chip--ward-held');
       expect(html).not.toContain('value="sign_off"');
-      expect(html).not.toContain('Held Ward Candidate');
       expect(html).toContain(`/curator/ward/${WARD_HELD.id}/issues`);
     });
 

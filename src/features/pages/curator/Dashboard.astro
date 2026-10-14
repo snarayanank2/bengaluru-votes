@@ -9,23 +9,28 @@
  * curator route to derive it from). See src/lib/curator.ts's
  * `loadCuratorLang`.
  *
- * QUICK LINKS (IA §5.1: "quick entry to edit candidates/wards and define
- * issues"): only the Review queue link is real today — Edit candidate/Edit
- * ward/Define ward issues are later tasks (36/39) with no route yet, so
- * they're listed as coming soon rather than linking to a 404 or faking a
- * page. See the Task 34 report for this scope note.
+ * SEARCH (IA §5.1: "quick entry to edit candidates/wards"): a GET form on
+ * `?q=` finds a candidate or a ward by name (a ward also by number) and
+ * links to its editor.
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
+import Button from '../../../components/Button.astro';
 import Card from '../../../components/Card.astro';
 import { t, type Lang } from '../../../i18n';
-import type { DashboardData } from '../../../lib/curator';
+import { SEARCH_CAP, type DashboardData, type CuratorSearch } from '../../../lib/curator';
 
 interface Props {
   lang: Lang;
   data: DashboardData;
+  /** The query as typed, echoed back into the search box. */
+  q: string;
+  /** `undefined` = no search made, `null` = query too short. */
+  search: CuratorSearch | null | undefined;
 }
 
-const { lang, data } = Astro.props;
+const { lang, data, q, search } = Astro.props;
+/** "014 - Name" -> "Name" (the number is shown separately by the page). */
+const bareWard = (name: string) => name.replace(/^\d+\s*-\s*/, '');
 const { queueCount } = data;
 ---
 
@@ -40,13 +45,53 @@ const { queueCount } = data;
     </Card>
 
     <Card>
-      <h2>{t(lang, 'curator.dashboard.quickLinks.heading')}</h2>
-      <ul class="quick-links">
-        <li>
-          <a href="/curator/queue">{t(lang, 'curator.dashboard.quickLinks.queue')}</a>
-        </li>
-        <li class="quick-links-pending">{t(lang, 'curator.dashboard.quickLinks.editComingSoon')}</li>
-      </ul>
+      <h2>{t(lang, 'curator.dashboard.search.heading')}</h2>
+      <form method="get" action="/curator" role="search" class="search-form">
+        <label for="curator-search-q">{t(lang, 'curator.dashboard.search.label')}</label>
+        <div class="search-row">
+          <input id="curator-search-q" type="search" name="q" value={q} class="form-input" />
+          <Button type="submit" variant="primary" lang={lang}>{t(lang, 'curator.dashboard.search.submit')}</Button>
+        </div>
+      </form>
+
+      {search === null && <p class="search-note">{t(lang, 'curator.dashboard.search.tooShort')}</p>}
+      {search && search.candidates.length === 0 && search.wards.length === 0 && <p class="search-note">{t(lang, 'curator.dashboard.search.none', { q: q.trim() })}</p>}
+      {
+        search && search.candidates.length > 0 && (
+          <section class="search-results">
+            <h3>{t(lang, 'curator.dashboard.search.candidates')}</h3>
+            <ul>
+              {search.candidates.map((c) => (
+                <li>
+                  <a href={`/curator/candidate/${c.id}`}>{c.nameEn}</a>
+                  <span class="search-note">
+                    {t(lang, 'curator.dashboard.search.candidateLine', {
+                      party: c.partyEn,
+                      ward: bareWard(lang === 'kn' ? c.wardNameKn : c.wardNameEn),
+                      status: t(lang, `curator.candidateEdit.core.status.${c.status}`),
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {search.capped && <p class="search-note">{t(lang, 'curator.dashboard.search.capped', { count: SEARCH_CAP })}</p>}
+          </section>
+        )
+      }
+      {
+        search && search.wards.length > 0 && (
+          <section class="search-results">
+            <h3>{t(lang, 'curator.dashboard.search.wards')}</h3>
+            <ul>
+              {search.wards.map((w) => (
+                <li>
+                  <a href={`/curator/ward/${w.id}`}>{lang === 'kn' ? w.nameKn : w.nameEn}</a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
     </Card>
   </div>
 </CuratorLayout>
@@ -79,7 +124,28 @@ const { queueCount } = data;
     margin: 0 0 var(--space-2);
   }
 
-  .quick-links {
+  .search-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .search-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .search-row input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .search-results h3 {
+    font-size: var(--text-base);
+    margin: var(--space-4) 0 var(--space-2);
+  }
+
+  .search-results ul {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -88,9 +154,12 @@ const { queueCount } = data;
     gap: var(--space-2);
   }
 
-  .quick-links-pending {
+  .search-note {
     color: var(--color-text-muted);
     font-size: var(--text-sm);
   }
 
+  .search-results li .search-note {
+    margin-inline-start: var(--space-2);
+  }
 </style>

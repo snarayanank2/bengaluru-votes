@@ -10,14 +10,15 @@
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
 import { t, type Lang } from '../../../i18n';
-import type { WardEditData } from '../../../lib/curator';
+import type { WardEditData, loadWardCandidates } from '../../../lib/curator';
 
 interface Props {
   lang: Lang;
   ward: WardEditData;
+  candidates: Awaited<ReturnType<typeof loadWardCandidates>>;
 }
 
-const { lang, ward } = Astro.props;
+const { lang, ward, candidates } = Astro.props;
 const wardName = lang === 'kn' ? ward.nameKn : ward.nameEn;
 ---
 
@@ -46,6 +47,24 @@ const wardName = lang === 'kn' ? ward.nameKn : ward.nameEn;
           <dd>{ward.boundaryRef}</dd>
         </div>
       </dl>
+    </Card>
+
+    <Card>
+      <h2>{t(lang, 'curator.wardEdit.candidates.heading')}</h2>
+      {
+        candidates.length === 0 ? (
+          <p class="muted">{t(lang, 'curator.wardEdit.candidates.none')}</p>
+        ) : (
+          <ul class="candidate-list">
+            {candidates.map((c) => (
+              <li>
+                <a href={`/curator/candidate/${c.id}`}>{c.nameEn}</a>
+                <span class="muted">{c.partyEn} · {t(lang, `curator.candidateEdit.core.status.${c.status}`)}</span>
+              </li>
+            ))}
+          </ul>
+        )
+      }
     </Card>
 
     <Card>
@@ -96,6 +115,24 @@ const wardName = lang === 'kn' ? ward.nameKn : ward.nameEn;
 
   .meta-list dd {
     margin: 0;
+  }
+
+  .candidate-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .muted {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .candidate-list .muted {
+    margin-inline-start: var(--space-2);
   }
 
   .link-sep {

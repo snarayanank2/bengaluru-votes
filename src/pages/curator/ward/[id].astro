@@ -7,7 +7,7 @@
  * no ward sign-off (dropped 2026-08-15), so any POST is a 400.
  */
 import WardEdit from '../../../features/pages/curator/WardEdit.astro';
-import { loadCuratorLang, loadWardForEdit } from '../../../lib/curator';
+import { loadCuratorLang, loadWardCandidates, loadWardForEdit } from '../../../lib/curator';
 
 const session = Astro.locals.session!;
 
@@ -26,8 +26,8 @@ if (Astro.request.method === 'POST') {
   return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
 }
 
-const lang = await loadCuratorLang(session.userId);
+const [lang, wardCandidates] = await Promise.all([loadCuratorLang(session.userId), loadWardCandidates(ward.id)]);
 Astro.response.headers.set('cache-control', 'no-store');
 ---
 
-<WardEdit lang={lang} ward={ward} />
+<WardEdit lang={lang} ward={ward} candidates={wardCandidates} />

@@ -11,12 +11,16 @@
  * redirects an anonymous request to /login before this ever runs.
  */
 import Dashboard from '../../features/pages/curator/Dashboard.astro';
-import { loadDashboard, loadCuratorLang } from '../../lib/curator';
+import { loadDashboard, loadCuratorLang, searchCurator } from '../../lib/curator';
 
 const session = Astro.locals.session!;
 const [data, lang] = await Promise.all([loadDashboard(), loadCuratorLang(session.userId)]);
 
+// `undefined` = no search made, `null` = a query too short to search.
+const q = Astro.url.searchParams.get('q') ?? '';
+const search = q.trim() === '' ? undefined : await searchCurator(q);
+
 Astro.response.headers.set('cache-control', 'no-store');
 ---
 
-<Dashboard lang={lang} data={data} />
+<Dashboard lang={lang} data={data} q={q} search={search} />

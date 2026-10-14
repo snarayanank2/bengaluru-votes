@@ -18,7 +18,7 @@
  * writes) rather than the URL — there is no URL to derive it from. See
  * `loadCuratorLang` below.
  */
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
   candidateAffidavits,
@@ -679,4 +679,66 @@ export async function loadWardForEdit(wardId: number): Promise<WardEditData | nu
     zone: ward.zone,
     boundaryRef: ward.boundaryRef,
   };
+}
+
+export const SEARCH_CAP = 50;
+
+export interface CandidateHit {
+  id: number;
+  nameEn: string;
+  partyEn: string;
+  status: CandidateStatus;
+  wardId: number;
+  wardNameEn: string;
+  wardNameKn: string;
+}
+
+export interface CuratorSearch {
+  candidates: CandidateHit[];
+  /** More candidates matched than `SEARCH_CAP`; the list is cut short. */
+  capped: boolean;
+  wards: Array<{ id: number; nameEn: string; nameKn: string }>;
+}
+
+/** `%`, `_` and `\` are what the person typed, not wildcards. */
+function likePattern(q: string): string {
+  return `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+}
+
+/**
+ * Candidates and wards whose name contains `q` (a ward also by its id). A
+ * few thousand candidates and 369 wards: a sequential scan is enough.
+ * Null for a query under two characters.
+ */
+export async function searchCurator(q: string): Promise<CuratorSearch | null> {
+  const term = q.trim();
+  if (term.length < 2) return null;
+  const pattern = likePattern(term);
+
+  const hits = await db
+    .select({ id: candidates.id, nameEn: candidates.nameEn, partyEn: candidates.partyEn, status: candidates.status, wardId: wards.id, wardNameEn: wards.nameEn, wardNameKn: wards.nameKn })
+    .from(candidates)
+    .innerJoin(wards, eq(wards.id, candidates.wardId))
+    .where(or(ilike(candidates.nameEn, pattern), ilike(candidates.nameKn, pattern)))
+    .orderBy(candidates.nameEn, candidates.id)
+    .limit(SEARCH_CAP + 1);
+
+  const wardId = /^\d{1,9}$/.test(term) ? Number(term) : null;
+  const wardHits = await db
+    .select({ id: wards.id, nameEn: wards.nameEn, nameKn: wards.nameKn })
+    .from(wards)
+    .where(or(ilike(wards.nameEn, pattern), ilike(wards.nameKn, pattern), wardId === null ? undefined : eq(wards.id, wardId)))
+    .orderBy(wards.id)
+    .limit(SEARCH_CAP);
+
+  return { candidates: hits.slice(0, SEARCH_CAP), capped: hits.length > SEARCH_CAP, wards: wardHits };
+}
+
+/** Every candidate of one ward, for the curator ward page. */
+export async function loadWardCandidates(wardId: number): Promise<Array<{ id: number; nameEn: string; partyEn: string; status: CandidateStatus }>> {
+  return db
+    .select({ id: candidates.id, nameEn: candidates.nameEn, partyEn: candidates.partyEn, status: candidates.status })
+    .from(candidates)
+    .where(eq(candidates.wardId, wardId))
+    .orderBy(candidates.nameEn, candidates.id);
 }

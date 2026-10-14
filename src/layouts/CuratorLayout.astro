@@ -51,6 +51,9 @@ const { lang, title, description } = Astro.props;
     <SkipLink lang={lang} />
     <header class="curator-bar">
       <a class="wordmark" href="/curator">{t(lang, 'curator.layout.wordmark')}</a>
+      <nav class="curator-nav" aria-label={t(lang, 'curator.layout.nav.label')}>
+        <a href="/curator/queue">{t(lang, 'curator.layout.nav.queue')}</a>
+      </nav>
     </header>
     <main id="main-content">
       <slot />
@@ -60,12 +63,26 @@ const { lang, title, description } = Astro.props;
 
 <style>
   .curator-bar {
-    height: 56px;
+    min-height: 56px;
     display: flex;
     align-items: center;
+    gap: var(--space-6);
     padding-inline: var(--container-pad-x);
     background: var(--color-bg);
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .curator-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    font-size: var(--text-sm);
+  }
+
+  .curator-nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 
   .wordmark {
