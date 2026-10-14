@@ -326,7 +326,7 @@ Curators work the citizen flag queue and the matching list, on demo data, before
 **What ships**
 
 - **The citizen flag queue**, city-wide: the flagged field, the citizen's comment and the published value, beside the affidavit. The fix is made in structured inputs, the same ones a transcriber fills (a ward flag is fixed by moving the candidate to another ward), behind a required confirmation tick; or the curator rejects the flag with a reason. Either outcome reaches the submitter at `/account/submissions`. Resolution publishes immediately (tracker 112). Flags are accepted on the eight profile fields only.
-- **The matching list** at `/curator/matching`: affidavits the AI could not place in a ward, possible duplicates, and affidavits a transcriber sent back. The curator reads the affidavit, picks the ward and confirms the name and party. Uploading, retrying and discarding stay with the admin.
+- **The matching list** at `/curator/matching`: affidavits the AI could not place in a ward, possible duplicates, and affidavits a transcriber sent back. The curator reads the affidavit, picks the ward and confirms the name and party. Bulk upload, retrying and discarding stay with the admin.
 - **Search** on the curator's home page, by candidate name or ward, and a list of each ward's candidates at `/curator/ward/{id}`.
 - **The candidate editor**, already built at `/curator/candidate/{id}`, now on the same structured inputs beside the affidavit. It stays as a tool — a curator can fix an unflagged value they come across — but routinely checking unflagged fields is not part of the role.
 - ~~A transcriber performance view at `/curator/transcribers`~~ — **dropped 2026-10-13** (tracker 113, closed as dropped). Curators do not monitor transcribers.

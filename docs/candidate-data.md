@@ -115,9 +115,9 @@ Before recruitment closes, confirm Kannada reading ability, equipment, email acc
 | The flag is incorrect or unsupported | Dismiss the flag with a reason |
 | The published data is wrong | Fix the data; the correction publishes immediately |
 
-An affidavit waits to be matched when the AI could not place it in a ward, when a candidate of the same name is already in that ward, or when a transcriber sent it back as the wrong ward or the wrong document. The curator reads the affidavit, picks the ward and confirms the name and party; nothing from a waiting affidavit is public until then.
+An affidavit waits to be matched when the AI could not place it in a ward, when a candidate of the same name is already in that ward, or when a transcriber sent it back as the wrong ward or the wrong document. The curator reads the affidavit, picks the ward and confirms the name and party. Nothing from an affidavit that has never been published is public until then; one a transcriber sent back was already published, and its values stay on the candidate's page until it is matched again.
 
-Curators do not routinely read every affidavit, approve transcriber work, monitor transcriber performance or receive unflagged transcription cases. They do not upload, retry or discard affidavits. Publication does not depend on their approval.
+Curators do not routinely read every affidavit, approve transcriber work, monitor transcriber performance or receive unflagged transcription cases. They add one candidate's affidavit in the candidate editor when it is missing; they do not bulk upload, retry or discard affidavits. Publication does not depend on their approval.
 
 **Curation starts when published data receives user flags and continues through election day.** It can therefore overlap AI extraction and transcription. It is an ongoing rota, not another fixed three-day or five-day production stage.
 
