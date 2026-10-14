@@ -321,17 +321,20 @@ Admins can add and block operators without a shell on the box.
 
 **Effort:** 3 days · **dummy data only**
 
-Curators work the citizen flag queue, on demo data, before a real affidavit exists. The flag queue is the whole job (decided 2026-10-13, following `docs/candidate-data.md`).
+Curators work the citizen flag queue and the matching list, on demo data, before a real affidavit exists. The flag queue and the matching list are the whole job (decided 2026-10-13, following `docs/candidate-data.md`).
 
 **What ships**
 
-- **The citizen flag queue**, city-wide: the flagged field, the citizen's comment, the affidavit page, the published value. The curator makes the fix or rejects the flag with a reason, and either outcome reaches the submitter at `/account/submissions`. Resolution publishes immediately (tracker 112).
-- **The candidate editor**, already built at `/curator/candidate/{id}`. It stays as a tool — a curator can fix an unflagged value they come across — but routinely checking unflagged fields is not part of the role.
+- **The citizen flag queue**, city-wide: the flagged field, the citizen's comment and the published value, beside the affidavit. The fix is made in structured inputs, the same ones a transcriber fills (a ward flag is fixed by moving the candidate to another ward), behind a required confirmation tick; or the curator rejects the flag with a reason. Either outcome reaches the submitter at `/account/submissions`. Resolution publishes immediately (tracker 112). Flags are accepted on the eight profile fields only.
+- **The matching list** at `/curator/matching`: affidavits the AI could not place in a ward, possible duplicates, and affidavits a transcriber sent back. The curator reads the affidavit, picks the ward and confirms the name and party. Uploading, retrying and discarding stay with the admin.
+- **Search** on the curator's home page, by candidate name or ward, and a list of each ward's candidates at `/curator/ward/{id}`.
+- **The candidate editor**, already built at `/curator/candidate/{id}`, now on the same structured inputs beside the affidavit. It stays as a tool — a curator can fix an unflagged value they come across — but routinely checking unflagged fields is not part of the role.
 - ~~A transcriber performance view at `/curator/transcribers`~~ — **dropped 2026-10-13** (tracker 113, closed as dropped). Curators do not monitor transcribers.
-- **Mark a candidate complete** — a coverage signal feeding the `/data` figures. It gates nothing; there is no ward readiness check (§6).
-- **A curator onboarding page.**
+- **A curator onboarding page**, the guide at `/curator/guide`.
 
-**Testable when** a curator can log in, open a seeded flag, see it against the affidavit page, fix it or reject it with a reason, watch the outcome appear on the submitter's page, edit an unrelated field, mark the candidate complete — and read the onboarding page and know what standard they are working to.
+**Left out of this round (2026-10-13):** Mark a candidate complete — a coverage signal feeding the `/data` figures. It would gate nothing; there is no ward readiness check (§6).
+
+**Testable when** a curator can log in, open a seeded flag, see it against the affidavit page, fix it or reject it with a reason, watch the outcome appear on the submitter's page, edit an unrelated field, find a candidate by search, match a waiting affidavit to a ward and a candidate — and read the guide and know what standard they are working to.
 
 **Prerequisites**
 
@@ -424,7 +427,7 @@ The affidavit pipeline, end to end, running on stand-in documents.
 
 - **Bulk upload of affidavit PDFs**, on `/admin/affidavits` and with `npm run upload:affidavits -- <dir> --as <admin email>`. The same PDF is only ever stored once.
 - **AI extraction from a queue**, by the `extract-worker` container: age, education, assets, criminal cases, one confidence figure, **and the candidate's name, ward, party and gender**. A failed call is retried three times and never published as *not declared*.
-- **Matching, by the AI's reading of the affidavit** (tracker 122). If the AI-read ward resolves to exactly one ward and nobody of that name is already there, the candidate is created and published at once with AI labels. Everything else waits on the admin's needs-matching list, where an admin picks the ward and confirms the name and party. There is no nomination-list import; if one arrives, reconciling it against these candidates is still to design.
+- **Matching, by the AI's reading of the affidavit** (tracker 122). If the AI-read ward resolves to exactly one ward and nobody of that name is already there, the candidate is created and published at once with AI labels. Everything else waits on the needs-matching list, where a curator (`/curator/matching`) or an admin (`/admin/affidavits`) picks the ward and confirms the name and party. There is no nomination-list import; if one arrives, reconciling it against these candidates is still to design.
 - **The affidavit shown on the candidate page**, linked from the report card.
 
 **Testable when** a batch of stand-in affidavits can be ingested end to end and a visitor on a demo candidate's page sees affidavit-sourced fields with the *AI-extracted* marker and a link to the stored document.

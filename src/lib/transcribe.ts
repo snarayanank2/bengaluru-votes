@@ -178,7 +178,7 @@ async function findAssignment(transcriberId: number, assignmentId: number) {
  * it is open, unexpired and theirs. Each field is pre-filled with the value
  * that is published now: the structured value if there is one, the
  * candidate's own name and party otherwise, and the AI's reading as a last
- * resort (a curator may since have replaced a value with free text).
+ * resort (a row written before values were structured has only text).
  */
 export async function loadAssignment(transcriberId: number, assignmentId: number): Promise<AssignmentView | null> {
   const row = await findAssignment(transcriberId, assignmentId);

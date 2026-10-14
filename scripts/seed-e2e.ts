@@ -14,9 +14,9 @@
  *                    deterministic given the committed geojson) is what
  *                    this script and the specs key off of — never a
  *                    hardcoded ward number.
- *   3. A candidate_fields row for seed-dev's first candidate on its first
- *      ward — a known BASELINE value with sourceType 'curator', so
- *      flag.spec.ts has something real to flag and later see corrected.
+ *   3. A published affidavit and a structured `age` on seed-dev's first
+ *      candidate on its first ward, so flag.spec.ts has something real to
+ *      flag and the curator's fix form opens on it.
  *   4. A curator user (role='curator'), so flag.spec.ts's second actor
  *      (accept + publish) can log in and act without being an admin.
  *
@@ -48,9 +48,11 @@ import path from 'node:path';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as schema from '../src/db/schema';
 import type { Db } from '../src/db/client';
+import { storedFieldData } from '../src/lib/affidavit-form';
+import { publishAffidavitFields } from '../src/lib/affidavit-publish';
 import { seedWards } from './seed-wards';
 import { seedDev, assertNotProduction } from './seed-dev';
 
@@ -76,8 +78,9 @@ export const E2E_FIXTURES_PATH = path.join(__dirname, '..', 'tests', 'e2e', '.fi
  * email per seed run makes each run's OTP history start clean.
  */
 export const E2E_CURATOR_EMAIL = `e2e-curator-${Date.now()}@example.com`;
-export const E2E_FLAG_FIELD_KEY = 'track_record' as const;
-export const E2E_FLAG_BASELINE_VALUE_EN = 'Two-term corporator (E2E FIXTURE BASELINE)';
+export const E2E_FLAG_FIELD_KEY = 'age' as const;
+/** The two ages flag.spec.ts moves the candidate between, so every run changes the published value. */
+export const E2E_FLAG_AGES = [41, 42] as const;
 
 export interface SeedE2EResult {
   /** seed-dev's 3 lowest-id wards, in order — wardIds[0] is this script's "primary" ward. */
@@ -92,30 +95,38 @@ export interface SeedE2EResult {
   curatorEmail: string;
 }
 
-async function ensureFlaggableField(db: Db, candidateId: number): Promise<void> {
-  await db
-    .insert(schema.candidateFields)
-    .values({
+/**
+ * What the curator's fix form needs before it will open on a flag: a
+ * published affidavit to check the value against, and a structured age.
+ * seed-dev gives every demo candidate both; this states the dependency
+ * here, and repairs an age left as free text by a database seeded before
+ * values were structured. An age that is already structured is left alone,
+ * whichever of {@link E2E_FLAG_AGES} the last run published.
+ */
+async function ensureFlaggableAge(db: Db, candidateId: number): Promise<void> {
+  const [affidavit] = await db
+    .select({ mediaId: schema.media.id, sha256: schema.media.sha256 })
+    .from(schema.candidateAffidavits)
+    .innerJoin(schema.media, eq(schema.media.id, schema.candidateAffidavits.mediaId))
+    .where(and(eq(schema.candidateAffidavits.candidateId, candidateId), eq(schema.candidateAffidavits.state, 'published')))
+    .limit(1);
+  if (!affidavit) throw new Error(`seed-e2e: candidate ${candidateId} has no published affidavit`);
+
+  const [age] = await db
+    .select({ valueData: schema.candidateFields.valueData })
+    .from(schema.candidateFields)
+    .where(and(eq(schema.candidateFields.candidateId, candidateId), eq(schema.candidateFields.fieldKey, E2E_FLAG_FIELD_KEY)));
+  if (age && storedFieldData(E2E_FLAG_FIELD_KEY, age.valueData)?.status === 'value') return;
+
+  await db.transaction(async (tx) => {
+    await publishAffidavitFields(
+      tx,
+      { userId: null, role: 'system' },
       candidateId,
-      fieldKey: E2E_FLAG_FIELD_KEY,
-      valueEn: E2E_FLAG_BASELINE_VALUE_EN,
-      valueKn: null,
-      notDeclared: false,
-      authoredLang: 'en',
-      translationStatus: 'done',
-      sourceUrl: 'https://example.org/e2e-fixture-baseline',
-      sourceType: 'curator',
-      aiExtracted: false,
-    })
-    .onConflictDoUpdate({
-      target: [schema.candidateFields.candidateId, schema.candidateFields.fieldKey],
-      set: {
-        valueEn: E2E_FLAG_BASELINE_VALUE_EN,
-        notDeclared: false,
-        sourceType: 'curator',
-        sourceUrl: 'https://example.org/e2e-fixture-baseline',
-      },
-    });
+      [{ key: E2E_FLAG_FIELD_KEY, status: 'value', years: E2E_FLAG_AGES[0] }],
+      { sourceUrl: `/media/${affidavit.mediaId}/${affidavit.sha256.slice(0, 16)}`, checked: false },
+    );
+  });
 }
 
 async function ensureCurator(db: Db): Promise<void> {
@@ -157,7 +168,7 @@ export async function seedE2E(db: Db): Promise<SeedE2EResult> {
     throw new Error(`seed-e2e: expected seed-dev candidate ${candidateSlug} not found`);
   }
 
-  await ensureFlaggableField(db, candidate.id);
+  await ensureFlaggableAge(db, candidate.id);
   await ensureCurator(db);
 
   return {

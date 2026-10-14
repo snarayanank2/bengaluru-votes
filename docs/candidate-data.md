@@ -11,7 +11,7 @@ Bengaluru Votes will turn approximately **4,000 candidate affidavits across 369 
 1. **Siva loads the documents as soon as initial data is available online.**
 2. **AI extracts candidate fields and one confidence percentage per affidavit.** Allow three elapsed days for extraction.
 3. **Transcribers check the affidavits:** missing data first, low confidence next, then the rest. Allow five working days for transcription.
-4. **Curators respond to user flags only**, dismissing incorrect flags or fixing the data. Coverage continues through election day.
+4. **Curators respond to user flags and match affidavits waiting for a candidate or ward**, dismissing incorrect flags or fixing the data. Coverage continues through election day.
 
 The stages can overlap as documents arrive. **We do not wait for a final notification, the final candidate list or the complete bulk set to start loading and processing.** Siva reconciles later candidate-status changes against the official lists. The plan below describes the intended operation; it does not claim that all tools are implemented or change the application's permissions.
 
@@ -27,7 +27,7 @@ As soon as the first documents are available, Siva:
 - Sends usable records to AI extraction without waiting for the remaining documents.
 - Loads later arrivals and reconciles rejected or withdrawn candidates as official lists change.
 
-Name, ward, party and gender were expected from the nomination list. **As built (2026-10-13), the AI reads them from the affidavit itself**, and Siva handles only the affidavits whose ward the AI could not place (`/admin/affidavits`, "Needs matching"). A wrong AI-read ward is public until a person reads that affidavit, so transcribers confirm name, party and gender as part of each reading. If a nomination list arrives, reconciling it against these candidates is still to design. Poor scans that need repair still increase the workload. Affidavits are stored in the platform's own database (decided 2026-10-13; Google Cloud Storage was dropped).
+Name, ward, party and gender were expected from the nomination list. **As built (2026-10-13), the AI reads them from the affidavit itself**, and the affidavits whose ward the AI could not place wait for a person to match them: curators do that at `/curator/matching` (an admin can too, at `/admin/affidavits`, "Needs matching"). A wrong AI-read ward is public until a person reads that affidavit, so transcribers confirm name, party and gender as part of each reading. If a nomination list arrives, reconciling it against these candidates is still to design. Poor scans that need repair still increase the workload. Affidavits are stored in the platform's own database (decided 2026-10-13; Google Cloud Storage was dropped).
 
 **Time and cost:** loading time depends on the online source and file quality and has not been measured. Siva's loading time and any acquisition charges are not priced in the budget below. The three-day AI allowance starts with usable, matched records; it must not silently absorb unmeasured loading or scan-repair work.
 
@@ -86,7 +86,7 @@ Every loaded and extracted affidavit enters the human queue. Paid, Kannada-readi
 
 The queue is city-wide. Transcribers cannot choose their ward, party or candidate. Abandoned assignments return to the queue. One transcriber confirms or corrects each assigned affidavit. Their save publishes immediately and marks the checked fields **“checked by a person”**; any fields not checked remain AI-labelled. There is no compulsory second reading or curator approval.
 
-A transcriber must not guess an unreadable value. Unresolved readings remain visibly unresolved. They do not automatically enter the curator queue: that queue contains user flags only. Siva handles loading and source-file problems.
+A transcriber must not guess an unreadable value. Unresolved readings remain visibly unresolved. They do not automatically enter the curator queue: that queue contains user flags only. Loading, failed extractions and discarding unusable files are Siva's; curators match the affidavits that are waiting for a ward or a candidate.
 
 ### Staffing and pay
 
@@ -108,14 +108,16 @@ Before recruitment closes, confirm Kannada reading ability, equipment, email acc
 
 ## 4. Curator queue — user flags through election day
 
-**Curators respond to user-flagged candidate-data problems only.** When a user flags candidate information as wrong, the flag enters the curator queue. The curator checks the reported issue against the affidavit and chooses one of two outcomes:
+**Curators respond to user flags and match affidavits waiting for a candidate or ward.** When a user flags candidate information as wrong, the flag enters the curator queue. The curator checks the reported issue against the affidavit and chooses one of two outcomes:
 
 | Finding | Curator action |
 |---|---|
 | The flag is incorrect or unsupported | Dismiss the flag with a reason |
 | The published data is wrong | Fix the data; the correction publishes immediately |
 
-Curators do not routinely read every affidavit, approve transcriber work, monitor transcriber performance, handle ingestion exceptions or receive unflagged transcription cases. Publication does not depend on their approval.
+An affidavit waits to be matched when the AI could not place it in a ward, when a candidate of the same name is already in that ward, or when a transcriber sent it back as the wrong ward or the wrong document. The curator reads the affidavit, picks the ward and confirms the name and party; nothing from a waiting affidavit is public until then.
+
+Curators do not routinely read every affidavit, approve transcriber work, monitor transcriber performance or receive unflagged transcription cases. They do not upload, retry or discard affidavits. Publication does not depend on their approval.
 
 **Curation starts when published data receives user flags and continues through election day.** It can therefore overlap AI extraction and transcription. It is an ongoing rota, not another fixed three-day or five-day production stage.
 
@@ -131,7 +133,7 @@ Assume **5% of 4,000 candidates are flagged: about 200 candidate cases** over th
 | Casework capacity to reserve | 20 productive hours each across the period; 40 hours total |
 | Planning fee | ₹5,000 each for the cycle; **₹10,000 total** |
 
-Two curators provide shared availability and about 6⅔ hours of casework capacity above the estimate. This headcount is a planning recommendation, not a measured service-level requirement. Confirm daily coverage, handovers and response expectations before hiring. The 40-hour capacity reservation does not imply full-time daily shifts, and the cycle fee does not mean unlimited work.
+Two curators provide shared availability and about 6⅔ hours of casework capacity above the estimate. The two-curator provision was sized on flags from 5% of candidates; matching volume depends on how often the AI cannot resolve a ward and is not in that estimate. This headcount is a planning recommendation, not a measured service-level requirement. Confirm daily coverage, handovers and response expectations before hiring. The 40-hour capacity reservation does not imply full-time daily shifts, and the cycle fee does not mean unlimited work.
 
 Flags may cluster near polling or take longer than ten minutes. Multiple distinct problems, repeated flags, or unresolved source issues can exceed the allowance. Review actual incoming work and remaining capacity daily. A 20-minute handling average would double casework to about 67 hours and require more provision. Any coverage after election day would need a separate agreement.
 
@@ -198,9 +200,9 @@ If reading takes fifteen minutes, the minimum becomes 30 transcribers, without t
 ## References and status of assumptions
 
 - [Stakeholder overview](overview.md), §§3.1, 8–9 and 11: report-card scope, publication policy and original fee/workload assumptions. The five-day ₹3,500 transcriber engagement and revised staffing above replace the older operation's figures.
-- [Milestone plan](milestones.md), §§9–11 and 13, and [architecture](architecture.md), §§6–7: implementation context. This operating brief follows the clarified flags-only curator role and immediate initial-data start; older descriptions of broader curator oversight do not define this operation.
+- [Milestone plan](milestones.md), §§9–11 and 13, and [architecture](architecture.md), §§6–7: implementation context. This operating brief follows the clarified curator role (user flags, plus matching the affidavits waiting for a candidate or ward, added 2026-10-13) and immediate initial-data start; older descriptions of broader curator oversight do not define this operation.
 - [Election timeline](election-timelines.md), §§3–4: authority for unconfirmed election offsets.
 - [Acquisition risk assessment](ksec-data-risk.md): the online-access dependency assumed solved for this scenario.
 - [OpenAI PDF inputs](https://developers.openai.com/api/docs/guides/file-inputs) and [rate limits](https://developers.openai.com/api/docs/guides/rate-limits): technical references retained from the earlier proposal, which consulted them on 20 September 2026. They do not establish affidavit-specific time, accuracy or cost.
 
-The four stages, Siva's loading ownership, immediate initial-data start, affidavit-level confidence, three-day AI window, five-day transcription window, 5% flagged-candidate assumption, curation through polling and ₹3,500 transcriber fee reflect the clarified planning brief. The 23-reader/two-curator provision, productive-time ratio, AI and human processing rates, API reserve and contingency remain estimates to validate. None is measured performance or a confirmed staff contract.
+Curators matching waiting affidavits was added on 2026-10-13 and is not in the workload estimate. The four stages, Siva's loading ownership, immediate initial-data start, affidavit-level confidence, three-day AI window, five-day transcription window, 5% flagged-candidate assumption, curation through polling and ₹3,500 transcriber fee reflect the clarified planning brief. The 23-reader/two-curator provision, productive-time ratio, AI and human processing rates, API reserve and contingency remain estimates to validate. None is measured performance or a confirmed staff contract.

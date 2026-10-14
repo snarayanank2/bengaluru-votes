@@ -161,8 +161,8 @@ const SYSTEM: PublishActor = { userId: null, role: 'system' };
 /**
  * Publishes a stored extraction onto a NEW candidate in `wardId`, inside the
  * caller's transaction, and marks the affidavit published. Shared by the
- * worker (AI-read identity) and the admin matching page (`identity` given:
- * a person chose the ward and confirmed the name and party).
+ * worker (AI-read identity) and the matching pages, the curator's and the
+ * admin's (`identity` given: a person chose the ward and confirmed the name and party).
  */
 export async function publishExtractionTx(
   tx: Tx,

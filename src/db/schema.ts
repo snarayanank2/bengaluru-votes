@@ -108,8 +108,8 @@ export const candidates = pgTable('candidates', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [index('candidates_ward_idx').on(t.wardId)]);
 
-// Candidate profile fields are intentionally free text. The public field set
-// is defined in src/lib/candidate-profile.ts; legacy curator fields may coexist.
+// The public field set is defined in src/lib/candidate-profile.ts; legacy
+// curator fields may coexist. Values are written by src/lib/affidavit-publish.ts.
 export const candidateFields = pgTable('candidate_fields', {
   id: serial('id').primaryKey(),
   candidateId: integer('candidate_id').notNull().references(() => candidates.id),
@@ -123,7 +123,7 @@ export const candidateFields = pgTable('candidate_fields', {
   sourceType: sourceTypeEnum('source_type').notNull().default('curator'),
   aiExtracted: boolean('ai_extracted').notNull().default(false),  // cleared on curator confirm (PRD §5.2)
   // The structured value behind value_en, written only by src/lib/affidavit-publish.ts.
-  // Null once a curator edits the text by hand.
+  // Null only on rows written before values were structured.
   valueData: jsonb('value_data'),
   unreadable: boolean('unreadable').notNull().default(false),     // nobody could read it from the scan; shown as unresolved
   // Written only by the transaction that publishes a value a person checked

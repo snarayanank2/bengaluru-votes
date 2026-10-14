@@ -2,11 +2,13 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { seedWards, loadCityIssueRows, loadWardCandidateQuestionRows, loadWardFactRows, loadWardRows } from '../../scripts/seed-wards';
 import { seedAdmin, isValidEmail } from '../../scripts/seed-admin';
-import { seedDev, assertNotProduction } from '../../scripts/seed-dev';
+import { seedDev, assertNotProduction, type SeedDevResult } from '../../scripts/seed-dev';
+import { AFFIDAVIT_FIELD_KEYS } from '../../src/lib/affidavit-publish';
+import { storedFieldData } from '../../src/lib/affidavit-form';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -146,9 +148,24 @@ describe('seed-admin', () => {
 });
 
 describe('seed-dev', () => {
+  let seeded: SeedDevResult | undefined;
+
   beforeAll(async () => {
     // seed-dev depends on wards existing.
     await seedWards(db);
+  });
+
+  // The suite shares one database, and other files count pending flags and
+  // waiting affidavits: the curator work this seed adds does not outlive it.
+  afterAll(async () => {
+    if (!seeded) return;
+    if (seeded.flagItemIds.length > 0) {
+      await db.delete(schema.flagSubmissions).where(inArray(schema.flagSubmissions.flagItemId, seeded.flagItemIds));
+      await db.delete(schema.flagItems).where(inArray(schema.flagItems.id, seeded.flagItemIds));
+    }
+    if (seeded.waitingAffidavitIds.length > 0) {
+      await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.id, seeded.waitingAffidavitIds));
+    }
   });
 
   it('refuses to run when NODE_ENV=production', () => {
@@ -156,11 +173,12 @@ describe('seed-dev', () => {
     expect(() => assertNotProduction({ NODE_ENV: 'test' } as NodeJS.ProcessEnv)).not.toThrow();
   });
 
-  it('seeds two bilingual fictional candidates with nine fields in all 369 wards', async () => {
+  it('seeds two bilingual fictional candidates with nine fields in all 369 wards', { timeout: 180_000 }, async () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'test';
     try {
       const result = await seedDev(db);
+      seeded = result;
       expect(result.wardIds).toHaveLength(369);
       expect(result.candidateCount).toBe(369 * 2);
       expect(result.issueCount).toBe(3);
@@ -187,15 +205,60 @@ describe('seed-dev', () => {
         expect(fields.some((field) => field.aiExtracted)).toBe(true);
         expect(fields.some((field) => !field.aiExtracted)).toBe(true);
 
+        // The seven affidavit fields are structured, published the way the
+        // extraction worker publishes them, and already in Kannada.
+        for (const key of AFFIDAVIT_FIELD_KEYS) {
+          const field = fields.find((f) => f.fieldKey === key)!;
+          expect(storedFieldData(key, field.valueData)?.status, key).toBe('value');
+          expect(field.valueEn, key).toBeTruthy();
+          expect(field.valueKn, key).toBeTruthy();
+          expect(field.translationStatus, key).toBe('done');
+          expect(field.sourceUrl, key).toMatch(/^\/media\/\d+\/[0-9a-f]{16}$/);
+        }
+
         const affidavits = await db
           .select()
           .from(schema.candidateAffidavits)
-          .where(eq(schema.candidateAffidavits.candidateId, c.id));
+          .where(and(eq(schema.candidateAffidavits.candidateId, c.id), eq(schema.candidateAffidavits.state, 'published')));
         expect(affidavits).toHaveLength(1);
       }
 
+      // Two pending flags from the demo citizen on one candidate: a field and the ward.
+      const flagged = demoCandidates.find((c) => c.slug.endsWith('-candidate-2'))!;
+      const flags = await db.select().from(schema.flagItems).where(inArray(schema.flagItems.id, result.flagItemIds));
+      expect(flags.map((flag) => flag.targetRef).sort()).toEqual([`candidate:${flagged.id}:assets`, `candidate:${flagged.id}:ward`]);
+      expect(flags.every((flag) => flag.status === 'pending' && flag.targetType === 'candidate_field' && flag.wardId === flagged.wardId)).toBe(true);
+      const submissions = await db.select().from(schema.flagSubmissions).where(inArray(schema.flagSubmissions.flagItemId, result.flagItemIds));
+      expect(submissions).toHaveLength(2);
+      expect(submissions.every((submission) => /FICTIONAL/.test(submission.detail))).toBe(true);
+
+      // Two affidavits waiting to be matched, each with its own PDF.
+      const waiting = await db.select().from(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.id, result.waitingAffidavitIds));
+      expect(waiting.map((row) => row.matchReason).sort()).toEqual(['reported_by_transcriber', 'ward_unresolved']);
+      expect(waiting.every((row) => row.state === 'needs_matching' && row.extraction !== null)).toBe(true);
+      expect(new Set(waiting.map((row) => row.sha256)).size).toBe(2);
+      expect(new Set(waiting.map((row) => row.mediaId)).size).toBe(2);
+      const unplaced = waiting.find((row) => row.matchReason === 'ward_unresolved')!;
+      const sentBack = waiting.find((row) => row.matchReason === 'reported_by_transcriber')!;
+      expect(unplaced.candidateId).toBeNull();
+      expect(sentBack.candidateId).not.toBeNull();
+      expect(sentBack.matchNote).toMatch(/FICTIONAL/);
+
+      // A correction made between runs survives the next one.
+      await db
+        .update(schema.candidateFields)
+        .set({ valueEn: '63', valueData: { key: 'age', status: 'value', years: 63 } })
+        .where(and(eq(schema.candidateFields.candidateId, flagged.id), eq(schema.candidateFields.fieldKey, 'age')));
+
       const secondRun = await seedDev(db);
       expect(secondRun.candidateCount).toBe(369 * 2);
+      expect(secondRun.flagItemIds).toEqual(result.flagItemIds);
+      expect(secondRun.waitingAffidavitIds).toEqual(result.waitingAffidavitIds);
+      const [age] = await db
+        .select()
+        .from(schema.candidateFields)
+        .where(and(eq(schema.candidateFields.candidateId, flagged.id), eq(schema.candidateFields.fieldKey, 'age')));
+      expect(age.valueEn).toBe('63');
       const candidatesAfterSecondRun = await db
         .select()
         .from(schema.candidates)

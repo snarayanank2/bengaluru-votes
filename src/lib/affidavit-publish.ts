@@ -1,16 +1,13 @@
 /**
- * The only writer of STRUCTURED candidate field values.
+ * The only writer of candidate field values.
  *
  * A field read from an affidavit has two forms that must never disagree:
- * `candidate_fields.value_data` (the numbers and choices a transcriber
- * edits) and `value_en` (the text the public page shows). Every caller that
- * holds a structured value — the extraction worker, the admin matching page
- * and the transcriber save — goes through `publishAffidavitFields`, which
- * renders the text from the data in the same statement.
- *
- * The curator's free-text editor (src/lib/publish.ts) is the other writer
- * of `value_en`; it clears `value_data`, because its text did not come from
- * a structured value.
+ * `candidate_fields.value_data` (the numbers and choices a transcriber or
+ * curator edits) and `value_en` (the text the public page shows). Every
+ * caller — the extraction worker, a confirmed match, the transcriber save,
+ * an accepted flag and the curator's candidate editor — goes through
+ * `publishAffidavitFields`, which renders the text from the data in the
+ * same statement.
  */
 import { and, eq, like } from 'drizzle-orm';
 import type { Tx } from '../db/client';
@@ -18,7 +15,7 @@ import { candidateFields, candidates, flagItems } from '../db/schema';
 import { decideTranslationStatus } from './publish';
 import { EDUCATION_LEVELS, GENDERS, type AffidavitExtraction, type EducationLevel, type Gender } from './affidavit-extraction';
 
-/** In the order a Form 26 affidavit gives them. The ward is not here: only an admin sets it. */
+/** In the order a Form 26 affidavit gives them. The ward is not here: a curator or an admin sets it (`moveCandidateWard`). */
 export const AFFIDAVIT_FIELD_KEYS = ['full_name', 'party', 'gender', 'age', 'education', 'assets', 'cases'] as const;
 export type AffidavitFieldKey = (typeof AFFIDAVIT_FIELD_KEYS)[number];
 
@@ -244,7 +241,7 @@ export async function publishAffidavitFields(
 /**
  * Records how the candidate's WARD was established, as the label on the
  * public page's ward row: AI-read and resolved by the worker, or chosen by
- * an admin. The ward itself lives on `candidates.ward_id`.
+ * a curator or an admin. The ward itself lives on `candidates.ward_id`.
  */
 export async function publishWardLabel(tx: Tx, candidateId: number, opts: { sourceUrl: string; aiExtracted: boolean }): Promise<void> {
   const values = {

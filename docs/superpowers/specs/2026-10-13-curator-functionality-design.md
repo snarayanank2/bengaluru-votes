@@ -1,6 +1,6 @@
 # Curator functionality (M7) — design
 
-**Date:** 2026-10-13 · **Status:** awaiting review
+**Date:** 2026-10-13 · **Status:** implemented 2026-10-13
 
 Builds on `2026-10-13-affidavit-pipeline-design.md` (structured `value_data`, `publishAffidavitFields`) and `2026-10-13-transcriber-design.md` (the reading screen whose inputs this spec shares).
 

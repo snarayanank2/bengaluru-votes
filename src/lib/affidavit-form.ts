@@ -106,7 +106,7 @@ export function readFieldForm(form: FormData, key: AffidavitFieldKey): RawField 
   return { status: STATUSES.includes(raw as FieldStatus) ? (raw as FieldStatus) : 'value', inputs };
 }
 
-/** The structured value stored for `key`, or null when the row has none (never written, or replaced by free text). */
+/** The structured value stored for `key`, or null when the row has none (never written, or written before values were structured). */
 export function storedFieldData(key: AffidavitFieldKey, valueData: unknown): FieldData | null {
   const data = valueData as FieldData | null | undefined;
   return data && data.key === key ? data : null;
