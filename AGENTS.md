@@ -79,11 +79,25 @@ Then, for any Vitest run:
 
 ```sh
 docker compose -f deploy/compose.local.yml run --rm --no-deps --build \
-  -e DATABASE_URL=postgres://gba:gba_local_dev@postgres:5432/bv_test \
-  app npm test
+  -e SITE_ORIGIN=https://bengaluruvotes.opencity.in \
+  app sh -c '
+    export DATABASE_URL="${DATABASE_URL%/gba}/bv_test"
+    unset MASTER_PASSWORD SENDS_DISABLED ALLOW_INSECURE_LOCAL_RECAPTCHA OTP_TEST_SINK \
+      RECAPTCHA_SITE_KEY RECAPTCHA_SECRET_KEY MAPS_ENABLED GOOGLE_MAPS_BROWSER_KEY \
+      GOOGLE_MAPS_MAP_ID GOOGLE_GEOCODING_API_KEY GOOGLE_SEARCH_API_KEY GOOGLE_SEARCH_CX
+    case "$DATABASE_URL" in */bv_test) npm test ;; *) echo "not bv_test; refusing"; exit 2 ;; esac'
 ```
 
-For a single test file or test case, replace `npm test` with the relevant `npx vitest run ...` command from above. Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`. Never point this command at the app's `gba` database. Two environment values the local image sets make a handful of tests fail unless overridden for the run: pass `-e SITE_ORIGIN=https://bengaluruvotes.opencity.in` (candidate JSON-LD tests) and pass the master password variable empty (the `/api/otp` middleware test, which otherwise sees password mode).
+For a single test file or test case, replace `npm test` with the relevant `npx vitest run ...` command from above. Migrations run automatically — each DB-backed test file calls `migrate()` in its own `beforeAll`. Never point this command at the app's `gba` database: it rewrites the app container's own `DATABASE_URL` to `bv_test` and refuses to run if that did not take, so no credential is typed on the command line.
+
+The suite expects a clean environment, and the local image is not one. Every override above is there because a test fails without it (verified 2026-10-14, all 1,709 tests passing with them):
+
+- `SITE_ORIGIN` set to production: the candidate JSON-LD tests.
+- `MASTER_PASSWORD` unset: the `/api/otp` middleware test, which otherwise sees password mode.
+- `SENDS_DISABLED` unset: the send and campaign tests (`send-to-user`, `calendar`) mock the transports and expect them to be called; with the local guard on, nothing is dispatched.
+- The vendor keys from `deploy/.env.local` unset (reCAPTCHA, Maps, geocoding, search): the app service loads that file, and a reCAPTCHA site key adds a script tag to the ward page that the ward route test counts. They are unset as a group so a key added to that file later cannot leak into a run. `ALLOW_INSECURE_LOCAL_RECAPTCHA` and `OTP_TEST_SINK` are local-only switches and go with them.
+
+If a run fails only in these areas, check the environment before the code. A variable added to `compose.local.yml` or `deploy/.env.local` belongs in the `unset` list too.
 
 `vitest.config.ts` sets `fileParallelism: false` and `singleFork` on purpose: all DB-backed tests share one database, and parallel files race (a temporary DDL rule in `audit.test.ts` — until tracker 147 removes it — breaks other files' `INSERT ... RETURNING`; fixture ids collide). Don't re-enable parallelism.
 
