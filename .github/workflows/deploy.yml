@@ -1,0 +1,276 @@
+name: deploy
+
+# Production deploys (architecture §14.4, revised 2026-11-04).
+#
+#   decide  -> was this exact tree already tested by a PR run?   (no secrets)
+#   test    -> if not, run the gate                               (no secrets)
+#   deploy  -> tag, install env from GitHub, deploy.sh, auto-rollback, alert
+#
+# ROLLOUT: until the env file has been proven identical to the box's (plan Task
+# 11), only workflow_dispatch is enabled. Task 12 adds the push trigger below.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to do
+        type: choice
+        default: deploy-head
+        options:
+          - deploy-head       # tag and deploy the commit this run was started on
+          - redeploy-current  # reinstall env and redeploy the tag production runs now
+          - deploy-tag        # deploy an existing tag (give it below)
+          - rollback          # retag :previous and restart
+      tag:
+        description: Existing tag for deploy-tag, e.g. v2026.11.04
+        type: string
+        required: false
+  # push:                      # enabled in plan Task 12
+  #   branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tested: ${{ steps.check.outputs.tested }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Was this exact tree already tested?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ inputs.action || 'deploy-head' }}
+        run: |
+          if [ "$EVENT" = push ] || [ "$ACTION" = deploy-head ]; then
+            npx tsx scripts/ci/tested-tree.ts
+          else
+            # redeploy / deploy-tag / rollback ship something that already passed.
+            echo "tested=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: decide
+    if: needs.decide.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bv_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bv_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/bv_test
+      SITE_ORIGIN: https://bengaluruvotes.opencity.in
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/gate
+
+  # Separate from `test` so that job never holds secrets.
+  notify-test-failure:
+    needs: test
+    if: failure() && needs.test.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Email
+        env:
+          ALERT_KIND: test-failed
+          ALERT_COMMIT: ${{ github.sha }}
+          ALERT_STEP: tests on main
+          ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SENDGRID_FROM_EMAIL: ${{ vars.SENDGRID_FROM_EMAIL }}
+          DEPLOY_ALERT_EMAIL: ${{ vars.DEPLOY_ALERT_EMAIL }}
+        run: npx tsx scripts/ci/alert.ts
+
+  deploy:
+    needs: [decide, test]
+    if: ${{ !cancelled() && needs.decide.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: write
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    env:
+      ACTION: ${{ inputs.action || 'deploy-head' }}
+      INPUT_TAG: ${{ inputs.tag }}
+      SHA: ${{ github.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # The default token is used only to push the release tag.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      # --ignore-scripts: this job holds the root SSH key, so no dependency
+      # install script may run in it.
+      - run: npm ci --ignore-scripts
+
+      - name: Render the env file (fails before touching the box if anything is missing)
+        id: render
+        if: env.ACTION != 'rollback'
+        env:
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+          ALL_VARS: ${{ toJSON(vars) }}
+        run: |
+          umask 077
+          npx tsx scripts/ci/env-render.ts render > "$RUNNER_TEMP/env.production"
+          echo "rendered $(wc -l < "$RUNNER_TEMP/env.production" | tr -d ' ') keys"
+
+      - name: Configure SSH (pinned host key)
+        id: ssh
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST_KEY: ${{ secrets.VPS_HOST_KEY }}
+          VPS_HOST: ${{ vars.VPS_HOST }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/ci_deploy
+          printf '%s\n' "$VPS_HOST_KEY" > ~/.ssh/known_hosts
+          {
+            echo "Host vps"
+            echo "  HostName $VPS_HOST"
+            echo "  User root"
+            echo "  IdentityFile ~/.ssh/ci_deploy"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking yes"
+            echo "  BatchMode yes"
+          } > ~/.ssh/config
+
+      - name: Decide the tag
+        id: tag
+        if: env.ACTION != 'rollback'
+        run: |
+          set -euo pipefail
+          case "$ACTION" in
+            deploy-head)
+              npx tsx scripts/ci/tag.ts "$SHA"
+              ;;
+            deploy-tag)
+              [[ "$INPUT_TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$ ]] || { echo "tag input must look like v2026.11.04" >&2; exit 1; }
+              git rev-parse --verify --quiet "refs/tags/$INPUT_TAG" >/dev/null || { echo "no such tag: $INPUT_TAG" >&2; exit 1; }
+              echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+              echo "create=false" >> "$GITHUB_OUTPUT"
+              ;;
+            redeploy-current)
+              cur=$(ssh vps 'cd /root/src/bengaluru-votes-production && git describe --tags --exact-match')
+              [[ "$cur" =~ ^v[0-9.]+$ ]] || { echo "production is not on a release tag" >&2; exit 1; }
+              echo "tag=$cur" >> "$GITHUB_OUTPUT"
+              echo "create=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Create and push the release tag
+        if: steps.tag.outputs.create == 'true'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "$TAG" -m "release $TAG ($RUN_URL)" "$SHA"
+          git push origin "refs/tags/$TAG"
+
+      - name: Install the env file
+        id: install
+        if: env.ACTION != 'rollback'
+        run: deploy/install-env.sh < "$RUNNER_TEMP/env.production"
+
+      - name: Deploy
+        id: ship
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set +e
+          if [ "$ACTION" = rollback ]; then
+            deploy/deploy.sh production --rollback
+          else
+            deploy/deploy.sh production "$TAG"
+          fi
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit $rc
+
+      # deploy.sh exits 3 once the stack has restarted (the old version is gone),
+      # 1 before that. Either way the previous env file goes back so the box
+      # matches what is actually running; only exit 3 needs the image rolled back.
+      - name: Restore the previous env and roll back
+        id: recover
+        if: failure() && steps.ship.outcome == 'failure'
+        env:
+          SHIP_RC: ${{ steps.ship.outputs.rc }}
+        run: |
+          set +e
+          if [ "$ACTION" != rollback ] && [ "$SHIP_RC" != 0 ]; then
+            ssh vps 'f=/etc/bengaluru-votes/.env.production; [ -f $f.prev ] && cp -p $f.prev $f'
+          fi
+          if [ "$SHIP_RC" = 3 ] && [ "$ACTION" != rollback ]; then
+            if deploy/deploy.sh production --rollback; then
+              echo "kind=rolled-back" >> "$GITHUB_OUTPUT"
+            else
+              echo "kind=rollback-failed" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          fi
+
+      - name: Email the failure
+        if: failure()
+        env:
+          ALERT_KIND: ${{ steps.recover.outputs.kind || 'deploy-failed' }}
+          ALERT_COMMIT: ${{ github.sha }}
+          ALERT_TAG: ${{ steps.tag.outputs.tag }}
+          ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OUTCOME_RENDER: ${{ steps.render.outcome }}
+          OUTCOME_SSH: ${{ steps.ssh.outcome }}
+          OUTCOME_TAG: ${{ steps.tag.outcome }}
+          OUTCOME_INSTALL: ${{ steps.install.outcome }}
+          OUTCOME_SHIP: ${{ steps.ship.outcome }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SENDGRID_FROM_EMAIL: ${{ vars.SENDGRID_FROM_EMAIL }}
+          DEPLOY_ALERT_EMAIL: ${{ vars.DEPLOY_ALERT_EMAIL }}
+        run: |
+          step=setup
+          for s in RENDER SSH TAG INSTALL SHIP; do
+            v="OUTCOME_$s"
+            if [ "${!v}" = failure ]; then step=$(echo "$s" | tr '[:upper:]' '[:lower:]'); break; fi
+          done
+          ALERT_STEP="$step" npx tsx scripts/ci/alert.ts
