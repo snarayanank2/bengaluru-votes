@@ -201,17 +201,17 @@ Anonymous citizen (no account; all citizen traffic) · Transcriber · Data curat
 
 ## Agent sessions and git workflow
 
-These rules apply to every coding agent, whichever tool runs it. Use normal sessions for implementation; do not route work through a mandatory subagent or coordinator workflow. Multiple sessions may work in parallel, but they must never edit the same checkout or branch at the same time.
+These rules apply to every coding agent, whichever tool runs it. Use normal sessions for implementation; do not route work through a mandatory subagent or coordinator workflow. Work in the primary checkout, one session at a time; two sessions must never edit the same checkout or branch at the same time.
 
 Every new session must start its own instance of Docker Compose, configured to listen on a different host port from other active sessions. After starting it, present the resulting review URL to the user so they can inspect the changes directly.
 
-**Always use git worktrees**, whether or not other sessions are running: create one project-local `.worktrees/<short-task-name>` worktree and one descriptive branch (for example, `agent/<short-task-name>`) per task, and never edit files in the primary checkout. Verify `.worktrees/` is ignored before creating it. `.worktreeinclude` lists the gitignored files (`deploy/.env.local`) that Claude Code copies into a new worktree; with any other tool, or plain `git worktree add`, copy them by hand. Each session owns its worktree, keeps its changes focused, and reports its branch, commit, tests, and limitations. Do not use `git reset --hard`, `git checkout --`, or broad cleanup commands in a shared checkout.
+**Do not use git worktrees.** A new worktree does not get the git-ignored `deploy/.env.local` copied in automatically, which breaks local development (the local Compose stack and the test commands read it). Work in the primary checkout on one descriptive branch per task (for example, `agent/<short-task-name>`), created from an up-to-date `main`. Keep changes focused, and report the branch, commit, tests, and limitations. Do not use `git reset --hard`, `git checkout --`, or broad cleanup commands that could discard another person's uncommitted work.
 
-**Every change raises a PR.** Push the worktree's branch and open a pull request against `main`; never commit or push to `main` directly, however small the change. If GitHub is unavailable, keep committing on the local branch and open the PR once it is back.
+**Every change raises a PR.** Push the branch and open a pull request against `main`; never commit or push to `main` directly, however small the change. If GitHub is unavailable, keep committing on the local branch and open the PR once it is back.
 
 **No agent session links in commits or PRs.** Commit messages, PR descriptions and PR comments must not link to an agent session (for example a `claude.ai/code/session_…` URL), even when a tool's default attribution adds one.
 
-Keep the primary checkout on `main` for review and release work. Changes reach `main` only by merging their PR, which deploys production (see Fixed decisions). If two sessions touch overlapping files, stop one or coordinate explicitly before either PR merges; never rely on concurrent edits resolving themselves.
+Return the primary checkout to `main` once a task's PR is raised. Changes reach `main` only by merging their PR, which deploys production (see Fixed decisions). If two sessions touch overlapping files, stop one or coordinate explicitly before either PR merges; never rely on concurrent edits resolving themselves.
 
 Sessions may run tests and local servers independently, but use distinct ports, databases, and temporary files where applicable. Never point destructive test commands at another session's database or at the production database.
 
