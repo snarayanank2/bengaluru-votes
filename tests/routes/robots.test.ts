@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { GET } from '../../src/pages/robots.txt';
 
-describe('robots.txt (Task 57; architecture §7/§8)', () => {
+describe('robots.txt (Task 57; architecture §8)', () => {
   it('returns 200 text/plain', async () => {
     const res = await GET({} as any);
     expect(res.status).toBe(200);

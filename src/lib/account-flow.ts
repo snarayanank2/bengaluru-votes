@@ -1,6 +1,6 @@
 /**
  * Business logic behind the three registered-citizen account pages (Task
- * 29, information-architecture.md §4.1/§4.2/§4.3): `/account`,
+ * 29): `/account`,
  * `/account/notifications`, `/account/submissions`. Mirrors the shape of
  * `src/lib/login-flow.ts` — this module owns state-loading/mutation, the
  * page route twins (src/pages/account/*, src/pages/kn/account/*) own the
@@ -114,12 +114,12 @@ async function handleWard(userId: number, form: FormData): Promise<AccountRender
 
   const current = await loadAccountUser(userId);
   if (current?.homeWardId === wardIdRaw) {
-    // Not an actual change — nothing to retire (PRD §5.5 only fires on a
+    // Not an actual change — nothing to retire (retirement only fires on a
     // real ward change).
     return stateFor(userId, { kind: 'notice', key: 'account.ward.success' });
   }
 
-  // PRD §5.5: changing home ward retires the previous ward's vote-set —
+  // Changing home ward retires the previous ward's vote-set —
   // both writes commit atomically, or neither does.
   await db.transaction(async (tx) => {
     await tx.update(users).set({ homeWardId: wardIdRaw }).where(eq(users.id, userId));
@@ -182,7 +182,7 @@ async function handleContactStep2(userId: number, form: FormData): Promise<Accou
       .where(eq(users.id, userId));
   } catch (err: unknown) {
     if (isUniqueViolation(err)) {
-      // One-account-per-contact (PRD §10) — this exact contact already
+      // One-account-per-contact — this exact contact already
       // belongs to a different user row.
       return stateFor(userId, { kind: 'error', key: 'account.contact.error.taken' }, { destination, channel });
     }
@@ -213,7 +213,7 @@ export async function handleAccountPost(userId: number, form: FormData): Promise
 }
 
 // ---------------------------------------------------------------------------
-// /account/notifications — channel toggles ONLY (PRD §9.3, no per-topic).
+// /account/notifications — channel toggles ONLY (no per-topic).
 // ---------------------------------------------------------------------------
 
 export interface NotificationsState {
@@ -237,7 +237,7 @@ export async function handleNotificationsPost(userId: number, form: FormData): P
 }
 
 // ---------------------------------------------------------------------------
-// /account/submissions — the citizen's own flags, read-only (PRD §6.2/§6.3).
+// /account/submissions — the citizen's own flags, read-only.
 // ---------------------------------------------------------------------------
 
 export interface SubmissionRow {
@@ -253,7 +253,7 @@ export interface SubmissionRow {
 
 /**
  * The user's flag submissions, newest first, each joined to its (possibly
- * shared/collapsed — PRD §6.3) `flag_items` row for the current
+ * shared/collapsed) `flag_items` row for the current
  * status/resolutionReason. Two submissions that were deduped into the same
  * `flag_items` row (the dedupe unique index is `(targetRef, status)`) both
  * read the SAME status/resolutionReason here — there is nothing this query

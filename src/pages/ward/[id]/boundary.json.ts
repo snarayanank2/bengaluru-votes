@@ -1,6 +1,6 @@
 /**
  * GET /ward/{id}/boundary.json — one ward's boundary polygon as GeoJSON,
- * for src/islands/WardMap.ts (spec §4).
+ * for src/islands/WardMap.ts (docs/architecture.md §5).
  *
  * NOT under /api/ on purpose. `deploy/nginx/conf.d/site.conf`'s
  * `location /api/` has no proxy_cache and carries `limit_req zone=api`, a

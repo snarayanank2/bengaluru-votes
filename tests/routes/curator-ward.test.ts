@@ -1,6 +1,6 @@
 /**
- * `/curator/ward/{id}`, `/curator/ward/{id}/issues` (Task 39, PRD §9.1,
- * §5.4/§5.5; design-system.md §7.13). Drives every request through the
+ * `/curator/ward/{id}`, `/curator/ward/{id}/issues` (Task 39;
+ * design-system.md §7.13). Drives every request through the
  * REAL middleware (src/middleware.ts) composed with the real page twins
  * via Astro's container API — same technique as
  * tests/routes/curator-candidate.test.ts.
@@ -31,7 +31,7 @@ import WardIssuesRoute from '../../src/pages/curator/ward/[id]/issues.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

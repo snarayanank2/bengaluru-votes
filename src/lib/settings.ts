@@ -29,7 +29,7 @@ export const SETTING_KEYS = [
   'consent_wording_version',
   'data_page_live',
   'results_declared_at',
-  // Task 21 guide pages' guided link-out URLs — dependency register §4.8,
+  // Task 21 guide pages' guided link-out URLs —
   // "INPUT NEEDED" in the corresponding content/pages/en/*.md file until an
   // admin fills these in. Absent -> the page shows a pending-note
   // placeholder rather than inventing a URL (src/components/ExternalLinkOut.astro).
@@ -38,8 +38,8 @@ export const SETTING_KEYS = [
   'form8_url',
   'booth_lookup_url',
   // Task 54's F1 (booth/timings/what-to-carry) send needs a citywide poll
-  // open/close time to fill its `{{2}}`/`{{3}}` placeholders (docs/messages.md
-  // §10). No such fact exists anywhere else in this schema (booths carries
+  // open/close time to fill its `{{2}}`/`{{3}}` placeholders (dormant —
+  // docs/architecture.md §15). No such fact exists anywhere else in this schema (booths carries
   // per-booth location, never per-booth hours, and poll hours are the same
   // for every booth on election day) — same "admin fills this in, page/send
   // defers gracefully until then" pattern as roll_lookup_url etc above.
@@ -49,7 +49,8 @@ export const SETTING_KEYS = [
   'poll_close_time',
   // The transcriber queue hands out affidavits whose AI confidence is below
   // this (0-100) before the rest (src/lib/transcribe.ts). Absent -> 70, a
-  // placeholder until the Kannada pilot sets it (docs/candidate-data.md §2).
+  // placeholder until the Kannada pilot sets it (docs/candidate-data.md §4.2,
+  // §3.6).
   'low_confidence_threshold',
 ] as const;
 

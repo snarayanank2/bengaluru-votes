@@ -121,7 +121,7 @@ describe('FieldRow', () => {
     expect(html).toContain(t('en', 'common.source.curator'));
   });
 
-  // Task 40 (PRD §8, architecture §9) — the pending-machine-translation
+  // Task 40 (architecture §9) — the pending-machine-translation
   // indicator: shown only when the value being displayed is a FALLBACK (the
   // authored language, on the other locale's page) because MT hasn't landed.
   describe('pending-translation indicator (Task 40)', () => {

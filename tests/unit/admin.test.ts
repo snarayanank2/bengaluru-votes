@@ -1,7 +1,6 @@
 /**
  * Task 44 — src/lib/admin.ts: the admin-only role-management engine
- * behind the role actions on `/admin/users` (information-architecture.md §6.2;
- * PRD §7/§10/§11/§14). Exercises the lib functions directly against a real
+ * behind the role actions on `/admin/users` (architecture.md §7). Exercises the lib functions directly against a real
  * DB (no HTTP/middleware layer — that's tests/routes/admin-users.test.ts).
  *
  * Curators and admins are both city-wide, so there is no ward scope to
@@ -23,7 +22,7 @@ import * as schema from '../../src/db/schema';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -152,7 +151,7 @@ describe('src/lib/admin.ts (Task 44)', () => {
    * The only ways the count check actually fires (short of the documented
    * concurrent-double-revoke race) are (a) the self-demote path, already
    * covered by the separate self-check, or (b) a caller whose OWN `status`
-   * has gone inactive (e.g. a banned admin, PRD's user_status enum) acting
+   * has gone inactive (e.g. a banned admin, the user_status enum) acting
    * on a still-valid actor object — role='admin' in the DB, just not
    * counted toward the *active* pool being protected. The tests below use a
    * banned-but-still-'admin'-role fixture as that distinct, non-self caller

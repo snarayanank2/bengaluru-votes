@@ -4,7 +4,7 @@ import { buildCsp } from '../../src/lib/csp';
 const NONCE = 'test-nonce-abc123==';
 
 // Every script-src exact-match assertion below includes these — the Google
-// Maps hosts (spec §8) live in the BASE script-src, so they appear on every
+// Maps hosts (architecture §13) live in the BASE script-src, so they appear on every
 // path. See the "Google Maps hosts" describe block for the
 // substring-based coverage of this same fact.
 const MAPS_SCRIPT_SRC = 'https://maps.googleapis.com https://maps.gstatic.com';
@@ -128,7 +128,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
     expect(buildCsp('other-nonce', '/about')).toBe(buildCsp('other-nonce', '/about'));
   });
 
-  describe('Google Maps hosts (spec §8)', () => {
+  describe('Google Maps hosts (architecture §13)', () => {
     const MAPS_HOSTS = ['https://maps.googleapis.com', 'https://maps.gstatic.com'];
 
     it.each(['script-src', 'connect-src', 'img-src'])('allows the maps hosts in %s', (directive) => {

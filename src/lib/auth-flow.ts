@@ -1,6 +1,6 @@
 /**
  * `resolveOrRegister` — the single account-resolution/registration helper
- * behind BOTH auth entry points (Task 27, PRD §10):
+ * behind BOTH auth entry points (Task 27):
  *   - `POST /api/otp/verify` (src/pages/api/otp/verify.ts), used by the
  *     Register/Login modal (src/islands/RegisterLoginModal.ts).
  *   - `/login`'s no-JS server-rendered fallback (src/lib/login-flow.ts,
@@ -9,8 +9,8 @@
  * Extracted so the two paths can never diverge on the security-critical
  * bits: case-normalized destination lookup (Task 25 review Fix 1),
  * one-account-per-contact enforcement (a DB unique-index race, not
- * read-then-write app logic), and the exact consent-evidence fields PRD §10
- * requires on registration (`consentAt`, `consentVersion`,
+ * read-then-write app logic), and the exact consent-evidence fields
+ * required on registration (`consentAt`, `consentVersion`,
  * `futureToolsOptIn`, `srcAttribution`).
  *
  * PEEK-THEN-CONSUME (Task 27): the Register/Login flow calls this function
@@ -36,7 +36,7 @@ import { getKnownSetting } from './settings';
 
 const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
-/** Human-readable language name for the W1 confirmation's `{{2}}` var (docs/messages.md §4: "language (English/Kannada)"). Same mapping src/lib/translate-runtime.ts uses. */
+/** Human-readable language name for the W1 confirmation's `{{2}}` var (dormant — docs/architecture.md §15). Same mapping src/lib/translate-runtime.ts uses. */
 const LANGUAGE_DISPLAY_NAME: Record<Lang, string> = { en: 'English', kn: 'Kannada' };
 
 export interface RegisterPayload {
@@ -62,7 +62,7 @@ async function findUserByContact(destination: string) {
 }
 
 /**
- * Fires the W1 welcome / opt-in confirmation (docs/messages.md §4, PRD §10)
+ * Fires the W1 welcome / opt-in confirmation (dormant — docs/architecture.md §15)
  * for a JUST-registered user. `calendar.ts` deliberately excludes W1 ("fires
  * from the registration flow, auth-flow.ts") — this is that fire.
  *

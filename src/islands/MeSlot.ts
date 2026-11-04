@@ -22,7 +22,7 @@
  *      this ward === the user's `homeWardId`: swapped for a plain
  *      "Receiving updates" status (`data-msg-receiving-updates`) — no
  *      longer a control, nothing to tap. Authed on any OTHER ward: removed
- *      entirely (IA §3.2 — home-ward switching lives on `/account` only).
+ *      entirely (home-ward switching lives on `/account` only).
  *   3. Already-voted hint on `[data-vote-action][data-ward-id]`
  *      (Ward.astro) — authed AND this ward === `alreadyVotedWardId`:
  *      marked `data-already-voted` for Task 33's Cast-issue-vote modal to
@@ -104,7 +104,7 @@ function swapRegisterSlot(el: HTMLElement, homeWardId: number | null): void {
     clone.textContent = label;
     el.replaceWith(clone);
   } else {
-    // A visitor viewing any OTHER ward sees nothing here (IA §3.2) — home
+    // A visitor viewing any OTHER ward sees nothing here — home
     // ward switching lives on /account only.
     el.remove();
   }

@@ -1,6 +1,6 @@
 ---
 /**
- * `/account` (`/kn/account`) — information-architecture.md §4.1, PRD §8/§10.
+ * `/account` (`/kn/account`).
  * Purely presentational: all state-loading/mutation logic lives in
  * src/lib/account-flow.ts, called by the route twins
  * (src/pages/account/index.astro, src/pages/kn/account/index.astro), which
@@ -17,11 +17,11 @@
  * (src/lib/csrf.ts) as a hidden field — src/middleware.ts 403s any of these
  * POSTs without it.
  *
- * Home ward change (PRD §5.5): changing it retires the previous ward's
+ * Home ward change: changing it retires the previous ward's
  * active issue-vote-set — the helper text below the field says so; the
  * atomic update+retire itself happens in account-flow.ts's `handleWard`.
  *
- * Contact add/change (PRD §9/§10): a two-step OTP flow, structurally
+ * Contact add/change: a two-step OTP flow, structurally
  * identical to /login's no-JS steps 1→2 (src/features/pages/Login.astro) —
  * step 1 collects the new destination, step 2 collects the code, carrying
  * `destination`/`channel` forward as hidden fields between steps.

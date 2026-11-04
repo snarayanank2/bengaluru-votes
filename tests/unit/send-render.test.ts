@@ -5,7 +5,7 @@ describe('src/lib/send/render.ts renderMessage', () => {
   describe('W1 (welcome)', () => {
     const vars = { ward: '57 - Jayanagar', language: 'English', notificationsLink: 'https://bengaluruvotes.opencity.in/account/notifications' };
 
-    it('email EN: subject + body from docs/messages.md §4, with {{1}}=ward, {{2}}=language, {{3}}=notificationsLink interpolated', () => {
+    it('email EN: subject + body (dormant, architecture §15), with {{1}}=ward, {{2}}=language, {{3}}=notificationsLink interpolated', () => {
       const rendered = renderMessage('W1', 'en', 'email', vars);
       expect(rendered.subject).toBe("You're set up for 57 - Jayanagar ward updates");
       expect(rendered.body).toContain('- **Ward:** 57 - Jayanagar');
@@ -25,7 +25,7 @@ describe('src/lib/send/render.ts renderMessage', () => {
       expect(rendered.subject).toBeUndefined();
     });
 
-    it('whatsapp KN: renders the verbatim Kannada copy from docs/messages.md, not a re-translation', () => {
+    it('whatsapp KN: renders the verbatim Kannada copy from templates.ts, not a re-translation', () => {
       const rendered = renderMessage('W1', 'kn', 'whatsapp', vars);
       expect(rendered.templateSid).toBe('bv_w1_welcome_kn');
       expect(rendered.body).toContain('Bengaluru Votes ಗೆ ಸ್ವಾಗತ!');

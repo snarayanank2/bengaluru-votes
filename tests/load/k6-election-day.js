@@ -31,7 +31,7 @@
  * PEAK-LOAD ASSUMPTION — READ BEFORE TUNING (this is a hypothesis, not a
  * measurement; the real run on the VPS is what validates or refutes it)
  * ─────────────────────────────────────────────────────────────────────────
- * GTM plan (docs/gtm-plan.md): 300,000 unique visitors is the WHOLE-CAMPAIGN
+ * Campaign target: 300,000 unique visitors is the WHOLE-CAMPAIGN
  * target, not a single day's number. Assume election day itself concentrates
  * a disproportionate share of that traffic (citizens checking their ward,
  * candidates, and booth right before voting) — say 10-15% of the campaign
@@ -40,7 +40,7 @@
  * home, ward result, candidates, compare, issues/guide) that's roughly
  * 150,000-225,000 requests / 43,200s ≈ 3.5-5 req/s AVERAGE. Real traffic is
  * never flat: a press mention, a WhatsApp-forwarded partner link
- * (docs/prd.md §5.12), or the last two hours before polls close can produce
+ *, or the last two hours before polls close can produce
  * a burst 20-50x the daily average for a short window.
  *
  * Rather than trust that multiplier precisely, this test targets a
@@ -76,7 +76,7 @@
  * CANDIDATE SLUGS
  * ─────────────────────────────────────────────────────────────────────────
  * `/candidate/{slug}` is real curator-authored content — no slug exists
- * until curators publish candidates (PRD §9.1 readiness gating). Pass a
+ * until curators publish candidates (architecture §8: empty state until then). Pass a
  * small seeded list via `-e CANDIDATE_SLUGS=slug-one,slug-two,...` once
  * some exist on the target environment. Absent that, candidate-page
  * traffic is a no-op and its weight is folded into ward-page traffic
@@ -210,8 +210,8 @@ function randomFrom(arr) {
 }
 
 function withLang(pathEn) {
-  // Every route in this mix has a /kn/ twin (docs/information-architecture.md
-  // §1: "every public path exists in both languages"). Applying the KN
+  // Every route in this mix has a /kn/ twin (docs/architecture.md
+  // §4: every public page exists in both languages). Applying the KN
   // prefix here, uniformly, keeps each page-builder below simple.
   if (Math.random() >= KN_SHARE) return pathEn;
   return pathEn === '/' ? '/kn/' : `/kn${pathEn}`;
@@ -220,7 +220,7 @@ function withLang(pathEn) {
 // ───────────────────────── Page mix (cached scenario) ─────────────────────
 // Weights are a realistic READ shape for election-day traffic: home and
 // ward-result dominate (the ward lookup is the entry point for almost
-// every visit — architecture §5, PRD §5.1), candidates/compare/issues
+// every visit — architecture §5), candidates/compare/issues
 // trail off, guides are a steady minority. All figures are assumptions,
 // clearly separated here so they're easy to revisit once real analytics
 // exist (there are none pre-launch).

@@ -4,7 +4,7 @@
  * Two things this endpoint does, both gated on a verified `X-Twilio-Signature`:
  *  - inbound opt-out keywords (STOP/STOPALL/UNSUBSCRIBE/CANCEL/END/QUIT) on
  *    the WhatsApp `Body` -> permanent `whatsapp` suppression for the sender
- *    (architecture.md §7 "suppressions honoured before every send").
+ *    (dormant — architecture.md §15).
  *  - delivery-status callbacks (`MessageStatus`/`SmsStatus`) -> logged only,
  *    never a suppression write.
  *

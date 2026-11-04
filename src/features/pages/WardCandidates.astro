@@ -1,7 +1,7 @@
 ---
 /**
  * Candidates-in-ward list (`/ward/{id}/candidates`, `/kn/ward/{id}/candidates`)
- * — information-architecture.md §3.3, PRD §5.2, design-system §4.3/§7.12.
+ * — design-system §4.3/§7.12.
  * Lists every candidate standing in the ward — including withdrawn/
  * scrutiny-rejected ones, each with its lifecycle status shown — plus a
  * Compare entry point and the register-for-updates slot.
@@ -18,14 +18,14 @@
  * CandidateRow, which itself guarantees identical visual weight regardless
  * of party/status/position (§4).
  *
- * LIFECYCLE STATUS (PRD §5.2, design-system §4): every candidate — filed,
+ * LIFECYCLE STATUS (design-system §4): every candidate — filed,
  * contesting, withdrawn, or rejected — shows its status as a plain neutral
  * text label (`.status-label`, no color/tint). Withdrawn/rejected
  * candidates are never hidden: their report-card links have already been
  * shared and must keep resolving from this list too.
  *
  * PROVISIONAL marker: shown whenever `app_settings.withdrawals_closed`
- * isn't `'true'` yet — same convention as Candidate.astro (PRD §5.2/§9.3).
+ * isn't `'true'` yet — same convention as Candidate.astro.
  *
  * EMPTY STATE (design-system §7.12): a ward with zero candidates yet (the
  * common case before the nomination window) renders EmptyState at HTTP
@@ -43,7 +43,8 @@
  * because these two branches are mutually exclusive and Task 28's MeSlot
  * island (src/islands/MeSlot.ts) swaps only the FIRST such element it
  * finds (`querySelector`, not `querySelectorAll`). Always the full
- * anonymous-enabled markup (design-system §7.8), identical for every
+ * anonymous-enabled markup (design-system §11 cache safety; dormant,
+ * architecture §15), identical for every
  * visitor — the auth gate/personalization happens client-side.
  *
  * CACHE-SAFETY (architecture §5): this component never reads cookies or

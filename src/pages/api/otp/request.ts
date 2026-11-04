@@ -1,10 +1,10 @@
 /**
  * POST /api/otp/request — start of the single OTP mechanism for all roles
- * (architecture.md §7; PRD §10).
+ * (dormant — architecture.md §15).
  *
  * NON-DISCLOSURE (binding): this endpoint NEVER reveals whether
  * `destination` belongs to a known account or a fresh one — the
- * Register/Login popup is one flow (PRD §10), and `requestOtp` itself never
+ * Register/Login popup is one flow, and `requestOtp` itself never
  * queries `users`, so the response shape for a known login and a brand-new
  * registration is byte-for-byte identical. The only thing that varies the
  * response is per-destination cooldown/budget/suppression state, which by

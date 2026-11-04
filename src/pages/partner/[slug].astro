@@ -10,7 +10,7 @@
  * runs a minimal existence lookup and returns a real 404 before
  * PartnerKit.astro (which does its own full-row lookup for the fields it
  * renders) is ever reached. Same convention as
- * src/pages/candidate/[slug].astro. IA §3.19: an unknown partner slug
+ * src/pages/candidate/[slug].astro: an unknown partner slug
  * 404s; an existing one is always 200.
  */
 import PartnerKit from '../../features/pages/PartnerKit.astro';

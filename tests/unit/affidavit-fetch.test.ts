@@ -1,6 +1,6 @@
 /**
  * src/lib/affidavit-fetch.ts — SSRF-hardened fetch of a curator-supplied EC
- * affidavit link (Task 37; architecture §7/§13). Mocks `node:dns/promises`
+ * affidavit link (Task 37; architecture §7/§13; dormant, §15). Mocks `node:dns/promises`
  * and the global `fetch` — NEVER touches the real network. This is the
  * SECURITY-CRITICAL surface of the task: the redirect re-check (a mid-hop
  * bounce to an off-allowlist host, or to a host that resolves to the cloud

@@ -1,6 +1,6 @@
 /**
- * POST /api/otp/verify — completes the single OTP mechanism (architecture.md
- * §7; PRD §10). One flow handles both branches:
+ * POST /api/otp/verify — completes the single OTP mechanism (dormant —
+ * architecture.md §15). One flow handles both branches:
  *
  *  - KNOWN contact (a `users` row already has this email/phone) -> LOGIN:
  *    create a session, set the cookie, `{ok:true, registered:false}`.
@@ -8,15 +8,15 @@
  *    (wardId, language, futureTools). Missing -> `{ok:false,
  *    reason:'registration_required'}` so the client shows the confirm step
  *    and re-submits with it. Present -> creates the account, WITH THE
- *    CONSENT EVIDENCE PRD §10 requires stored on the row itself:
+ *    CONSENT EVIDENCE required stored on the row itself:
  *    `consentAt` (now), `consentVersion` (`app_settings['consent_wording_version']`,
  *    falling back to a default if that setting is unset), `futureToolsOptIn`,
- *    and `srcAttribution` from the `bv_src` cookie (PRD §5.12) if present.
- *    Registration *is* the consent act (PRD §10) — there is no separate
+ *    and `srcAttribution` from the `bv_src` cookie if present.
+ *    Registration *is* the consent act — there is no separate
  *    consent record; the wording shown at the confirm step includes the
  *    "I am 18 or older" assertion, captured implicitly by `consentVersion`.
  *
- * ONE ACCOUNT PER CONTACT (PRD §10), case-normalization, and the
+ * ONE ACCOUNT PER CONTACT, case-normalization, and the
  * peek-then-consume handling of the OTP code across the two-call
  * confirm/register step (Task 27) all live in `resolveOrRegister`
  * (src/lib/auth-flow.ts) — the SAME helper `/login`'s no-JS fallback

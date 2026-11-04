@@ -1,6 +1,6 @@
 /**
  * The single session/CSRF/authorization/cache-safety enforcement point
- * (architecture.md §7, §13; PRD §7). Every request passes through here
+ * (architecture.md §7, §13). Every request passes through here
  * before any page/API route runs. SECURITY-CRITICAL: this is where roles
  * and curator route-classes are gated, where unsafe methods are checked for
  * cross-site origin, and where the cache-safety invariant (public GETs never
@@ -219,7 +219,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (role !== 'admin') return respond(forbidden());
   }
   // Transcribers and admins only: curators correct flagged values and do not
-  // read the queue (docs/milestones.md §9-§10). The role admits the caller to
+  // read the queue (docs/candidate-data.md §4–§5). The role admits the caller to
   // the area; which AFFIDAVIT they may read or save is decided per request by
   // src/lib/transcribe.ts — an open assignment that is theirs — not here.
   if (isUnder(guardPath, '/transcribe')) {

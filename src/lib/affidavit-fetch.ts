@@ -1,6 +1,6 @@
 /**
  * SSRF-hardened fetch of a curator-supplied EC (Election Commission) affidavit
- * link (Task 37; architecture.md §7, §13; PRD §5.2). This is THE one place
+ * link (Task 37; dormant, no caller — architecture.md §15). This is THE one place
  * in the platform that performs a server-side fetch of a URL a curator
  * typed in — every other outbound request the app makes targets a
  * hard-coded, developer-chosen host. Get this wrong and a curator (trusted,

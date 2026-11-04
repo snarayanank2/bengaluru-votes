@@ -14,8 +14,8 @@ const EN_COURTESY_NOTE = t('en', 'legal.courtesyNote');
 const KN_COURTESY_NOTE = t('kn', 'legal.courtesyNote');
 
 /**
- * Task 22 — the trust & legal pages (/about, /terms, /privacy), IA
- * §3.13/§3.17/§3.18, PRD §5.11/§5.16. Container-rendered, both languages,
+ * Task 22 — the trust & legal pages (/about, /terms, /privacy).
+ * Container-rendered, both languages,
  * mirroring tests/routes/guides.test.ts's structure.
  *
  * None of these three pages read app_settings, cookies, or the DB — they
@@ -64,7 +64,7 @@ async function renderPage(
   return { html, response };
 }
 
-describe('Trust & legal pages (Task 22) — IA §3.13/§3.17/§3.18, PRD §5.11/§5.16', () => {
+describe('Trust & legal pages (Task 22)', () => {
   describe('About (/about)', () => {
     it('renders a distinctive sentence from the EN content, in both languages, with correct title/description/lang', async () => {
       const en = await renderPage(About, 'en', '/about');

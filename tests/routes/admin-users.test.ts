@@ -1,6 +1,5 @@
 /**
- * `/admin/users` (Task 45, information-architecture.md §6.3; PRD §4/§7,
- * §5.16). Drives every request through the REAL middleware
+ * `/admin/users` (Task 45; architecture.md §7). Drives every request through the REAL middleware
  * (src/middleware.ts) composed with the real page twin via Astro's
  * container API — same technique as tests/routes/admin-console.test.ts.
  *
@@ -43,7 +42,7 @@ import UsersRoute from '../../src/pages/admin/users.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

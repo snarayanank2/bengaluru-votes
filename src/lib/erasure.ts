@@ -1,6 +1,5 @@
 /**
- * Business logic behind `/admin/users` (Task 45, information-architecture.md
- * §6.3; PRD §5.16, §4/§7) — moderation (ban/reactivate) and the DPDP
+ * Business logic behind `/admin/users` (Task 45) — moderation (ban/reactivate) and the DPDP
  * data-principal ERASURE routine (architecture.md §7 "Erasure (DPDP
  * data-principal rights)").
  *
@@ -119,7 +118,7 @@ async function assertNotLastActiveAdmin(tx: Tx, existing: ExistingUser, actionVe
 }
 
 /**
- * DPDP erasure (architecture.md §7, PRD §5.16). See module docstring for
+ * DPDP erasure (architecture.md §7). See module docstring for
  * exactly what's deleted, nulled, and kept, plus the idempotency argument.
  * Throws `'user_not_found'`, `'cannot_erase_self'`, or
  * `'cannot_erase_last_admin'` before writing anything.
@@ -167,7 +166,7 @@ export async function eraseUser(actor: AdminActor, targetUserId: number): Promis
 }
 
 /**
- * Deactivates/bans a citizen (PRD §4/§7 "admin can deactivate/ban abusive
+ * Deactivates/bans a citizen ("admin can deactivate/ban abusive
  * users"). Kills every active session for the user immediately (see module
  * docstring's SESSIONS ARE DELETED note) and rejects an already-erased
  * target (`'cannot_ban_erased'` — erasure is terminal, never re-bannable).
@@ -259,7 +258,7 @@ export const USER_LIST_CAP = 50;
 const STAFF_ROLE_VALUES = ['admin', 'curator', 'transcriber'] as const;
 
 /**
- * The `/admin/users` list (IA §6.3 "search users"). With no query it lists
+ * The `/admin/users` list ("search users"). With no query it lists
  * STAFF (every staff role, or the one `role` names), uncapped — the page's
  * default view. A query matches ANY of — `id` exactly (only tried when
  * `query` is a bare integer; a numeric STRING can just as easily be a
@@ -277,7 +276,7 @@ const STAFF_ROLE_VALUES = ['admin', 'curator', 'transcriber'] as const;
  * more matched.
  *
  * Rows sort admin, curator, transcriber, citizen, then by email. Each row
- * includes its `flag_submissions` count (IA §6.3 "view submission
+ * includes its `flag_submissions` count ("view submission
  * history") — a count only; the full list lives via the flags tooling, not
  * duplicated here.
  */

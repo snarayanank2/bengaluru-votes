@@ -1,6 +1,6 @@
 ---
 /**
- * Register/Login modal shell (Task 27, IA §7.1, design-system.md §7.9) —
+ * Register/Login modal shell (Task 27, design-system.md §7.9) —
  * rendered ONCE per page (from Base.astro, so it's present everywhere the
  * "Sign in" control or a "Register for updates" slot can appear) as a
  * native `<dialog>`. Purely markup/i18n — all behavior (opening, step
@@ -25,7 +25,7 @@
  *      from a ward page's register-for-updates slot), language, the
  *      consent sentence (links to /terms and /privacy, includes the 18+
  *      assertion in the wording itself — registering IS the consent act,
- *      PRD §10, so there is no separate consent checkbox), and the ONE
+ *      so there is no separate consent checkbox), and the ONE
  *      optional "future civic tools" checkbox.
  *
  * `data-msg-*` attributes carry the handful of dynamic strings the island

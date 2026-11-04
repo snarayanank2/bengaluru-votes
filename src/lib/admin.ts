@@ -1,11 +1,11 @@
 /**
  * Business logic behind the admin console's role management
- * (Task 44, information-architecture.md §6.1/§6.2; PRD §7/§10/§11/§14).
+ * (Task 44).
  * Admins govern who is a curator or an admin — this module IS the root of
  * the authorization chain the rest of the app reads (`users.role`, checked
  * by `src/middleware.ts`). Curators and admins are both city-wide (decided
  * 2026-08-15): there is no ward scope to assign. Every mutation here is
- * admin-only (PRD §7's permissions matrix): `src/middleware.ts` already
+ * admin-only (docs/architecture.md §7): `src/middleware.ts` already
  * 403s any non-admin session on the `/admin/*` route class, and each
  * mutator below re-asserts `actor.role === 'admin'` anyway — defense in
  * depth against a future non-route caller.
@@ -80,7 +80,7 @@ function assertAdmin(actor: { role: string }): void {
  * RESIDUAL RISK (accepted, not fixed here): two concurrent transactions
  * each revoking a DIFFERENT one of the last two admins can each read
  * count=2 before either commits, so both could pass this check and the pair
- * could still commit to zero admins. Admin churn is rare (PRD §14) and a
+ * could still commit to zero admins. Admin churn is rare and a
  * table-wide lock to close this completely was judged not worth the added
  * contention on every grant/revoke was judged not worth it;
  * `scripts/seed-admin.ts` is the recovery path for this low-probability race.
@@ -197,7 +197,7 @@ export interface ConsoleStats {
   pendingEoiCount: number;
 }
 
-/** The `/admin` console home's small overview line (IA §6.1) — deliberately just a few counts; the console is mostly navigation, not a dashboard. */
+/** The `/admin` console home's small overview line — deliberately just a few counts; the console is mostly navigation, not a dashboard. */
 export async function loadConsoleStats(): Promise<ConsoleStats> {
   const [roleCounts, [eoiRow]] = await Promise.all([
     db

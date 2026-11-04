@@ -7,8 +7,7 @@ import NotFoundKn from '../../src/pages/kn/404.astro';
 import ServerError from '../../src/pages/500.astro';
 
 /**
- * Task 23 — bilingual 404 + 500 error pages, IA/PRD's "helpful links back"
- * requirement. Container-rendered like tests/routes/legal.test.ts /
+ * Task 23 — bilingual 404 + 500 error pages and their "helpful links back". Container-rendered like tests/routes/legal.test.ts /
  * tests/routes/ward.test.ts (the latter is also the reference for asserting
  * a real HTTP status out of `container.renderToResponse`, since these pages
  * carry an explicit `Astro.response.status` set in their frontmatter).
@@ -50,7 +49,7 @@ async function renderPage(
   return { html, response };
 }
 
-describe('404 page (Task 23) — IA/PRD friendly not-found', () => {
+describe('404 page (Task 23) — friendly not-found', () => {
   it('EN: renders with status 404, noindex, lang="en", and links back to home/voter-faqs', async () => {
     const { html, response } = await renderPage(NotFoundEn, '/some/unknown/path');
 

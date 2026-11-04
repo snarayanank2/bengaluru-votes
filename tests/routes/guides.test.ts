@@ -12,8 +12,7 @@ const { JSDOM } = createRequire(import.meta.url)('jsdom') as {
 };
 
 /**
- * Task 21 — the six guide/explainer pages (IA §3.7-§3.12, PRD
- * §5.6/§5.7/§5.8/§5.9/§5.10/§5.17). Container-rendered, both languages,
+ * Task 21 — the six guide/explainer pages (content/pages/). Container-rendered, both languages,
  * mirroring tests/routes/home.test.ts's structure.
  *
  * app_settings is mocked (these pages' settings needs are simple key
@@ -37,7 +36,7 @@ import FindBooth from '../../src/features/pages/FindBooth.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -136,7 +135,7 @@ const NO_SETTINGS: Record<string, string | null> = {
   booth_lookup_url: null,
 };
 
-describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
+describe('Guide & explainer pages (Task 21)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
@@ -520,7 +519,7 @@ describe('Guide & explainer pages (Task 21) — IA §3.7-§3.12', () => {
       expect(html).toContain(WARD.nameEn);
     });
 
-    it('renders the directions link from the booth coordinates (spec §7)', async () => {
+    it('renders the directions link from the booth coordinates', async () => {
       vi.mocked(lookupBoothByEpic).mockResolvedValueOnce(BOOTH_RESULT);
 
       const { html } = await renderPage(FindBooth, 'en', '/voting-guide/find-booth', epicPost(EPIC));

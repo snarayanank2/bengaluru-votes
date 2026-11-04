@@ -1,6 +1,5 @@
 /**
- * `/admin` and the retired `/admin/roles` (Task 44, information-architecture.md
- * §6.1; PRD §7/§10/§11). Drives every request through the REAL middleware
+ * `/admin` and the retired `/admin/roles` (Task 44). Drives every request through the REAL middleware
  * (src/middleware.ts) composed with the real page twins via Astro's
  * container API — same technique as tests/routes/curator-ward.test.ts.
  *
@@ -30,7 +29,7 @@ import RolesRoute from '../../src/pages/admin/roles.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

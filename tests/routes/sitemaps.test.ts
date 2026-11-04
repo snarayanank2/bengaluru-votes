@@ -1,5 +1,5 @@
 /**
- * Sitemap generation (Task 57; architecture §7). Drives the REAL
+ * Sitemap generation (Task 57; architecture §8). Drives the REAL
  * `regenerateSitemaps` against a temp output directory (never the repo's
  * `public/`) and a real DB, same fixture/high-id-range convention as
  * tests/routes/candidate.test.ts / tests/routes/ward.test.ts.
@@ -15,7 +15,7 @@
  *     lastmod; a ward with zero candidates gets no <lastmod> at all rather
  *     than a fabricated now().
  *   - CANDIDATE VISIBILITY: a withdrawn candidate IS included — its
- *     /candidate/{slug} route never 404s (PRD §5.2, confirmed against
+ *     /candidate/{slug} route never 404s (architecture §8, confirmed against
  *     src/pages/candidate/[slug].astro), so there is no "non-renderable"
  *     candidate row for this module to filter out.
  */
@@ -32,7 +32,7 @@ import { regenerateSitemaps } from '../../src/lib/seo/sitemaps';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -163,7 +163,7 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
     expect(existsSync(path.join(outputDir, 'sitemap-kn.xml'))).toBe(true);
   });
 
-  describe('exclusions (architecture §7/§8 sitemap-exclusion list)', () => {
+  describe('exclusions (architecture §8 sitemap-exclusion list)', () => {
     // Path-prefix matching (not raw substring matching) on purpose: the
     // shared test DB accumulates candidate fixtures from OTHER test files
     // whose slugs can legitimately contain a substring like "admin" (e.g.
@@ -245,7 +245,7 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
     });
 
     it(
-      'a withdrawn candidate IS included — its /candidate/{slug} route is always 200, never 404 (PRD §5.2), ' +
+      'a withdrawn candidate IS included — its /candidate/{slug} route is always 200, never 404, ' +
         'so there is no "non-renderable" candidate status for the sitemap to exclude',
       () => {
         const block = extractUrlBlock(readSitemap('sitemap-en.xml'), `<loc>${SITE_ORIGIN}/candidate/${WITHDRAWN_SLUG}</loc>`);

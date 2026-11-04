@@ -1,13 +1,13 @@
 ---
 /**
  * `/account/submissions` (`/kn/account/submissions`) —
- * information-architecture.md §4.3, PRD §6.2/§6.3: a read-only list of the
+ * dormant (docs/architecture.md §15): a read-only list of the
  * signed-in citizen's own flag submissions with each one's current
  * pending/accepted/rejected status and (once resolved) the resolution
  * reason. GET only — see src/lib/account-flow.ts's `loadSubmissions` for
  * the query.
  *
- * SHARED OUTCOME (PRD §6.3): a flag is deduped server-side into one
+ * SHARED OUTCOME: a flag is deduped server-side into one
  * `flag_items` row per `(targetRef, status)` — two of THIS user's own
  * submissions against the same item (or, in principle, submissions from
  * different users collapsed into the same item) all read the SAME

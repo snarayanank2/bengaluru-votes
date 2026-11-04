@@ -31,7 +31,7 @@ import LoginKn from '../../src/pages/kn/login.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -127,7 +127,7 @@ async function getRealCode(destination: string): Promise<string> {
   return match[1]!;
 }
 
-describe('/login, /kn/login (Task 27) — IA §7.1, PRD §10', () => {
+describe('/login, /kn/login (Task 27)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
@@ -351,7 +351,7 @@ describe('/login, /kn/login (Task 27) — IA §7.1, PRD §10', () => {
       expect(html).toMatch(/<input type="checkbox" name="futureTools"\s*\/?>/);
       expect(html).not.toMatch(/name="futureTools"[^>]*checked/);
       // Not a required field — the sentence next to it is the consent act,
-      // there is no separate consent checkbox (PRD §10).
+      // there is no separate consent checkbox.
       expect(html).not.toMatch(/name="futureTools"[^>]*required/);
     });
   });

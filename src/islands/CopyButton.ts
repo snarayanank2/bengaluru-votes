@@ -1,7 +1,7 @@
 /**
  * CopyButton — progressive enhancement over readonly `<input>`/`<textarea>`
- * copy blocks on the partner kit page (`/partner/{slug}`, Task 48, IA
- * §3.19: the tagged link + each WhatsApp forward-text block). Every field
+ * copy blocks on the partner kit page (`/partner/{slug}`, Task 48:
+ * the tagged link + each WhatsApp forward-text block). Every field
  * this button targets is a real readonly input/textarea that already works
  * with zero JS (select-all + Ctrl/Cmd+C) — this only adds a one-tap
  * `navigator.clipboard.writeText` shortcut on top, plus a brief "Copied"

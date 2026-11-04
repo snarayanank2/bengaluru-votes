@@ -35,7 +35,7 @@ import * as sendModule from '../../src/lib/send/send';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -82,7 +82,7 @@ describe('src/lib/send/calendar.ts — dueSends (pure)', () => {
   });
 });
 
-describe('src/lib/send/calendar.ts — guardrailViolations (pure, PRD §9.2)', () => {
+describe('src/lib/send/calendar.ts — guardrailViolations (pure)', () => {
   it('a correctly-configured calendar (fixed C1..F1 offsets) never trips', () => {
     const settings = {
       roll_deadline: '2026-09-01',

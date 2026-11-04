@@ -1,7 +1,6 @@
 /**
  * POST /api/eoi — the "partner with us" expression-of-interest form's front
- * door (information-architecture.md §3.15; PRD §5.13/§6.3; architecture.md
- * §7/§13). THE ONE ANONYMOUS WRITE PATH on this platform: no session, no
+ * door (dormant — architecture.md §15). THE ONE ANONYMOUS WRITE PATH on this platform: no session, no
  * account, no per-user identity to rate-limit (src/lib/rate-limit.ts's
  * `eoi` case throws rather than pretend an account-keyed limit applies
  * here) — reCAPTCHA v3 (src/lib/recaptcha.ts) is the actual anti-bot gate,

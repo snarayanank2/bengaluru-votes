@@ -1,12 +1,12 @@
 /**
  * `/curator/candidate/{id}`, `/curator/candidate/new` (Task 36,
- * information-architecture.md §5.4; PRD §5.2/§9.1/§11; architecture §6).
+ * architecture §6).
  * Drives every request through the REAL middleware (src/middleware.ts)
  * composed with the real page twins via Astro's container API — same
  * technique as tests/routes/curator.test.ts.
  *
  * COVERAGE MAP:
- *   - SOURCE REQUIRED (PRD §11): a report-card field publish with a value
+ *   - SOURCE REQUIRED: a report-card field publish with a value
  *     but no source is rejected, nothing written.
  *   - STATUS CHANGE / NEW CANDIDATE: exercised end-to-end through the
  *     real POST handlers (the lib-level slug coverage lives in
@@ -35,7 +35,7 @@ import CandidateNewRoute from '../../src/pages/curator/candidate/new.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -194,7 +194,7 @@ async function resetFixtures(): Promise<void> {
   await db.delete(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARDS.map((w) => w.id)));
 }
 
-describe('/curator/candidate/{id}, /curator/candidate/new (Task 36) — IA §5.4', () => {
+describe('/curator/candidate/{id}, /curator/candidate/new (Task 36)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 

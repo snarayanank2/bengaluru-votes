@@ -1,5 +1,5 @@
 /**
- * `/robots.txt` (Task 57; architecture §7/§8). Allows everything except
+ * `/robots.txt` (Task 57; architecture §8). Allows everything except
  * the same exclusion set the sitemaps deliberately never enumerate
  * (`src/lib/seo/sitemaps.ts`'s module docstring): `/account/*`,
  * `/curator/*`, `/admin/*`, `/partner/*` (unlisted partner pages), `/api/*`,

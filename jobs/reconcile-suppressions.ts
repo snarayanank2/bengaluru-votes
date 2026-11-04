@@ -1,9 +1,8 @@
 #!/usr/bin/env tsx
 /**
  * Daily reconciliation of `suppressions` against SendGrid's own
- * suppression lists (Task 55; architecture §7: "a periodic reconciliation
- * of `suppressions` against SendGrid's own suppression list — the safety
- * net if a webhook event is ever lost", Task 53's bounce/complaint
+ * suppression lists (Task 55; dormant — architecture §15. The safety
+ * net if a webhook event is ever lost; Task 53's bounce/complaint
  * webhooks being the primary path).
  *
  * ENV-GATED, same graceful-skip posture as src/lib/send/sendgrid.ts: no

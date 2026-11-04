@@ -1,6 +1,6 @@
 /**
  * The campaign send path: given a user and a send code (W1..F1 —
- * architecture.md §7/§10, docs/prd.md §9.3), resolves which channels are
+ * dormant, architecture.md §15), resolves which channels are
  * eligible, honours suppressions BEFORE every send, renders the message,
  * dispatches it (or logs a no-op under `SENDS_DISABLED`), and writes exactly
  * one `campaign_sends` row per (code, userId, channel) — the send-once
@@ -20,14 +20,14 @@
  *      check exists so a re-run never even attempts the insert that
  *      `send_once_uq` would reject — the unique index is the backstop, not
  *      the primary mechanism.
- *   3. Suppression (architecture §7: "honoured before every send") — a
+ *   3. Suppression (honoured before every send) — a
  *      bounce/complaint/STOP on this exact contact+channel. Recorded as its
  *      own ledger status (`'suppressed'`) rather than silently skipped, so
  *      the audit trail shows WHY a user didn't get a message they were
  *      otherwise eligible for.
  *   4. Render + send.
  *
- * SENDS_DISABLED (architecture.md §14.2, the local-stack guard): when
+ * SENDS_DISABLED (architecture.md §15, the local-stack guard): when
  * `process.env.SENDS_DISABLED === 'true'`, no transport is called at all —
  * this function logs the code/userId/channel and writes the ledger row as
  * `'sent'` anyway. This is a deliberate choice, not an oversight: the
@@ -177,8 +177,7 @@ export async function sendToUser(
       logEvent('campaign_send_disabled', { code, userId: user.id, channel });
       status = 'sent';
     } else if (channel === 'email') {
-      // rendered.body is Markdown (templates.ts's email bodies, verbatim
-      // from docs/messages.md) — must be converted to HTML before it
+      // rendered.body is Markdown (templates.ts's email bodies) — must be converted to HTML before it
       // reaches SendGrid's text/html content field, or recipients see
       // literal `**`/`[text](url)` (Task 52 review finding).
       const html = renderEmailMarkdown(rendered.body);
@@ -187,8 +186,8 @@ export async function sendToUser(
     } else {
       const contentVars = contentVariablesFor(code, user.language, vars);
       const result = await sendWhatsAppTemplate(contact, rendered.templateSid!, contentVars);
-      // WhatsApp not yet onboarded -> 'not_configured' is expected (PRD
-      // §10/project-dependencies §3) and must NOT block the email channel
+      // WhatsApp not yet onboarded -> 'not_configured' is expected (dormant
+      // messaging, docs/architecture.md §15) and must NOT block the email channel
       // above, which is why this loop iterates independently per channel.
       status = result.ok && result.status === 'sent' ? 'sent' : 'failed';
     }

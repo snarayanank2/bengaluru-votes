@@ -54,7 +54,7 @@ async function renderBase(
   return normalize(html);
 }
 
-describe('Base layout (design-system.md §7.1/§7.2, IA §1)', () => {
+describe('Base layout (design-system.md §7.1/§7.2)', () => {
   let enHtml: string;
   let knHtml: string;
 

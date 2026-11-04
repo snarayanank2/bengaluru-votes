@@ -1,10 +1,10 @@
 ---
 /**
  * ExternalLinkOut — the "guided link-out" pattern used across the guide
- * pages (Task 21; design-system.md §7.3/§9): a primary-button-styled link
+ * pages (Task 21; design-system.md §7.3/§7.4): a primary-button-styled link
  * to an official EC/CEO-Karnataka process (roll lookup, Form 6/8, booth
  * finder) that several of this platform's URLs depend on but don't own
- * (dependency register §4.8 — "official link pending").
+ * ("official link pending" until an admin sets the URL).
  *
  * `href` is caller-resolved (usually `getSetting('some_url_key')`) rather
  * than hardcoded here — see e.g. src/features/pages/CheckRegistration.astro.
@@ -17,7 +17,7 @@
  * button's identity (a link that will leave this platform) doesn't change
  * once the URL is filled in; only the destination does.
  *
- * design-system.md §7.13: "Icons never appear without a text label except
+ * design-system.md §8: "Icons never appear without a text label except
  * the close X and external-link glyph, both aria-labeled" — so the glyph
  * SVG below carries its own `role="img" aria-label` rather than relying on
  * visually-hidden companion text.

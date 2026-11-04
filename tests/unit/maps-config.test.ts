@@ -1,6 +1,6 @@
 /**
- * Coverage for src/lib/maps-config.ts (spec §8). The kill switch and the
- * "unset key degrades to a no-op" rule from CLAUDE.md both live here.
+ * Coverage for src/lib/maps-config.ts (architecture §16). The kill switch and the
+ * "unset key degrades to a no-op" rule from AGENTS.md both live here.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mapsConfig } from '../../src/lib/maps-config';

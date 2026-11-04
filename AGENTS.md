@@ -12,17 +12,14 @@ This serves a real election. Demo/fixture data is deliberately unmistakable as f
 
 ## The docs
 
-- `docs/overview.md` — stakeholder summary. Start here for the *why*: what the platform does, the five roles, the locked decisions, the dependencies, and §2's standing risk that the candidate data may not be obtainable at all.
-- `docs/milestones.md` — **the plan of work**: fourteen milestones, what each ships, how it is tested, what it waits on. It tracks the **Milestones** tab of the project tracker sheet, which is the source; the doc is the reading of it. Replaced a nine-milestone plan on 2026-08-15, which had replaced `docs/project-plan.md`'s phases the day before — **every milestone number changed both times**, so treat any `M<n>` written before 2026-08-15 as pointing at the wrong milestone (`milestones.md` §17 maps them). When you need to know what is being built next and in what order, this wins.
-- `docs/architecture.md` — the technical design. Section numbers referenced throughout the source (`architecture §5`, `§9`, `§13`) are load-bearing; code comments point at them.
-- `docs/election-timelines.md` — what the election calendar allows, as offsets from **N**, the announcement. Deliberately self-contained and cited rather than copied: anything date-dependent points here so one update at N propagates. No date in it is confirmed.
+- `docs/architecture.md` — the technical design: what runs where, caching, data model, API and auth, SEO, bilingual text, jobs, security, deployment. §15 lists the **dormant code slated for removal** (registration, OTP, campaign sends, webhooks, partner/EOI, Sentry, …); nothing in it is a feature. §16 is external dependencies and known gaps. Section numbers are load-bearing: code comments cite `architecture §N`.
+- `docs/candidate-data.md` — candidate-data operations: bulk loading, AI extraction, transcription, curation, candidate status.
+- `docs/design-system.md` — visual language, neutrality rules, components and the UI completion checklist.
+- `docs/election-timelines.md` — what the election calendar allows, as offsets from **N**, the announcement. Anything date-dependent cites it. No date in it is confirmed.
 - `docs/ksec-data-risk.md` — whether candidate affidavit data can be obtained at all. KSEC publishes no filled affidavits; this is the acquisition options and the risk. Read it before assuming candidate data exists.
-- `docs/messages.md` (the seven citizen sends, EN and KN), `docs/design-system.md`, `docs/project-dependencies.md`.
-- `docs/gcp.md` — Google Cloud credential provisioning (Geocoding, Maps JS, Places, reCAPTCHA, GA4; its Custom Search section is now dead — candidate news links were dropped 2026-08-15 and removed from the code 2026-10-13): what to create in which console and which env var it becomes. `deploy/runbook.md`'s env var table is the authority on what each variable does at runtime; `gcp.md` is how the values are obtained.
+- `docs/gcp.md` — Google Cloud provisioning (Geocoding, Maps JS, Places, reCAPTCHA, GA4): what to create in which console and which env var it becomes. `deploy/runbook.md`'s env var table is the authority on what each variable does at runtime.
 
-**Four documents were deleted on 2026-08-15, pending regeneration:** `prd.md` (product requirements — the former tiebreaker on ambiguity), `information-architecture.md` (the canonical route map), `gtm-plan.md` (campaign calendar) and `roles.md` (staffing). They were built on the superseded milestone structure and are being rewritten rather than renumbered. `overview.md` was deleted with them and has since been rewritten against the fourteen milestones — treat it as current. The other three are recoverable from git history (`git log --diff-filter=D -- docs/prd.md`, then `git show <commit>^:docs/prd.md`); `roles.md` was never committed and is gone from the repo.
-
-**Until they return, `docs/overview.md`, `docs/milestones.md` and `docs/architecture.md` are the plan of record, and anything not stated in them or in the source is not written down.** Do not invent a requirement to fill the gap — ask. `docs/review.md` predates the deletions and refers to all five; treat it as history.
+Anything not stated in these docs or in the source is not written down. Do not invent a requirement to fill the gap — ask.
 
 Source comments cite "Task NN" throughout — historical task briefs, mostly no longer in the repo. Treat them as provenance, not as files to find.
 
@@ -188,7 +185,7 @@ Register/Login (fallback page `/login`) and Flag are **modals** that overlay wit
 
 Anonymous citizen (no account, most traffic, read-only) · Registered citizen · Transcriber · Data curator (**city-wide**, no ward or zone assignment) · Admin (city-wide). `roleEnum` in the schema is the authority on what exists today; `src/middleware.ts` is the authority on what each can do. There is no written permissions matrix at present.
 
-**Transcriber** has its own area, `/transcribe` (built 2026-10-13; `docs/milestones.md` §10, `src/lib/transcribe.ts`). The middleware admits a transcriber or an admin to it; a curator gets 403. Beyond that it is authorized by assignment rather than by role: every read and write checks "does an open, unexpired assignment with this id belong to this caller", and anything else is a 404, for an admin too. There is one Start control and no list: do not add search, filters or any way to choose an affidavit. A hold lasts 10 minutes. **Admins** also own `/admin/affidavits`: bulk upload, the needs-matching list and the failed list. Curators work the same needs-matching list at `/curator/matching`; uploading, retrying and discarding are admin-only.
+**Transcriber** has its own area, `/transcribe` (built 2026-10-13; `docs/candidate-data.md` §4, `src/lib/transcribe.ts`). The middleware admits a transcriber or an admin to it; a curator gets 403. Beyond that it is authorized by assignment rather than by role: every read and write checks "does an open, unexpired assignment with this id belong to this caller", and anything else is a 404, for an admin too. There is one Start control and no list: do not add search, filters or any way to choose an affidavit. A hold lasts 10 minutes. **Admins** also own `/admin/affidavits`: bulk upload, the needs-matching list and the failed list. Curators work the same needs-matching list at `/curator/matching`; uploading, retrying and discarding are admin-only.
 
 ## Gotchas that bite silently
 
@@ -197,7 +194,7 @@ Anonymous citizen (no account, most traffic, read-only) · Registered citizen ·
 - **The ward map (Google Maps JS API, `src/islands/WardMap.ts`) needs three env vars to render at all**, not one: `MAPS_ENABLED` exactly `'true'` *and* a non-empty `GOOGLE_MAPS_BROWSER_KEY` *and* a non-empty `GOOGLE_MAPS_MAP_ID` (`src/lib/maps-config.ts`'s `mapsConfig().enabled`). Miss any one of the three and the map silently doesn't mount — `Ward.astro` renders the server-side fallback text instead, with no error anywhere. The same key also gates Places Autocomplete on the home-page ward-lookup form.
 - **`/data/gba.geojson` is not in `public/`.** Production serves it from the nginx static volume, populated by the `static-init` one-shot, which **does not re-run** on `up -d` once it has succeeded — stale CSS/JS after a deploy usually means it needs `docker compose run --rm static-init`.
 - Unset vendor keys (`SENDGRID_*`, `TWILIO_*`, `GOOGLE_*`, `ANTHROPIC_API_KEY`, `RECAPTCHA_*`, `SENTRY_DSN`) each degrade to a documented no-op rather than an error. `deploy/runbook.md` has the exhaustive table with what each one's absence costs.
-- **No off-box backup exists.** The nightly `scripts/backup.sh` cron fails every night by design until a restic target is chosen (`architecture.md` §10, dependency register §6.9). Losing the box's disk loses everything. Don't read the working backup *mechanism* as a working backup.
+- **No off-box backup exists.** The nightly `scripts/backup.sh` cron fails every night by design until a restic target is chosen (`architecture.md` §10, §16). Losing the box's disk loses everything. Don't read the working backup *mechanism* as a working backup.
 
 ## Fixed decisions (don't relitigate without asking)
 
@@ -220,7 +217,7 @@ Keep the primary checkout for integration and release work. Before merging or ch
 
 Sessions may run tests and local servers independently, but use distinct ports, databases, and temporary files where applicable. Never point destructive test commands at another session's database or at the production database.
 
-Open questions: `docs/milestones.md` §17 (what the plan and the tracker still disagree about), `docs/election-timelines.md` §5 (what nobody has confirmed about the calendar), `docs/ksec-data-risk.md` §6 (whether the candidate data can be got at all). The consolidated product open-questions list went with `prd.md` and has not been reconstructed — check the three above before inventing an answer, and ask if it is not there.
+Open questions: `docs/architecture.md` Open questions (backup target, monitoring, retention period), `docs/candidate-data.md` §7 (candidate-data operations), `docs/election-timelines.md` §5 (what nobody has confirmed about the calendar), `docs/ksec-data-risk.md` §6 (whether the candidate data can be got at all). Check these before inventing an answer, and ask if it is not there.
 
 ## Learning from corrections
 
@@ -250,7 +247,7 @@ After any UI change, use the `agent-browser` skill/CLI to inspect the live page 
 
 **Candidate identity and photos:** Use the report-card full-name and party fields, including their Kannada translations, everywhere a candidate identity is displayed or searched. Do not add separate Kannada name/party inputs. The candidate editor has no election-status or affidavit-upload sections, for either curators or admins. Reject direct status/upload submissions there. Use one bottom confirmation and Save and publish action for changed report-card fields and ward changes together; never mark unchanged fields as checked. Do not offer candidate photo uploads: photos are not expected. Preserve existing translations when migrating legacy data.
 
-**Anonymous candidate reports (2026-11-02):** Keep reporting free of login, OTP and contact requirements. Use layered CAPTCHA, atomic rate limits, duplicate suppression and per-submission spam controls. Counts are submissions, not verified people or evidence. Never publish automatically or close legitimate reports merely because another submission on the same field is spam. Anonymous visitors receive confirmation only; signed-in reports retain account history. Abuse metadata cleanup runs independently of general retention. See `docs/superpowers/specs/2026-11-02-anonymous-flags-design.md` and `deploy/runbook.md`.
+**Anonymous candidate reports (2026-11-02):** Keep reporting free of login, OTP and contact requirements. Use layered CAPTCHA, atomic rate limits, duplicate suppression and per-submission spam controls. Counts are submissions, not verified people or evidence. Never publish automatically or close legitimate reports merely because another submission on the same field is spam. Anonymous visitors receive confirmation only; signed-in reports retain account history. Abuse metadata cleanup runs independently of general retention. See `docs/architecture.md` §6 (Candidate flags), §7 (Anonymous candidate reports), §13 (accepted limitations) and `deploy/runbook.md`.
 
 **Transcriber confirmation and timeout (2026-11-02):** Use one “I checked this against the affidavit” checkbox for the entire form. Require it on the server before publishing all fields together. Each assignment lasts 10 minutes, then becomes available automatically; expired submissions cannot publish.
 

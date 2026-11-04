@@ -1,6 +1,6 @@
 /**
  * Coverage for src/pages/ward/[id]/boundary.json.ts — the per-ward boundary
- * GeoJSON the map island fetches (spec §4). This route is PUBLIC and CACHED
+ * GeoJSON the map island fetches (docs/architecture.md §5). This route is PUBLIC and CACHED
  * by nginx's general `location /` block, so the cache-safety rule of
  * architecture §5 applies: it must never set a cookie.
  */

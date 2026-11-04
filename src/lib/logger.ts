@@ -152,8 +152,8 @@ export const logger = pino({
 });
 
 /**
- * Scrubs a Sentry event before it leaves the box (architecture §13:
- * "server-side scrubbing of contact and address fields"). Exported
+ * Scrubs a Sentry event before it leaves the box (Sentry is dormant —
+ * architecture §15). Exported
  * un-bound so tests can call it directly against a fixture event without a
  * live DSN or a real `Sentry.init` call.
  */
@@ -176,7 +176,7 @@ export function initSentry(): void {
 
   Sentry.init({
     dsn,
-    // Default PII capture off (architecture §13) — never send IP/cookies/
+    // Default PII capture off (architecture §13, §15) — never send IP/cookies/
     // request bodies automatically; only what our own capture calls pass.
     sendDefaultPii: false,
     beforeSend: sentryBeforeSend,

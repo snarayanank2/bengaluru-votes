@@ -26,7 +26,7 @@ import {
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -190,7 +190,7 @@ describe('src/lib/otp.ts', () => {
       // issued before the cooldown started refusing new sends) still
       // verifies. verifyOtp only ever considers the single most recent
       // unconsumed row per destination — "the earlier code stays valid"
-      // (architecture §13) means that one current code, not every
+      // (dormant OTP, architecture §15) means that one current code, not every
       // historical send.
       const mostRecentCode = codes[codes.length - 1]!;
       const verify = await verifyOtp(D.hour, mostRecentCode);
@@ -255,7 +255,7 @@ describe('src/lib/otp.ts', () => {
       expect(rows).toHaveLength(0);
     });
 
-    it("a 1/minute-cooldown-blocked request ('already_sent') does NOT consume the global otp_send budget (cooldown-then-budget ordering, architecture §13 'cost amplification')", async () => {
+    it("a 1/minute-cooldown-blocked request ('already_sent') does NOT consume the global otp_send budget (cooldown-then-budget ordering)", async () => {
       await insertFixtureRow({ destination: D.budgetNotConsumedOnCooldown, code: '999999', createdAt: new Date() });
 
       const before = await otpSendBudgetCount();

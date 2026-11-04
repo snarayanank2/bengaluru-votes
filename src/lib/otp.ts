@@ -1,7 +1,6 @@
 /**
  * The single OTP mechanism behind ALL authentication (citizen, curator,
- * admin — PRD §10 "One OTP mechanism for all roles") — architecture.md §7
- * "OTP request/verify" and §13 "OTP" (security review, decided 2026-07-17).
+ * admin) — dormant, architecture.md §15.
  * No passwords, no 2FA, ever.
  *
  * ============================================================================
@@ -34,7 +33,7 @@
  *
  * SEND-THEN-PERSIST: the code is generated and sent BEFORE the otp_codes
  * row is written. A send that fails (SendGrid error, or WhatsApp's expected
- * `not_configured` state — PRD §10, WhatsApp isn't onboarded yet) leaves NO
+ * `not_configured` state — WhatsApp isn't onboarded yet) leaves NO
  * row behind: nothing was delivered anywhere, so there's no valid code to
  * protect, and leaving a phantom row would falsely occupy the caller's next
  * cooldown window.
@@ -70,21 +69,21 @@ export type VerifyOtpResult =
   | { ok: true; userId: number | null }
   | { ok: false; reason: 'expired' | 'invalid' | 'locked' };
 
-/** architecture.md §13: "5 verify attempts per code, then the code is invalidated." */
+/** 5 verify attempts per code, then the code is invalidated. */
 const MAX_VERIFY_ATTEMPTS = 5;
 
-/** architecture.md §13: "10-minute expiry". */
+/** 10-minute expiry. */
 const CODE_TTL_MS = 10 * 60 * 1000;
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
-/** architecture.md §13: "5/hour" per destination. */
+/** 5/hour per destination. */
 export const OTP_HOURLY_LIMIT = 5;
 
 /**
- * Per-destination daily cap (architecture.md §13: "a daily cap"). A rolling
+ * Per-destination daily cap (a daily cap). A rolling
  * 24h window, not a calendar day — consistent with the minute/hour windows
  * above and simpler to reason about than a UTC-midnight reset.
  */
@@ -99,7 +98,7 @@ function otpEmailHtml(code: string): string {
   return `<p>Your Bengaluru Votes verification code is <strong>${code}</strong>. It expires in 10 minutes.</p>`;
 }
 
-/** The approved WhatsApp OTP template SID (Twilio Content API) — unset until WhatsApp onboarding completes (PRD §10). */
+/** The approved WhatsApp OTP template SID (Twilio Content API) — unset until WhatsApp onboarding completes. */
 const WHATSAPP_OTP_TEMPLATE_SID = process.env.TWILIO_OTP_TEMPLATE_SID ?? '';
 
 /**
@@ -182,7 +181,7 @@ export async function requestOtp(
   } else {
     const result = await sendWhatsAppTemplate(destination, WHATSAPP_OTP_TEMPLATE_SID, { '1': code });
     // 'not_configured' is the expected state until WhatsApp onboarding
-    // completes (PRD §10) — surfaced as 'send_failed' so the endpoint can
+    // completes — surfaced as 'send_failed' so the endpoint can
     // tell the caller to use email instead.
     sendOk = result.ok && result.status === 'sent';
   }

@@ -1,11 +1,11 @@
 /**
  * Minimal Twilio WhatsApp Business API template-message wrapper — the
- * WhatsApp OTP transport behind src/lib/otp.ts (architecture.md §7 API
- * surface: "WhatsApp OTP when templates approve").
+ * WhatsApp OTP transport behind src/lib/otp.ts (dormant —
+ * architecture.md §15).
  *
  * EXPECTED STATE FOR ALL OF PHASE 0/1: WhatsApp is not onboarded yet — no
- * Twilio credentials, no approved Authentication-category template (PRD
- * §10: "Sending an OTP over WhatsApp requires completed Meta onboarding and
+ * Twilio credentials, no approved Authentication-category template (
+ * "Sending an OTP over WhatsApp requires completed Meta onboarding and
  * an approved template ... until that path completes ... login is
  * email-OTP only"). `not_configured` is therefore the normal return value
  * today, not a failure condition — this function returns it cleanly rather

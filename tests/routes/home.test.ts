@@ -15,7 +15,7 @@ import Home from '../../src/features/pages/Home.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -87,7 +87,7 @@ async function renderHome(lang: Lang): Promise<string> {
   return normalize(html);
 }
 
-describe('Home page (/, /kn/) — IA §3.1, PRD §5.1/§5.7', () => {
+describe('Home page (/, /kn/)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });

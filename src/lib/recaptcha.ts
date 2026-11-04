@@ -1,5 +1,5 @@
 /**
- * reCAPTCHA v3 server-side verification (PRD §5.13/§6.3; architecture.md §7
+ * reCAPTCHA v3 server-side verification (architecture.md §7
  * anonymous writes are protected by reCAPTCHA v3 — server-verified token,
  * action, and score. This is the ANTI-BOT protection for `/api/eoi` and
  * `/api/issue-votes`; the middleware's Origin/Sec-Fetch

@@ -34,7 +34,7 @@
  * here, not less.
  * ============================================================================
  *
- * A daily geocode budget (architecture.md §13; dependency register §6.5)
+ * A daily geocode budget (architecture.md §13, §16)
  * stops calls once exhausted — see the `budget_exhausted` result below,
  * backed by src/lib/budgets.ts's shared counter.
  *
@@ -92,7 +92,7 @@ export type WardLookupResult =
  */
 export type WardPointResult = { kind: 'ward'; wardId: number } | { kind: 'out_of_coverage' };
 
-/** Daily cap on Google Geocoding API calls (architecture.md §13 / dependency §6.5). */
+/** Daily cap on Google Geocoding API calls (architecture.md §13, §16). */
 export const GEOCODE_DAILY_BUDGET = Number(process.env.GEOCODE_DAILY_BUDGET ?? 2000);
 
 const GEOCODE_ENDPOINT = 'https://maps.googleapis.com/maps/api/geocode/json';

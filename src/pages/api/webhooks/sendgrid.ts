@@ -3,7 +3,7 @@
  *
  * Writes `bounce`/`spamreport` events to the suppression list
  * (`src/lib/suppressions.ts`) so `src/lib/otp.ts`/the campaign send path
- * (architecture.md §7 "suppressions honoured before every send") never
+ * (dormant — architecture.md §15) never
  * sends to a contact that has already bounced or complained.
  *
  * AUTH: signature only — this route carries no session/CSRF (Task 53;

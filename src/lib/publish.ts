@@ -71,14 +71,14 @@ export function decideTranslationStatus(
 }
 
 // ---------------------------------------------------------------------------
-// Candidate core fields + lifecycle status (Task 36; architecture §6;
-// PRD §5.2/§9.1) — name/party/photo/status.
+// Candidate core fields + lifecycle status (Task 36; architecture §6)
+// — name/party/photo/status.
 // ---------------------------------------------------------------------------
 
 /**
  * Strips diacritics and anything non-ASCII-alphanumeric from `name`,
  * lowercases it, and collapses the rest to single hyphens — the "name-slug"
- * half of a candidate slug (IA §3.4). Never touches the ward-id prefix; the
+ * half of a candidate slug. Never touches the ward-id prefix; the
  * caller composes the two.
  */
 function slugifyName(name: string): string {
@@ -91,7 +91,7 @@ function slugifyName(name: string): string {
 }
 
 /**
- * Generates the candidate slug `{wardId}-{name-slug}` (IA §3.4: slugs are
+ * Generates the candidate slug `{wardId}-{name-slug}` (slugs are
  * unique CITY-WIDE, and the ward prefix is what keeps two same-named
  * candidates in different wards from colliding). Appends `-2`, `-3`, … on a
  * collision — e.g. two same-named candidates filed in the SAME ward.
@@ -182,7 +182,7 @@ export async function createCandidateTx(tx: Tx, input: CreateCandidateInput): Pr
 }
 
 // ---------------------------------------------------------------------------
-// Candidate stances on ward issues (IA §5.4) — per-issue candidate positions.
+// Candidate stances on ward issues — per-issue candidate positions.
 // ---------------------------------------------------------------------------
 
 export type PublishStanceInput = {

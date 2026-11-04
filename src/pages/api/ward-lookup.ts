@@ -1,6 +1,5 @@
 /**
- * POST /api/ward-lookup — address or position → single ward (PRD §5.1;
- * architecture.md §7 endpoint table, §11 degradation).
+ * POST /api/ward-lookup — address or position → single ward (architecture.md §7 endpoint table, §11 degradation).
  *
  * TWO input modes, both resolved via src/lib/geocode.ts:
  *  - `{ address }`  — Google geocode, cached, budget-guarded, then
@@ -13,7 +12,7 @@
  * The modes fail independently, which is the point: the coordinate mode
  * calls nothing, so it is the only path that still answers when geocoding
  * is `unavailable`. "Out of coverage" is a normal 200 answer, not an error
- * (PRD §5.1), and this endpoint never 500s just because Google or the
+ *, and this endpoint never 500s just because Google or the
  * budget misbehaved.
  *
  * PINCODE LOOKUP WAS REMOVED 2026-08-14 — do not reintroduce it without

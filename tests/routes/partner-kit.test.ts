@@ -1,6 +1,6 @@
 /**
- * Partner kit (`/partner/{slug}`, `/kn/partner/{slug}`) — Task 48, IA
- * §3.19, PRD §5.12, gtm-plan.md §5. Drives every request through the REAL
+ * Partner kit (`/partner/{slug}`, `/kn/partner/{slug}`) — Task 48; dormant,
+ * architecture.md §15. Drives every request through the REAL
  * route twins + a real DB, same technique as tests/routes/candidate.test.ts.
  *
  * COVERAGE MAP:
@@ -43,7 +43,7 @@ import { onRequest } from '../../src/middleware';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -122,7 +122,7 @@ async function renderPartnerKitThroughMiddleware(lang: Lang, slug: string): Prom
   return (await onRequest(context, next)) as Response;
 }
 
-describe('Partner kit (/partner/{slug}, /kn/partner/{slug}) — IA §3.19, PRD §5.12', () => {
+describe('Partner kit (/partner/{slug}, /kn/partner/{slug})', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 
@@ -160,7 +160,7 @@ describe('Partner kit (/partner/{slug}, /kn/partner/{slug}) — IA §3.19, PRD �
     });
   });
 
-  describe('tagged link (PRD §5.12)', () => {
+  describe('tagged link', () => {
     it('the readonly input carries the exact {SITE_ORIGIN}/?src={slug} tagged link', async () => {
       const html = normalize(await (await renderPartnerKit('en', SLUG)).text());
       const expectedLink = `${SITE_ORIGIN}/?src=${SLUG}`;
@@ -209,7 +209,7 @@ describe('Partner kit (/partner/{slug}, /kn/partner/{slug}) — IA §3.19, PRD �
     });
   });
 
-  describe('neutrality statement (PRD §5.12)', () => {
+  describe('neutrality statement', () => {
     it.each(['en', 'kn'] as const)('%s: renders the neutrality statement', async (lang) => {
       const html = normalize(await (await renderPartnerKit(lang, SLUG)).text());
       expect(html).toContain(t(lang, 'partnerKit.neutrality.statement'));
@@ -238,7 +238,7 @@ describe('Partner kit (/partner/{slug}, /kn/partner/{slug}) — IA §3.19, PRD �
     });
   });
 
-  describe('noindex (unlisted, IA §3.19)', () => {
+  describe('noindex (unlisted)', () => {
     it('Base renders a noindex robots meta tag', async () => {
       const html = normalize(await (await renderPartnerKit('en', SLUG)).text());
       expect(html).toContain('<meta name="robots" content="noindex">');

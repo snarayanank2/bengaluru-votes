@@ -1,7 +1,7 @@
 /**
  * In-memory ward point-in-polygon over the static ward boundary GeoJSON.
  *
- * Per architecture.md §6 ("no PostGIS"), ward geometry lookups do NOT go
+ * Per architecture.md §2 ("no PostGIS"), ward geometry lookups do NOT go
  * through the database. `data/gba.geojson` (369 features) is parsed once,
  * lazily, into an in-process index, and this module answers "which ward
  * contains this lat/lng" purely in memory.
@@ -147,7 +147,7 @@ function requireLoaded(): { features: WardFeatureIndex[]; byId: Map<number, Ward
 /**
  * Return the wards.id whose polygon contains (lat, lng), or null if the
  * point falls outside EVERY GBA ward polygon — the explicit out-of-coverage
- * answer (PRD §5.1).
+ * answer.
  *
  * NOTE the parameter order: (lat, lng), matching how coordinates are
  * conventionally spoken/written (and how most geocoding APIs return them).

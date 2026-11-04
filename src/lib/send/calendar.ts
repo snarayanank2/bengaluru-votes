@@ -1,6 +1,6 @@
 /**
- * The campaign calendar runner (Task 54; docs/prd.md §9.3, §9.2; IA's send
- * calendar). Fires the seven scheduled campaign sends (W1 excepted — that
+ * The campaign calendar runner (Task 54; dormant —
+ * docs/architecture.md §15). Fires the seven scheduled campaign sends (W1 excepted — that
  * one fires from the registration flow, src/lib/auth-flow.ts, not here)
  * over the election timeline. There is no per-ward readiness gate (dropped
  * 2026-08-15): every due code goes to every ward at once.
@@ -15,7 +15,7 @@
  *      an admin who hasn't set `scrutiny_complete_date` yet just means L1
  *      isn't scheduled yet, not that the job should crash).
  *
- *   2. THE 48H GUARDRAIL (PRD §9.2) — the election-silence rule: nothing
+ *   2. THE 48H GUARDRAIL — the election-silence rule: nothing
  *      may go out within 48h of poll close (electorally, "poll close" is
  *      taken as the parsed `election_date` itself — this runner doesn't
  *      know the exact end-of-polling clock time, only the date). With the
@@ -28,15 +28,14 @@
  *      rather than silently sending or silently dropping.
  *
  *   3. `runCampaign` — the DB-touching orchestrator: resolves the audience
- *      AT SEND TIME (PRD §9: not a snapshot taken when the anchor was set),
+ *      AT SEND TIME (not a snapshot taken when the anchor was set),
  *      builds each code's template vars per user (language + home ward
  *      determine them), and calls `sendToUser` once per eligible user.
  *
- * F1's CONTENT GAP (booth name/address + poll open/close time, docs/
- * messages.md §10): this platform has no per-citizen booth resolution (a
+ * F1's CONTENT GAP (booth name/address + poll open/close time): this platform has no per-citizen booth resolution (a
  * citizen's home ward is known; their exact polling booth is not — `booths`
- * is a ward-keyed list, often many rows per ward, and PRD §15/§17 tracks
- * "booth-level data" as a still-unresolved external dependency) and no
+ * is a ward-keyed list, often many rows per ward, and
+ * booth-level data is an unresolved external dependency) and no
  * poll-hours fact anywhere in the schema (poll hours are a single citywide
  * constant, not stored). Rather than invent either (a false "your booth is
  * X" for a ward with several real booths would be actively misleading, and
@@ -137,7 +136,7 @@ export function dueSends(now: Date, settings: CalendarSettings): SendCode[] {
 }
 
 /**
- * The 48h election-silence guardrail (PRD §9.2): poll close is taken as the
+ * The 48h election-silence guardrail: poll close is taken as the
  * parsed `election_date`. Any scheduled send (due or not) whose fireAt
  * falls strictly after `pollClose - 48h` — i.e. inside the 48h freeze
  * window, or after poll close itself — is a violation. Returns `[]` when
@@ -183,7 +182,7 @@ function wardDisplayName(ward: { nameEn: string; nameKn: string }, lang: Lang): 
   return lang === 'kn' ? ward.nameKn : ward.nameEn;
 }
 
-/** Active (filed/contesting) candidate statuses — the same set L1's "candidates filed so far" count is scoped to (PRD §9.3/§5.2: withdrawn/rejected candidates never count). */
+/** Active (filed/contesting) candidate statuses — the same set L1's "candidates filed so far" count is scoped to (withdrawn/rejected candidates never count). */
 const ACTIVE_STATUSES = ['filed', 'contesting'] as const;
 
 /** Per-run memoized DB lookups shared across every user's vars build, so a ward/candidate-count/booth query happens once per ward per run, not once per user. */
@@ -301,7 +300,7 @@ async function buildVars(code: SendCode, user: SendToUserUser, ctx: BuildContext
       if (!ward) return undefined;
       // reportCardsLink (email) and candidatesLink (whatsapp) are the same
       // section — the ward's inline candidate list, each entry linking to its own
-      // report card (docs/messages.md §7's WhatsApp variables line).
+      // report card (dormant template; docs/architecture.md §15).
       const candidatesLink = absoluteUrl(user.language, `/ward/${wardId}`);
       return {
         ward: wardDisplayName(ward, user.language),
@@ -418,7 +417,7 @@ export async function runCampaign(now: Date): Promise<CampaignRunSummary> {
     }
 
     try {
-      // Audience resolved fresh on every code, at send time (PRD §9) — a
+      // Audience resolved fresh on every code, at send time — a
       // user who registered between runs (or between two codes in the same
       // run) is included.
       const audienceRows = await db

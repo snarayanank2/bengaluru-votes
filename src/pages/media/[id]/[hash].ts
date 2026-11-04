@@ -2,8 +2,8 @@
  * GET /media/{id}/{hash} — public, immutable, content-hashed media serving
  * (architecture §5-§7, §13; Task 35).
  *
- * PUBLIC: candidate photos and affidavit PDFs are public sources (PRD
- * §5.2) — this route reads no session/cookie, and is not gated by role.
+ * PUBLIC: candidate photos and affidavit PDFs are public sources
+ * — this route reads no session/cookie, and is not gated by role.
  *
  * The `{hash}` path segment is the first 16 hex chars of the stored row's
  * sha256, i.e. the URL IS the cache key: an edit produces a new

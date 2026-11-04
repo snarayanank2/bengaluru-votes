@@ -12,7 +12,7 @@ import WardKn from '../../src/pages/kn/ward/[id].astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -144,7 +144,7 @@ async function deleteWardCandidates(): Promise<void> {
   await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
 }
 
-describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1', () => {
+describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
@@ -273,7 +273,7 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
     });
   });
 
-  describe('register-for-updates slot (design-system.md §7.8, cache invariant)', () => {
+  describe('register-for-updates slot (design-system.md §11, cache invariant)', () => {
     it.each(['en', 'kn'] as const)(
       '%s: renders the anonymous "Register for updates" control with data-register-slot/data-ward-id',
       async (lang) => {
@@ -425,7 +425,7 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id}) — IA §3.2, PRD §5.1',
     });
   });
 
-  describe('map container (spec §3, §8)', () => {
+  describe('map container (architecture §4, §16)', () => {
     const MAPS_KEYS = ['MAPS_ENABLED', 'GOOGLE_MAPS_BROWSER_KEY', 'GOOGLE_MAPS_MAP_ID'] as const;
     let saved: Record<string, string | undefined>;
 

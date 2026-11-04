@@ -1,6 +1,6 @@
 /**
  * Renders one outbound message (OTP + the 7 campaign codes — architecture.md
- * §7 "campaign_sends send-once", docs/messages.md) for a given language and
+ * §7 "campaign_sends send-once"; dormant, docs/architecture.md §15) for a given language and
  * channel, from the structured copy in `./templates.ts`.
  *
  * Template selection is (code, lang, channel); each template's numbered
@@ -118,7 +118,7 @@ export function contentVariablesFor(
 
 /**
  * Converts an EMAIL body's Markdown — every `EmailTemplate.bodyTemplate` in
- * templates.ts is Markdown copied verbatim from docs/messages.md (**bold**,
+ * templates.ts is Markdown (**bold**,
  * `- bullets`, `[text](url)`, backtick-code) — into HTML, for send.ts to pass
  * as SendGrid's `text/html` content. Without this conversion a recipient
  * sees literal `**`/`[..](..)` characters instead of formatting (Task 52
@@ -132,7 +132,7 @@ export function contentVariablesFor(
  * absolute `https://...` URLs baked into `vars`, not root-relative). Calling
  * `marked` directly with no `sanitize`/raw-HTML option enabled is safe here
  * for the same reason it's safe in render-content.ts: the Markdown is
- * repo-authored (templates.ts/docs/messages.md), never user input.
+ * repo-authored (templates.ts), never user input.
  */
 export function renderEmailMarkdown(markdown: string): string {
   return marked.parse(markdown, { gfm: true, async: false }) as string;

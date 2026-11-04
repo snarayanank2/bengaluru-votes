@@ -58,7 +58,7 @@ function isWardDetailPath(pathname: string): boolean {
  *
  * `script-src` is STRICT everywhere: `'self'` + this request's nonce + the
  * GA loader host (`www.googletagmanager.com`) + the Google Maps Platform
- * hosts (`maps.googleapis.com`, `maps.gstatic.com`, spec §8 — see the
+ * hosts (`maps.googleapis.com`, `maps.gstatic.com`, architecture.md §13 — see the
  * `MAPS_HOSTS` comment inside the function body) — NO `'unsafe-inline'` on
  * scripts (architecture §13). The two inline scripts this codebase ever
  * renders (the `?src` attribution writer and the GA config snippet, both in
@@ -91,13 +91,11 @@ function isWardDetailPath(pathname: string): boolean {
  *
  */
 export function buildCsp(nonce: string, pathname: string): string {
-  // Google Maps Platform (spec §8): the ward-boundary map
-  // (src/islands/WardMap.ts), the only consumer today, on /ward/* and
-  // /kn/ward/*. (Places Autocomplete for ward lookup was scoped for
-  // src/islands/WardLookup.ts but did not ship — see the deferral note in
-  // that area of the codebase — so there is currently exactly one consumer
-  // on one route family.) These hosts live in the BASE policy rather than a
-  // path-scoped extension; they are used by the ward map and lookup.
+  // Google Maps Platform (architecture.md §13, §16): two consumers — the
+  // ward-boundary map (src/islands/WardMap.ts) on /ward/* and /kn/ward/*,
+  // and Places Autocomplete on the ward-lookup input
+  // (src/islands/WardLookup.ts). These hosts live in the BASE policy rather
+  // than a path-scoped extension because both use them.
   //
   // `script-src`: @googlemaps/js-api-loader injects a <script src=…> at
   // runtime. A script element whose src matches an allowlisted host does

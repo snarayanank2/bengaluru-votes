@@ -1,6 +1,6 @@
 /**
  * `/login` — the no-JS / deep-link server-rendered fallback for the
- * Register/Login flow (Task 27, information-architecture.md §7.1). The
+ * Register/Login flow (Task 27). The
  * Register/Login MODAL (src/islands/RegisterLoginModal.ts) is a progressive
  * enhancement over this exact same flow — both call
  * `resolveOrRegister`/`requestOtp` directly (never fetch their own API),

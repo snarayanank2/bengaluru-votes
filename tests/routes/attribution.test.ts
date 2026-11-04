@@ -48,7 +48,7 @@ async function renderBase(requestUrl: string, cspNonce = NONCE): Promise<string>
   return normalize(html);
 }
 
-describe('?src attribution cookie writer (architecture.md §5/§13, PRD §5.12)', () => {
+describe('?src attribution cookie writer (architecture.md §5/§13)', () => {
   describe('ATTRIBUTION_SCRIPT_SOURCE (src/lib/attribution.ts)', () => {
     it('is a dependency-free script: no import/require/export', () => {
       expect(ATTRIBUTION_SCRIPT_SOURCE).not.toMatch(/\bimport\b/);

@@ -10,7 +10,7 @@
  * exact gap left src/lib/auth-flow.ts's registration race undetected).
  */
 
-/** Postgres SQLSTATE for a unique-index violation (e.g. users.email/users.phone — one account per contact, PRD §10). */
+/** Postgres SQLSTATE for a unique-index violation (e.g. users.email/users.phone — one account per contact). */
 export const PG_UNIQUE_VIOLATION = '23505';
 
 /** True if `err` is a (possibly Drizzle-wrapped) Postgres unique-violation error. */

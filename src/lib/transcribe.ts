@@ -1,6 +1,6 @@
 /**
  * Transcription: one person reads one affidavit they did not choose, and
- * their save publishes at once (docs/milestones.md §10).
+ * their save publishes at once (docs/candidate-data.md §4).
  *
  * THE QUEUE HAS NO LIST. `drawAssignment` hands out the next affidavit by a
  * fixed priority — missing data, then low AI confidence, then the rest,

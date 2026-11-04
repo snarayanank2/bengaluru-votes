@@ -1,7 +1,6 @@
 /**
  * Task 45 — src/lib/erasure.ts: the DPDP erasure routine + ban/reactivate
- * user moderation behind `/admin/users` (information-architecture.md §6.3;
- * PRD §5.16, §4/§7; architecture.md §7 "Erasure (DPDP data-principal
+ * user moderation behind `/admin/users` (architecture.md §7 "Erasure (DPDP data-principal
  * rights)"). Exercises the lib functions directly against a real DB (no
  * HTTP/middleware layer — that's tests/routes/admin-users.test.ts).
  *
@@ -33,7 +32,7 @@ import * as schema from '../../src/db/schema';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

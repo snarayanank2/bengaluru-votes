@@ -1,6 +1,6 @@
 /**
  * Task 40 — src/lib/translate-runtime.ts (runtime MT of curator data;
- * architecture §9; PRD §8) + the publish-path manual-override /
+ * architecture §9) + the publish-path manual-override /
  * source-change-regeneration coordination in src/lib/publish.ts
  * (`decideTranslationStatus`).
  *
@@ -32,7 +32,7 @@ import { publishStance } from '../../src/lib/publish';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

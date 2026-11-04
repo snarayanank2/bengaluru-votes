@@ -1,6 +1,6 @@
 /**
- * Per-account contribution rate limiting (PRD §6.3 — registration-gating
- * gives every flag/vote an identity, enabling dedup + rate-limit; PRD §12
+ * Per-account contribution rate limiting (dormant, no caller — architecture §15; registration-gating
+ * gives every flag/vote an identity, enabling dedup + rate-limit
  * "rate-limiting on all contribution actions"; architecture §3 — no Redis,
  * Postgres-backed).
  *

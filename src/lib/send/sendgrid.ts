@@ -1,6 +1,6 @@
 /**
  * Minimal SendGrid v3 `mail/send` wrapper — the OTP-email transport behind
- * src/lib/otp.ts (architecture.md §7 API surface: "Email OTP (SendGrid)").
+ * src/lib/otp.ts (dormant — architecture.md §15).
  *
  * DEV/TEST POSTURE: until `SENDGRID_API_KEY` is set (never checked into the
  * repo — architecture §13 "Secrets": one `.env` outside the repo holding

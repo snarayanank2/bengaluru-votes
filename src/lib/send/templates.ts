@@ -3,20 +3,14 @@
  * OTP + the 7 campaign codes (W1, R1, L1, C1, C2, C3, F1), each in both
  * channels (WhatsApp, Email) and both languages (English, Kannada).
  *
- * COPY PROVENANCE: every string below is copied VERBATIM from
- * `docs/messages.md` (the template-approval submission packet — see that
- * file's §1 "Before submitting"). The Kannada text is machine-assisted and
- * explicitly NOT re-translated here — `docs/messages.md` §1 flags it as
- * needing a native-speaker + legal pass before Meta submission; this module
- * just carries whatever text that document currently holds. Do NOT hand-edit
- * the KN strings independently of that doc — update messages.md first, then
- * mirror the change here.
+ * DORMANT: citizen messaging is dropped and these templates are slated for
+ * removal with the rest of src/lib/send/ (docs/architecture.md §15). The
+ * Kannada text is machine-assisted and was never reviewed for sending. Do
+ * not extend or edit these templates.
  *
- * Markdown blockquote markers (`>`) in messages.md are documentation
- * formatting only, not message content, and are stripped here. Paragraph
- * breaks are preserved as `\n\n`.
+ * Paragraph breaks are preserved as `\n\n`.
  *
- * NUMBERED-PLACEHOLDER MAPPING: `docs/messages.md` uses Meta's `{{1}}`,
+ * NUMBERED-PLACEHOLDER MAPPING: templates use Meta's `{{1}}`,
  * `{{2}}`, … convention. Each template's `vars` array gives the NAMED var
  * that fills each position in order — `vars[0]` fills every `{{1}}` in that
  * template, `vars[1]` fills every `{{2}}`, etc. The WhatsApp and Email

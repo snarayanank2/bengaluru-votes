@@ -1,6 +1,6 @@
 /**
- * POST /api/eoi (Task 50) — the one anonymous write path (IA §3.15, PRD
- * §5.13/§6.3, architecture.md §7/§13). Same technique as
+ * POST /api/eoi (Task 50) — the one anonymous write path (dormant,
+ * architecture.md §15). Same technique as
  * tests/routes/flags.test.ts: exercise the real handler against a real DB,
  * mocking only src/lib/recaptcha's `verifyRecaptcha` (no real Google call,
  * ever, in tests).
@@ -15,7 +15,7 @@ import * as schema from '../../src/db/schema';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

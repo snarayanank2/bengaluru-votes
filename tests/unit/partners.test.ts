@@ -1,7 +1,7 @@
 /**
  * Task 46 — src/lib/partners.ts: partner roster + ward-coverage matrix +
- * EOI triage (information-architecture.md
- * §6.4; PRD §5.12/§5.13/§9.1/§11). Exercises the lib functions directly
+ * EOI triage (dormant,
+ * architecture.md §15). Exercises the lib functions directly
  * against a real DB (no HTTP/middleware layer — that's
  * tests/routes/admin-partners.test.ts).
  *
@@ -19,7 +19,7 @@
  *     (`users.srcAttribution === slug`).
  *   - EOI triage: acceptEoiAwareness provisions a partner; acceptEoiCuration
  *     accepts WITHOUT creating a partner or granting any role (no
- *     self-activation, PRD §5.13); declineEoi; already-processed/not-found
+ *     self-activation); declineEoi; already-processed/not-found
  *     guards; admin-only on every mutator.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -32,7 +32,7 @@ import * as schema from '../../src/db/schema';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

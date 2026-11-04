@@ -1,7 +1,6 @@
 ---
 /**
- * Ward result (`/ward/{id}`, `/kn/ward/{id}`) — information-architecture.md
- * §3.2, PRD §5.1. The hub page for a single GBA ward: name/number/
+ * Ward result (`/ward/{id}`, `/kn/ward/{id}`). The hub page for a single GBA ward: name/number/
  * corporation, the boundary map, the register-for-updates slot, the ward's
  * candidate list and comparison entry point, issue voting, and candidate
  * questions.
@@ -17,14 +16,15 @@
  * CACHE-SAFETY (architecture.md §5, binding): this component never reads
  * cookies/session. The register-for-updates slot below always renders the
  * ANONYMOUS "Register for updates" control, in its full enabled style
- * (design-system.md §7.8 — gated actions never render disabled) — the same
+ * (design-system.md §11 cache safety; the slot is dormant,
+ * architecture.md §15) — the same
  * markup for every visitor regardless of auth state. Task 28's MeSlot
  * island (src/islands/MeSlot.ts) finds it via `data-register-slot`/
  * `data-ward-id` and swaps it client-side to "Receiving updates" (own home
  * ward, using the `data-msg-receiving-updates` label below) or removes it
- * (any other ward) — see IA §3.2 and PRD §5.1.
+ * (any other ward).
  *
- * Boundary map URL (spec §4, §8): the map container's `data-boundary-url`
+ * Boundary map URL (docs/architecture.md §5): the map container's `data-boundary-url`
  * points at this ward's own `GET /ward/<id>/boundary.json`
  * (src/pages/ward/[id]/boundary.json.ts), which serves one GeoJSON Feature
  * looked up by `wards.boundaryRef` server-side — NOT the 3.5MB
@@ -155,7 +155,7 @@ const corporationLabel = ward ? t(lang, `ward.corporation.${ward.corporation}`) 
 const numberFormatter = new Intl.NumberFormat(lang === 'kn' ? 'kn-IN' : 'en-IN');
 
 // Boundary geometry now comes from this ward's own URL rather than the
-// 3.5MB full collection (spec §4). `wards.boundaryRef` is still the source
+// 3.5MB full collection (docs/architecture.md §5). `wards.boundaryRef` is still the source
 // of truth for which feature this is — the route resolves it server-side —
 // so this page no longer formats a fragment URL from the row.
 const maps = mapsConfig();

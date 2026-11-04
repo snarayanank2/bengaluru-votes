@@ -1,7 +1,6 @@
 ---
 /**
- * `/admin/users` (Tasks 44/45, information-architecture.md §6.2/§6.3; PRD
- * §4/§7/§10, §5.16). The one screen for accounts: staff are listed by
+ * `/admin/users` (Tasks 44/45; docs/architecture.md §7). The one screen for accounts: staff are listed by
  * default, a search reaches citizens, and each row carries its own
  * actions — change role (which absorbed the old `/admin/roles` grant and
  * revoke), ban or reactivate, and the DPDP erasure routine (see
@@ -21,7 +20,7 @@
  * 'active' row gets Change role and Ban; a 'banned' row gets Change role
  * and Reactivate; an 'erased' row gets NONE (an opaque tombstone has
  * nothing left to change). Every non-erased row also gets the Erase form —
- * the one IRREVERSIBLE action here (PRD §5.16), and the only solid
+ * the one IRREVERSIBLE action here, and the only solid
  * destructive button, so reversible Ban does not look like it.
  * THE CALLER'S OWN ROW gets no form at all, only a note: src/lib/admin.ts
  * and src/lib/erasure.ts reject every self-targeted demotion, ban and

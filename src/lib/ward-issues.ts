@@ -1,6 +1,5 @@
 /**
- * Curator ward-issues editor engine (Task 39; PRD §5.4/§5.5;
- * information-architecture.md §5.5-equivalent). A ward's issues are the
+ * Curator ward-issues editor engine (Task 39). A ward's issues are the
  * fixed candidate-stance topics AND the citizen "top 3" vote options
  * (`/ward/{id}/issues`) — the curator fully owns this list (add, retitle,
  * retire), in any ward.
@@ -8,12 +7,12 @@
  * VOTE SEMANTICS — the two operations differ deliberately:
  *   - RENAME updates `title_en` on the EXISTING row (same `id`). Every
  *     `issue_vote_selections` row referencing that id (a citizen's cast
- *     vote) is untouched — a retitle never loses votes (PRD §5.5).
+ *     vote) is untouched — a retitle never loses votes.
  *   - REMOVE deletes the `ward_issues` row outright. Its own
  *     `issue_vote_selections` rows FK-cascade away (schema.ts:
  *     `onDelete: 'cascade'`), but any OTHER selection in the same vote set
  *     (for an issue that was NOT removed) is a separate row and survives —
- *     "delete cascades selections, remaining selections stand" (PRD §5.5).
+ *     "delete cascades selections, remaining selections stand".
  *     `candidate_stances` for the removed issue cascade away the same way.
  *
  * TITLE INPUT: only `titleEn` is ever written here — a curator authors in
@@ -39,7 +38,7 @@ export interface WardIssueRow {
   position: number;
 }
 
-/** The ward's issues, ordered for display (IA: position order) — used by both the curator editor and, indirectly, the public `/ward/{id}/issues` page's own query. */
+/** The ward's issues, ordered for display (position order) — used by both the curator editor and, indirectly, the public `/ward/{id}/issues` page's own query. */
 export async function listWardIssues(wardId: number): Promise<WardIssueRow[]> {
   return db
     .select({ id: wardIssues.id, titleEn: wardIssues.titleEn, titleKn: wardIssues.titleKn, position: wardIssues.position })

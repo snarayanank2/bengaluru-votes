@@ -19,7 +19,7 @@ import { media } from '../db/schema';
 
 export type MediaKind = 'photo' | 'affidavit';
 
-/** Size caps in bytes, PRD §7: photos ≤2 MB, affidavit PDFs ≤20 MB. */
+/** Size caps in bytes: photos ≤2 MB, affidavit PDFs ≤20 MB. */
 export const MEDIA_LIMITS: Record<MediaKind, number> = {
   photo: 2 * 1024 * 1024,
   affidavit: 20 * 1024 * 1024,

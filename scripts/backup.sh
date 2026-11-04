@@ -33,7 +33,7 @@
 # Requires on PATH: pg_dump, restic, curl, jq.
 #
 # NOTE (2026-08-13): no backup target has been chosen yet (architecture §10,
-# dependency register §6.9), so RESTIC_REPOSITORY is unset in production and
+# §16), so RESTIC_REPOSITORY is unset in production and
 # this script exits 1 nightly. That is intentional — see deploy/crontab.
 
 set -euo pipefail

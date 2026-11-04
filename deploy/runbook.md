@@ -41,8 +41,8 @@ when staging existed; it is history, not instruction.
   is what `deploy/deploy.sh`'s `git fetch` needs on every future deploy, so
   it must persist on the box, not just exist long enough for step 4's
   `clone`.
-- **Off-box backup storage: UNRESOLVED** (dependency register §6.9;
-  `docs/architecture.md` §10). There is no restic target, so step 6 below
+- **Off-box backup storage: UNRESOLVED** (`docs/architecture.md` §10,
+  §16). There is no restic target, so step 6 below
   cannot be completed and the platform runs with no off-box backup. This is
   a launch blocker, not a nice-to-have.
 - The vendor accounts this app talks to — SendGrid, Twilio, Google Cloud
@@ -118,8 +118,8 @@ not.
 
 ## 2. DNS
 
-Point the hostname at the VPS (dependency register §6.8 — under Oorvani's
-`opencity.in` zone):
+Point the hostname at the VPS (under Oorvani's
+`opencity.in` zone; `docs/architecture.md` §14.1):
 
 ```
 bengaluruvotes.opencity.in.          300  IN  A  76.13.244.198
@@ -289,8 +289,8 @@ curl -fsSI https://bengaluruvotes.opencity.in/healthz
 
 ## 6. restic — BLOCKED
 
-**No off-box backup target has been chosen** (dependency register §6.9;
-`docs/architecture.md` §10). `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`,
+**No off-box backup target has been chosen** (`docs/architecture.md` §10,
+§16). `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`,
 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `HEALTHCHECKS_URL` are
 therefore unset in both `.env` files, and `scripts/backup.sh` fails its
 required-variable check every night at 02:00 in the `jobs` container's log.
@@ -445,7 +445,7 @@ here in the same PR.
 | `SENDGRID_WEBHOOK_PUBLIC_KEY` | yes (real sends) | Verifies SendGrid's event-webhook signature (`src/pages/api/webhooks/sendgrid.ts`). |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | yes (WhatsApp) | WhatsApp OTP/campaign sends (`src/lib/send/twilio.ts`). |
 | `TWILIO_WHATSAPP_FROM` | yes (WhatsApp) | The approved WhatsApp sending number. |
-| `TWILIO_OTP_TEMPLATE_SID` | yes (WhatsApp OTP) | Approved WhatsApp OTP Content API template SID (`src/lib/otp.ts`) — unset until WhatsApp onboarding completes (PRD §10); until then WhatsApp OTP requests degrade to `send_failed` by design. |
+| `TWILIO_OTP_TEMPLATE_SID` | yes (WhatsApp OTP) | Approved WhatsApp OTP Content API template SID (`src/lib/otp.ts`) — unset until WhatsApp onboarding completes; until then WhatsApp OTP requests degrade to `send_failed` by design. |
 | `GOOGLE_GEOCODING_API_KEY` | yes — the ONLY path to a ward | Google Geocoding API. Pincode lookup was removed 2026-08-14, so this is the sole path from an address to a ward, with no fallback. Unset (or Google unreachable) means every lookup returns `unavailable`. |
 | `GEOCODE_DAILY_BUDGET` | recommended | Daily geocode call cap (architecture §13 cost-amplification guard). **Exhausting it now takes ward lookup DOWN** — pincode lookup was removed 2026-08-14 and there is no fallback left. Default 2000/day. |
 | `ELECTORAL_API_ORIGIN` | optional | Origin of the BBMP electoral API behind booth-lookup-by-EPIC (`src/lib/electoral-api.ts`). Defaults to `https://electoralapi.bbmpgov.in`. **There is no key** — it is a public, unauthenticated endpoint, so there is nothing to omit and no "unset degrades to a no-op" case here; override it only to point staging or a test at something else. |
@@ -455,20 +455,20 @@ here in the same PR.
 | `GOOGLE_MAPS_MAP_ID` | yes (ward map — required by the `enabled` gate) | Cloud map style (`docs/gcp.md` §4) — required, not just recommended: it's the only place in code that enforces the neutrality rule (no party-affiliated look, no red markers). Unset means `mapsConfig().enabled` is false, so the map does not render at all; the ward page renders its server-rendered fallback markup instead of an unstyled stock basemap. |
 | `MAPS_ENABLED` | yes to show maps | Kill switch (`src/lib/maps-config.ts`) — must be exactly `true`, and both `GOOGLE_MAPS_BROWSER_KEY` and `GOOGLE_MAPS_MAP_ID` must also be non-empty, for the map to render. Sheds client-side map spend without a rebuild when a budget alert fires. |
 | `ANTHROPIC_API_KEY` | yes (Kannada MT/extraction) | Publish-triggered translation calls, and the `extract-worker` container's affidavit reading. Unset: translations stay `'pending'` and `jobs/translate-retry.ts` keeps retrying; the worker exits at once and queued affidavits wait on `/admin/affidavits`. |
-| `EXTRACTION_MODEL` | optional (default `claude-opus-5-5`) | The model the `extract-worker` reads affidavits with: `claude-haiku-5-5`, `claude-sonnet-5-5` or `claude-opus-5-5`. Anything else stops the worker at start. Opus measured 41 of 45 values correct on the nine fixtures at about $0.20 an affidavit (`docs/superpowers/specs/2026-10-13-affidavit-extraction-eval-design.md`). |
+| `EXTRACTION_MODEL` | optional (default `claude-opus-5-5`) | The model the `extract-worker` reads affidavits with: `claude-haiku-5-5`, `claude-sonnet-5-5` or `claude-opus-5-5`. Anything else stops the worker at start. Opus measured 41 of 45 values correct on the nine fixtures at about $0.20 an affidavit (`docs/candidate-data.md` §3.5). |
 | `EXTRACTION_CONCURRENCY` | optional (default `10`) | How many affidavits the worker reads at once, 1 to 50. Bounded by the Anthropic account's rate limits, not by the box. |
 | `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | yes (anonymous writes) | reCAPTCHA v3 on `POST /api/eoi` and `PUT /api/issue-votes`; tokens are bound to distinct actions. |
 | `ANONYMOUS_VOTE_DAILY_BUDGET` | recommended (default `50000`) | City-wide daily circuit breaker for anonymous issue ballots, in addition to the per-IP nginx limit. Exhaustion pauses new ballots until the next UTC day. |
 | `GA_MEASUREMENT_ID` | production only — `G-PZQJ1ZSCN0` | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). Set on production 2026-08-14; set only in `.env.production`, so local traffic never enters the property. The id is public (it ships in the HTML), so it lives here rather than in a credential store. Read at request time — changing it needs a container recreate, not a rebuild. |
 | `OTP_DAILY_SEND_BUDGET` | recommended (default `5000`) | Global daily OTP-send budget across all destinations (architecture §13). |
 | `OTP_TEST_SINK` | **must NOT be set** | `src/lib/otp.ts` — when exactly `'true'`, writes every plaintext OTP code to a `otp_test_codes` table so the Playwright e2e suite can read codes without in-process access. The source comment is explicit: this must NEVER be set in production or staging. Leave unset in both `.env` files. |
-| `RETENTION_ENABLED` | yes — **must be `false`** | DPDP retention enforcement (`jobs/retention.ts`) ships disabled pending PRD §17 legal sign-off on the retention period. Do not flip to `true` without that sign-off. |
+| `RETENTION_ENABLED` | yes — **must be `false`** | DPDP retention enforcement (`jobs/retention.ts`) ships disabled pending legal sign-off (`docs/architecture.md` Open questions) on the retention period. Do not flip to `true` without that sign-off. |
 | `RETENTION_PERIOD_DAYS` | only if `RETENTION_ENABLED=true` | Days after results-declared before erasure. |
 | `RETENTION_ACTOR_USER_ID` | only if `RETENTION_ENABLED=true` | The admin user id attributed as actor on the erasure job's audit-log rows. |
-| `RESTIC_REPOSITORY` | **blocked** | No target chosen — dependency register §6.9. Leave unset; scripts/backup.sh fails loudly nightly until it exists. |
-| `RESTIC_PASSWORD` (or `RESTIC_PASSWORD_FILE`) | yes (jobs) | restic repository encryption password. Unset until dependency register §6.9 resolves. Custody: dependency register §6.10. |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | Credentials for whatever S3-compatible backup storage dependency register §6.9 settles on (restic's s3 backend reads the standard AWS_* vars). Unset today. |
-| `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch. Only meaningful once backups exist (dependency register §6.9). |
+| `RESTIC_REPOSITORY` | **blocked** | No target chosen — `docs/architecture.md` §16. Leave unset; scripts/backup.sh fails loudly nightly until it exists. |
+| `RESTIC_PASSWORD` (or `RESTIC_PASSWORD_FILE`) | yes (jobs) | restic repository encryption password. Unset until a backup target is chosen (`docs/architecture.md` §16). Custody: `docs/architecture.md` §13 (Secrets). |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | Credentials for whatever S3-compatible backup storage is chosen (`docs/architecture.md` §10, §16) (restic's s3 backend reads the standard AWS_* vars). Unset today. |
+| `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch. Only meaningful once backups exist (`docs/architecture.md` §16). |
 | `SENTRY_DSN` | recommended | Server-side error reporting (`src/lib/logger.ts`) — **unset means Sentry is a clean no-op**, not a broken deploy; set it once the free-tier project exists. |
 | `IMAGE_TAG` | optional, not stored in the `.env` file | Selects which **local** image tag the stack runs (`deploy/compose.production.yml`'s `${IMAGE_TAG:-latest}`). Left unset for a normal deploy; it exists so a rollback can point the stack at `:previous` without rebuilding. |
 
@@ -775,19 +775,19 @@ $C stop extract-worker         # stops claiming, lets calls in flight finish
 - **It exits immediately without `ANTHROPIC_API_KEY`** and Compose retries it five times, then leaves it down. Queued affidavits wait; start it again once the key is set.
 - **Three attempts per affidavit**, then it shows under Failed on `/admin/affidavits` with the reason, where an admin can retry or discard it. A refusal fails on the first attempt.
 - **What needs a person** is on that page: "Needs matching" (the AI could not place the ward, or the name is already in that ward, or a transcriber sent it back) and "Failed".
-- **Cost:** every affidavit is one paid call, about $0.20 on Opus 5.5. 4,000 affidavits is about $800 at that rate before retries; `docs/candidate-data.md` §2 holds the budget.
+- **Cost:** every affidavit is one paid call, about $0.20 on Opus 5.5. 4,000 affidavits is about $800 at that rate before retries; `docs/candidate-data.md` §3.6 holds the budget.
 - **Uploads go through nginx**, which allows 256 MB per request on staff routes; the app caps each PDF at 20 MB.
 
 ## Pointers (brief — see the named source for the full procedure)
 
-- **Secret rotation:** custody and rotation cadence — dependency register
-  §6.10. Rotating `SESSION_SECRET` invalidates every live session (everyone
+- **Secret rotation:** custody — architecture §13 (Secrets); no rotation
+  cadence is written down. Rotating `SESSION_SECRET` invalidates every live session (everyone
   is logged out) and re-peppers future OTP hashes only (old unconsumed
   codes hashed under the old pepper stop verifying — acceptable, they're
   10-minute-lived).
 - **Breach response:** DPDP Act notification obligations (Data Protection
-  Board + affected data principals) — named owner and procedure at
-  dependency register §2.9 (architecture §13).
+  Board + affected data principals) — no named owner or procedure yet
+  (architecture §13, §16).
 - **Backup verification:** don't just trust cron — check
   `docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm app sh -c 'restic snapshots --json | jq length'`
   trending upward daily, and that the healthchecks.io check for this job
@@ -861,7 +861,7 @@ is deliberately not rewritten. What has changed since:
 
 ### Outstanding, both recorded as unresolved dependencies
 
-1. **No off-box backup** (dependency register §6.9). The nightly job fails by
+1. **No off-box backup** (`docs/architecture.md` §16). The nightly job fails by
    design at 02:00. Production now holds real citizen-facing data, so this is
    the first thing to close.
 2. **No external uptime or SSL-expiry monitoring** (§6.14). Certificates

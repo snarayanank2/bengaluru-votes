@@ -1,5 +1,5 @@
 /**
- * Coverage for src/lib/maps-links.ts (spec §7). A plain Google Maps deep
+ * Coverage for src/lib/maps-links.ts. A plain Google Maps deep
  * link — no API, no key, no billing, and it works with JS off.
  */
 import { describe, it, expect } from 'vitest';

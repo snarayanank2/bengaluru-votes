@@ -1,6 +1,6 @@
 /**
  * Candidate comparison (`/ward/{id}/compare`, `/kn/ward/{id}/compare`) —
- * Task 43, IA §3.5, PRD §5.3, design-system §5.5/§4. Drives every request
+ * Task 43, design-system §7.11/§4. Drives every request
  * through the REAL route twins + a real DB, same technique as
  * tests/routes/ward-candidates.test.ts / candidate.test.ts.
  *
@@ -34,7 +34,7 @@ import CompareKn from '../../src/pages/kn/ward/[id]/compare.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -65,7 +65,7 @@ const EMPTY_WARD = {
 };
 
 // track_record, cases, assets, education, approachability, news — same
-// field set as the report card (PRD §5.3).
+// field set as the report card.
 const REPORT_CARD_ROW_COUNT = 9;
 
 const MANY_WARD = {
@@ -125,7 +125,7 @@ async function renderCompare(lang: Lang, id: number | string, extraHeaders?: Rec
   });
 }
 
-describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', () => {
+describe('Candidate comparison (/ward/{id}/compare)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
@@ -145,7 +145,7 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
 
     // WARD: seeded deliberately OUT OF alphabetical order, mixing
     // filed/contesting (comparable) with withdrawn/rejected (must be
-    // excluded entirely — PRD §5.3, the load-bearing case).
+    // excluded entirely — the load-bearing case).
     await db.insert(schema.candidates).values({
       slug: 'compare-test-zainab',
       wardId: WARD.id,
@@ -237,7 +237,7 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
       status: 'withdrawn',
     });
 
-    // MANY_WARD: 8 filed/contesting candidates — NO hard cap (PRD §5.3).
+    // MANY_WARD: 8 filed/contesting candidates — NO hard cap.
     const manyValues = Array.from({ length: 8 }, (_, i) => {
       const letter = String.fromCharCode(67 + i); // C, D, E, F, G, H, I, J
       return {
@@ -310,7 +310,7 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
     });
   });
 
-  describe('WITHDRAWN/REJECTED EXCLUDED (PRD §5.3, load-bearing)', () => {
+  describe('WITHDRAWN/REJECTED EXCLUDED (load-bearing)', () => {
     it('withdrawn and rejected candidate names/values do NOT appear anywhere in the compare grid', async () => {
       const html = normalize(await (await renderCompare('en', WARD.id)).text());
       expect(html).not.toContain('Meena Withdrawn');
@@ -333,7 +333,7 @@ describe('Candidate comparison (/ward/{id}/compare) — IA §3.5, PRD §5.3', ()
     });
   });
 
-  describe('NO HARD CAP + horizontal scroll / pinned label column (PRD §5.3)', () => {
+  describe('NO HARD CAP + horizontal scroll / pinned label column', () => {
     it('all 8 seeded candidates appear — no truncation', async () => {
       const html = normalize(await (await renderCompare('en', MANY_WARD.id)).text());
       for (let i = 0; i < 8; i++) {

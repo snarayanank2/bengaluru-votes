@@ -1,9 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * DPDP retention enforcement (Task 55; architecture §10 "Retention
- * enforcement is a job, not a promise"; PRD §17). The proposed policy:
+ * DPDP retention enforcement (Task 55; dormant — architecture §15). The proposed policy:
  * citizen contact data deleted/anonymized within 3 months of GBA results
- * being declared. PRD §17 marks this period as **NOT YET LEGALLY
+ * being declared. This period is **NOT YET LEGALLY
  * CONFIRMED** — until legal sign-off lands, this job MUST NOT erase
  * anyone.
  *
@@ -13,24 +12,25 @@
  * Unless `RETENTION_ENABLED === 'true'` (an explicit, deliberate flip —
  * never a default), `main()` logs one LOUD line and returns having done
  * NOTHING: no query against `users`, no call to `eraseUser`. This is not
- * a placeholder to "finish later" — it is the correct behavior until PRD
- * §17's legal confirmation exists, and this guard is checked FIRST, before
+ * a placeholder to "finish later" — it is the correct behavior until legal
+ * confirmation of the retention period exists, and this guard is checked FIRST, before
  * any other code in this file runs.
  *
  * THE ENABLED PATH (scaffolded, not battle-tested — do not treat this as
- * "PRD §17 is resolved"):
+ * "the retention period is resolved"; see docs/architecture.md
+ * Open questions):
  *   - `results_declared_at` is read from `app_settings` (the same
  *     key/value table architecture.md's schema section calls out for
  *     "election anchors" like `election_date`/`roll_deadline` — no
  *     dedicated column for it exists yet, so this is where the value is
  *     expected to live once someone sets it).
  *   - The cutoff is `results_declared_at + RETENTION_PERIOD_DAYS` (default
- *     90, matching PRD §17's proposed "3 months" — override via env once
+ *     90, matching the proposed "3 months" — override via env once
  *     the real confirmed period is known). If `now` hasn't reached the
  *     cutoff yet, this exits having erased no one — same as disabled, but
  *     for a different, expected reason ("not due yet" vs "not turned on").
  *   - SCOPE ASSUMPTION (flagged, not resolved): eligible users are
- *     `role = 'citizen'` and not already `status = 'erased'`. PRD §17's
+ *     `role = 'citizen'` and not already `status = 'erased'`. The
  *     proposed policy text names "citizen contact data" specifically;
  *     curator/admin accounts are staff accounts with an ongoing
  *     operational role, so this job does not touch them. This scope
@@ -53,7 +53,7 @@ import { captureException } from '../src/lib/logger';
 import { logEvent } from '../src/lib/log';
 
 const RESULTS_DECLARED_AT_KEY = 'results_declared_at';
-/** PRD §17's PROPOSED period ("3 months of results being declared") — not yet legally confirmed. Override via env once it is. */
+/** The PROPOSED period ("3 months of results being declared") — not yet legally confirmed. Override via env once it is. */
 const DEFAULT_RETENTION_PERIOD_DAYS = 90;
 
 export interface RetentionSummary {
@@ -67,7 +67,7 @@ export async function main(): Promise<RetentionSummary> {
   if (process.env.RETENTION_ENABLED !== 'true') {
     // LOUD, unconditional, first thing this function does. See module
     // docstring — this line, not the code below it, is the deliverable.
-    console.warn('retention: DISABLED pending PRD §17 legal sign-off — no users will be erased');
+    console.warn('retention: DISABLED pending legal sign-off on the retention period — no users will be erased');
     const summary: RetentionSummary = { enabled: false, erased: 0, errors: 0 };
     console.log(JSON.stringify({ event: 'retention_run_summary', ...summary }));
     return summary;

@@ -96,7 +96,7 @@ export const media = pgTable('media', {
 
 export const candidates = pgTable('candidates', {
   id: serial('id').primaryKey(),
-  slug: text('slug').notNull().unique(),               // ward is part of the slug (IA §3.4)
+  slug: text('slug').notNull().unique(),               // ward is part of the slug
   wardId: integer('ward_id').notNull().references(() => wards.id),
   nameEn: text('name_en').notNull(),
   nameKn: text('name_kn'), // legacy only; migrated to candidate_fields by 0014
@@ -116,12 +116,12 @@ export const candidateFields = pgTable('candidate_fields', {
   fieldKey: text('field_key').notNull(),
   valueEn: text('value_en'),
   valueKn: text('value_kn'),
-  notDeclared: boolean('not_declared').notNull().default(false),  // valid, complete answer (PRD §9.1)
+  notDeclared: boolean('not_declared').notNull().default(false),  // valid, complete answer
   authoredLang: langEnum('authored_lang').notNull().default('en'),
   translationStatus: translationStatusEnum('translation_status').notNull().default('pending'),
   sourceUrl: text('source_url'),
   sourceType: sourceTypeEnum('source_type').notNull().default('curator'),
-  aiExtracted: boolean('ai_extracted').notNull().default(false),  // cleared on curator confirm (PRD §5.2)
+  aiExtracted: boolean('ai_extracted').notNull().default(false),  // cleared on curator confirm
   // The structured value behind value_en, written only by src/lib/affidavit-publish.ts.
   // Null only on rows written before values were structured.
   valueData: jsonb('value_data'),
@@ -211,7 +211,7 @@ export const booths = pgTable('booths', {
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  email: text('email').unique(),                        // one account per contact (PRD §10)
+  email: text('email').unique(),                        // one account per contact
   phone: text('phone').unique(),
   homeWardId: integer('home_ward_id').references(() => wards.id),
   language: langEnum('language').notNull().default('en'),
@@ -271,7 +271,7 @@ export const suppressions = pgTable('suppressions', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => [uniqueIndex('suppression_uq').on(t.contact, t.channel)]);
 
-export const flagItems = pgTable('flag_items', {          // deduped queue item (PRD §6.3)
+export const flagItems = pgTable('flag_items', {          // deduped queue item
   id: serial('id').primaryKey(),
   wardId: integer('ward_id').notNull().references(() => wards.id),
   targetType: flagTargetEnum('target_type').notNull(),

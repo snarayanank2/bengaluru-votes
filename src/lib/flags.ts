@@ -1,9 +1,9 @@
 /**
- * The deduped flag queue (PRD §6.1-§6.3; architecture §7) — the citizen
+ * The deduped flag queue (architecture §7) — the citizen
  * misinformation-flagging path and the curator correction loop's front
  * door.
  *
- * DEDUPE (PRD §6.3): "multiple flags on the same field collapse into ONE
+ * DEDUPE: "multiple flags on the same field collapse into ONE
  * queue item with a count; resolving resolves every collapsed flag at
  * once, same outcome + reason". The schema encodes this as a PARTIAL
  * unique index, `flag_dedupe_uq` on `target_ref` WHERE `status = 'pending'`
@@ -146,8 +146,8 @@ async function findOrCreatePendingItem(tx: Tx, input: SubmitFlagInput, wardId: n
 }
 
 /**
- * Submits a citizen's misinformation flag against `targetRef` (PRD §6.1,
- * §6.2). Finds-or-creates the pending queue item for `targetRef`, appends
+ * Submits a citizen's misinformation flag against `targetRef`
+ * (docs/architecture.md §7). Finds-or-creates the pending queue item for `targetRef`, appends
  * this submitter's `flag_submissions` row in one transaction.
  */
 export async function submitFlag(userId: number, input: SubmitFlagInput): Promise<{ flagItemId: number }> {
@@ -218,7 +218,7 @@ export async function submitPublicFlag(who: FlagReporter, input: SubmitFlagInput
 }
 
 /**
- * Resolves a queue item (curator/admin only — PRD §6.1). Both roles are
+ * Resolves a queue item (curator/admin only). Both roles are
  * city-wide, so there is no per-ward check.
  *
  * ACCEPT: applies the fix — a structured field correction
@@ -231,7 +231,7 @@ export async function submitPublicFlag(who: FlagReporter, input: SubmitFlagInput
  * anything.
  *
  * Either way, resolving the ITEM resolves every collapsed submission at
- * once (PRD §6.3) — the outcome/reason lives on `flag_items`, and every
+ * once — the outcome/reason lives on `flag_items`, and every
  * `flag_submissions` row for this item points at it, so there is no
  * per-submission update to make.
  *

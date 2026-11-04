@@ -23,7 +23,7 @@
  * target_ref WHERE status='pending') means a PRIOR run's unresolved item
  * (e.g. from a failed earlier attempt) collapses new submissions for the
  * same target onto that SAME flag_item rather than creating a new one —
- * intentional PRD §6.3 behavior — so this spec's own detail text is made
+ * intentional behavior — so this spec's own detail text is made
  * distinctive per run (RUN_MARKER) rather than a fixed literal, so its
  * assertions never ambiguously match more than one accumulated submission.
  */

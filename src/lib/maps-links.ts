@@ -1,5 +1,5 @@
 /**
- * Google Maps deep links (spec §7).
+ * Google Maps deep links (booth directions; no API, no key).
  *
  * Deliberately NOT an API call: this builds a plain URL a citizen's browser
  * or Maps app opens. No key, no billing, no quota, and the link works with

@@ -1,7 +1,7 @@
 /**
  * The suppression list — a hard stop on sending to a given (contact,
  * channel) pair after a bounce, spam complaint, or a WhatsApp "STOP" reply
- * (architecture.md §7: "suppressions honoured before every send").
+ * (dormant — architecture.md §15).
  * `src/lib/otp.ts` already reads this table directly for the auth flow;
  * this module is the shared read/write surface for the campaign send path
  * (`src/lib/send/send.ts`) and for Task 53's bounce/complaint webhooks,

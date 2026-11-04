@@ -1,12 +1,12 @@
 /**
- * Issue-vote results (PRD §5.5, §13.1 Phase 1; IA §3.6). This file is the
+ * Issue-vote results (§13.1 Phase 1). This file is the
  * READ side only (Task 20) — the ward issues page's public results and, in
  * time, any city-wide roll-up can read through `issueResults`.
  * Task 33 EXTENDS this module with the write path (casting/replacing a
  * vote-set) — do not restructure the read query's shape without checking
  * that task's needs too.
  *
- * Share definition (PRD §5.5 "percentage shares", chosen interpretation):
+ * Share definition ("percentage shares", chosen interpretation):
  * each current ward issue's `sharePct` is that issue's selection count as a
  * percentage of the TOTAL selections cast across all of the ward's current
  * issues — i.e. "what share of all top-3 picks went to this issue", not
@@ -16,13 +16,13 @@
  * reading, and is what `<IssueBars>` renders as a set of bars each summing
  * toward the same 100%.
  *
- * Retired-set exclusion (core privacy/correctness rule, PRD §5.5): only
+ * Retired-set exclusion (core privacy/correctness rule): only
  * `issue_vote_sets.active = true` rows count. A citizen who changes home
  * ward, or re-casts their top-3, leaves behind an inactive set that must
  * never contribute to any ward's public aggregate again — the join below
  * filters on `active` before counting anything.
  *
- * Current-issue-list scoping (PRD §5.5 "deleting an issue removes it from
+ * Current-issue-list scoping ("deleting an issue removes it from
  * every vote-set... results are always computed against the current
  * list"): the query starts from `ward_issues` for this ward and only looks
  * up a count for each issue found there. A selection row whose issue was
@@ -31,7 +31,7 @@
  * id is simply never consulted — there is nothing to filter out
  * defensively.
  *
- * No-raw-counts guarantee (PRD §5.5 "no raw counts on this page"): counts
+ * No-raw-counts guarantee ("no raw counts on this page"): counts
  * are computed internally to derive rank/share but are NEVER placed on the
  * returned objects — the return type has no `count` field. A separate
  * total-votes figure is out of scope for this function.
@@ -115,7 +115,7 @@ export async function issueResults(wardId: number): Promise<IssueResult[]> {
 /**
  * Retires `userId`'s ACTIVE issue-vote-set, if any (a no-op otherwise —
  * `schema.ts`'s `active_set_uq` guarantees at most one). Called whenever a
- * citizen changes their home ward (PRD §5.5: "changing home ward retires
+ * citizen changes their home ward ("changing home ward retires
  * the previous ward's vote-set" — Task 29, `src/lib/account-flow.ts`) and,
  * per Task 33, whenever they re-cast a fresh top-3 in their current ward.
  *
@@ -154,8 +154,8 @@ async function retireAndInsertSet(tx: Tx, userId: number, wardId: number, issueI
 }
 
 /**
- * Casts (or re-casts) `userId`'s top-3 issue vote-set for `wardId` (PRD
- * §5.5). Validates, then RE-CAST-REPLACES atomically: any existing active
+ * Casts (or re-casts) `userId`'s top-3 issue vote-set for `wardId`
+ * (account-linked voting, dormant — architecture §15). Validates, then RE-CAST-REPLACES atomically: any existing active
  * set is retired and a brand-new one (with exactly `issueIds`' selections)
  * takes its place — a citizen never has more than one active set at a time
  * (schema.ts's `active_set_uq` is the DB-level backstop for this).
@@ -167,9 +167,9 @@ async function retireAndInsertSet(tx: Tx, userId: number, wardId: number, issueI
  *      same issue id must not double-count it as 2 of their 3 picks), then
  *      checked for length 1..3 -> `invalid_selection_count`. Zero
  *      selections is rejected here too — "clearing" a vote isn't a
- *      supported action (PRD §5.5 only describes casting/re-casting).
+ *      supported action (only casting/re-casting is supported).
  *   2. `userId`'s CURRENT `homeWardId` must equal `wardId` ->
- *      `wrong_ward`. Voting is home-ward-only (PRD §5.5) and is always
+ *      `wrong_ward`. Voting is home-ward-only and is always
  *      checked against the live `users` row, never a value the caller
  *      merely asserts.
  *   3. Every deduped id must be a `ward_issues` row belonging to `wardId`

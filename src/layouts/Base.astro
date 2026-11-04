@@ -14,7 +14,7 @@
  * cookies/session, so the HTML it produces is identical for every
  * visitor and safe for nginx's anonymous-page micro-cache.
  *
- * The Register/Login modal (Task 27, IA §7.1) is rendered ONCE here, on
+ * The Register/Login modal (Task 27) is rendered ONCE here, on
  * every page, so it's always reachable from any ward page's "Register for
  * updates" slot without each of
  * those pages needing to know about it. Its own markup/behavior are
@@ -29,7 +29,7 @@
  * page's register-for-updates slot / vote-action hint) client-side — never
  * server-side, which is what keeps this layout's HTML cache-safe.
  *
- * The Flag misinformation modal (Task 32, IA §7.2) is rendered ONCE here
+ * The Flag misinformation modal (Task 32) is rendered ONCE here
  * too, same rationale as Register/Login: any page that shows curator-
  * maintained data (Ward.astro and Candidate.astro today) and
  * Task 41) renders a "Flag an error" button carrying its own
@@ -40,8 +40,8 @@
  * self-contained markup/behavior, dialog always starts closed, never reads
  * cookies/session.
  *
- * The `?src` attribution cookie writer (Task 49, architecture §5/§13, PRD
- * §5.12) is rendered ONCE here too, in `<head>`, on every page —
+ * The `?src` attribution cookie writer (Task 49, architecture §5/§13; dormant,
+ * §15) is rendered ONCE here too, in `<head>`, on every page —
  * `src/lib/attribution.ts#ATTRIBUTION_SCRIPT_SOURCE`, one of exactly two
  * CSP-allowed nonce'd inline scripts (the other is GA, Task 58) — see
  * src/lib/csp.ts (Task 60) for the actual script-src allowlist this nonce
@@ -163,7 +163,7 @@ const showGa = !noindex && !!gaMeasurementId;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--
-      ?src attribution cookie writer (architecture §5/§13, PRD §5.12) —
+      ?src attribution cookie writer (architecture §5/§13) —
       src/lib/attribution.ts. Runs first, in <head>, before any interaction.
       Reads location.search client-side ONLY; the server never branches on
       ?src, so this markup (aside from the nonce attribute itself, see

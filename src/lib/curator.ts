@@ -85,7 +85,7 @@ export function flagFieldKey(targetType: FlagTargetType, targetRef: string): str
 }
 
 // ---------------------------------------------------------------------------
-// Dashboard (IA §5.1)
+// Dashboard
 // ---------------------------------------------------------------------------
 
 export interface DashboardData {
@@ -104,7 +104,7 @@ export async function loadDashboard(): Promise<DashboardData> {
 }
 
 // ---------------------------------------------------------------------------
-// Queue list (IA §5.2)
+// Queue list
 // ---------------------------------------------------------------------------
 
 export type QueueSort = 'recent' | 'ward';
@@ -168,7 +168,7 @@ export async function loadQueueList(sort: QueueSort = 'recent', page = 1): Promi
 }
 
 // ---------------------------------------------------------------------------
-// Queue item (IA §5.3)
+// Queue item
 // ---------------------------------------------------------------------------
 
 export interface FlagSubmissionRow {
@@ -262,7 +262,7 @@ export async function loadQueueItem(id: number, page = 1): Promise<QueueItemDeta
 }
 
 // ---------------------------------------------------------------------------
-// Fix / dismiss (IA §5.3, PRD §6.1)
+// Fix / dismiss
 // ---------------------------------------------------------------------------
 
 export type ResolveOutcome =
@@ -311,7 +311,7 @@ export async function handleFlagFix(actor: CuratorActor, item: QueueItemDetail, 
   return { kind: 'accepted' };
 }
 
-/** Handles the REJECT form — a reason is required (PRD §6.1 step 3); same `flag_already_resolved` handling as `handleFlagFix`. */
+/** Handles the REJECT form — a reason is required; same `flag_already_resolved` handling as `handleFlagFix`. */
 export async function handleReject(actor: CuratorActor, itemId: number, form: FormData): Promise<ResolveOutcome> {
   const reason = String(form.get('reason') ?? '').trim();
   if (!reason) {
@@ -331,7 +331,7 @@ export async function handleReject(actor: CuratorActor, itemId: number, form: Fo
 }
 
 // ---------------------------------------------------------------------------
-// Candidate editor (Task 36; IA §5.4; PRD §5.2/§9.1/§11) — create/correct a
+// Candidate editor (Task 36) — create/correct a
 // candidate's core record + report-card fields. Edits publish immediately
 // (curator trust, no approval gate); every report-card field carries a
 // required source.

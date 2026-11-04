@@ -1,6 +1,6 @@
 /**
  * Runtime machine translation of curator-authored data (Task 40;
- * architecture.md §9; PRD §8). Curator content — `candidate_fields`,
+ * architecture.md §9). Curator content — `candidate_fields`,
  * `ward_issues`, `candidate_stances` — is authored in ONE language; this
  * module generates the OTHER language, in-request, right after the
  * authoring publish commits. This is a DIFFERENT path from

@@ -1,16 +1,16 @@
 /**
- * WardMap — the ward boundary map (IA §3.2), on the Google Maps JavaScript
- * API. Migrated from MapLibre 2026-08-13; design
- * docs/superpowers/specs/2026-08-13-google-maps-migration-design.md §5.
+ * WardMap — the ward boundary map, on the Google Maps JavaScript
+ * API. Rendered only when `mapsConfig().enabled` (docs/architecture.md
+ * §4); the per-load billing trade-off is in docs/architecture.md §16.
  *
  * The basemap is styled by a cloud Map ID (docs/gcp.md §4), NOT in code —
- * that is what satisfies design-system.md §8's "desaturated gray basemap",
+ * that is what satisfies design-system.md §8.1's "desaturated" basemap,
  * and it is why `buildBaseStyle()` (MapLibre's flat background layer, the
  * closest thing this page had to a basemap) is gone. The ward polygon
  * itself is still drawn here, and its colors are still read off the page's
  * CSS custom properties at init time (`readMapColors`) rather than
  * hardcoded: tests/unit/tokens.test.ts bans hex literals anywhere under
- * src/ except tokens.css. Per design-system.md §8 the boundary is
+ * src/ except tokens.css. Per design-system.md §8.1 the boundary is
  * `--oc-forest` at 2px over a 30% `--forest-tint` fill; no marker or pin is
  * ever created, and nothing here is keyed to party/candidate data.
  *
@@ -103,7 +103,7 @@ export interface WardMapColors {
 
 /**
  * Reads the two polygon colors off `root`'s computed CSS custom properties
- * (design-system.md §8: `--forest-tint` fill, `--oc-forest` boundary line).
+ * (design-system.md §8.1: `--forest-tint` fill, `--oc-forest` boundary line).
  * Never hardcodes a hex value; the named-color fallbacks are reached only if
  * tokens.css failed to load and are deliberately neutral — no red, no party
  * hue. The basemap background is no longer read here: the cloud Map ID owns
@@ -237,7 +237,7 @@ export async function mountWardMap(container: HTMLElement): Promise<void> {
  *
  * Lazy: the map is constructed only once its container scrolls into view, so
  * a ward page whose map sits below the fold never spends a (billed) map load
- * on a visitor who never sees it — spec §2. Falls back to mounting
+ * on a visitor who never sees it (docs/architecture.md §16). Falls back to mounting
  * immediately where IntersectionObserver is absent.
  */
 export function initWardMap(root: ParentNode = document): void {

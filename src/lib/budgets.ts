@@ -1,6 +1,6 @@
 /**
  * Shared daily-budget counter (architecture.md §13 "cost amplification";
- * dependency register §6.4/§6.5 for geocoding specifically). Reused by
+ * §16 for the geocoding row). Reused by
  * geocoding (this task), OTP sending (Task 25), and news-link suggestion
  * queries (Task 55) — one counter mechanism, one enum of kinds
  * (`budget_kind` in src/db/schema.ts), keyed by (UTC day, kind).

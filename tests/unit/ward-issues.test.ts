@@ -1,6 +1,6 @@
 /**
  * Task 39 — src/lib/ward-issues.ts: the curator ward-issues editor's engine
- * (add/rename/remove), PRD §5.4/§5.5.
+ * (add/rename/remove).
  *
  * VOTE SEMANTICS (the load-bearing behavior this suite exists to pin down):
  *   - RENAME updates the title IN PLACE — the `ward_issues.id` never
@@ -10,7 +10,7 @@
  *   - REMOVE deletes the `ward_issues` row outright, which FK-cascades its
  *     `issue_vote_selections` rows away — but a citizen's OTHER selections
  *     in the SAME vote set (for issues that were not removed) are left
- *     alone (PRD §5.5: "delete cascades selections + remaining stand").
+ *     alone ("delete cascades selections + remaining stand").
  *
  * Curators are city-wide: the curator here has no ward assignment of any
  * kind and can still edit issues in any ward.
@@ -25,7 +25,7 @@ import * as schema from '../../src/db/schema';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -75,7 +75,7 @@ async function resetFixtures(): Promise<void> {
   await db.delete(schema.issueVoteSets).where(inArray(schema.issueVoteSets.wardId, ALL_WARD_IDS));
 }
 
-describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove, PRD §5.4/§5.5', () => {
+describe('src/lib/ward-issues.ts (Task 39) — add/rename/remove', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 

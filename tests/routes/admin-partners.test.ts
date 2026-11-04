@@ -1,6 +1,6 @@
 /**
- * `/admin/partners` (Task 46, information-architecture.md §6.4; PRD
- * §5.12/§5.13/§9.1/§11). Drives every request through the REAL middleware
+ * `/admin/partners` (Task 46; dormant,
+ * docs/architecture.md §15). Drives every request through the REAL middleware
  * (src/middleware.ts) composed with the real page twin via Astro's
  * container API — same technique as tests/routes/admin-console.test.ts.
  *
@@ -32,7 +32,7 @@ import PartnersRoute from '../../src/pages/admin/partners.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 

@@ -9,7 +9,7 @@ import { issueResults, castVoteSet } from '../../src/lib/votes';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -97,7 +97,7 @@ async function makeVoteSet(userId: number, issueIds: number[], active: boolean):
   return set!.id;
 }
 
-describe('issueResults (src/lib/votes.ts) — PRD §5.5', () => {
+describe('issueResults (src/lib/votes.ts)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
@@ -214,7 +214,7 @@ describe('issueResults (src/lib/votes.ts) — PRD §5.5', () => {
   // beforeAll (migrate + seed wards)/afterAll (client.end())/beforeEach
   // (resetFixtures) — a sibling describe's afterAll would close the shared
   // pg client before these tests ran.
-  describe('castVoteSet (src/lib/votes.ts) — PRD §5.5', () => {
+  describe('castVoteSet (src/lib/votes.ts)', () => {
     it('1-3 valid ids: creates an active set + selections', async () => {
       const issueA = await makeIssue('Roads', 0);
       const issueB = await makeIssue('Water', 1);
@@ -316,7 +316,7 @@ describe('issueResults (src/lib/votes.ts) — PRD §5.5', () => {
       await db.delete(schema.wardIssues).where(eq(schema.wardIssues.id, issueB));
 
       // The FK's onDelete: 'cascade' removed issueB's selection row; issueA's
-      // stands untouched (PRD §5.5 "remaining selections stand").
+      // stands untouched ("remaining selections stand").
       expect(await activeSelections(user)).toEqual([issueA]);
 
       const results = await issueResults(WARD_ID);

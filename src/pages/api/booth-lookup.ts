@@ -2,7 +2,7 @@
  * POST /api/booth-lookup — EPIC (voter ID) number -> the citizen's polling
  * booth, and the ward we know it by.
  *
- * INPUT MODE CHANGED 2026-08-19 (milestones.md §3, tracker 127). This
+ * INPUT MODE CHANGED 2026-08-19 (docs/architecture.md §7, tracker 127). This
  * endpoint used to take a free-text address, geocode it to a ward, and read
  * booths out of the local `booths` table. That path is gone. It could not
  * work: the addressed polling-station rows were dropped from the plan on

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Coverage for src/islands/WardMap.ts (Google Maps migration, spec §5).
+ * Coverage for src/islands/WardMap.ts (docs/architecture.md §4, §16).
  *
  * A real Google map needs network and a WebGL canvas jsdom does not
  * provide, so this file exercises the pure helpers directly and mocks
@@ -171,7 +171,7 @@ describe('computeFeatureBounds (pure)', () => {
 });
 
 describe('readMapColors (pure)', () => {
-  it('reads only the polygon tokens — the basemap background is the Map ID’s job now (spec §5)', () => {
+  it('reads only the polygon tokens — the basemap background is the Map ID’s job now (design-system §8.1)', () => {
     const getPropertyValue = vi.fn((name: string) => {
       const values: Record<string, string> = {
         '--gray-100': 'ivory',
@@ -224,7 +224,7 @@ describe('mountWardMap — success', () => {
     });
   });
 
-  it('styles the polygon from the CSS tokens and adds no marker (design-system.md §8)', async () => {
+  it('styles the polygon from the CSS tokens and adds no marker (design-system.md §8.1)', async () => {
     await mountWardMap(makeContainer());
 
     const tokens = readMapColors(document.documentElement);
@@ -261,7 +261,7 @@ describe('mountWardMap — success', () => {
   });
 });
 
-describe('mountWardMap — failure closed (spec §5)', () => {
+describe('mountWardMap — failure closed', () => {
   it('leaves the fallback when data-boundary-url is missing', async () => {
     const container = makeContainer();
     delete container.dataset.boundaryUrl;

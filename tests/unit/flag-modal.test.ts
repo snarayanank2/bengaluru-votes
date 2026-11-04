@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Direct coverage for the Flag misinformation modal island
- * (src/islands/FlagModal.ts) — Task 32, IA §7.2, PRD §6.1/§6.3. Builds a
+ * (src/islands/FlagModal.ts) — Task 32. Builds a
  * DOM fixture mirroring the exact markup src/components/FlagModal.astro
  * renders (same `data-flag-*`/`data-msg-*` hooks) and drives it via jsdom,
  * mocking `fetch` for /api/me and /api/flags, and `window.bvOpenRegisterLogin`

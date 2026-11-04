@@ -1,6 +1,6 @@
 /**
- * `/curator`, `/curator/queue`, `/curator/queue/{id}` (Task 34,
- * information-architecture.md §5.1/§5.2/§5.3; PRD §6.1/§7/§9.1). Drives
+ * `/curator`, `/curator/queue`, `/curator/queue/{id}` (Task 34;
+ * architecture.md §7). Drives
  * every request through the REAL middleware (src/middleware.ts) composed
  * with the real page twin via Astro's container API, same technique as
  * tests/routes/account.test.ts — so this suite exercises the actual
@@ -32,7 +32,7 @@ import GuideRoute from '../../src/pages/curator/guide.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -247,7 +247,7 @@ async function deleteFixtureUsers(): Promise<void> {
   await db.delete(schema.users).where(inArray(schema.users.email, Object.values(EMAILS)));
 }
 
-describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/§5.2/§5.3', () => {
+describe('/curator, /curator/queue, /curator/queue/{id} (Task 34)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 
@@ -309,7 +309,7 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     });
   });
 
-  describe('dashboard (IA §5.1)', () => {
+  describe('dashboard', () => {
     it('queue count matches every pending item; there is no awaiting-sign-off list', async () => {
       const [countRow] = await db
         .select({ count: sql<number>`count(*)::int` })
@@ -354,7 +354,7 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34) — IA §5.1/�
     });
   });
 
-  describe('reject requires a reason (PRD §6.1 step 3)', () => {
+  describe('reject requires a reason', () => {
     it('empty reason -> 400 validation error, item stays pending', async () => {
       const res = await run(QueueItemRoute, `/curator/queue/${itemRejectEmpty.id}`, {
         method: 'POST',

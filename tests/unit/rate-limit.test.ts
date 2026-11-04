@@ -9,7 +9,7 @@ import { checkAccountLimit, checkDefaultLimit, DEFAULT_LIMITS } from '../../src/
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -84,7 +84,7 @@ async function resetFixtures(): Promise<void> {
   }
 }
 
-describe('rate-limit (src/lib/rate-limit.ts) — PRD §6.3, §12; architecture §3', () => {
+describe('rate-limit (src/lib/rate-limit.ts) — architecture §3', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });

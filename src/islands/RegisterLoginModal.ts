@@ -1,5 +1,5 @@
 /**
- * Register/Login modal — the client-side half of Task 27 (IA §7.1). Built
+ * Register/Login modal — the client-side half of Task 27. Built
  * on `ModalController` (src/islands/ModalShell.ts) over the `<dialog>`
  * markup `src/components/RegisterLoginModal.astro` renders once per page
  * (from Base.astro, so it's present everywhere).

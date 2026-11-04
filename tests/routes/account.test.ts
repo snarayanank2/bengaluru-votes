@@ -1,6 +1,6 @@
 /**
- * `/account`, `/account/notifications`, `/account/submissions` (Task 29,
- * information-architecture.md §4.1/§4.2/§4.3). Drives every request through
+ * `/account`, `/account/notifications`, `/account/submissions` (Task 29;
+ * dormant, docs/architecture.md §15). Drives every request through
  * the REAL middleware (src/middleware.ts) composed with the real page twin
  * via Astro's container API — the same composition production uses — so
  * this suite can assert the actual session-guard/CSRF behavior end to end,
@@ -37,7 +37,7 @@ import AccountSubmissionsKn from '../../src/pages/kn/account/submissions.astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -209,7 +209,7 @@ async function resetFixtures(): Promise<void> {
   await db.delete(schema.users).where(inArray(schema.users.email, FIXTURE_EMAILS));
 }
 
-describe('/account, /account/notifications, /account/submissions (Task 29) — IA §4.1/§4.2/§4.3', () => {
+describe('/account, /account/notifications, /account/submissions (Task 29)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD_A).onConflictDoUpdate({ target: schema.wards.id, set: WARD_A });
@@ -245,7 +245,7 @@ describe('/account, /account/notifications, /account/submissions (Task 29) — I
     });
   });
 
-  describe('language preference (PRD §8)', () => {
+  describe('language preference', () => {
     it('authed POST with a valid csrf token + language=kn updates users.language', async () => {
       const userId = await upsertUser(EMAILS.language, { homeWardId: WARD_A.id, language: 'en' });
       const { cookieValue, token } = await sessionFor(userId);
@@ -264,7 +264,7 @@ describe('/account, /account/notifications, /account/submissions (Task 29) — I
     });
   });
 
-  describe('home ward change retires the previous ward vote-set (PRD §5.5)', () => {
+  describe('home ward change retires the previous ward vote-set', () => {
     it('POST ward change: users.homeWardId updated AND the old ward active vote-set is retired, atomically', async () => {
       const userId = await upsertUser(EMAILS.ward, { homeWardId: WARD_A.id, language: 'en' });
       const { cookieValue, token } = await sessionFor(userId);
@@ -290,7 +290,7 @@ describe('/account, /account/notifications, /account/submissions (Task 29) — I
     });
   });
 
-  describe('contact add/change — OTP-verified (PRD §9/§10)', () => {
+  describe('contact add/change — OTP-verified', () => {
     it('step 1 requests an OTP (sendEmail called) and renders the code-entry step', async () => {
       const userId = await upsertUser(EMAILS.contact, { homeWardId: WARD_A.id });
       const { cookieValue, token } = await sessionFor(userId);
@@ -410,7 +410,7 @@ describe('/account, /account/notifications, /account/submissions (Task 29) — I
     });
   });
 
-  describe('/account/notifications — channel toggles only (PRD §9.3)', () => {
+  describe('/account/notifications — channel toggles only', () => {
     it('POST emailEnabled=false, whatsappEnabled=on -> persisted independently', async () => {
       const userId = await upsertUser(EMAILS.notifications, {
         homeWardId: WARD_A.id,
@@ -455,7 +455,7 @@ describe('/account, /account/notifications, /account/submissions (Task 29) — I
     });
   });
 
-  describe('/account/submissions — status + shared outcome (PRD §6.2/§6.3)', () => {
+  describe('/account/submissions — status + shared outcome', () => {
     it('shows a pending flag and an accepted (collapsed) flag with the shared resolution reason', async () => {
       const userId = await upsertUser(EMAILS.submissions, { homeWardId: WARD_A.id });
       const { cookieValue } = await sessionFor(userId);
@@ -485,7 +485,7 @@ describe('/account, /account/notifications, /account/submissions (Task 29) — I
           resolutionReason: 'Account route test shared resolution reason',
         })
         .returning({ id: schema.flagItems.id });
-      // Two submissions collapsed into the SAME flag_items row (PRD §6.3).
+      // Two submissions collapsed into the SAME flag_items row.
       await db.insert(schema.flagSubmissions).values({
         flagItemId: acceptedItem!.id,
         userId,

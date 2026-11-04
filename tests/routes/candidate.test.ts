@@ -1,6 +1,6 @@
 /**
  * Candidate report card (`/candidate/{slug}`, `/kn/candidate/{slug}`) —
- * Task 41, IA §3.4, PRD §5.2, architecture §8/§13. Drives every request
+ * Task 41, architecture §8/§13. Drives every request
  * through the REAL route twins + a real DB, same technique as
  * tests/routes/ward.test.ts.
  *
@@ -35,7 +35,7 @@ import CandidateKn from '../../src/pages/kn/candidate/[slug].astro';
 if (!process.env.DATABASE_URL) {
   throw new Error(
     'DATABASE_URL is not set. These tests need a Postgres database of their ' +
-      'own — see CLAUDE.md ("Tests need a database") for how to get one.',
+      'own — see AGENTS.md ("Tests need a database") for how to get one.',
   );
 }
 
@@ -114,7 +114,7 @@ async function deleteCandidateTree(candidateId: number): Promise<void> {
   await db.delete(schema.candidateFields).where(eq(schema.candidateFields.candidateId, candidateId));
 }
 
-describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA §3.4, PRD §5.2', () => {
+describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
@@ -266,7 +266,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
     });
   });
 
-  describe('withdrawn/rejected candidates keep their URL live (PRD §5.2)', () => {
+  describe('withdrawn/rejected candidates keep their URL live', () => {
     it('withdrawn candidate: 200 (NOT 404) + the status banner', async () => {
       const res = await renderCandidate('en', WITHDRAWN_SLUG);
       expect(res.status).toBe(200);
@@ -311,7 +311,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
     });
   });
 
-  describe('affidavit source href (PRD §5.2 — the stored PDF is the public source)', () => {
+  describe('affidavit source href (the stored PDF is the public source)', () => {
     it('an affidavit-sourced field links to the stored /media/{id}/{hash} PDF, not any other URL', async () => {
       const html = normalize(await (await renderCandidate('en', MAIN_SLUG)).text());
       expect(html).toContain(`href="${affidavitMediaUrl}"`);
@@ -392,7 +392,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug}) — IA
       });
     });
 
-    it('a withdrawn candidate (URL still resolves, PRD §5.2) still emits Person JSON-LD', async () => {
+    it('a withdrawn candidate (URL still resolves) still emits Person JSON-LD', async () => {
       const html = await (await renderCandidate('en', WITHDRAWN_SLUG)).text();
       const scripts = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
       const person = scripts.map((m) => JSON.parse(m[1])).find((obj) => obj['@type'] === 'Person');

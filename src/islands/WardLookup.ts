@@ -1,6 +1,6 @@
 /**
  * WardLookup — progressive enhancement over the Home page's ward-search
- * `<form>` (PRD §5.1, IA §3.1).
+ * `<form>`.
  *
  * The form is a real `<form method="post">` that works with zero JS: a
  * plain submit POSTs to `/` and `Home.astro` server-renders the result

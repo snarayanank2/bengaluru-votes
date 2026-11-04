@@ -1,5 +1,5 @@
 /**
- * `?src={partner-slug}` attribution (architecture.md §5, §13; PRD §5.12).
+ * `?src={partner-slug}` attribution (architecture.md §5, §13; dormant, §15).
  *
  * The nginx micro-cache key ignores the query string entirely (architecture
  * §5), so the server can never branch on `?src` without breaking cache
@@ -14,7 +14,7 @@
  * registration endpoint (`src/pages/api/otp/verify.ts`, via
  * `src/lib/auth-flow.ts#resolveOrRegister`) reads that same cookie name and
  * persists it onto the new user row as `srcAttribution` — attribution is
- * measurement-only (PRD §5.12): it grants no permission and changes nothing
+ * measurement-only: it grants no permission and changes nothing
  * the citizen sees.
  *
  * LAST-VALID-`src`-WINS: the script overwrites any existing `bv_src` cookie
@@ -37,7 +37,7 @@
 /** Same cookie name the registration endpoint reads (src/pages/api/otp/verify.ts:70, via src/lib/auth-flow.ts). */
 export const SRC_COOKIE_NAME = 'bv_src';
 
-/** 30 days, in seconds — the window PRD §5.12 means by "the value survives the visit". */
+/** 30 days, in seconds — the window in which "the value survives the visit". */
 export const SRC_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 /** Reasonable ceiling so a garbage/oversized `?src` value is never stored, even if it happened to match the shape below. */

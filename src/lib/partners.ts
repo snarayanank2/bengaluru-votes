@@ -1,9 +1,8 @@
 /**
  * Business logic behind the admin console's partners, ward-coverage,
- * and EOI triage (Task 46, information-architecture.md
- * §6.4; PRD §5.12/§5.13/§9.1/§11).
+ * and EOI triage (Task 46). Dormant: docs/architecture.md §15.
  *
- * PARTNERS ARE NOT A ROLE (PRD §5.12): a `partners` row is purely a
+ * PARTNERS ARE NOT A ROLE: a `partners` row is purely a
  * distribution/reach concept — a slug used in outbound links (`?src=` query
  * param, persisted onto `users.srcAttribution` at registration — see
  * src/lib/account-flow.ts/auth-flow.ts's registration path) and in the
@@ -14,13 +13,12 @@
  * TWO WORK QUEUES this module surfaces for the admin console:
  *   1. COVERAGE (`partnerCoverage`) — which of the 369 wards have >=1
  *      partner covering them, and which don't (the UNCOVERED set — the
- *      early-warning signal for central-Bengaluru distribution skew, IA
- *      §6.4). Per-partner attributed registrations let an admin see which
+ *      early-warning signal for central-Bengaluru distribution skew). Per-partner attributed registrations let an admin see which
  *      partnerships are actually converting sign-ups.
  *   2. EOI QUEUE (`listEois` + the triage actions) — expressions of
  *      interest split by path. Accepting the 'awareness' path PROVISIONS a
  *      partner (slug + kit page). Accepting the 'curation' path does NOT
- *      grant the curator role itself — PRD §5.13 is explicit that there is
+ *      grant the curator role itself — there is
  *      NO SELF-ACTIVATION; accepting here only records admin intent, and a
  *      separate, deliberate action on `/admin/users` (`grantRole`,
  *      src/lib/admin.ts) is what actually elevates the person. Keeping
@@ -48,7 +46,7 @@ function assertAdmin(actor: { role: string }): void {
 }
 
 // ---------------------------------------------------------------------------
-// Partner CRUD (IA §6.4)
+// Partner CRUD
 // ---------------------------------------------------------------------------
 
 /**
@@ -172,14 +170,14 @@ export async function updatePartner(actor: AdminActor, partnerId: number, input:
 }
 
 // ---------------------------------------------------------------------------
-// Coverage matrix (IA §6.4)
+// Coverage matrix
 // ---------------------------------------------------------------------------
 
 export interface PartnerCoverageRow {
   partnerId: number;
   slug: string;
   wardIds: number[];
-  /** Count of `users` whose `srcAttribution` equals this partner's slug (PRD §5.12's `?src=` attribution, persisted at registration). */
+  /** Count of `users` whose `srcAttribution` equals this partner's slug (the `?src=` attribution, persisted at registration). */
   registrations: number;
 }
 
@@ -187,7 +185,7 @@ export interface PartnerCoverage {
   /** Ward ids covered by >=1 partner, sorted ascending. */
   covered: number[];
   /**
-   * Ward ids covered by NO partner — the work queue IA §6.4 calls out as
+   * Ward ids covered by NO partner — the work queue that serves as
    * the early-warning signal for central-Bengaluru distribution skew.
    */
   uncovered: number[];
@@ -250,7 +248,7 @@ export interface PartnerRosterRow {
   registrations: number;
 }
 
-/** The partner roster (IA §6.4): every partner with its ward set + attributed registrations, for the admin page's list/edit forms. */
+/** The partner roster: every partner with its ward set + attributed registrations, for the admin page's list/edit forms. */
 export async function listPartners(): Promise<PartnerRosterRow[]> {
   const [allPartners, coverage] = await Promise.all([db.select().from(partners).orderBy(partners.id), partnerCoverage()]);
   const coverageByPartnerId = new Map(coverage.byPartner.map((row) => [row.partnerId, row]));
@@ -267,7 +265,7 @@ export async function listPartners(): Promise<PartnerRosterRow[]> {
 }
 
 // ---------------------------------------------------------------------------
-// EOI triage (PRD §5.13 — no self-activation)
+// EOI triage (no self-activation)
 // ---------------------------------------------------------------------------
 
 export interface EoiRow {
@@ -310,7 +308,7 @@ export interface AcceptEoiAwarenessInput {
 /**
  * Accepts an 'awareness'-path EOI and PROVISIONS a partner for it (the
  * partner slug + kit page `/partner/{slug}`, Task 48) via `createPartner`
- * — the whole point of the awareness path (IA §6.4: "accepting awareness
+ * — the whole point of the awareness path ("accepting awareness
  * -> provisions a partner slug + kit page"). Runs as two separate
  * transactions (partner creation, then the EOI status flip) rather
  * than one nested transaction — simpler, and a failure between the two
@@ -346,7 +344,7 @@ export async function acceptEoiAwareness(actor: AdminActor, eoiId: number, input
 /**
  * Accepts a 'curation'-path EOI — marks it accepted and
  * NOTHING ELSE. Deliberately does NOT grant the curator role
- * (PRD §5.13: "no self-activation") — this only records
+ * ("no self-activation") — this only records
  * that an admin has decided this person should become a curator; the
  * actual elevation is a SEPARATE, deliberate action on `/admin/users`
  * (`grantRole`, src/lib/admin.ts). Keeping the two steps apart means

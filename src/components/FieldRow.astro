@@ -9,13 +9,13 @@
  * renders its source line — absence of data is data (§3) — and shows
  * "Not declared" in muted italic instead of a value.
  *
- * PENDING-TRANSLATION INDICATOR (Task 40; PRD §8; architecture §9): a
+ * PENDING-TRANSLATION INDICATOR (Task 40; architecture §9): a
  * curator-authored field is machine-translated into the OTHER language at
  * publish time, with no human review. When that hasn't happened yet
  * (`translationStatus: 'pending'`) and this row is being rendered in a
  * locale OTHER than the one the value was authored in, the page is showing
  * a fallback — the AUTHORED-language text, not a translation of it — and
- * PRD §8 requires "a subtle indicator" rather than silently presenting it
+ * it gets "a subtle indicator" rather than silently presenting it
  * as if it were natively in `lang`. Callers resolve which STRING to pass
  * as `value` themselves (typically `valueKn ?? valueEn` when pending); this
  * component only decides whether to show the indicator, from `authoredLang`
