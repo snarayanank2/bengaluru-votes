@@ -92,6 +92,8 @@ function initZone(zone: HTMLElement): void {
 
     const selected = checkboxes().filter((box) => box.checked).length;
     checkboxes().forEach((box) => { box.disabled = submitting || (!box.checked && selected >= MAX_SELECTIONS); });
+    const clear = zone.querySelector<HTMLButtonElement>('[data-vote-clear]');
+    if (clear) clear.disabled = submitting || selected === 0;
     const submit = zone.querySelector<HTMLButtonElement>('[data-vote-submit]');
     if (submit) {
       submit.disabled = submitting || selected !== MAX_SELECTIONS;
@@ -143,6 +145,13 @@ function initZone(zone: HTMLElement): void {
 
   zone.querySelector('[data-vote-form]')?.addEventListener('submit', (event) => void submitVote(event as SubmitEvent));
   zone.querySelector('[data-vote-issue-options]')?.addEventListener('change', refresh);
+  zone.querySelector('[data-vote-clear]')?.addEventListener('click', () => {
+    if (submitting) return;
+    checkboxes().forEach((box) => { box.checked = false; });
+    zone.querySelectorAll<HTMLElement>('.form-error').forEach((node) => { node.hidden = true; });
+    refresh();
+    checkboxes()[0]?.focus();
+  });
   zone.querySelector('[data-show-results]')?.addEventListener('click', () => void showResults());
   refresh();
   void loadStatus(zone, showResults);
