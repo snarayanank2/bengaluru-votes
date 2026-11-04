@@ -24,7 +24,7 @@ What runs where, what is cached, what is dynamic, and how the site stays fast, b
 | Spike strategy | nginx micro-cache (~60 s TTL on pages); no purge machinery |
 | Geo | Ward polygons as static GeoJSON (`data/gba.geojson`); the map island fetches one ward's Feature from `GET /ward/<id>/boundary.json` (`src/pages/ward/[id]/boundary.json.ts`, `wardBoundaryFeature()` in `src/lib/geo.ts`); in-memory point-in-polygon (Turf.js) for address lookup; **no PostGIS** |
 | Client JS | Zero by default; islands only for modals, the map, lookups and voting |
-| Deployment | Hostinger VPS; images built on the box from a tagged checkout; deploys run by hand (§14) |
+| Deployment | Hostinger VPS; images built on the box from a tagged checkout; GitHub Actions tests every PR and deploys every push to `main` (§14) |
 | Migrations | **Drizzle SQL migrations**, forward-only and backward-compatible, run as an explicit deploy step (§14.7) |
 | Media | **One store**: affidavit PDFs are `bytea` in Postgres (`media`), served at immutable content-hashed URLs. No object storage, no bucket credential |
 | Monitoring | None external. Container healthchecks and rotated Compose logs only (§10, §16) |
@@ -171,7 +171,7 @@ No layer translates at request time; every render is from stored text.
 
 **Glossary** (`src/i18n/glossary.json`): canonical Kannada for recurring terms (party and corporation names, "corporator", "ward", "affidavit"), used by both the dev-time script and the runtime path.
 
-**Staleness check** (`npm run translate -- --check`): exits non-zero when a Kannada file or key is missing or its stored hash no longer matches. No API calls. It is a manual pre-deploy step (§14.4).
+**Staleness check** (`npm run translate -- --check`): exits non-zero when a Kannada file or key is missing or its stored hash no longer matches. No API calls. CI runs it as part of the merge gate (§14.4) via `scripts/ci/translate-gate.ts`, which tolerates one accepted stale file, `content/pages/kn/privacy.md` (regenerate it once an Anthropic key is available, then remove the exception).
 
 **Runtime path (curator data), per field** (`src/lib/translate-runtime.ts`):
 
@@ -217,7 +217,7 @@ Never machine-translated: official bilingual data (ward names) and UI strings.
 - `tests/load/k6-election-day.js` proves the micro-cache holds election-day read volume on the real VM and that legitimate-shaped traffic through the CGNAT-sized limits (§7) sees no 429s.
 - `tests/routes/cache-invariant.test.ts` asserts public GETs set no cookies and carry no session-dependent bytes — the guard on §5.
 - `tests/unit/media.test.ts` rejects over-size and off-allowlist uploads.
-- The translation staleness check (§9) guards bilingual completeness. With no CI, `npm test`, `npm run typecheck` and `npm run translate -- --check` are run by hand before tagging a release (§14.4).
+- **The CI gate** (`.github/actions/gate/action.yml`, run by `ci.yml` on every PR and by `deploy.yml` before deploying an untested tree): typecheck, translation staleness (§9), build, Vitest against a Postgres service, Playwright smoke. The required status check is `test` (§14.4).
 
 ## 13. Security
 
@@ -231,7 +231,7 @@ Per-mechanism details live where they apply (§5 cache, §7 sessions and abuse c
 - **Processors.** Google (Geocoding, Maps JS, Places, reCAPTCHA, Analytics) and Anthropic process data outside India; the BBMP electoral API receives EPIC numbers. Flows are enumerated in `/privacy`. Affidavits are sworn public documents, not citizen personal data.
 - **Breach response:** the DPDP Act requires notifying the Data Protection Board and affected data principals of a personal data breach. The runbook needs a named owner and procedure (§16).
 - **Uploaded media:** magic-byte allowlist at ingest (PDF for affidavits; JPEG/PNG/WebP remain in the allowlist, **no SVG**). Served with `Content-Type` from the validated stored type plus `nosniff`; PDFs inline with `Content-Type: application/pdf`. Size caps: §7.
-- **Secrets:** one `.env.production` outside the repo (`/etc/bengaluru-votes/`, mode 600), referenced by Compose. Holds vendor keys, `SESSION_SECRET`, `FLAGS_ABUSE_SECRET` and Postgres credentials. Staff sign-in is being reworked to per-staff passwords in a separate change.
+- **Secrets:** the source of truth is the GitHub `production` environment (limited to `main`). Each deploy renders `/etc/bengaluru-votes/.env.production` (mode 600, outside the tree) from it per `deploy/env.production.manifest`, so values edited on the box are overwritten. Holds vendor keys, `SESSION_SECRET`, `FLAGS_ABUSE_SECRET`, Postgres credentials and the CI root SSH key. Staff sign-in is being reworked to per-staff passwords in a separate change.
 - **Accepted limitations:**
   - **No change history at all — the largest accepted limitation.** Nothing records who published a value, when, or what it replaced. Four decisions rest on the remaining nets alone: **city-wide unscoped curators**, **one transcriber per affidavit**, **publish-immediately with no approval gate**, and **machine-translated Kannada published unreviewed**. What remains is forward-only: a citizen flags a value and a curator resolves it. **An incorrect value on a candidate's criminal record has no recorded author and cannot be put back**, and the platform cannot answer "who changed this".
   - **What curator trust does not protect against.** A wrong fix or ward move overwrites the published value and is public within 60 seconds; the confirmation tick and refusal of unchanged saves are the only brakes. A curator can move any candidate to any ward and create candidates from waiting affidavits; a moved candidate keeps the old ward number in its slug. Attaching an affidavit to the wrong same-name candidate publishes its values over that candidate's, and nothing restores them. Curators and admins share one matching list: the row lock in `confirmMatch` stops a double publish, not duplicated effort. Vetting is the only control on a curator login.
@@ -239,7 +239,7 @@ Per-mechanism details live where they apply (§5 cache, §7 sessions and abuse c
   - **Prompt injection** into MT and extraction (affidavit PDFs and curator text are adversarial inputs) is mitigated by escaping, a fixed extraction schema, visible provenance labels and the flag correction path. No further machinery.
   - **Sessions:** 1-hour sliding idle timeout for every role; no session revocation on role change and no login notifications for staff — the short timeout carries the weight.
   - **Backups:** none off-box (§10). The rule for whatever is chosen is India residency for the dump over disaster isolation, accepting that a region-wide provider failure would take site and backups together.
-  - **Whoever deploys holds the keys.** Deploys run as `root` over key-only SSH (§14.4). A `docker`-group deploy user would be root-equivalent anyway, so there is no pretended privilege boundary; the control is key custody. Nothing gates a deploy except the person running it.
+  - **A merge to `main` is a production deploy.** CI deploys as `root` over key-only SSH with the host key pinned (§14.4); the ruleset requires a PR and the `test` check but zero approvals, and repository admins can bypass it. So a malicious or mistaken change that passes the tests reaches production, and anyone holding the `production` environment's SSH key holds the box. A `docker`-group deploy user would be root-equivalent anyway, so there is no pretended privilege boundary; the controls are who can merge and key custody. Fork PRs get no secrets (`pull_request`, never `pull_request_target`); actions are pinned by SHA.
 
 ## 14. Deployment (Hostinger VPS)
 
@@ -279,18 +279,19 @@ The Compose project name is **pinned in the compose file** (`bengaluru-votes-pro
 
 ### 14.4 Release flow
 
-Deploys are **manual**. There is no CI; nothing deploys on push, merge or release.
+Deploys are **automatic from `main`**: every push to `main` (a PR merge or a direct commit) deploys production.
 
-```sh
-deploy/deploy.sh production v2026.08.14   # build+deploy that annotated tag
-deploy/deploy.sh production --rollback    # retag :previous, restart, re-verify
-```
+Why: changes come from cloud coding agents and outside contributors, so a change must go from pull request to production with no laptop in the loop, and production config lives in GitHub rather than only on the box.
 
-`deploy/deploy.sh` runs over SSH: preflight (ssh, tree exists and is clean, env file present) → tag the current image `:previous` → check out the tag → build with production's `SITE_ORIGIN` → migrate (§14.7) → `up -d` → re-run `static-init` → test and reload nginx config → verify, **including a real POST** (a 403 fails the deploy).
-
-- **Production is a tag.** A commit on `main` that has passed `npm test`, `npm run typecheck` and `npm run translate -- --check` locally is tagged `vYYYY.MM.DD` (`.2` for a second same-day release) and pushed. Those local checks and the script's verification are the only gates.
-- **Rollback:** `docker image tag <image>:previous <image>:latest` and `up -d`. Never a schema step, because migrations are backward-compatible (§14.7).
-- **Access:** SSH as `root`, key-only, password authentication disabled (§13).
+- **Merging.** Changes reach `main` by pull request (ruleset `.github/rulesets/main.json`: PR required, 0 approvals, required check `test`; repository admins can bypass). `.github/workflows/ci.yml` runs the gate (§12) with no secrets and read-only permissions.
+- **Deploying** (`.github/workflows/deploy.yml`). If the pushed tree equals one a same-repo PR run already passed (`scripts/ci/tested-tree.ts`), tests are skipped; otherwise the gate runs first. Then: tag `vYYYY.MM.DD` (`.2`, `.3`… for later same-day releases, Asia/Kolkata date; `scripts/ci/tag.ts`) → render and install `/etc/bengaluru-votes/.env.production` from the GitHub `production` environment per `deploy/env.production.manifest` (`scripts/ci/env-render.ts`, `deploy/install-env.sh`) → `deploy/deploy.sh production <tag>`. A missing required key fails the run before the box is touched. A push that is no longer `main`'s head is skipped.
+- **`deploy/deploy.sh`** runs over SSH: preflight (tree exists and is clean, env file present) → tag the current image `:previous` → check out the tag → build with production's `SITE_ORIGIN` → migrate (§14.7) → `up -d` → re-run `static-init` → test and reload nginx config → verify, **including a real POST** (a 403 fails the deploy).
+- **Failure handling.** `deploy.sh` exits 1 for a failure before the restart (old version still serving) and 3 after it; CI restores the previous env file on any failure and runs `--rollback` on exit 3. GitHub emails whoever triggered a failed run; there is no other alerting.
+- **Manual actions:** Actions → deploy → Run workflow: `redeploy-current`, `deploy-tag` (must be in `main`'s history), `rollback`. `deploy/deploy.sh production <tag>` and `--rollback` still work by hand, but the next CI deploy reinstalls the env file from GitHub.
+- **New config:** add the key to the GitHub `production` environment and to `deploy/env.production.manifest` in the same PR.
+- **Production is a tag**, checked out detached; `git log -1` on the box answers "what is running". Rollback is a `:previous` retag and restart, never a schema step, because migrations are backward-compatible (§14.7).
+- **Access:** SSH as `root`, key-only, password authentication disabled (§13). CI uses its own dedicated key pair (revocable without touching personal keys), with the host key pinned in the workflow. It is not restricted to a forced command, because `deploy.sh` issues many remote commands.
+- **Gate time:** the `test` job measured 2m43s on GitHub. To trim it, drop the Playwright steps from `.github/actions/gate/action.yml` first.
 
 ### 14.5 Network & TLS
 

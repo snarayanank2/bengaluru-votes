@@ -5,6 +5,8 @@ description: Use when deploying, updating, redeploying, or rolling back bengalur
 
 # Deploying to the VPS
 
+Deploys now run automatically on every push to `main` (`.github/workflows/deploy.yml`, revised 2026-11-04); for manual runs use Actions → deploy → Run workflow, or `deploy/deploy.sh` by hand. Env values live in the GitHub `production` environment — never edit the box's env file by hand, the next deploy overwrites it.
+
 The deploy tool is `deploy/deploy.sh`, committed in the repo — not in this
 skill. It does the whole sequence and verifies it:
 
@@ -43,5 +45,5 @@ verified.
 ## Not automated, deliberately
 
 - **Provisioning.** First certs, env files, seeding: `deploy/runbook.md`.
-- **Release tagging.** Deciding a commit is production-worthy is a human step (`git tag -a vYYYY.MM.DD`), done after the local checks pass — there is no staging to verify on.
-- **Secret rotation.** `/etc/bengaluru-votes/.env.production` holds the only copy of `SESSION_SECRET` and the Postgres password.
+- **Release tagging.** CI tags each deploy `vYYYY.MM.DD` (`.2`, `.3` for repeats).
+- **Secret rotation.** GitHub's `production` environment is the source of truth for `SESSION_SECRET` and the Postgres password; the box keeps `.env.production.prev` from the last deploy.

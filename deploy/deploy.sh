@@ -28,7 +28,19 @@ set -euo pipefail
 SSH_ALIAS=${VPS_SSH_ALIAS:-vps}
 
 say()   { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
-fail()  { printf '\n\033[31mFAILED: %s\033[0m\n' "$*" >&2; exit 1; }
+# Exit codes are a contract with .github/workflows/deploy.yml:
+#   1  failed BEFORE the stack restarted (the old version is still serving)
+#   2  usage
+#   3  failed at or after `up -d` (CI rolls back)
+PHASE=pre
+fail()  {
+  printf '\n\033[31mFAILED: %s\033[0m\n' "$*" >&2
+  if [ "$PHASE" = restart ]; then exit 3; fi
+  exit 1
+}
+# A bare command failing under `set -e` (e.g. static-init) never reaches
+# fail(); this keeps the contract above true for those too.
+trap 'rc=$?; if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && [ "$PHASE" = restart ]; then exit 3; fi' EXIT
 usage() {
   sed -n '3,9p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
@@ -122,6 +134,8 @@ SITE_ORIGIN. Every form on the site is broken. Rebuild with this script."
 }
 
 restart_and_verify() {
+  PHASE=restart
+  echo "DEPLOY_PHASE=restart"
   say "Restarting the $ENV_NAME stack"
   remote "$COMPOSE up -d" 2>&1 | tail -5
 
@@ -179,7 +193,9 @@ echo "  ssh ok, checkout clean, env file present"
 # Before the build, because the build overwrites :latest. There is no
 # registry (§14.3), so this image on this box IS the rollback story.
 say "Tagging the running image as $PREV"
-remote "docker image inspect $IMAGE >/dev/null 2>&1 && docker image tag $IMAGE $PREV || echo '  (no current image — first deploy, skipping)'"
+# Tag the image the RUNNING app container uses, not :latest: after a deploy that
+# built but failed to migrate, :latest is an image that never ran.
+remote "cid=\$($COMPOSE ps -q $APP_SERVICE 2>/dev/null | head -1); img=\$([ -n \"\$cid\" ] && docker inspect -f '{{.Image}}' \"\$cid\" 2>/dev/null); if [ -n \"\$img\" ]; then docker image tag \"\$img\" $PREV; elif docker image inspect $IMAGE >/dev/null 2>&1; then docker image tag $IMAGE $PREV; else echo '  (no current image — first deploy, skipping)'; fi"
 
 say "Updating $TREE to $REF"
 # Detached on an immutable tag: `git log -1` in this tree is then an honest
