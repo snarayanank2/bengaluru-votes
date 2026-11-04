@@ -26,6 +26,11 @@ describe('isTested', () => {
   it('rejects another workflow', () => expect(isTested('abc123', [with_({ run: { path: '.github/workflows/evil.yml' } })], REPO)).toBe(false));
   it('rejects a failed run', () => expect(isTested('abc123', [with_({ run: { conclusion: 'failure' } })], REPO)).toBe(false));
   it('rejects a PR into another branch', () => expect(isTested('abc123', [with_({ run: { base_branch: 'dev' } })], REPO)).toBe(false));
+  it('accepts a merged PR whose run no longer lists its base (GitHub drops it after merge)', () => {
+    const row = with_({});
+    delete row.run.base_branch;
+    expect(isTested('abc123', [row], REPO)).toBe(true);
+  });
   it('rejects a different tree', () => expect(isTested('zzz', [good], REPO)).toBe(false));
   it('accepts when one of several artifacts qualifies', () => {
     expect(isTested('abc123', [with_({ expired: true }), good], REPO)).toBe(true);

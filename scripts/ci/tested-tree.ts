@@ -28,7 +28,9 @@ export function isTested(tree: string, artifacts: ArtifactRow[], repoId: number)
       a.run.path.startsWith('.github/workflows/ci.yml') &&
       a.run.event === 'pull_request' &&
       a.run.conclusion === 'success' &&
-      a.run.base_branch === 'main',
+      // GitHub drops pull_requests from a run once the PR merges, so an absent base
+      // is fine: ci.yml only triggers for PRs into main. A listed base must be main.
+      (a.run.base_branch === undefined || a.run.base_branch === 'main'),
   );
 }
 
