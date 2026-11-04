@@ -148,3 +148,7 @@ On the box but missing from the runbook table: `FLAGS_ABUSE_SECRET`, `GOOGLE_SEA
 - No CODEOWNERS or review rule (Siva's decision); see Security for the consequence.
 - SendGrid via the existing key for the email, rather than a new mail service or GitHub's own notifications.
 - Alert on a red `main` as well as on a failed deploy.
+
+## Measured on first run (2026-11-04)
+
+The `test` job took 2m43s on GitHub (gate step 134s), over the 2-minute goal. If it needs trimming, drop the Playwright steps from `.github/actions/gate/action.yml` first (~15s locally plus the browser install).
