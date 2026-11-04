@@ -63,14 +63,6 @@ const ACTOR_ADMIN = { userId: 999999, role: 'admin' as const };
 let curatorId: number;
 
 async function resetFixtures(): Promise<void> {
-  const issueRows = await db
-    .select({ id: schema.wardIssues.id })
-    .from(schema.wardIssues)
-    .where(inArray(schema.wardIssues.wardId, ALL_WARD_IDS));
-  const issueIds = issueRows.map((r) => r.id);
-  if (issueIds.length > 0) {
-    await db.delete(schema.candidateStances).where(inArray(schema.candidateStances.wardIssueId, issueIds));
-  }
   await db.delete(schema.wardIssues).where(inArray(schema.wardIssues.wardId, ALL_WARD_IDS));
   await db.delete(schema.anonymousIssueVoteSets).where(inArray(schema.anonymousIssueVoteSets.wardId, ALL_WARD_IDS));
 }

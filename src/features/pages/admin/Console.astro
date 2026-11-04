@@ -1,14 +1,13 @@
 ---
 /**
  * `/admin` (Task 44) — the admin
- * console's governance home: a brief overview (curator/admin/pending-EOI
+ * console's governance home: a brief overview (staff role
  * counts) plus navigation to every admin sub-area. Deliberately mostly
  * navigation, not a dashboard — see `src/lib/admin.ts`'s `loadConsoleStats`
  * docstring.
  *
  * "Manage users" (Tasks 44/45 — it absorbed the old "Roles & access"
- * page), "Partners & coverage" (Task 46), and "Audit log" (Task 47) all
- * link to real pages.
+ * page) and "Affidavits" link to real pages.
  *
  * No `/kn/` twin (internal tooling, noindex — see AdminLayout's
  * docstring); rendered in the signed-in admin's own saved `users.language`.
@@ -46,10 +45,6 @@ const { lang, stats, flagMetrics } = Astro.props;
           <dt>{t(lang, 'admin.console.overview.admins')}</dt>
           <dd>{stats.adminCount}</dd>
         </div>
-        <div>
-          <dt>{t(lang, 'admin.console.overview.pendingEoi')}</dt>
-          <dd>{stats.pendingEoiCount}</dd>
-        </div>
       </dl>
     </Card>
 
@@ -71,9 +66,6 @@ const { lang, stats, flagMetrics } = Astro.props;
         </li>
         <li>
           <a href="/admin/affidavits">{t(lang, 'admin.console.nav.affidavits')}</a>
-        </li>
-        <li>
-          <a href="/admin/partners">{t(lang, 'admin.console.nav.partners')}</a>
         </li>
       </ul>
     </Card>

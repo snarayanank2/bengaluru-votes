@@ -38,9 +38,8 @@ export const SETTING_KEYS = [
   'booth_lookup_url',
   // Task 54's F1 (booth/timings/what-to-carry) send needs a citywide poll
   // open/close time to fill its `{{2}}`/`{{3}}` placeholders (dormant —
-  // docs/architecture.md §15). No such fact exists anywhere else in this schema (booths carries
-  // per-booth location, never per-booth hours, and poll hours are the same
-  // for every booth on election day) — same "admin fills this in, page/send
+  // docs/architecture.md §15). No such fact exists anywhere else in this schema (poll
+  // hours are the same for every booth on election day) — same "admin fills this in, page/send
   // defers gracefully until then" pattern as roll_lookup_url etc above.
   // Absent -> src/lib/send/calendar.ts defers F1 entirely for this run
   // rather than inventing a time (see that file's module docstring).

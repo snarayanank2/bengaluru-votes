@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
-import { candidateStances, candidateFields, candidates, type candidateStatusEnum } from '../db/schema';
+import { candidateFields, candidates, type candidateStatusEnum } from '../db/schema';
 import { translateFieldSoon } from './translate-runtime';
 
 export type Actor = {
@@ -14,13 +14,13 @@ export type CandidateStatus = (typeof candidateStatusEnum.enumValues)[number];
  * MANUAL OVERRIDE + SOURCE-CHANGE REGENERATION (architecture §9) — the
  * publish-path half of the MT coordination (`src/lib/translate-runtime.ts`
  * owns the other half, the actual translate call). Every `candidate_fields`
- * / `candidate_stances` row carries BOTH `valueEn` and `valueKn`; exactly
+ * row carries BOTH `valueEn` and `valueKn`; exactly
  * one language is "authored" (`authoredLang`) and the other is normally
  * machine-generated. A publish call always supplies both columns' next
  * value, so the RULE this
  * function implements is a pure value-diff against what's already stored:
  *
- *   - No existing row (a brand-new field/stance): `'pending'` — a freshly
+ *   - No existing row (a brand-new field): `'pending'` — a freshly
  *     authored value always needs MT. (If a creator happens to supply
  *     BOTH languages themselves on the very first publish, this still
  *     comes back `'pending'` and MT will overwrite the second language —
@@ -41,7 +41,7 @@ export type CandidateStatus = (typeof candidateStatusEnum.enumValues)[number];
  *     no real edits): keep whatever status the row already had — this is
  *     not a "publish sets the other language" event.
  *
- * The two callers (`publishAffidavitFields`, `publishStance`) only fire
+ * The caller (`publishAffidavitFields`) only fires
  * `translateFieldSoon` when this returns `'pending'` — a `'manual'` write
  * or a status-preserving no-op re-publish must NOT kick off a translation
  * attempt at all (not just rely on `translateFieldNow`'s own `'manual'`
@@ -72,7 +72,7 @@ export function decideTranslationStatus(
 
 // ---------------------------------------------------------------------------
 // Candidate core fields + lifecycle status (Task 36; architecture §6)
-// — name/party/photo/status.
+// — name/party/status.
 // ---------------------------------------------------------------------------
 
 /**
@@ -179,73 +179,4 @@ export async function createCandidateTx(tx: Tx, input: CreateCandidateInput): Pr
       valueData: { key: 'party', status: 'value', text: input.partyEn } },
   ]);
   return { id: row!.id, slug };
-}
-
-// ---------------------------------------------------------------------------
-// Candidate stances on ward issues — per-issue candidate positions.
-// ---------------------------------------------------------------------------
-
-export type PublishStanceInput = {
-  wardIssueId: number;
-  candidateId: number;
-  valueEn?: string | null;
-  valueKn?: string | null;
-  sourceUrl: string | null;
-  sourceType: 'official' | 'curator';
-  authoredLang: 'en' | 'kn';
-};
-
-/**
- * Upserts a candidate's stance on a ward issue atomically; kicks
- * off translation after commit — but only when {@link decideTranslationStatus}
- * (the same manual-override / source-change-regeneration rule
- * `publishAffidavitFields` uses) decides this publish is a `'pending'`
- * change, not a `'manual'` translation edit or a no-op re-publish (Task 40;
- * architecture §9).
- */
-export async function publishStance(_actor: Actor, input: PublishStanceInput): Promise<void> {
-  const { id: stanceId, translationStatus } = await db.transaction(async (tx) => {
-    const [candidate] = await tx
-      .select({ wardId: candidates.wardId })
-      .from(candidates)
-      .where(eq(candidates.id, input.candidateId));
-    if (!candidate) {
-      throw new Error(`publishStance: no candidate with id ${input.candidateId}`);
-    }
-
-    const [existing] = await tx
-      .select()
-      .from(candidateStances)
-      .where(and(eq(candidateStances.wardIssueId, input.wardIssueId), eq(candidateStances.candidateId, input.candidateId)));
-
-    const translationStatus = decideTranslationStatus(existing, input);
-
-    const newValue = {
-      valueEn: input.valueEn ?? null,
-      valueKn: input.valueKn ?? null,
-      authoredLang: input.authoredLang,
-      translationStatus,
-      sourceUrl: input.sourceUrl,
-      sourceType: input.sourceType,
-    };
-
-    const [row] = await tx
-      .insert(candidateStances)
-      .values({
-        wardIssueId: input.wardIssueId,
-        candidateId: input.candidateId,
-        ...newValue,
-      })
-      .onConflictDoUpdate({
-        target: [candidateStances.wardIssueId, candidateStances.candidateId],
-        set: newValue,
-      })
-      .returning({ id: candidateStances.id });
-
-    return { id: row!.id, translationStatus };
-  });
-
-  if (translationStatus === 'pending') {
-    translateFieldSoon({ table: 'candidate_stances', id: stanceId });
-  }
 }

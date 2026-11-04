@@ -2,12 +2,12 @@
 
 Architecture reference: `docs/architecture.md` §14 (Deployment), especially
 §14.6 (Provisioning runbook — this document is that runbook, made
-operational), §13 (Security), §10 (Jobs, ops, backups). Read those sections
+operational), §13 (Security), §10 (Jobs and ops). Read those sections
 first if anything below seems to assume context.
 
 This is the **committed anchor** for how the box gets built, what secrets it
 needs, and the handful of admin actions that only make sense against a live
-deployment (rollback, restore rehearsal). Exact
+deployment (rollback). Exact
 commands, not prose — copy-paste, adjusting the bracketed placeholders.
 
 **Production is the only environment.** Staging was retired on 2026-09-18 and
@@ -41,12 +41,8 @@ when staging existed; it is history, not instruction.
   is what `deploy/deploy.sh`'s `git fetch` needs on every future deploy, so
   it must persist on the box, not just exist long enough for step 4's
   `clone`.
-- **Off-box backup storage: UNRESOLVED** (`docs/architecture.md` §10,
-  §16). There is no restic target, so step 6 below
-  cannot be completed and the platform runs with no off-box backup. This is
-  a launch blocker, not a nice-to-have.
 - The vendor accounts this app talks to — Google Cloud (Geocoding, Maps
-  JS, Places), Anthropic, reCAPTCHA v3, Google Analytics, healthchecks.io. **None are available as of
+  JS, Places), Anthropic, reCAPTCHA v3, Google Analytics. **None are available as of
   2026-08-13.** Each absence degrades to a documented no-op rather than an
   error (see the env table below for what each one costs), so provisioning
   proceeds without them.
@@ -286,41 +282,6 @@ curl -fsSI https://bengaluruvotes.opencity.in/healthz
 
 ---
 
-## 6. restic — BLOCKED
-
-**No off-box backup target has been chosen** (`docs/architecture.md` §10,
-§16). `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`,
-`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `HEALTHCHECKS_URL` are
-therefore unset in both `.env` files, and `scripts/backup.sh` fails its
-required-variable check every night at 02:00 in the `jobs` container's log.
-
-That nightly failure is intentional and should stay noisy until the target
-exists. **Production is running with no off-box backup**: the stated 24-hour
-RPO is not merely missed, it is unbounded.
-
-Once a target is chosen, the remaining work is exactly:
-
-```sh
-set -a; source /etc/bengaluru-votes/.env.production; set +a
-restic init
-
-# Rehearse a restore NOW, before you need one — against a scratch directory,
-# never over the live data dir:
-docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm \
-  -e DATABASE_URL -e RESTIC_REPOSITORY -e RESTIC_PASSWORD \
-  -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
-  app sh -c '
-    restic snapshots &&
-    restic dump latest --tag pg_dump > /tmp/rehearsal.dump &&
-    pg_restore --list /tmp/rehearsal.dump | head -20
-  '
-```
-
-Confirm the snapshot list is non-empty and `pg_restore --list` shows real
-table entries. Record the rehearsal date where ops can find it.
-
----
-
 ## 7. Migrate, then seed
 
 **Required — do not skip.** Neither compose file has a `migrate` service and
@@ -380,9 +341,8 @@ docker volume ls | grep bengaluru
 **If the project name printed is `bengaluru-votes-production` (or you see
 `bengaluru-votes-production_pg_data_prod` in the volume list), STOP.** Do
 not run the command below. `-v` against the production project would
-destroy the production Postgres volume, and per §6 there is currently no
-off-box backup to restore it from — this would be unrecoverable data loss
-on a live election platform. The name printed here must be the interim
+destroy the production Postgres volume — unrecoverable data loss on a live
+election platform. The name printed here must be the interim
 stack's own project (whatever `/root/vps-deploy`'s compose file calls
 itself), never `bengaluru-votes-production`.
 
@@ -424,8 +384,7 @@ images is exactly how a rollback stops being possible.
 
 ## Required environment variables
 
-Derived by grepping `process.env.` across `src/` and `scripts/backup.sh`
-(the jobs container's cron-invoked backup script) — this list is meant to
+Derived by grepping `process.env.` across `src/` — this list is meant to
 be exhaustive; if a future change adds a new `process.env.X` read, add it
 here in the same PR.
 
@@ -450,13 +409,9 @@ here in the same PR.
 | `ANTHROPIC_API_KEY` | yes (Kannada MT/extraction) | Publish-triggered translation calls, and the `extract-worker` container's affidavit reading. Unset: translations stay `'pending'` and `jobs/translate-retry.ts` keeps retrying; the worker exits at once and queued affidavits wait on `/admin/affidavits`. |
 | `EXTRACTION_MODEL` | optional (default `claude-opus-5-5`) | The model the `extract-worker` reads affidavits with: `claude-haiku-5-5`, `claude-sonnet-5-5` or `claude-opus-5-5`. Anything else stops the worker at start. Opus measured 41 of 45 values correct on the nine fixtures at about $0.20 an affidavit. |
 | `EXTRACTION_CONCURRENCY` | optional (default `10`) | How many affidavits the worker reads at once, 1 to 50. Bounded by the Anthropic account's rate limits, not by the box. |
-| `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | yes (anonymous writes) | reCAPTCHA v3 on `POST /api/eoi` and `PUT /api/issue-votes`; tokens are bound to distinct actions. |
+| `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | yes (anonymous writes) | reCAPTCHA v3 on `PUT /api/issue-votes` and `POST /api/flags`; tokens are bound to distinct actions. |
 | `ANONYMOUS_VOTE_DAILY_BUDGET` | recommended (default `50000`) | City-wide daily circuit breaker for anonymous issue ballots, in addition to the per-IP nginx limit. Exhaustion pauses new ballots until the next UTC day. |
 | `GA_MEASUREMENT_ID` | production only — `G-PZQJ1ZSCN0` | Google Analytics — gates the one inline GA script tag in `Base.astro`; unset means GA is simply absent (no error). Set on production 2026-08-14; set only in `.env.production`, so local traffic never enters the property. The id is public (it ships in the HTML), so it lives here rather than in a credential store. Read at request time — changing it needs a container recreate, not a rebuild. |
-| `RESTIC_REPOSITORY` | **blocked** | No target chosen — `docs/architecture.md` §16. Leave unset; scripts/backup.sh fails loudly nightly until it exists. |
-| `RESTIC_PASSWORD` (or `RESTIC_PASSWORD_FILE`) | yes (jobs) | restic repository encryption password. Unset until a backup target is chosen (`docs/architecture.md` §16). Custody: `docs/architecture.md` §13 (Secrets). |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | yes (jobs) | Credentials for whatever S3-compatible backup storage is chosen (`docs/architecture.md` §10, §16) (restic's s3 backend reads the standard AWS_* vars). Unset today. |
-| `HEALTHCHECKS_URL` | yes (jobs) | healthchecks.io ping URL — the nightly backup dead-man's-switch. Only meaningful once backups exist (`docs/architecture.md` §16). |
 | `IMAGE_TAG` | optional, not stored in the `.env` file | Selects which **local** image tag the stack runs (`deploy/compose.production.yml`'s `${IMAGE_TAG:-latest}`). Left unset for a normal deploy; it exists so a rollback can point the stack at `:previous` without rebuilding. |
 
 ### Rotating the master password
@@ -701,13 +656,6 @@ $C stop extract-worker         # stops claiming, lets calls in flight finish
 - **Breach response:** DPDP Act notification obligations (Data Protection
   Board + affected data principals) — no named owner or procedure yet
   (architecture §13, §16).
-- **Backup verification:** don't just trust cron — check
-  `docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm app sh -c 'restic snapshots --json | jq length'`
-  trending upward daily, and that the healthchecks.io check for this job
-  hasn't gone red (a missed ping = an ops alert by design, architecture
-  §10). Rehearse a full restore (step 6 above) periodically, not just once
-  at provisioning time. **None of this applies until step 6 above's backup
-  target is chosen** — right now there is no restic repository to check.
 - **Rollback:** retag the previous image and restart — **no migration step
   runs on this path** (architecture §14.4/§14.7: migrations are
   forward-only/backward-compatible, so rollback is never a schema
@@ -748,8 +696,7 @@ Verified at cutover: both hostnames 200 on `GET /`, `GET /kn/` and a hashed
 anonymously and sets `X-Robots-Tag: noindex`; production sets no such header;
 a staging container cannot reach production Postgres (proven with
 `pg_isready` against both hosts, so the check is falsifiable in both
-directions); `scripts/backup.sh` fails loudly on its missing
-`RESTIC_REPOSITORY`.
+directions).
 
 ### Changes since cutover
 
@@ -772,12 +719,9 @@ is deliberately not rewritten. What has changed since:
   nginx server block, the staging path in `deploy/deploy.sh` and the staging
   banner. `deploy.sh` now tests and reloads nginx's config on every deploy.
 
-### Outstanding, both recorded as unresolved dependencies
+### Outstanding, recorded as an unresolved dependency
 
-1. **No off-box backup** (`docs/architecture.md` §16). The nightly job fails by
-   design at 02:00. Production now holds real citizen-facing data, so this is
-   the first thing to close.
-2. **No external uptime or SSL-expiry monitoring** (§6.14). Certificates
+1. **No external uptime or SSL-expiry monitoring** (§6.14). Certificates
    expire **2026-11-11**; certbot renews automatically and nginx reloads
    daily, but nothing alerts if renewal fails silently. Let's Encrypt's own
    expiry notices go to `tarball@gmail.com` and are currently the only

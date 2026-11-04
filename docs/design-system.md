@@ -137,7 +137,7 @@ These source-badge treatments are reserved for provenance. Keep provenance label
 
 **4.5 Ranked results use one hue.** Every bar is forest on a gray track; order, labels, and numbers convey rank.
 
-**4.6 Identity imagery is neutral.** Identities show neutral initials. No candidate photos are collected; a stored image, where one exists, renders unfiltered in the same circular crop. Never invent or use stock photographs.
+**4.6 Identity imagery is neutral.** Identities show neutral initials. No candidate photos are collected. Never invent or use stock photographs.
 
 ## 5. Typography
 
@@ -496,7 +496,7 @@ Motion explains state: modal/toast transitions around 150–200ms, disclosure ch
 - Use shared Astro components and vanilla TypeScript islands (`src/islands/`); no UI framework. Choose an existing component (§13) before writing a visually similar one.
 - **Cache safety:** public page HTML never varies by visitor or session. Personalized state (for example an issue-vote receipt) is fetched and applied client-side by an island. Islands are bundled modules, never inline scripts.
 - **Font budget:** the total self-hosted WOFF2 payload targets ~120KB, with a hard ceiling of 150KB (153,600 bytes), enforced by `scripts/build-fonts.ts` and `tests/unit/tokens.test.ts`.
-- **Print styles:** only the partner-kit poster block (`PartnerKit.astro`) has print styles; everything else relies on browser defaults.
+- **Print styles:** none; pages rely on browser defaults.
 - Keep demo data unmistakably fictional.
 
 ### 11.1 UI completion checklist
@@ -582,4 +582,3 @@ All files in `src/components/` plus the shared islands in `src/islands/`. “Unu
 | `WardMap.ts` | Ward boundary on Google Maps | — | §8.1 |
 | `WardSectionNav.ts` | Current-section tracking for section navigation | — | §7.15 |
 | `TranscribeForm.ts` | Transcriber screen: disables inputs per status, assets total, hold countdown | — | §7.10 |
-| `CopyButton.ts` | One-tap copy over readonly fields (partner kit only) | `data-copy-button`, `data-copy-target` | — |

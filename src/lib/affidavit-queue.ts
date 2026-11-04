@@ -41,8 +41,6 @@ export type EnqueueResult =
 
 export interface EnqueueOptions {
   uploadedBy: number;
-  /** The EC URL the bytes were fetched from, when they were. */
-  originUrl?: string | null;
   /** Set when the upload is for a known candidate: the worker then publishes onto it and reads no identity. */
   candidateId?: number | null;
 }
@@ -73,7 +71,7 @@ export async function enqueueAffidavit(bytes: Buffer, opts: EnqueueOptions): Pro
 
   const [row] = await db
     .insert(candidateAffidavits)
-    .values({ mediaId, sha256, originUrl: opts.originUrl ?? null, candidateId: opts.candidateId ?? null })
+    .values({ mediaId, sha256, candidateId: opts.candidateId ?? null })
     .onConflictDoNothing({ target: candidateAffidavits.sha256 })
     .returning({ id: candidateAffidavits.id });
 

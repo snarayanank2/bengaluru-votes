@@ -51,7 +51,6 @@ import { db } from '../../db/client';
 import { candidateIdentitySelection } from '../../lib/candidate-identity';
 import {
   candidates,
-  media,
   wardCandidateQuestions,
   wardIssues,
   wardKeyAreas,
@@ -85,12 +84,9 @@ const candidateRows = ward
         id: candidates.id,
         slug: candidates.slug,
         ...candidateIdentitySelection(),
-        photoMediaId: candidates.photoMediaId,
-        photoHash: media.sha256,
         status: candidates.status,
       })
       .from(candidates)
-      .leftJoin(media, eq(media.id, candidates.photoMediaId))
       .where(eq(candidates.wardId, wardId))
   : [];
 const sortedCandidates: (CandidateRowCandidate & { id: number; status: string })[] = candidateRows
@@ -101,10 +97,6 @@ const sortedCandidates: (CandidateRowCandidate & { id: number; status: string })
     nameKn: candidate.nameKn,
     partyEn: candidate.partyEn,
     partyKn: candidate.partyKn,
-    photoUrl:
-      candidate.photoMediaId != null && candidate.photoHash
-        ? `/media/${candidate.photoMediaId}/${candidate.photoHash.slice(0, 16)}`
-        : null,
     status: candidate.status,
   }))
   .sort((a, b) => a.nameEn.localeCompare(b.nameEn) || a.id - b.id);

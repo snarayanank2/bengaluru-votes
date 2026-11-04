@@ -156,22 +156,22 @@ describe('Home page (/, /kn/)', () => {
       expect(knHtml).toContain(`<link rel="alternate" hreflang="kn" href="${SITE_ORIGIN}/kn/">`);
     });
 
-    it('emits its own WardLookup island script, plus Base.astro\'s global Flag and ?src attribution scripts (Tasks 28/32/49) — no others', async () => {
+    it('emits its own WardLookup island script, plus Base.astro\'s global Flag script (Tasks 28/32) — no others', async () => {
       const html = await renderHome('en');
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // Lookup and flagging modules plus attribution.
+      // Lookup and flagging modules; no inline script.
       // Issue voting is loaded only by the ward's inline form.
-      expect(scriptOpenTags).toHaveLength(3);
+      expect(scriptOpenTags).toHaveLength(2);
       const moduleScripts = scriptOpenTags.filter((tag) => tag.includes('type="module"'));
       const inlineScripts = scriptOpenTags.filter((tag) => !tag.includes('type="module"'));
       expect(moduleScripts).toHaveLength(2);
-      expect(inlineScripts).toHaveLength(1);
+      expect(inlineScripts).toHaveLength(0);
       expect(html).toMatch(/Home\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
       expect(html).not.toMatch(/RegisterLoginModal\.astro\?astro&type=script/);
       expect(html).not.toContain('data-vote-modal');
       expect(html).not.toMatch(/Base\.astro\?astro&type=script/);
-      expect(html).toMatch(/bv_src/);
+      expect(html).not.toMatch(/bv_src/);
     });
   });
 

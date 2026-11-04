@@ -200,20 +200,11 @@ describe('CandidateRow', () => {
     expect(knHtml).toContain(`href="${localePath('kn', '/candidate/ward-57-asha-rao')}"`);
   });
 
-  it('renders a neutral initials placeholder (no <img>) when photoUrl is absent', async () => {
+  it('renders a neutral initials placeholder, never an <img>', async () => {
     const html = await render(CandidateRow, { candidate, lang: 'en' });
     expect(html).not.toContain('<img');
     expect(html).toContain('photo--placeholder');
     expect(html).toContain('AR'); // initials of "Asha Rao"
-  });
-
-  it('renders an <img> when photoUrl is present', async () => {
-    const html = await render(CandidateRow, {
-      candidate: { ...candidate, photoUrl: 'https://example.com/asha.jpg' },
-      lang: 'en',
-    });
-    expect(html).toContain('<img');
-    expect(html).toContain('src="https://example.com/asha.jpg"');
   });
 
   it('never assigns a color/style keyed to the party (neutrality §4)', async () => {

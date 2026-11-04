@@ -123,11 +123,11 @@ afterAll(async () => {
 
 describe('enqueueAffidavit', () => {
   it('stores a PDF as a queued affidavit with its hash', async () => {
-    const result = await enqueueAffidavit(pdf(), { uploadedBy: uploaderId, originUrl: 'https://affidavit.eci.gov.in/x' });
+    const result = await enqueueAffidavit(pdf(), { uploadedBy: uploaderId });
     expect(result.kind).toBe('queued');
     if (result.kind !== 'queued') return;
     const row = await affidavit(result.id);
-    expect(row).toMatchObject({ state: 'queued', attempts: 0, candidateId: null, originUrl: 'https://affidavit.eci.gov.in/x' });
+    expect(row).toMatchObject({ state: 'queued', attempts: 0, candidateId: null });
     expect(row.sha256).toMatch(/^[0-9a-f]{64}$/);
   });
 

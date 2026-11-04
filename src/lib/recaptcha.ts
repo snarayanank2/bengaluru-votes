@@ -1,20 +1,21 @@
 /**
  * reCAPTCHA v3 server-side verification (architecture.md §7
  * anonymous writes are protected by reCAPTCHA v3 — server-verified token,
- * action, and score. This is the ANTI-BOT protection for `/api/eoi` and
- * `/api/issue-votes`; the middleware's Origin/Sec-Fetch
- * check (src/middleware.ts) is the separate ANTI-CSRF layer that already
- * applies to /api/eoi like every other unsafe-method request.
+ * action, and score. This is the ANTI-BOT protection for `/api/issue-votes`
+ * and anonymous candidate reports (`/api/flags`); the middleware's
+ * Origin/Sec-Fetch check (src/middleware.ts) is the separate ANTI-CSRF layer
+ * that already applies to them like every other unsafe-method request.
  *
  * FAIL-CLOSED IN PRODUCTION, ACCEPT IN DEV/TEST WITHOUT A KEY: this repo's
  * dev/CI environment has no RECAPTCHA_SECRET_KEY configured (Task 50 brief:
- * "ABSENT in this env"), and /api/eoi must still work end-to-end. So:
+ * "ABSENT in this env"), and the anonymous writes must still work
+ * end-to-end. So:
  *   - no secret + NODE_ENV !== 'production' -> ACCEPT (reason
- *     'no_secret_dev'). This is what lets local dev and CI exercise the EOI
- *     form/route without ever calling Google.
+ *     'no_secret_dev'). This is what lets local dev and CI exercise the
+ *     anonymous write routes without ever calling Google.
  *   - no secret + NODE_ENV === 'production' -> REJECT (reason
  *     'misconfigured'), logged loudly. A live production deployment with no
- *     secret configured would mean the anonymous EOI form has NO bot
+ *     secret configured would mean the anonymous writes have NO bot
  *     protection at all — worse than rejecting submissions until the key is
  *     set, so this fails closed rather than silently accepting everything.
  *

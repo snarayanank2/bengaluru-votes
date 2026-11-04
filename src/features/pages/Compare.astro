@@ -54,7 +54,6 @@ interface CompareCandidate {
   nameKn: string | null;
   partyEn: string;
   partyKn: string | null;
-  photoUrl: string | null;
   fields: Record<CandidateProfileFieldKey, ResolvedField>;
 }
 
@@ -64,11 +63,8 @@ const candidateRows = ward
         id: candidates.id,
         slug: candidates.slug,
         ...candidateIdentitySelection(),
-        photoMediaId: candidates.photoMediaId,
-        photoHash: media.sha256,
       })
       .from(candidates)
-      .leftJoin(media, eq(media.id, candidates.photoMediaId))
       .where(and(eq(candidates.wardId, wardId), inArray(candidates.status, COMPARABLE_STATUSES)))
   : [];
 
@@ -134,7 +130,6 @@ const compareCandidates: CompareCandidate[] = orderedCandidates.map((c) => {
     nameKn: c.nameKn,
     partyEn: c.partyEn,
     partyKn: c.partyKn,
-    photoUrl: c.photoMediaId != null && c.photoHash ? `/media/${c.photoMediaId}/${c.photoHash.slice(0, 16)}` : null,
     fields,
   };
 });
@@ -146,7 +141,6 @@ const candidateRowShapes: (CandidateRowCandidate & { id: number })[] = compareCa
   nameKn: c.nameKn,
   partyEn: c.partyEn,
   partyKn: c.partyKn,
-  photoUrl: c.photoUrl,
 }));
 
 const notificationDateSetting = await getKnownSetting('notification_date');

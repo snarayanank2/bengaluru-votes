@@ -6,8 +6,8 @@
 # `jobs` service runs the SAME image as `supercronic /app/deploy/crontab`.
 # Everything both entrypoints read from disk at runtime — the built Astro
 # server, `data/`, `content/`, `drizzle/` migrations, `jobs/` + `src/`
-# TypeScript (jobs run via `tsx`, not compiled), `deploy/crontab`, and
-# `scripts/backup.sh` — must be present in the final stage. See the Task 59
+# TypeScript (jobs run via `tsx`, not compiled) and `deploy/crontab` — must
+# be present in the final stage. See the Task 59
 # report (.superpowers/sdd/task-59-report.md) for how the runtime read paths
 # were empirically verified against the actual `astro build` output.
 
@@ -72,39 +72,14 @@ LABEL org.opencontainers.image.source="https://github.com/snarayanank2/bengaluru
 
 WORKDIR /app
 
-# pg_dump           -> scripts/backup.sh. Debian bookworm's own repo only
-#                       ships postgresql-client-15, but this platform's
-#                       Postgres is v16 (docker-compose/CI both use
-#                       postgres:16) — a v15 pg_dump REFUSES to dump a v16
-#                       server ("aborting because of server version
-#                       mismatch", confirmed empirically while verifying
-#                       this image). So: add the PGDG apt repo and install
-#                       postgresql-client-16 explicitly, not the bookworm
-#                       default `postgresql-client` meta-package.
-# restic             -> scripts/backup.sh's backup/verify step
-# curl               -> scripts/backup.sh's healthchecks.io ping, and
-#                       supercronic's own download below
-# jq                 -> scripts/backup.sh's restic-snapshot-count check
-# ca-certificates    -> TLS for pg_dump/restic/curl/the app's own outbound
-#                       calls (geocode, Maps, reCAPTCHA, Anthropic, ...)
+# curl               -> supercronic's own download below, and the app
+#                       service's healthcheck (deploy/compose.production.yml)
+# ca-certificates    -> TLS for curl and the app's own outbound calls
+#                       (geocode, Maps, reCAPTCHA, Anthropic, ...)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
        curl \
-       gnupg \
-    && install -d /usr/share/postgresql-common/pgdg \
-    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-       -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
-    && . /etc/os-release \
-    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
-       > /etc/apt/sources.list.d/pgdg.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-       postgresql-client-16 \
-       restic \
-       jq \
-    && apt-get purge -y gnupg \
-    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 # supercronic (jobs container's cron scheduler; deploy/crontab is invoked as
@@ -180,10 +155,7 @@ COPY package.json ./package.json
 # `outputDir` to `path.join(process.cwd(), 'public')` = `/app/public`,
 # which doesn't exist yet at image-build time (`mkdirSync(..., {recursive:
 # true})` creates it on first run) — so it's `/app` ownership, not a
-# specific existing directory, that has to be right. scripts/backup.sh's
-# pg_dump staging file needs no such treatment: it defaults to `mktemp -d`
-# (world-writable /tmp) unless BACKUP_STAGING_DIR is set, so it's writable
-# by any user without a chown.
+# specific existing directory, that has to be right.
 RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
     && chown -R appuser:appuser /app
 
@@ -206,7 +178,7 @@ EXPOSE 4321
 # non-root `appuser`, so supercronic's `sh -c` cannot open (let alone create)
 # that redirect target unless the directory exists AND is appuser-writable.
 # Without this, EVERY cron job fails with ENOENT before its command even runs
-# (backups, sitemaps, translate-retry, flag-cleanup). Created here, owned by appuser,
+# (sitemaps, translate-retry, flag-cleanup). Created here, owned by appuser,
 # BEFORE the USER switch below (mkdir/chown need root).
 RUN mkdir -p /var/log/gba-jobs && chown appuser:appuser /var/log/gba-jobs
 

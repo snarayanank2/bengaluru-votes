@@ -428,20 +428,19 @@ describe('Guide & explainer pages (Task 21)', () => {
       expect(kn.html).toContain('action="/kn/voting-guide/find-booth"');
     });
 
-    it('emits its own BoothLookup island script, plus Base.astro\'s global Flag and ?src attribution scripts (Tasks 28/32/49) — no others', async () => {
+    it('emits its own BoothLookup island script, plus Base.astro\'s global Flag script (Tasks 28/32) — no others', async () => {
       const { html } = await renderPage(FindBooth, 'en', '/voting-guide/find-booth');
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // Three scripts: this page's own BoothLookup island, Base.astro's
-      // FlagModal module script, and Base.astro's inline `?src`
-      // attribution writer (Task 49, src/lib/attribution.ts) — never a
-      // stray/unexpected fourth script.
-      expect(scriptOpenTags).toHaveLength(3);
+      // Two scripts: this page's own BoothLookup island and Base.astro's
+      // FlagModal module script — never a stray/unexpected third script,
+      // and no inline script at all.
+      expect(scriptOpenTags).toHaveLength(2);
       expect(html).toMatch(/FindBooth\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
       expect(html).not.toMatch(/RegisterLoginModal\.astro\?astro&type=script/);
       expect(html).not.toMatch(/Base\.astro\?astro&type=script/);
       expect(html).not.toContain('data-vote-modal');
-      expect(html).toMatch(/bv_src/);
+      expect(html).not.toMatch(/bv_src/);
     });
 
     it('the always-visible guided link-out to the official EC booth finder is present on a plain GET (no-JS fallback)', async () => {

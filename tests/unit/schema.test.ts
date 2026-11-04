@@ -47,4 +47,19 @@ describe('db schema — wards round-trip', () => {
     expect(selected.nameEn).toBe(inserted?.nameEn ?? 'Test Ward');
     expect(selected.corporation).toBe('south');
   });
+
+  it('migration 0017 leaves no dormant tables, enums or columns behind', async () => {
+    for (const table of ['partners', 'partner_wards', 'eoi_submissions', 'booths', 'candidate_stances']) {
+      const [row] = await client`select to_regclass(${'public.' + table}) as oid`;
+      expect(row!.oid, table).toBeNull();
+    }
+    const enums = await client`select typname from pg_type where typname in ('eoi_path', 'eoi_status')`;
+    expect(enums).toHaveLength(0);
+    const columns = await client`
+      select table_name, column_name from information_schema.columns
+      where table_schema = 'public'
+        and ((table_name = 'candidates' and column_name in ('name_kn', 'party_kn', 'photo_media_id'))
+          or (table_name = 'candidate_affidavits' and column_name = 'origin_url'))`;
+    expect(columns).toHaveLength(0);
+  });
 });

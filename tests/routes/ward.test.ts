@@ -76,21 +76,22 @@ const CANDIDATES = [
     slug: 'ward-page-test-zainab',
     wardId: WARD.id,
     nameEn: 'Zainab (FICTIONAL)',
-    nameKn: 'ಝೈನಬ್ (ಕಾಲ್ಪನಿಕ)',
     partyEn: 'Demo Party B',
-    partyKn: 'ಡೆಮೊ ಪಕ್ಷ ಬಿ',
     status: 'contesting' as const,
   },
   {
     slug: 'ward-page-test-arjun',
     wardId: WARD.id,
     nameEn: 'Arjun (FICTIONAL)',
-    nameKn: 'ಅರ್ಜುನ್ (ಕಾಲ್ಪನಿಕ)',
     partyEn: 'Demo Party A',
-    partyKn: 'ಡೆಮೊ ಪಕ್ಷ ಎ',
     status: 'filed' as const,
   },
 ];
+/** Kannada identities live only on the report-card full_name/party rows. */
+const KANNADA: Record<string, { nameKn: string; partyKn: string }> = {
+  'ward-page-test-zainab': { nameKn: 'ಝೈನಬ್ (ಕಾಲ್ಪನಿಕ)', partyKn: 'ಡೆಮೊ ಪಕ್ಷ ಬಿ' },
+  'ward-page-test-arjun': { nameKn: 'ಅರ್ಜುನ್ (ಕಾಲ್ಪನಿಕ)', partyKn: 'ಡೆಮೊ ಪಕ್ಷ ಎ' },
+};
 
 /**
  * Strips the container API's dev-mode debug attributes and collapses
@@ -138,7 +139,6 @@ async function deleteWardCandidates(): Promise<void> {
   const ids = rows.map((row) => row.id);
   if (ids.length > 0) {
     await db.delete(schema.candidateAffidavits).where(inArray(schema.candidateAffidavits.candidateId, ids));
-    await db.delete(schema.candidateStances).where(inArray(schema.candidateStances.candidateId, ids));
     await db.delete(schema.candidateFields).where(inArray(schema.candidateFields.candidateId, ids));
   }
   await db.delete(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
@@ -172,10 +172,9 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
     const identities = await db.select().from(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
     for (const c of identities) {
       await db.insert(schema.candidateFields).values([
-        { candidateId: c.id, fieldKey: 'full_name', valueEn: c.nameEn, valueKn: c.nameKn },
-        { candidateId: c.id, fieldKey: 'party', valueEn: c.partyEn, valueKn: c.partyKn },
+        { candidateId: c.id, fieldKey: 'full_name', valueEn: c.nameEn, valueKn: KANNADA[c.slug]!.nameKn },
+        { candidateId: c.id, fieldKey: 'party', valueEn: c.partyEn, valueKn: KANNADA[c.slug]!.partyKn },
       ]);
-      await db.update(schema.candidates).set({ nameKn: 'STALE Kannada name', partyKn: 'STALE Kannada party' }).where(eq(schema.candidates.id, c.id));
     }
   });
 
@@ -297,8 +296,8 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
     it.each(['en', 'kn'] as const)('%s: renders candidates and a compare button without a candidate-list page link', async (lang) => {
       const res = await renderWard(lang, WARD.id);
       const html = normalize(await res.text());
-      const arjun = lang === 'kn' ? CANDIDATES[1].nameKn : CANDIDATES[1].nameEn;
-      const zainab = lang === 'kn' ? CANDIDATES[0].nameKn : CANDIDATES[0].nameEn;
+      const arjun = lang === 'kn' ? KANNADA[CANDIDATES[1].slug]!.nameKn : CANDIDATES[1].nameEn;
+      const zainab = lang === 'kn' ? KANNADA[CANDIDATES[0].slug]!.nameKn : CANDIDATES[0].nameEn;
 
       expect(html).toContain(arjun);
       expect(html).toContain(zainab);
@@ -360,21 +359,21 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
   });
 
   describe('WardMap island + no-JS fallback', () => {
-    it('emits its own WardMap island script, plus Base.astro\'s global Flag, inline issue voting, ?src attribution, and Place JSON-LD scripts (Tasks 28/32/49/56) — no others', async () => {
+    it('emits its own WardMap island script, plus Base.astro\'s global Flag, inline issue voting, and Place JSON-LD scripts (Tasks 28/32/56) — no others', async () => {
       const html = normalize(await (await renderWard('en', WARD.id)).text());
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // Ward map, inline voting and the global Flag module; attribution and JSON-LD inline.
-      expect(scriptOpenTags).toHaveLength(5);
+      // Ward map, inline voting and the global Flag module; JSON-LD inline.
+      expect(scriptOpenTags).toHaveLength(4);
       const moduleScripts = scriptOpenTags.filter((tag) => tag.includes('type="module"'));
       const inlineScripts = scriptOpenTags.filter((tag) => !tag.includes('type="module"'));
       expect(moduleScripts).toHaveLength(3);
-      expect(inlineScripts).toHaveLength(2);
+      expect(inlineScripts).toHaveLength(1);
       expect(html).toMatch(/Ward\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
       expect(html).toMatch(/IssueVote\.astro\?astro&type=script/);
       expect(html).not.toMatch(/RegisterLoginModal\.astro\?astro&type=script/);
       expect(html).not.toMatch(/Base\.astro\?astro&type=script/);
-      expect(html).toMatch(/bv_src/);
+      expect(html).not.toMatch(/bv_src/);
       expect(html).toMatch(/"@type":"AdministrativeArea"/);
     });
 

@@ -120,6 +120,13 @@
       "when": 1793700000000,
       "tag": "0016_remove_messaging_and_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793800000000,
+      "tag": "0017_remove_dead_features",
+      "breakpoints": true
     }
   ]
 }

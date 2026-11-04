@@ -41,21 +41,17 @@ const [row] = await db
     wardNameEn: wards.nameEn,
     wardNameKn: wards.nameKn,
     ...candidateIdentitySelection(),
-    photoMediaId: candidates.photoMediaId,
-    photoHash: media.sha256,
     status: candidates.status,
   })
   .from(candidates)
   .innerJoin(wards, eq(wards.id, candidates.wardId))
-  .leftJoin(media, eq(media.id, candidates.photoMediaId))
   .where(eq(candidates.slug, slug));
 
 const candidateName = row ? (lang === 'kn' && row.nameKn ? row.nameKn : row.nameEn) : '';
 const partyName = row ? (lang === 'kn' && row.partyKn ? row.partyKn : row.partyEn) : '';
 const wardName = row ? (lang === 'kn' ? row.wardNameKn : row.wardNameEn) : '';
-const photoUrl = row?.photoMediaId != null && row.photoHash ? `/media/${row.photoMediaId}/${row.photoHash.slice(0, 16)}` : null;
 
-// Neutral initials placeholder (no photo) — same derivation as
+// Neutral initials placeholder — same derivation as
 // CandidateRow.astro: first letter of up to the first two words of the
 // English name. Never a fake/stock image.
 const initials = row
@@ -157,13 +153,9 @@ const candidateJsonLd = row
         )}
 
         <header class="candidate-header">
-          {photoUrl ? (
-            <img class="photo" src={photoUrl} width="96" height="96" alt="" loading="lazy" />
-          ) : (
-            <span class="photo photo--placeholder" aria-hidden="true">
-              {initials}
-            </span>
-          )}
+          <span class="photo photo--placeholder" aria-hidden="true">
+            {initials}
+          </span>
           <div class="identity">
             <h1 class="name">{candidateName}</h1>
             <p class="party">{partyName}</p>
@@ -276,7 +268,6 @@ const candidateJsonLd = row
     width: 96px;
     height: 96px;
     border-radius: var(--radius-full);
-    object-fit: cover;
     background: var(--color-surface);
   }
 

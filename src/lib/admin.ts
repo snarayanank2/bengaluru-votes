@@ -21,7 +21,7 @@
  */
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
-import { eoiSubmissions, sessions, transcriptionAssignments, users } from '../db/schema';
+import { sessions, transcriptionAssignments, users } from '../db/schema';
 import { isUniqueViolation } from './db-errors';
 import { isValidEmail } from './email';
 
@@ -207,22 +207,15 @@ export interface ConsoleStats {
   transcriberCount: number;
   curatorCount: number;
   adminCount: number;
-  pendingEoiCount: number;
 }
 
 /** The `/admin` console home's small overview line — deliberately just a few counts; the console is mostly navigation, not a dashboard. */
 export async function loadConsoleStats(): Promise<ConsoleStats> {
-  const [roleCounts, [eoiRow]] = await Promise.all([
-    db
-      .select({ role: users.role, count: sql<number>`count(*)::int` })
-      .from(users)
-      .where(inArray(users.role, [...STAFF_ROLES]))
-      .groupBy(users.role),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(eoiSubmissions)
-      .where(eq(eoiSubmissions.status, 'new')),
-  ]);
+  const roleCounts = await db
+    .select({ role: users.role, count: sql<number>`count(*)::int` })
+    .from(users)
+    .where(inArray(users.role, [...STAFF_ROLES]))
+    .groupBy(users.role);
 
   const countFor = (role: StaffRole): number => Number(roleCounts.find((r) => r.role === role)?.count ?? 0);
 
@@ -230,7 +223,6 @@ export async function loadConsoleStats(): Promise<ConsoleStats> {
     transcriberCount: countFor('transcriber'),
     curatorCount: countFor('curator'),
     adminCount: countFor('admin'),
-    pendingEoiCount: Number(eoiRow?.count ?? 0),
   };
 }
 

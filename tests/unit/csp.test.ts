@@ -31,7 +31,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
       expect(csp).toContain("frame-ancestors 'none'");
     });
 
-    it('frame-src is none on a non-partner path', () => {
+    it('frame-src is none on a path that frames nothing', () => {
       const csp = buildCsp(NONCE, '/login');
       expect(csp).toContain("frame-src 'none'");
     });
@@ -96,7 +96,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
       );
     });
 
-    it.each(['/login', '/api/flags', '/', '/partner/some-slug'])(
+    it.each(['/login', '/api/flags', '/', '/voter-faqs'])(
       '%s does NOT contain www.google.com in script-src',
       (pathname) => {
         const csp = buildCsp(NONCE, pathname);

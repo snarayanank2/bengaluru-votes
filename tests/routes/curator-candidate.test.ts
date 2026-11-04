@@ -13,8 +13,8 @@
  *     tests/unit/publish-candidate.test.ts).
  *   - CITY-WIDE: a curator with no ward assignment of any kind can open
  *     any candidate and start a new one in any ward.
- *   - PHOTO: a valid PNG upload sets photoMediaId; an SVG masquerading as a
- *     photo is rejected, candidate left uncorrupted.
+ *   - RETIRED CORE POSTS: an old form posting a photo, a Kannada name or a
+ *     status is rejected; the candidate row and the media table are untouched.
  *   - CSRF: POST without the synchronizer token -> 403.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -282,29 +282,22 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36)', () => {
     });
   });
 
-  describe('removed photo inputs', () => {
-    it('ignores a photo posted by an old form', async () => {
-      const form = coreForm({ nameKn: 'ಮರುನಾಮಕರಣ', status: 'filed' }, curatorAuth.token);
-      form.set('photo', new File([PNG_BYTES], 'photo.png', { type: 'image/png' }));
+  describe('retired core-form posts (no photo, Kannada name or status edits)', () => {
+    async function mediaCount(): Promise<number> {
+      const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(schema.media);
+      return row?.count ?? 0;
+    }
 
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateA) },
-        form,
-      });
-      expect(res.status).toBe(403);
-
-      const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(candidate?.photoMediaId).toBeNull();
-      expect(candidate?.nameKn).toBeNull();
-    });
-
-    it('ignores unsupported photo bytes without storing them', async () => {
+    it.each([
+      ['a valid PNG', PNG_BYTES, 'filed'],
+      ['an SVG masquerading as a PNG', SVG_MASQUERADING_AS_PHOTO, 'filed'],
+      ['a valid PNG with an INVALID status', PNG_BYTES, 'bogus'],
+    ])('rejects %s posted by an old form: 403, candidate unchanged, no media stored', async (_label, bytes, status) => {
       const [before] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
+      const mediaBefore = await mediaCount();
 
-      const form = coreForm({ nameKn: 'Should Not Apply', status: 'filed' }, curatorAuth.token);
-      form.set('photo', new File([SVG_MASQUERADING_AS_PHOTO], 'photo.png', { type: 'image/png' }));
+      const form = coreForm({ nameKn: 'Should Not Apply', status }, curatorAuth.token);
+      form.set('photo', new File([bytes], 'photo.png', { type: 'image/png' }));
 
       const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
         method: 'POST',
@@ -315,43 +308,14 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36)', () => {
       expect(res.status).toBe(403);
 
       const [after] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(after?.nameKn).toBe(before?.nameKn);
-      expect(after?.photoMediaId).toBe(before?.photoMediaId);
-    });
-
-    it('a valid photo with an INVALID status -> 403, no media row created, no rate-limit consumed (orphaned-media invariant)', async () => {
-      const [before] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      const [mediaCountBefore] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(schema.media);
-
-      const form = coreForm(
-        { nameKn: 'Should Not Apply Either', status: 'bogus' },
-        curatorAuth.token,
-      );
-      form.set('photo', new File([PNG_BYTES], 'photo.png', { type: 'image/png' }));
-
-      const res = await run(CandidateEditRoute, `/curator/candidate/${candidateA}`, {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        params: { id: String(candidateA) },
-        form,
-      });
-      expect(res.status).toBe(403);
-
-      const [after] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(after?.nameKn).toBe(before?.nameKn);
-      expect(after?.photoMediaId).toBe(before?.photoMediaId);
-
-      const [mediaCountAfter] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(schema.media);
-      expect(mediaCountAfter?.count).toBe(mediaCountBefore?.count);
+      expect(after).toEqual(before);
+      expect(await mediaCount()).toBe(mediaBefore);
     });
   });
 
   describe('CSRF (src/middleware.ts synchronizer token)', () => {
     it('POST without the token -> 403, candidate unaffected', async () => {
+      const [before] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
       const fd = new FormData();
       fd.set('formAction', 'core');
       fd.set('nameKn', 'Should Not Apply Either');
@@ -366,7 +330,7 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36)', () => {
       expect(res.status).toBe(403);
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateA));
-      expect(candidate?.nameKn).not.toBe('Should Not Apply Either');
+      expect(candidate).toEqual(before);
     });
   });
 });

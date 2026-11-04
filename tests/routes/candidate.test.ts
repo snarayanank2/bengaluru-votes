@@ -128,9 +128,6 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
       }
     }
 
-    const photoBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...Buffer.from('fake-png-body-for-candidate-test')]);
-    const photo = await insertMedia(photoBytes, 'image/png');
-
     const affidavitBytes = Buffer.from('%PDF-1.4\ncases-affidavit-body\n%%EOF');
     const affidavitMedia = await insertMedia(affidavitBytes, 'application/pdf');
     affidavitMediaUrl = affidavitMedia.url;
@@ -141,9 +138,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
         slug: MAIN_SLUG,
         wardId: WARD.id,
         nameEn: 'Report Card Test Candidate',
-        nameKn: 'STALE Kannada name',
         partyEn: 'Independent',
-        photoMediaId: photo.id,
         status: 'contesting',
       })
       .returning({ id: schema.candidates.id });
@@ -152,7 +147,6 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
     await db.insert(schema.candidateAffidavits).values({
       candidateId: mainCandidateId,
       mediaId: affidavitMedia.id,
-      originUrl: null,
       state: 'published',
     });
     await db.insert(schema.candidateFields).values([
@@ -303,7 +297,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
       expect(notDeclaredCount).toBe(6);
     });
 
-    it('renders the neutral initials placeholder, never a fake image, when there is no photo', async () => {
+    it('renders the neutral initials placeholder, never an image', async () => {
       const html = normalize(await (await renderCandidate('en', PRENOTIFICATION_SLUG)).text());
       expect(html).toContain('photo photo--placeholder');
       expect(html).toContain('>PT<'); // "Prenotification Test" -> P, T

@@ -17,8 +17,6 @@ export const assignmentStateEnum = pgEnum('assignment_state', ['open', 'submitte
 export const affidavitStateEnum = pgEnum('affidavit_state', ['queued', 'extracting', 'needs_matching', 'published', 'failed']);
 export const flagStatusEnum = pgEnum('flag_status', ['pending', 'accepted', 'rejected']);
 export const flagTargetEnum = pgEnum('flag_target', ['candidate_field', 'ward_field', 'ward_issue']);
-export const eoiPathEnum = pgEnum('eoi_path', ['awareness', 'curation']);
-export const eoiStatusEnum = pgEnum('eoi_status', ['new', 'accepted', 'declined']);
 export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'epic_lookup', 'anonymous_vote']);
 
 export const wards = pgTable('wards', {
@@ -94,10 +92,7 @@ export const candidates = pgTable('candidates', {
   slug: text('slug').notNull().unique(),               // ward is part of the slug
   wardId: integer('ward_id').notNull().references(() => wards.id),
   nameEn: text('name_en').notNull(),
-  nameKn: text('name_kn'), // legacy only; migrated to candidate_fields by 0014
   partyEn: text('party_en').notNull(),                 // 'Independent' allowed
-  partyKn: text('party_kn'), // legacy only; display uses the report-card translation
-  photoMediaId: integer('photo_media_id').references(() => media.id),
   status: candidateStatusEnum('status').notNull().default('filed'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -136,7 +131,6 @@ export const candidateAffidavits = pgTable('candidate_affidavits', {
   id: serial('id').primaryKey(),
   candidateId: integer('candidate_id').references(() => candidates.id),   // null until matched to a candidate
   mediaId: integer('media_id').notNull().references(() => media.id),
-  originUrl: text('origin_url'),                        // EC URL when fetched, null when uploaded
   state: affidavitStateEnum('state').notNull().default('queued'),
   attempts: integer('attempts').notNull().default(0),
   leaseExpiresAt: timestamp('lease_expires_at'),        // set while `extracting`; past it, the row is claimable again
@@ -181,28 +175,6 @@ export const wardIssues = pgTable('ward_issues', {
   index('ward_issues_ward_idx').on(t.wardId),
   uniqueIndex('ward_issues_catalog_uq').on(t.wardId, t.catalogKey).where(sql`${t.catalogKey} is not null`),
 ]);
-
-export const candidateStances = pgTable('candidate_stances', {
-  id: serial('id').primaryKey(),
-  wardIssueId: integer('ward_issue_id').notNull().references(() => wardIssues.id, { onDelete: 'cascade' }),
-  candidateId: integer('candidate_id').notNull().references(() => candidates.id),
-  valueEn: text('value_en'),
-  valueKn: text('value_kn'),
-  authoredLang: langEnum('authored_lang').notNull().default('en'),
-  translationStatus: translationStatusEnum('translation_status').notNull().default('pending'),
-  sourceUrl: text('source_url'),
-  sourceType: sourceTypeEnum('source_type').notNull().default('curator'),
-}, (t) => [uniqueIndex('stance_uq').on(t.wardIssueId, t.candidateId)]);
-
-export const booths = pgTable('booths', {
-  id: serial('id').primaryKey(),
-  wardId: integer('ward_id').notNull().references(() => wards.id),
-  nameEn: text('name_en').notNull(),
-  nameKn: text('name_kn'),
-  address: text('address').notNull(),
-  lat: text('lat').notNull(),
-  lng: text('lng').notNull(),
-});
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -274,30 +246,6 @@ export const anonymousIssueVoteSelections = pgTable('anonymous_issue_vote_select
   setId: integer('set_id').notNull().references(() => anonymousIssueVoteSets.id, { onDelete: 'cascade' }),
   wardIssueId: integer('ward_issue_id').notNull().references(() => wardIssues.id, { onDelete: 'cascade' }),
 }, (t) => [primaryKey({ columns: [t.setId, t.wardIssueId] })]);
-
-export const partners = pgTable('partners', {
-  id: serial('id').primaryKey(),
-  slug: text('slug').notNull().unique(),
-  name: text('name').notNull(),
-  contact: text('contact'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-});
-export const partnerWards = pgTable('partner_wards', {
-  partnerId: integer('partner_id').notNull().references(() => partners.id),
-  wardId: integer('ward_id').notNull().references(() => wards.id),
-}, (t) => [primaryKey({ columns: [t.partnerId, t.wardId] })]);
-
-export const eoiSubmissions = pgTable('eoi_submissions', {
-  id: serial('id').primaryKey(),
-  path: eoiPathEnum('path').notNull(),
-  name: text('name').notNull(),
-  organisation: text('organisation'),
-  contact: text('contact').notNull(),
-  wardsText: text('wards_text'),
-  message: text('message'),
-  status: eoiStatusEnum('status').notNull().default('new'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-});
 
 export const appSettings = pgTable('app_settings', {      // election anchors, wording versions
   key: text('key').primaryKey(),                          // 'notification_date' | 'election_date' |

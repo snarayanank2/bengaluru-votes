@@ -10,11 +10,11 @@ This serves a real election. Demo/fixture data is deliberately unmistakable as f
 
 ## The docs
 
-- `docs/architecture.md` — the technical design: what runs where, caching, data model, API and auth, SEO, bilingual text, jobs, security, deployment. §15 lists the **dormant code slated for removal** (partner/EOI, EC-link fetch, stances and photos, orphan pages, …); nothing in it is a feature. §16 is external dependencies and known gaps. Section numbers are load-bearing: code comments cite `architecture §N`.
+- `docs/architecture.md` — the technical design: what runs where, caching, data model, API and auth, SEO, bilingual text, jobs, security, deployment. §15 lists the **dormant code slated for removal** (orphan pages, …); nothing in it is a feature. §16 is external dependencies and known gaps. Section numbers are load-bearing: code comments cite `architecture §N`.
 - `docs/design-system.md` — visual language, neutrality rules, components and the UI completion checklist.
 - `docs/gcp.md` — Google Cloud provisioning (Geocoding, Maps JS, Places, reCAPTCHA, GA4): what to create in which console and which env var it becomes. `deploy/runbook.md`'s env var table is the authority on what each variable does at runtime.
 
-Open questions live in `docs/architecture.md` → Open questions (backup target, monitoring, retention period). Check there before inventing an answer.
+Open questions live in `docs/architecture.md` → Open questions (monitoring, retention period). Check there before inventing an answer.
 
 Anything not stated in these docs or in the source is not written down. Do not invent a requirement to fill the gap — ask.
 
@@ -155,7 +155,7 @@ For editorial or UI translation work, the coding agent authors the Kannada trans
 
 ### Curator publishing
 
-Curator edits **go live immediately** — no approval gate. Every field carries a visible source, distinguishing official/affidavit data from curator-compiled context. Curators edit through the same structured inputs as transcribers, beside the stored affidavit: there is no free-text field editor. `src/lib/curator-fix.ts` parses and saves a fix (a flag at `/curator/queue/{id}`, or the candidate editor at `/curator/candidate/{id}`), and every publish of a field value or ward move carries a required `confirmPublish` tick, re-checked on the server. The candidate editor uses one bottom confirmation and one atomic save for changed fields and the ward; unchanged fields keep their review status. `src/lib/publish.ts` keeps what is not an affidavit field: creating a candidate, its status, stances, and `decideTranslationStatus` (manual-override vs source-change MT regeneration).
+Curator edits **go live immediately** — no approval gate. Every field carries a visible source, distinguishing official/affidavit data from curator-compiled context. Curators edit through the same structured inputs as transcribers, beside the stored affidavit: there is no free-text field editor. `src/lib/curator-fix.ts` parses and saves a fix (a flag at `/curator/queue/{id}`, or the candidate editor at `/curator/candidate/{id}`), and every publish of a field value or ward move carries a required `confirmPublish` tick, re-checked on the server. The candidate editor uses one bottom confirmation and one atomic save for changed fields and the ward; unchanged fields keep their review status. `src/lib/publish.ts` keeps what is not an affidavit field: creating a candidate, its status, and `decideTranslationStatus` (manual-override vs source-change MT regeneration).
 
 **Flags are accepted only on the eight fields in `FLAGGABLE_FIELD_KEYS`** (`src/lib/candidate-profile.ts`: the seven affidavit fields and the ward). `ward_field` and `ward_issue` stay in the database enum so old rows can be read; a curator can only dismiss those.
 
@@ -190,7 +190,6 @@ Anonymous citizen (no account; all citizen traffic) · Transcriber · Data curat
 - **The ward map (Google Maps JS API, `src/islands/WardMap.ts`) needs three env vars to render at all**, not one: `MAPS_ENABLED` exactly `'true'` *and* a non-empty `GOOGLE_MAPS_BROWSER_KEY` *and* a non-empty `GOOGLE_MAPS_MAP_ID` (`src/lib/maps-config.ts`'s `mapsConfig().enabled`). Miss any one of the three and the map silently doesn't mount — `Ward.astro` renders the server-side fallback text instead, with no error anywhere. The same key also gates Places Autocomplete on the home-page ward-lookup form.
 - **`/data/gba.geojson` is not in `public/`.** Production serves it from the nginx static volume, populated by the `static-init` one-shot, which **does not re-run** on `up -d` once it has succeeded — stale CSS/JS after a deploy usually means it needs `docker compose run --rm static-init`.
 - Unset vendor keys (`GOOGLE_*`, `ANTHROPIC_API_KEY`, `RECAPTCHA_*`) each degrade to a documented no-op rather than an error. `deploy/runbook.md` has the exhaustive table with what each one's absence costs.
-- **No off-box backup exists.** The nightly `scripts/backup.sh` cron fails every night by design until a restic target is chosen (`architecture.md` §10, §16). Losing the box's disk loses everything. Don't read the working backup *mechanism* as a working backup.
 
 ## Fixed decisions (don't relitigate without asking)
 

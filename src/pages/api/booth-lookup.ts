@@ -4,16 +4,15 @@
  *
  * INPUT MODE CHANGED 2026-08-19 (docs/architecture.md §7, tracker 127). This
  * endpoint used to take a free-text address, geocode it to a ward, and read
- * booths out of the local `booths` table. That path is gone. It could not
+ * polling stations out of a local table. That path is gone. It could not
  * work: the addressed polling-station rows were dropped from the plan on
- * 2026-08-15, nothing seeds `booths` outside `scripts/seed-dev.ts`, and the
+ * 2026-08-15, nothing seeded that table outside the dev seed, and the
  * empty-table branch therefore answered every real visitor with "we don't
  * have booth data yet" — a lookup that always fails, dressed as one that
  * might succeed. The EPIC path returns real data from the BBMP electoral
  * API instead (src/lib/electoral-api.ts).
  *
- * The `booths` table itself is left in the schema, unused, rather than
- * dropped in the same change.
+ * The unused table was dropped by migration 0017.
  *
  * Resolution — including the ward mapping and its point-in-polygon fallback
  * — lives in `src/lib/booth-lookup.ts`, shared with the no-JS POST branch of

@@ -5,29 +5,20 @@
  * (`decideTranslationStatus`).
  *
  * The REAL Anthropic API is never called here (no ANTHROPIC_API_KEY in
- * this environment, and every translating test injects `opts.translator`)
- * — `translateFieldSoon` is mocked to a plain spy so the "was/wasn't the
- * translate path even started" assertions (the manual-edit and
- * source-change-regeneration tests) can check invocation directly, while
- * `translateFieldNow` — the actual bounded async core — is left as the
- * REAL implementation (`importOriginal`) and is exercised directly by
- * every other test in this file.
+ * this environment, and every translating test injects `opts.translator`).
+ * `translateFieldNow` — the actual bounded async core — is exercised
+ * directly; `decideTranslationStatus` is a pure function tested on its own.
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { randomUUID } from 'node:crypto';
 
-vi.mock('../../src/lib/translate-runtime', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/lib/translate-runtime')>();
-  return { ...actual, translateFieldSoon: vi.fn() };
-});
-
-import { translateFieldNow, translateFieldSoon, buildFieldTranslationPrompt } from '../../src/lib/translate-runtime';
-import { publishStance } from '../../src/lib/publish';
+import { translateFieldNow, buildFieldTranslationPrompt } from '../../src/lib/translate-runtime';
+import { decideTranslationStatus } from '../../src/lib/publish';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -50,8 +41,6 @@ const WARD = {
   zone: 'Zone TR',
   boundaryRef: 'translate-runtime-test-ward',
 };
-
-const ACTOR = { userId: 88901, role: 'curator' as const };
 
 let candidateId: number;
 
@@ -102,7 +91,7 @@ describe('src/lib/translate-runtime.ts — runtime MT of curator data (Task 40)'
   });
 
   afterAll(async () => {
-    await db.delete(schema.wardIssues).where(eq(schema.wardIssues.wardId, WARD_ID)); // cascades candidate_stances
+    await db.delete(schema.wardIssues).where(eq(schema.wardIssues.wardId, WARD_ID));
     await db.delete(schema.candidateFields).where(eq(schema.candidateFields.candidateId, candidateId));
     await db.delete(schema.candidates).where(eq(schema.candidates.id, candidateId));
     await client.end();
@@ -216,7 +205,7 @@ describe('src/lib/translate-runtime.ts — runtime MT of curator data (Task 40)'
   });
 
   // -------------------------------------------------------------------------
-  // translateFieldNow — ward_issues and candidate_stances (same code path)
+  // translateFieldNow — ward_issues
   // -------------------------------------------------------------------------
 
   it('ward_issues: translates titleEn into titleKn, audited as ward_issue', async () => {
@@ -236,192 +225,29 @@ describe('src/lib/translate-runtime.ts — runtime MT of curator data (Task 40)'
 
   });
 
-  it('candidate_stances: translates valueEn into valueKn', async () => {
-    const [issue] = await db
-      .insert(schema.wardIssues)
-      .values({ wardId: WARD_ID, titleEn: 'Water supply', authoredLang: 'en', translationStatus: 'done', position: 1 })
-      .returning({ id: schema.wardIssues.id });
-    const issueId = issue!.id;
-
-    const [stance] = await db
-      .insert(schema.candidateStances)
-      .values({
-        wardIssueId: issueId,
-        candidateId,
-        valueEn: 'Will fix the pipeline within the first year.',
-        authoredLang: 'en',
-        translationStatus: 'pending',
-        sourceUrl: 'https://example.org/stance',
-        sourceType: 'curator',
-      })
-      .returning({ id: schema.candidateStances.id });
-    const stanceId = stance!.id;
-
-    const translator = vi.fn(async () => 'ಮೊದಲ ವರ್ಷದೊಳಗೆ ಪೈಪ್‌ಲೈನ್ ಸರಿಪಡಿಸುತ್ತೇನೆ.');
-    const outcome = await translateFieldNow({ table: 'candidate_stances', id: stanceId }, { translator });
-
-    expect(outcome).toBe('done');
-    const [row] = await db.select().from(schema.candidateStances).where(eq(schema.candidateStances.id, stanceId));
-    expect(row?.valueKn).toBe('ಮೊದಲ ವರ್ಷದೊಳಗೆ ಪೈಪ್‌ಲೈನ್ ಸರಿಪಡಿಸುತ್ತೇನೆ.');
-    expect(row?.translationStatus).toBe('done');
-
-  });
-
   // -------------------------------------------------------------------------
-  // publishStance coordination (Fix 2, Task 40 review) — publishStance's wiring of
-  // decideTranslationStatus / translateFieldSoon. Each test uses a FRESH ward
-  // issue since a stance's natural key is (wardIssueId, candidateId).
+  // decideTranslationStatus (src/lib/publish.ts) — the manual-override /
+  // source-change-regeneration rule every publish path applies.
   // -------------------------------------------------------------------------
 
-  describe('publishStance manual-override + source-change-regeneration coordination', () => {
-    async function newWardIssue(titleEn: string, position: number): Promise<number> {
-      const [issue] = await db
-        .insert(schema.wardIssues)
-        .values({ wardId: WARD_ID, titleEn, authoredLang: 'en', translationStatus: 'pending', position })
-        .returning({ id: schema.wardIssues.id });
-      return issue!.id;
-    }
+  describe('decideTranslationStatus', () => {
+    const existing = { valueEn: 'Source text.', valueKn: 'ಮೂಲ ಪಠ್ಯ.', authoredLang: 'en' as const, translationStatus: 'done' as const };
 
-    it('a fresh authored publish stays pending and DOES fire translateFieldSoon', async () => {
-      const wardIssueId = await newWardIssue('Stance Coordination Fresh', 10);
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'Original stance text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [stance] = await db
-        .select()
-        .from(schema.candidateStances)
-        .where(and(eq(schema.candidateStances.wardIssueId, wardIssueId), eq(schema.candidateStances.candidateId, candidateId)));
-      expect(stance?.translationStatus).toBe('pending');
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledWith({ table: 'candidate_stances', id: stance!.id });
+    it('a brand-new row is pending', () => {
+      expect(decideTranslationStatus(null, { valueEn: 'New text.', authoredLang: 'en' })).toBe('pending');
     });
 
-    it('MANUAL set on publish: a manual OTHER-language edit (same authored value, new valueKn) sets manual and does NOT fire translateFieldSoon', async () => {
-      const wardIssueId = await newWardIssue('Stance Coordination Manual', 11);
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'Stable stance source text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'Stable stance source text.', // authored value UNCHANGED
-        valueKn: 'Curator-typed manual Kannada stance fix.', // other language explicitly edited
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [stance] = await db
-        .select()
-        .from(schema.candidateStances)
-        .where(and(eq(schema.candidateStances.wardIssueId, wardIssueId), eq(schema.candidateStances.candidateId, candidateId)));
-      expect(stance?.translationStatus).toBe('manual');
-      expect(stance?.valueKn).toBe('Curator-typed manual Kannada stance fix.');
-      expect(vi.mocked(translateFieldSoon)).not.toHaveBeenCalled();
+    it('an edit to the OTHER language with the authored value unchanged is manual', () => {
+      expect(decideTranslationStatus(existing, { valueEn: 'Source text.', valueKn: 'ಕೈಯಾರೆ ತಿದ್ದಿದ ಪಠ್ಯ.', authoredLang: 'en' })).toBe('manual');
     });
 
-    it('SOURCE-CHANGE regeneration: editing the AUTHORED value after a manual fix flips back to pending and fires translateFieldSoon', async () => {
-      const wardIssueId = await newWardIssue('Stance Coordination Regenerate', 12);
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'First version of the stance text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'First version of the stance text.', // unchanged
-        valueKn: 'Manually patched translation of the FIRST version.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [manualStance] = await db
-        .select()
-        .from(schema.candidateStances)
-        .where(and(eq(schema.candidateStances.wardIssueId, wardIssueId), eq(schema.candidateStances.candidateId, candidateId)));
-      expect(manualStance?.translationStatus).toBe('manual');
-
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'SECOND, updated version of the stance text.', // authored value changes
-        valueKn: 'Manually patched translation of the FIRST version.', // stale — describes the OLD source
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [regeneratedStance] = await db
-        .select()
-        .from(schema.candidateStances)
-        .where(and(eq(schema.candidateStances.wardIssueId, wardIssueId), eq(schema.candidateStances.candidateId, candidateId)));
-      expect(regeneratedStance?.translationStatus).toBe('pending');
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(translateFieldSoon)).toHaveBeenCalledWith({ table: 'candidate_stances', id: regeneratedStance!.id });
+    it('an edit to the AUTHORED value after a manual fix flips back to pending', () => {
+      const manual = { ...existing, translationStatus: 'manual' as const };
+      expect(decideTranslationStatus(manual, { valueEn: 'Updated source text.', valueKn: existing.valueKn, authoredLang: 'en' })).toBe('pending');
     });
 
-    it('an identical re-publish (nothing changed) preserves the existing status and does not fire translateFieldSoon', async () => {
-      const wardIssueId = await newWardIssue('Stance Coordination Noop', 13);
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'Unchanging stance text.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      // Simulate MT having already completed, so status is 'done'.
-      await db
-        .update(schema.candidateStances)
-        .set({ valueKn: 'ಬದಲಾಗದ ನಿಲುವು.', translationStatus: 'done' })
-        .where(and(eq(schema.candidateStances.wardIssueId, wardIssueId), eq(schema.candidateStances.candidateId, candidateId)));
-
-      vi.mocked(translateFieldSoon).mockClear();
-
-      await publishStance(ACTOR, {
-        wardIssueId,
-        candidateId,
-        valueEn: 'Unchanging stance text.',
-        valueKn: 'ಬದಲಾಗದ ನಿಲುವು.',
-        sourceUrl: 'https://example.org/source',
-        sourceType: 'curator',
-        authoredLang: 'en',
-      });
-
-      const [stance] = await db
-        .select()
-        .from(schema.candidateStances)
-        .where(and(eq(schema.candidateStances.wardIssueId, wardIssueId), eq(schema.candidateStances.candidateId, candidateId)));
-      expect(stance?.translationStatus).toBe('done');
-      expect(vi.mocked(translateFieldSoon)).not.toHaveBeenCalled();
+    it('an identical re-publish keeps the existing status', () => {
+      expect(decideTranslationStatus(existing, { valueEn: existing.valueEn, valueKn: existing.valueKn, authoredLang: 'en' })).toBe('done');
     });
   });
 });

@@ -6,8 +6,8 @@
  * COVERAGE MAP:
  *   - ADMIN-ONLY: a curator or a transcriber hitting /admin -> 403
  *     (src/middleware.ts's /admin/* route class).
- *   - CONSOLE: /admin renders its nav links (Manage users, Partners &
- *     coverage) and no longer links the retired Roles page.
+ *   - CONSOLE: /admin renders its nav links (Manage users, Affidavits)
+ *     and no longer links the retired Roles or Partners pages.
  *   - RETIRED ROLES PAGE: /admin/roles permanently redirects to
  *     /admin/users, which absorbed grant/revoke
  *     (tests/routes/admin-users.test.ts owns those).
@@ -157,7 +157,9 @@ describe('/admin, retired /admin/roles (Task 44)', () => {
       const html = normalize(await res.text());
       expect(html).toContain('href="/admin/users"');
       expect(html).toContain('Manage users');
-      expect(html).toContain('Partners');
+      expect(html).toContain('href="/admin/affidavits"');
+      expect(html).not.toContain('href="/admin/partners"');
+      expect(html).not.toContain('Partners');
       expect(html).not.toContain('href="/admin/roles"');
     });
   });

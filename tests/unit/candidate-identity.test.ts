@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { eq, inArray } from 'drizzle-orm';
@@ -29,8 +28,8 @@ afterAll(async () => {
 async function candidate() {
   const [c] = await db.insert(schema.candidates).values({
     wardId, slug: 'identity-test-' + crypto.randomUUID(),
-    nameEn: 'Old Name (FICTIONAL)', nameKn: 'ಹಳೆಯ ಹೆಸರು',
-    partyEn: 'Demo Party', partyKn: 'ಡೆಮೊ ಪಕ್ಷ',
+    nameEn: 'Old Name (FICTIONAL)',
+    partyEn: 'Demo Party',
   }).returning();
   ids.push(c.id);
   return c;
@@ -51,25 +50,5 @@ describe('report-card identity', () => {
       [{ key: 'full_name', status: 'value', text: 'Another Name (FICTIONAL)' }], { sourceUrl: '/media/test/affidavit', checked: false }));
     expect((await identity(c.id)).nameKn).toBeNull();
     expect((await identity(c.id)).nameEn).toBe('Another Name (FICTIONAL)');
-  });
-
-  it('backfills legacy translations without replacing current translations or attaching stale ones', async () => {
-    const legacy = await candidate();
-    const current = await candidate();
-    const changed = await candidate();
-    await db.insert(schema.candidateFields).values([
-      { candidateId: current.id, fieldKey: 'full_name', valueEn: current.nameEn, valueKn: 'ಪ್ರಸ್ತುತ ಹೆಸರು', translationStatus: 'manual' },
-      { candidateId: changed.id, fieldKey: 'full_name', valueEn: 'Changed Name', valueKn: null },
-    ]);
-    const migration = readFileSync('drizzle/0014_report_card_identity.sql', 'utf8');
-    await client.unsafe(migration);
-    await client.unsafe(migration); // reruns must preserve the same result
-    expect((await identity(legacy.id)).nameKn).toBe(legacy.nameKn);
-    expect((await identity(legacy.id)).partyKn).toBe(legacy.partyKn);
-    expect((await identity(current.id)).nameKn).toBe('ಪ್ರಸ್ತುತ ಹೆಸರು');
-    expect((await identity(changed.id)).nameKn).toBeNull();
-    const [field] = await db.select().from(schema.candidateFields).where(eq(schema.candidateFields.candidateId, legacy.id));
-    expect(field.checkedBy).toBeNull();
-    expect(field.checkedAt).toBeNull();
   });
 });

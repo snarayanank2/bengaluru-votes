@@ -601,7 +601,7 @@ describe('src/middleware.ts', () => {
       expect(res.status).toBe(200);
     });
 
-    it.each(['/kn/partner/some-slug', '/kn/login', '/kn/curator', '/kn/transcribe'])(
+    it.each(['/kn/admin', '/kn/login', '/kn/curator', '/kn/transcribe'])(
       '%s carries X-Robots-Tag: noindex (KN twin, previously missing)',
       async (path) => {
         const ctx = makeContext({ path });
@@ -634,7 +634,7 @@ describe('src/middleware.ts', () => {
   });
 
   describe('X-Robots-Tag: noindex', () => {
-    it.each(['/curator', '/admin', '/transcribe', '/login', '/partner/some-slug'])(
+    it.each(['/curator', '/admin', '/transcribe', '/login', '/curator/queue/12'])(
       '%s carries X-Robots-Tag: noindex',
       async (path) => {
         const ctx = makeContext({ path });
@@ -643,8 +643,8 @@ describe('src/middleware.ts', () => {
       },
     );
 
-    it('a normal public page does NOT carry X-Robots-Tag', async () => {
-      const ctx = makeContext({ path: '/ward/1' });
+    it.each(['/ward/1', '/voter-faqs'])('a normal public page (%s) does NOT carry X-Robots-Tag', async (path) => {
+      const ctx = makeContext({ path });
       const res = await run(ctx, nextStub(200));
       expect(res.headers.get('x-robots-tag')).toBeNull();
     });
@@ -654,7 +654,7 @@ describe('src/middleware.ts', () => {
   // Task 60: the app (not nginx) emits Content-Security-Policy, built from
   // the SAME per-request nonce this middleware mints into `locals.cspNonce`
   // (src/lib/csp.ts#buildCsp) — src/layouts/Base.astro bakes that exact
-  // nonce onto its two inline <script> tags. Proving the response header's
+  // nonce onto its inline <script> tags. Proving the response header's
   // nonce equals `ctx.locals.cspNonce` after the same middleware call is the
   // strongest tie-together available without rendering the full HTML here
   // (that byte-identical header/body agreement is additionally exercised at

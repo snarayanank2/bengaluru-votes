@@ -338,7 +338,6 @@ export async function handleReject(actor: CuratorActor, itemId: number, form: Fo
 /** One row of the affidavit ingestion history (Task 37) — newest first. `mediaUrl` is the stored PDF's public, content-hashed URL (the source every extracted field points back to). */
 export interface CandidateAffidavitRow {
   id: number;
-  originUrl: string | null;
   extractionStatus: ExtractionStatus;
   mediaUrl: string;
   createdAt: Date;
@@ -384,7 +383,6 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
   const affidavitRows = await db
     .select({
       id: candidateAffidavits.id,
-      originUrl: candidateAffidavits.originUrl,
       state: candidateAffidavits.state,
       createdAt: candidateAffidavits.createdAt,
       mediaHash: media.sha256,
@@ -397,7 +395,6 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
 
   const affidavits: CandidateAffidavitRow[] = affidavitRows.map((a) => ({
     id: a.id,
-    originUrl: a.originUrl,
     extractionStatus: extractionStatusOf(a.state),
     mediaUrl: `/media/${a.mediaId}/${a.mediaHash.slice(0, 16)}`,
     createdAt: a.createdAt,

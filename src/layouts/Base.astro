@@ -25,20 +25,13 @@
  * dialog always starts closed, and it never reads cookies/session, so it
  * does not affect this layout's cache-safety.
  *
- * The `?src` attribution cookie writer (Task 49, architecture §5/§13; dormant,
- * §15) is rendered ONCE here too, in `<head>`, on every page —
- * `src/lib/attribution.ts#ATTRIBUTION_SCRIPT_SOURCE`, one of exactly two
- * CSP-allowed nonce'd inline scripts (the other is GA, Task 58) — see
- * src/lib/csp.ts (Task 60) for the actual script-src allowlist this nonce
- * satisfies. The
- * server never reads `?src` or branches the page on it (the cache key
- * ignores the query string entirely); the script reads `location.search`
- * client-side and writes the `bv_src` cookie the registration endpoint
- * later reads. This is the one place this layout's markup embeds a
- * per-request value (`Astro.locals.cspNonce`, from `src/middleware.ts`) —
- * still cache-safe: nginx's microcache stores the whole response
- * (headers + body) as one unit, so a cached page's baked-in nonce always
- * matches that same cached response's CSP header.
+ * Inline scripts here (JSON-LD and, when shown, the GA config snippet)
+ * carry the per-request CSP nonce — see src/lib/csp.ts (Task 60) for the
+ * actual script-src allowlist this nonce satisfies. This is the one place
+ * this layout's markup embeds a per-request value (`Astro.locals.cspNonce`,
+ * from `src/middleware.ts`) — still cache-safe: nginx's microcache stores
+ * the whole response (headers + body) as one unit, so a cached page's
+ * baked-in nonce always matches that same cached response's CSP header.
  *
  * JSON-LD structured data (Task 56, architecture §8/§13) is rendered ONCE
  * here too, in `<head>`, from the optional `jsonLd` prop below. Each block
@@ -46,8 +39,7 @@
  * data (via `src/lib/seo.ts`'s builders) — this layout only serializes
  * (`jsonLd()` from `src/lib/seo`, which HTML-escapes `<`/`>`/`&` so a
  * curator/citizen-authored value can never break out of the `<script>`
- * tag) and nonces it, the same nonce as the `?src` writer above. Like that
- * script, this is page-specific but NOT session-specific data — never
+ * tag) and nonces it with the same per-request nonce. This is page-specific but NOT session-specific data — never
  * built from a cookie/session read — so it stays cache-safe under nginx's
  * anonymous-page microcache the same way.
  *
@@ -56,10 +48,10 @@
  * (env) — i.e. ONLY on public, indexable pages, and ONLY when a measurement
  * id is actually configured (unset in dev/test/CI, so this never perturbs
  * existing tests or the cache-safety byte-identical guard). That gate alone
- * excludes every authenticated screen: every `/account`, `/login`,
- * `/partner/*` page renders with `noindex={true}` (src/middleware.ts's
- * `NOINDEX_PREFIXES`), and `/curator`/`/admin` never render through Base at
- * all. Same cache-safety note as the `?src` writer: identical markup for
+ * excludes every authenticated screen: `/login` renders with
+ * `noindex={true}` (src/middleware.ts's `NOINDEX_PREFIXES`), and
+ * `/curator`/`/admin` never render through Base at all. Same cache-safety
+ * note as the JSON-LD above: identical markup for
  * every visitor (only the nonce varies), never a session/cookie read here —
  * GA's own cookies are written client-side by gtag.js, never a server
  * `Set-Cookie`. See src/lib/analytics.ts's own docstring, and src/lib/csp.ts
@@ -73,7 +65,6 @@ import AppBar from '../components/AppBar.astro';
 import Footer from '../components/Footer.astro';
 import FlagModal from '../components/FlagModal.astro';
 import { localePath, type Lang } from '../i18n';
-import { ATTRIBUTION_SCRIPT_SOURCE } from '../lib/attribution';
 import { gaLoaderSrc, gaConfigScriptSource } from '../lib/analytics';
 import { jsonLd } from '../lib/seo';
 
@@ -118,9 +109,9 @@ const knHref = new URL(localePath('kn', path), siteOrigin).href;
 const ogImageHref = ogImage ? new URL(ogImage, siteOrigin).href : undefined;
 const ogLocale = lang === 'en' ? 'en_IN' : 'kn_IN';
 
-// Per-request CSP nonce (architecture §13, src/middleware.ts) for the two
-// allowed nonce'd inline scripts rendered below (the `?src` writer and, when
-// shown, GA — Task 58; the CSP header itself that actually enforces this is
+// Per-request CSP nonce (architecture §13, src/middleware.ts) for the
+// nonce'd inline scripts rendered below (JSON-LD and, when shown, GA —
+// Task 58; the CSP header itself that actually enforces this is
 // emitted by the APP, src/middleware.ts + src/lib/csp.ts, Task 60 — nginx
 // only passes it through, see that module's docstring for why). This does
 // NOT break this layout's cache-safety: nginx's microcache
@@ -142,16 +133,6 @@ const showGa = !noindex && !!gaMeasurementId;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!--
-      ?src attribution cookie writer (architecture §5/§13) —
-      src/lib/attribution.ts. Runs first, in <head>, before any interaction.
-      Reads location.search client-side ONLY; the server never branches on
-      ?src, so this markup (aside from the nonce attribute itself, see
-      cspNonce above) is identical for every visitor — the query-blind
-      nginx cache is safe. One of exactly two CSP-allowed nonce'd inline
-      scripts (the other is GA below, Task 58); no unsafe-inline.
-    -->
-    <script nonce={cspNonce} is:inline set:html={ATTRIBUTION_SCRIPT_SOURCE} />
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}

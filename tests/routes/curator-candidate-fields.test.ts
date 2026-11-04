@@ -124,7 +124,6 @@ describe('the candidate editor on structured fields', () => {
     expect(res.status).toBe(403);
     const row = await candidateRow(c.candidateId);
     expect(row.nameEn).toBe(before);
-    expect(row.nameKn).toBeNull();
     expect(row.status).toBe('filed');
   });
 });

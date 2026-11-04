@@ -125,6 +125,15 @@ async function renderCompare(lang: Lang, id: number | string, extraHeaders?: Rec
   });
 }
 
+/** Kannada report-card names for WARD's candidates (the only source of a Kannada identity). */
+const KANNADA_NAMES: Record<string, string> = {
+  'compare-test-zainab': 'ಝೈನಬ್ ಸ್ಪರ್ಧಿ',
+  'compare-test-arjun': 'ಅರ್ಜುನ್ ಸಲ್ಲಿಕೆ',
+  'compare-test-bhavana': 'ಭಾವನಾ ಸಲ್ಲಿಕೆ',
+  'compare-test-meena': 'ಮೀನಾ ಹಿಂಪಡೆದ',
+  'compare-test-rekha': 'ರೇಖಾ ತಿರಸ್ಕೃತ',
+};
+
 describe('Candidate comparison (/ward/{id}/compare)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
@@ -150,7 +159,6 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
       slug: 'compare-test-zainab',
       wardId: WARD.id,
       nameEn: 'Zainab Contesting',
-      nameKn: 'ಝೈನಬ್ ಸ್ಪರ್ಧಿ',
       partyEn: 'Independent',
       status: 'contesting',
     });
@@ -161,7 +169,6 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
         slug: 'compare-test-arjun',
         wardId: WARD.id,
         nameEn: 'Arjun Filed',
-        nameKn: 'ಅರ್ಜುನ್ ಸಲ್ಲಿಕೆ',
         partyEn: 'Example Party',
         status: 'filed',
       })
@@ -171,7 +178,6 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
       slug: 'compare-test-bhavana',
       wardId: WARD.id,
       nameEn: 'Bhavana Filed',
-      nameKn: 'ಭಾವನಾ ಸಲ್ಲಿಕೆ',
       partyEn: 'Example Party',
       status: 'filed',
     });
@@ -180,7 +186,6 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
       slug: 'compare-test-meena',
       wardId: WARD.id,
       nameEn: 'Meena Withdrawn',
-      nameKn: 'ಮೀನಾ ಹಿಂಪಡೆದ',
       partyEn: 'Independent',
       status: 'withdrawn',
     });
@@ -189,7 +194,6 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
       slug: 'compare-test-rekha',
       wardId: WARD.id,
       nameEn: 'Rekha Rejected',
-      nameKn: 'ರೇಖಾ ತಿರಸ್ಕೃತ',
       partyEn: 'Example Party',
       status: 'rejected',
     });
@@ -232,7 +236,6 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
       slug: 'compare-test-empty-withdrawn',
       wardId: EMPTY_WARD.id,
       nameEn: 'Empty Ward Withdrawn',
-      nameKn: 'ಖಾಲಿ ವಾರ್ಡ್ ಹಿಂಪಡೆದ',
       partyEn: 'Independent',
       status: 'withdrawn',
     });
@@ -244,7 +247,6 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
         slug: `compare-test-many-${i}`,
         wardId: MANY_WARD.id,
         nameEn: `Candidate Many${i} ${letter}`,
-        nameKn: `ಅಭ್ಯರ್ಥಿ ${i}`,
         partyEn: 'Example Party',
         status: (i % 2 === 0 ? 'filed' : 'contesting') as 'filed' | 'contesting',
       };
@@ -253,10 +255,9 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
     const identities = await db.select().from(schema.candidates).where(eq(schema.candidates.wardId, WARD.id));
     for (const c of identities) {
       await db.insert(schema.candidateFields).values([
-        { candidateId: c.id, fieldKey: 'full_name', valueEn: c.nameEn, valueKn: c.nameKn },
-        { candidateId: c.id, fieldKey: 'party', valueEn: c.partyEn, valueKn: c.partyKn },
+        { candidateId: c.id, fieldKey: 'full_name', valueEn: c.nameEn, valueKn: KANNADA_NAMES[c.slug] ?? null },
+        { candidateId: c.id, fieldKey: 'party', valueEn: c.partyEn, valueKn: null },
       ]).onConflictDoNothing();
-      await db.update(schema.candidates).set({ nameKn: 'STALE Kannada name', partyKn: 'STALE Kannada party' }).where(eq(schema.candidates.id, c.id));
     }
   });
 

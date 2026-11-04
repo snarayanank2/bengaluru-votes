@@ -1,6 +1,6 @@
 /**
  * Curator ward-issues editor engine (Task 39). A ward's issues are the
- * fixed candidate-stance topics AND the citizen "top 3" vote options
+ * citizen "top 3" vote options
  * (`/ward/{id}/issues`) — the curator fully owns this list (add, retitle,
  * retire), in any ward.
  *
@@ -13,7 +13,6 @@
  *     `onDelete: 'cascade'`), but any OTHER selection in the same vote set
  *     (for an issue that was NOT removed) is a separate row and survives —
  *     "delete cascades selections, remaining selections stand".
- *     `candidate_stances` for the removed issue cascade away the same way.
  *
  * TITLE INPUT: only `titleEn` is ever written here — a curator authors in
  * English; `titleKn`/`translationStatus` follow the same MT convention as

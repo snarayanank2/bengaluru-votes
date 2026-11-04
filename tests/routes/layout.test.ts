@@ -36,8 +36,7 @@ async function renderBase(
   });
   const html = await container.renderToString(Base, {
     partial: false,
-    // Same mechanism as tests/routes/attribution.test.ts's renderBase: the
-    // container API only bakes a real nonce into `Astro.locals.cspNonce`
+    // The container API only bakes a real nonce into `Astro.locals.cspNonce`
     // (src/layouts/Base.astro) when one is supplied here — otherwise the
     // `nonce={cspNonce}` attributes render as nothing at all. Defaults to
     // `{}` (no nonce) so every OTHER case in this file, which doesn't care
@@ -235,8 +234,7 @@ describe('Base layout — Google Analytics gating (Task 58)', () => {
   it('GA_MEASUREMENT_ID set + public (indexable) page: renders the async loader + inline config, BOTH carrying the real per-request CSP nonce', async () => {
     process.env.GA_MEASUREMENT_ID = 'G-TEST123456';
     const GA_NONCE = 'test-nonce-123';
-    // Supply a real `locals.cspNonce`, same mechanism as
-    // tests/routes/attribution.test.ts's renderBase, so `Astro.locals.cspNonce`
+    // Supply a real `locals.cspNonce` so `Astro.locals.cspNonce`
     // (src/layouts/Base.astro) resolves to a KNOWN value we can assert on
     // exactly — rather than leaving it unset, which would let the nonce
     // attribute silently disappear from both GA `<script>` tags without
@@ -261,5 +259,51 @@ describe('Base layout — Google Analytics gating (Task 58)', () => {
 
     expect(html).not.toContain('googletagmanager.com');
     expect(html).not.toContain('gtag(');
+  });
+});
+
+describe('Base layout inline scripts carry the per-request CSP nonce (architecture §13)', () => {
+  const NONCE = 'test-nonce-abc123==';
+  const JSON_LD = [{ '@context': 'https://schema.org', '@type': 'AdministrativeArea', name: 'Test Ward' }];
+
+  async function renderWithNonce(requestUrl: string, cspNonce = NONCE): Promise<string> {
+    const container = await AstroContainer.create({
+      astroConfig: {
+        site: SITE_ORIGIN,
+        i18n: { locales: ['en', 'kn'], defaultLocale: 'en', routing: { prefixDefaultLocale: false } },
+      },
+    });
+    const html = await container.renderToString(Base, {
+      partial: false,
+      request: new Request(requestUrl),
+      locals: { cspNonce } as unknown as App.Locals,
+      props: { lang: 'en', title: 'Test page', description: 'Test description', path: '/ward/57', jsonLd: JSON_LD },
+    });
+    return normalize(html);
+  }
+
+  it('renders the JSON-LD block carrying the request nonce', async () => {
+    const html = await renderWithNonce(`${SITE_ORIGIN}/ward/57`);
+    expect(html).toContain(`<script type="application/ld+json" nonce="${NONCE}">`);
+  });
+
+  it('picks up a per-request nonce (a different request gets a different nonce baked in)', async () => {
+    const html = await renderWithNonce(`${SITE_ORIGIN}/ward/57`, 'different-nonce-xyz');
+    expect(html).toContain('nonce="different-nonce-xyz"');
+    expect(html).not.toContain(`nonce="${NONCE}"`);
+  });
+
+  it('has no un-nonced inline script (every non-module <script> tag carries a nonce attribute)', async () => {
+    const html = await renderWithNonce(`${SITE_ORIGIN}/ward/57`);
+    const scriptOpenTags = [...html.matchAll(/<script\b[^>]*>/g)].map((m) => m[0]);
+    const inline = scriptOpenTags.filter((tag) => !tag.includes('type="module"'));
+    expect(inline.length).toBeGreaterThan(0);
+    for (const tag of inline) expect(tag).toMatch(/\bnonce="[^"]+"/);
+  });
+
+  it('CACHE-SAFE: server HTML is byte-identical regardless of the query string', async () => {
+    const plain = await renderWithNonce(`${SITE_ORIGIN}/ward/57`);
+    expect(await renderWithNonce(`${SITE_ORIGIN}/ward/57?utm_source=whatsapp`)).toBe(plain);
+    expect(await renderWithNonce(`${SITE_ORIGIN}/ward/57?lang=kn&x=1`)).toBe(plain);
   });
 });

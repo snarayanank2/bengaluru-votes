@@ -46,7 +46,7 @@ import type { CandidateRowCandidate } from '../../components/CandidateRow.astro'
 import { t, localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
 import { candidateIdentitySelection } from '../../lib/candidate-identity';
-import { wards, candidates, media } from '../../db/schema';
+import { wards, candidates } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { getKnownSetting } from '../../lib/settings';
 
@@ -66,12 +66,9 @@ const candidateRows = ward
         id: candidates.id,
         slug: candidates.slug,
         ...candidateIdentitySelection(),
-        photoMediaId: candidates.photoMediaId,
-        photoHash: media.sha256,
         status: candidates.status,
       })
       .from(candidates)
-      .leftJoin(media, eq(media.id, candidates.photoMediaId))
       .where(eq(candidates.wardId, wardId))
   : [];
 
@@ -87,7 +84,6 @@ const sortedCandidates: (CandidateRowCandidate & { id: number; status: string })
     nameKn: c.nameKn,
     partyEn: c.partyEn,
     partyKn: c.partyKn,
-    photoUrl: c.photoMediaId != null && c.photoHash ? `/media/${c.photoMediaId}/${c.photoHash.slice(0, 16)}` : null,
     status: c.status,
   }))
   .sort((a, b) => a.nameEn.localeCompare(b.nameEn) || a.id - b.id);

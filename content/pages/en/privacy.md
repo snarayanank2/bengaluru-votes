@@ -25,7 +25,7 @@ If you choose **use my current location**, your browser asks permission and send
 
 We use **Google Analytics** to understand site usage, **Google Maps and address lookup** to help find wards, and **Google reCAPTCHA** to protect submissions. These services may receive browser/device information, IP addresses and usage information, and use cookies. Google's processing is described in its [Privacy Policy](https://policies.google.com/privacy) and [information about partner sites](https://policies.google.com/technologies/partner-sites). reCAPTCHA is subject to Google's [Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms).
 
-A partner-link attribution cookie may remember which partner referred you for up to 30 days. Staff login uses a session cookie. Our hosting infrastructure and application record technical information for operation and security; server logs may include IP addresses, requested URLs, referral URLs, browser information and timestamps.
+Staff login uses a session cookie. Our hosting infrastructure and application record technical information for operation and security; server logs may include IP addresses, requested URLs, referral URLs, browser information and timestamps.
 
 Service providers supporting hosting and these features process the data needed to provide them. Google may process data outside India. We may also disclose information when required by law. We do not use Sentry for error reporting.
 

@@ -1,5 +1,5 @@
 # GBA Elections Citizen Platform — jobs container crontab (Task 55;
-# architecture.md §10 "Jobs, ops, backups"). Each line invokes one job via
+# architecture.md §10 "Jobs, ops"). Each line invokes one job via
 # `tsx` against the app codebase this container shares with the web service.
 #
 # Task 59 wires PATH/workdir/user for the actual jobs container image and
@@ -9,26 +9,17 @@
 #
 # Every job is a one-shot process that exits 0 (success) or 1 (failure) —
 # cron's own mail-on-nonzero-exit (or the container's log driver) is the
-# first line of failure visibility; scripts/backup.sh additionally pings
-# healthchecks.io as a dead-man's-switch (architecture §10).
+# failure visibility.
 
-# Translation retry — re-drives any candidate_fields/ward_issues/
-# candidate_stances row still translationStatus='pending' (e.g. because
-# ANTHROPIC_API_KEY was briefly absent, or a prior attempt timed out).
+# Translation retry — re-drives any candidate_fields/ward_issues row still
+# translationStatus='pending' (e.g. because ANTHROPIC_API_KEY was briefly
+# absent, or a prior attempt timed out).
 */5 * * * * cd /app && tsx jobs/translate-retry.ts >> /var/log/gba-jobs/translate-retry.log 2>&1
 
 # Sitemap regeneration — MINIMAL today (Task 60 expands to full ward/
 # candidate coverage); rewrites sitemap.xml/sitemap-en.xml/sitemap-kn.xml
 # every hour so lastmod stays fresh.
 0 * * * * cd /app && tsx jobs/regen-sitemaps.ts >> /var/log/gba-jobs/regen-sitemaps.log 2>&1
-
-# Nightly backup — pg_dump -> restic -> verify snapshot count increased ->
-# healthchecks.io ping. See scripts/backup.sh's header for the required env
-# vars. LEFT ACTIVE DELIBERATELY while no backup target exists (architecture
-# §10, §16): backup.sh fails its RESTIC_REPOSITORY
-# check and logs an error here every night, which is the reminder. Do not
-# comment this out to quiet the log.
-0 2 * * * /app/scripts/backup.sh >> /var/log/gba-jobs/backup.log 2>&1
 
 # Always active: expires short-lived report abuse metadata, not report content.
 15 6 * * * cd /app && tsx jobs/flag-cleanup.ts >> /var/log/gba-jobs/flag-cleanup.log 2>&1

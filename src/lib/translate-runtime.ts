@@ -1,7 +1,7 @@
 /**
  * Runtime machine translation of curator-authored data (Task 40;
- * architecture.md §9). Curator content — `candidate_fields`,
- * `ward_issues`, `candidate_stances` — is authored in ONE language; this
+ * architecture.md §9). Curator content — `candidate_fields` and
+ * `ward_issues` — is authored in ONE language; this
  * module generates the OTHER language, in-request, right after the
  * authoring publish commits. This is a DIFFERENT path from
  * `scripts/translate.ts` (the dev-time editorial/UI-string translator for
@@ -61,10 +61,10 @@
  */
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client';
-import { candidateFields, wardIssues, candidateStances } from '../db/schema';
+import { candidateFields, wardIssues } from '../db/schema';
 import glossaryJson from '../i18n/glossary.json';
 
-export type TranslateTable = 'candidate_fields' | 'ward_issues' | 'candidate_stances';
+export type TranslateTable = 'candidate_fields' | 'ward_issues';
 export type TranslateTarget = { table: TranslateTable; id: number };
 export type TranslateOutcome = 'done' | 'pending' | 'skipped' | 'manual';
 export type Lang = 'en' | 'kn';
@@ -172,7 +172,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Per-table row access — the three tables share the authoredLang /
+// Per-table row access — the two tables share the authoredLang /
 // translationStatus / valueEn / valueKn (or titleEn/titleKn) shape, but are
 // different Drizzle tables with different column names and different
 // "context" joins, so loading/writing is a small per-table switch rather
@@ -201,26 +201,14 @@ async function loadRow(target: TranslateTarget): Promise<LoadedRow | null> {
     };
   }
 
-  if (target.table === 'ward_issues') {
-    const [row] = await db.select().from(wardIssues).where(eq(wardIssues.id, target.id));
-    if (!row) return null;
-    return {
-      authoredLang: row.authoredLang,
-      translationStatus: row.translationStatus,
-      valueEn: row.titleEn,
-      valueKn: row.titleKn,
-      contextNote: `A ward issue title (ward id ${row.wardId}) — a short local topic citizens vote on and candidates take stances on.`,
-    };
-  }
-
-  const [row] = await db.select().from(candidateStances).where(eq(candidateStances.id, target.id));
+  const [row] = await db.select().from(wardIssues).where(eq(wardIssues.id, target.id));
   if (!row) return null;
   return {
     authoredLang: row.authoredLang,
     translationStatus: row.translationStatus,
-    valueEn: row.valueEn,
-    valueKn: row.valueKn,
-    contextNote: `A candidate's stated position on ward issue id ${row.wardIssueId} (candidate id ${row.candidateId}).`,
+    valueEn: row.titleEn,
+    valueKn: row.titleKn,
+    contextNote: `A ward issue title (ward id ${row.wardId}) — a short local topic citizens vote on.`,
   };
 }
 
@@ -228,10 +216,8 @@ async function loadRow(target: TranslateTarget): Promise<LoadedRow | null> {
 async function markStatus(target: TranslateTarget, status: 'pending' | 'done' | 'manual'): Promise<void> {
   if (target.table === 'candidate_fields') {
     await db.update(candidateFields).set({ translationStatus: status, updatedAt: new Date() }).where(eq(candidateFields.id, target.id));
-  } else if (target.table === 'ward_issues') {
-    await db.update(wardIssues).set({ translationStatus: status }).where(eq(wardIssues.id, target.id));
   } else {
-    await db.update(candidateStances).set({ translationStatus: status }).where(eq(candidateStances.id, target.id));
+    await db.update(wardIssues).set({ translationStatus: status }).where(eq(wardIssues.id, target.id));
   }
 }
 
@@ -240,12 +226,9 @@ async function writeTranslationDone(target: TranslateTarget, otherLang: Lang, tr
   if (target.table === 'candidate_fields') {
     const set = otherLang === 'en' ? { valueEn: translated } : { valueKn: translated };
     await db.update(candidateFields).set({ ...set, translationStatus: 'done', updatedAt: new Date() }).where(eq(candidateFields.id, target.id));
-  } else if (target.table === 'ward_issues') {
+  } else {
     const set = otherLang === 'en' ? { titleEn: translated } : { titleKn: translated };
     await db.update(wardIssues).set({ ...set, translationStatus: 'done' }).where(eq(wardIssues.id, target.id));
-  } else {
-    const set = otherLang === 'en' ? { valueEn: translated } : { valueKn: translated };
-    await db.update(candidateStances).set({ ...set, translationStatus: 'done' }).where(eq(candidateStances.id, target.id));
   }
 }
 

@@ -211,7 +211,6 @@ describe('§12 cache-invariant + security guard suite', () => {
         slug: CANDIDATE_SLUG,
         wardId: WARD.id,
         nameEn: 'Cache Invariant Guard Test Candidate',
-        nameKn: 'ಸಂಗ್ರಹ ಅಸ್ಥಿರ ರಕ್ಷಣಾ ಪರೀಕ್ಷಾ ಅಭ್ಯರ್ಥಿ',
         partyEn: 'Independent',
         status: 'contesting',
       })

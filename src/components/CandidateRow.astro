@@ -1,8 +1,8 @@
 ---
 /**
  * CandidateRow — design-system.md §7.5, neutrality rules §4 (LOAD-BEARING).
- * Identical in ward lists and compare headers: a 56px photo circle (or a
- * neutral initials placeholder — never a fake/stock image), the
+ * Identical in ward lists and compare headers: a 56px neutral initials
+ * circle (candidate photos are not collected — never a fake/stock image), the
  * candidate's name at --text-xl Manrope 700, and the party name (plus an
  * optional symbol image slot) beneath at --text-sm.
  *
@@ -14,7 +14,6 @@
  *     of party, status, or position in a list — ordering and any
  *     differentiation happen outside this component, never as a style
  *     variant in here.
- *   - Photography is documentary: the photo renders as given, no filters.
  */
 import { localePath, type Lang } from '../i18n';
 
@@ -24,7 +23,6 @@ export interface CandidateRowCandidate {
   nameKn?: string | null;
   partyEn: string;
   partyKn?: string | null;
-  photoUrl?: string | null;
   status?: string;
 }
 
@@ -38,7 +36,7 @@ const { candidate, lang } = Astro.props;
 const name = lang === 'kn' && candidate.nameKn ? candidate.nameKn : candidate.nameEn;
 const party = lang === 'kn' && candidate.partyKn ? candidate.partyKn : candidate.partyEn;
 
-// Initials placeholder (no photo): first letter of up to the first two
+// Initials placeholder: first letter of up to the first two
 // words of the English name — a neutral text stand-in, never a fake image.
 const initials = candidate.nameEn
   .trim()
@@ -51,15 +49,9 @@ const href = localePath(lang, `/candidate/${candidate.slug}`);
 ---
 
 <a class="candidate-row" href={href}>
-  {
-    candidate.photoUrl ? (
-      <img class="photo" src={candidate.photoUrl} width="56" height="56" alt="" loading="lazy" />
-    ) : (
-      <span class="photo photo--placeholder" aria-hidden="true">
-        {initials}
-      </span>
-    )
-  }
+  <span class="photo photo--placeholder" aria-hidden="true">
+    {initials}
+  </span>
   <span class="identity">
     <span class="name">{name}</span>
     <span class="party">{party}</span>
@@ -80,7 +72,6 @@ const href = localePath(lang, `/candidate/${candidate.slug}`);
     width: 56px;
     height: 56px;
     border-radius: var(--radius-full);
-    object-fit: cover;
     background: var(--color-surface);
   }
 

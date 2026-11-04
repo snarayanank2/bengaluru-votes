@@ -19,7 +19,7 @@ What runs where, what is cached, what is dynamic, and how the site stays fast, b
 | Application | One **Astro SSR monolith** (Node adapter, TypeScript): public pages, API endpoints, curator/admin/transcriber screens |
 | Database | One **Postgres 16** instance, accessed via Drizzle |
 | Edge | **nginx**: TLS, static files, per-IP rate limiting, **micro-cache** for anonymous page GETs |
-| Jobs | A **cron container** sharing the app image (translation retries, sitemap regeneration, flag-abuse cleanup, backup attempt) plus a long-running **extraction worker** |
+| Jobs | A **cron container** sharing the app image (translation retries, sitemap regeneration, flag-abuse cleanup) plus a long-running **extraction worker** |
 | Language URLs | English at root, **Kannada under `/kn/`**, hreflang-linked; the toggle navigates between them |
 | Spike strategy | nginx micro-cache (~60 s TTL on pages); no purge machinery |
 | Geo | Ward polygons as static GeoJSON (`data/gba.geojson`); the map island fetches one ward's Feature from `GET /ward/<id>/boundary.json` (`src/pages/ward/[id]/boundary.json.ts`, `wardBoundaryFeature()` in `src/lib/geo.ts`); in-memory point-in-polygon (Turf.js) for address lookup; **no PostGIS** |
@@ -73,7 +73,7 @@ nginx `proxy_cache` on anonymous-shaped GET HTML (`deploy/nginx/conf.d/site.conf
 
 ## 6. Data model
 
-Schema: `src/db/schema.ts`; migrations: `drizzle/`. Tables kept only for dormant code are listed in §15.
+Schema: `src/db/schema.ts`; migrations: `drizzle/`.
 
 | Area | Tables |
 |---|---|
@@ -94,7 +94,7 @@ Seeds: `npm run seed:wards` loads `data/gba.geojson` (369 wards), `data/ward-fac
 
 **There is no change history.** No audit log: a field row holds its current value and nothing behind it. §13 records what that costs.
 
-**`candidate_affidavits`** is the extraction queue: candidate (**null until matched**), media, `sha256` (unique, so re-uploads are no-ops), `origin_url`, `state` `queued|extracting|needs_matching|published|failed`, `attempts`, `lease_expires_at`, `extraction` (validated JSON), `confidence` (0–100), `failure`, `match_reason`, `match_note`, `transcribed_at`. The stored copy is the public source link for affidavit fields.
+**`candidate_affidavits`** is the extraction queue: candidate (**null until matched**), media, `sha256` (unique, so re-uploads are no-ops), `state` `queued|extracting|needs_matching|published|failed`, `attempts`, `lease_expires_at`, `extraction` (validated JSON), `confidence` (0–100), `failure`, `match_reason`, `match_note`, `transcribed_at`. The stored copy is the public source link for affidavit fields.
 
 **From upload to public page.** An admin uploads PDFs at `/admin/affidavits` or with `npm run upload:affidavits`; each becomes a `queued` row. `extract-worker` claims rows under a 15-minute lease (`src/lib/affidavit-queue.ts`, `FOR UPDATE SKIP LOCKED`) and reads each with Claude (`src/lib/affidavit-extraction.ts`), which returns the report-card fields and the candidate's name, ward, party and gender. If the ward resolves to exactly one ward and no same-name candidate exists there, the candidate is created and every field published at once, labelled AI-extracted. Otherwise the row waits as `needs_matching` and nothing from it is public until a curator or admin picks the ward and confirms name and party. A failed call retries up to three times, then waits as `failed`; a failure is never published as *not declared*. **Known cost:** a wrong AI-read ward is public until a person reads that affidavit.
 
@@ -105,7 +105,7 @@ Invariants enforced in the database:
 - **The queue draw is atomic and prioritized in one statement** (`src/lib/transcribe.ts`: `SELECT … FOR UPDATE SKIP LOCKED` feeding an `INSERT`): affidavits with an unreadable field first, then those below `low_confidence_threshold` (`app_settings`, default 70), then the rest, randomized within each tier. A partial unique index on open assignments per affidavit is the backstop. There is deliberately no unique index on (affidavit, transcriber), so a transcriber can pick up an expired assignment they started.
 - **Check state is computed on write.** Nothing writes "checked by a person" independently of a person having checked it.
 
-**Storage cost of PDFs in Postgres.** About 4,000 affidavits arrive in one burst in the nomination window, capped at 20 MB each, on a 193 GB disk shared with the nginx cache, logs and locally built images (§10). The nine 2023 Assembly fixtures average about 3.3 MB; measure on the first real files. PDFs pass through Node on first read only (nginx caches `/media/` 30 days). They are inside the backup hole (§10).
+**Storage cost of PDFs in Postgres.** About 4,000 affidavits arrive in one burst in the nomination window, capped at 20 MB each, on a 193 GB disk shared with the nginx cache, logs and locally built images (§10). The nine 2023 Assembly fixtures average about 3.3 MB; measure on the first real files. PDFs pass through Node on first read only (nginx caches `/media/` 30 days).
 
 **Ward data.** `data/gba.geojson` is the authoritative final delimitation: 369 polygons with corporation/zone/assembly/RO metadata and EN/KN names, served by nginx and loaded into app memory at boot for point-in-polygon. `data/ward-candidate-questions.json` derives from OpenCity's `ward_facts_questions.geojson`, mapped to GBA wards by unique normalized English name because the source's numeric ids repeat across corporations.
 
@@ -123,8 +123,6 @@ Public endpoints:
 | `GET /api/issue-votes` | Receipt status; returns ward counts and percentages only after that receipt has voted there |
 | `GET /ward/{id}/boundary.json` | One ward's GeoJSON Feature; cached public route (§5) |
 | `GET /media/{id}/{hash}` | Affidavit PDFs from Postgres at an immutable URL, long-TTL cached (§5); `Content-Type` from the validated stored type (§13). Frameable by this site's own pages only |
-
-The one endpoint that exists only for dormant code (`/api/eoi`) is listed in §15.
 
 **Anonymous candidate reports.** Any visitor can report an error in one of the eight flaggable fields; the modal opens directly, with no sign-in. The app bounds the body at 32 KiB (nginx too), validates the target and source link, verifies reCAPTCHA (action `candidate_flag`, hostname, score ≥ 0.5 by default, provider errors fail closed in production), then deduplicates and checks allowances in one Postgres transaction under target and reporter advisory locks (`src/lib/flags.ts`, `src/lib/flag-abuse.ts`). Reports are anonymous only: no submission is linked to an account, even a signed-in staff member's. Defaults: 3 accepted reports per 10 minutes and 10 per 24 hours per browser (`FLAGS_REPORTER_BURST_LIMIT`, `FLAGS_REPORTER_DAILY_LIMIT`), 100 per 24 hours per network (`FLAGS_NETWORK_DAILY_LIMIT`); nginx `flags` zone 10 requests/minute/IP, burst 5. `FLAGS_ABUSE_SECRET` keys the browser and network hashes; with `FLAGS_TRUST_PROXY=true` the app trusts only nginx's overwritten `X-Flag-Client-IP` (`src/lib/flag-http.ts`). An exact repeat of a report resolved within seven days on an unchanged value is acknowledged without attaching a new reporter. Reports and counts stay private and never change data automatically; counts are not identities. `FLAGS_SUBMISSIONS_PAUSED=true` refuses new submissions during an attack. `jobs/flag-cleanup.ts` expires abuse metadata daily.
 
@@ -153,7 +151,7 @@ The one endpoint that exists only for dormant code (`/api/eoi`) is listed in §1
 - Complete HTML at first byte for all public content.
 - **JSON-LD** per page type (`src/lib/seo.ts`): `Person` (candidates), `AdministrativeArea` (wards), `Event` (the election, on `/about-election`, when `election_date` is set), `Organization` (Oorvani, on `/about`), `BreadcrumbList`. Voter questions are consolidated on `/voter-faqs`, which emits no `FAQPage`.
 - Per-language **sitemaps** with `lastmod` from publish timestamps, regenerated hourly by `jobs` (see the serving gap in §16); `robots.txt`; canonical URLs; `llms.txt`.
-- `noindex` (`X-Robots-Tag`, `src/middleware.ts`) and sitemap exclusion: `/curator/*`, `/admin/*`, `/transcribe/*`, `/login`, and the dormant `/partner/*`.
+- `noindex` (`X-Robots-Tag`, `src/middleware.ts`) and sitemap exclusion: `/curator/*`, `/admin/*`, `/transcribe/*` and `/login`.
 - **Open Graph tags on every page** in that page's language — distribution is WhatsApp forwarding.
 - AEO: a concise factual summary at the top of ward/candidate/guide pages; question-shaped headings; facts in visible text.
 - Candidate routes before data lands return **200 with the empty state**, so shared URLs accumulate authority. Withdrawn and rejected candidates stay **200 with a status banner**; only unknown slugs 404.
@@ -181,11 +179,11 @@ No layer translates at request time; every render is from stored text.
 3. On failure the field stays `pending` (shown in the authored language with an untranslated indicator) and `jobs/translate-retry.ts` retries every 5 minutes.
 4. A curator editing the Kannada value directly sets `translation_status = manual`, excluding it from MT until the source value changes again.
 
-Candidate names and parties render from the report-card `full_name` and `party` rows in both languages. Legacy Kannada columns on `candidates` are dormant after migration `0014`. The candidate editor validates all edits, then one transaction writes changed values only; unchanged fields keep their review metadata.
+Candidate names and parties render from the report-card `full_name` and `party` rows in both languages. Migration `0014` moved the legacy Kannada name/party columns into those rows, and migration `0017` dropped the columns. The candidate editor validates all edits, then one transaction writes changed values only; unchanged fields keep their review metadata.
 
 Never machine-translated: official bilingual data (ward names) and UI strings.
 
-## 10. Jobs, ops, backups
+## 10. Jobs and ops
 
 **Cron** (`deploy/crontab`, run by `supercronic` in `jobs`):
 
@@ -193,14 +191,11 @@ Never machine-translated: official bilingual data (ward names) and UI strings.
 |---|---|
 | every 5 min | `jobs/translate-retry.ts` — re-drives `pending` translations |
 | hourly | `jobs/regen-sitemaps.ts` |
-| 02:00 | `scripts/backup.sh` — fails nightly by design (below) |
 | 06:15 | `jobs/flag-cleanup.ts` — expires flag-abuse metadata |
 
 - **Logs:** structured JSON to stdout (pino, `src/lib/logger.ts`), Compose `json-file` driver capped at 10 MB × 5 files per service. `/healthz` backs the nginx container healthcheck.
 - **Monitoring: none external.** No uptime check, no SSL-expiry alert, no disk alert, no error reporting, and the geocode/EPIC/vote budgets only refuse — they alarm nobody. A silently failed certbot renewal surfaces as an outage on expiry day; the daily `nginx -s reload` (§14.5) picks up *successful* renewals only. Nothing watches disk; exhaustion taking Postgres down mid-spike is a live risk.
 - **Disk.** One 193 GB disk carries Postgres (including affidavit PDFs, §6), the nginx cache, rotated logs and locally built images. Pruning old images is manual and careful: `:previous` is the only rollback path (§14.3), so never `docker image prune` blindly.
-- **Backups: there is no off-box backup.** `scripts/backup.sh` is written (pg_dump → restic → verify a snapshot was added → healthchecks.io ping) but `RESTIC_REPOSITORY` and `HEALTHCHECKS_URL` are unset, so it exits at its required-variable check every night at 02:00, before running `pg_dump`. The cron line is left active deliberately so the failure stays visible. Losing the disk loses everything since seeding, including affidavit PDFs, which can be re-fetched only while the election authority keeps them online.
-- **Requirements on whatever backup storage is chosen:** India-resident, S3-compatible, encrypted at rest via restic (the dump holds staff accounts and citizen report text), repository key held off-box, restore rehearsed. Intended steady state: nightly dumps, RPO 24 hours, RTO hours (rebuild from §14.6 plus a restic restore). WAL archiving was rejected as a second mechanism to operate. No provider snapshots are enabled.
 
 ## 11. Error handling
 
@@ -220,11 +215,11 @@ Never machine-translated: official bilingual data (ward names) and UI strings.
 
 ## 13. Security
 
-Per-mechanism details live where they apply (§5 cache, §7 sessions and abuse controls, §10 backups, §12 tests); this section carries the cross-cutting rules and the accepted limitations.
+Per-mechanism details live where they apply (§5 cache, §7 sessions and abuse controls, §10 jobs and ops, §12 tests); this section carries the cross-cutting rules and the accepted limitations.
 
 - **CSRF:** `SameSite=Lax` cookies; middleware `Origin`/`Sec-Fetch-Site` check on all unsafe methods, failing closed when both headers are absent; synchronizer tokens on staff forms (`src/lib/csrf.ts`). Forged curator publishes are the worst outcome this design can produce.
 - **Cost amplification:** `geocode_cache` stores normalized address → ward id only, never Google's coordinates or content. Daily budgets cap geocoding, EPIC lookups and anonymous votes; exhausting them degrades availability, not cost. Anthropic is triggered only by staff publishes and affidavit extraction, never public traffic. PDFs are served behind the nginx cache.
-- **Headers:** nginx sets HSTS, `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` (`deploy/nginx/snippets/security-headers.conf`). **The CSP is set by the app** per request (`src/lib/csp.ts`, wired in `src/middleware.ts`), because its script nonce must match the nonce baked into cached HTML; nginx passes it through untouched. `script-src` is `'self'` + the request nonce + GA and Maps hosts — no `unsafe-inline` on scripts; the nonce'd inline scripts are the `?src` writer and GA config. `frame-ancestors 'none'` everywhere except `/media/{id}/{hash}` (`'self'`). Ward detail and candidate pages also allow the reCAPTCHA hosts (`www.google.com`, `www.gstatic.com`). `frame-src 'self'` on the transcriber reading screen, the three curator screens that show an affidavit beside a form (`/curator/queue/{id}`, `/curator/candidate/{id}`, `/curator/matching/{id}`), and candidate pages (alongside reCAPTCHA). So those pages, and no other site, can frame a stored PDF.
+- **Headers:** nginx sets HSTS, `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` (`deploy/nginx/snippets/security-headers.conf`). **The CSP is set by the app** per request (`src/lib/csp.ts`, wired in `src/middleware.ts`), because its script nonce must match the nonce baked into cached HTML; nginx passes it through untouched. `script-src` is `'self'` + the request nonce + GA and Maps hosts — no `unsafe-inline` on scripts; the nonce'd inline scripts are JSON-LD and the GA config. `frame-ancestors 'none'` everywhere except `/media/{id}/{hash}` (`'self'`). Ward detail and candidate pages also allow the reCAPTCHA hosts (`www.google.com`, `www.gstatic.com`). `frame-src 'self'` on the transcriber reading screen, the three curator screens that show an affidavit beside a form (`/curator/queue/{id}`, `/curator/candidate/{id}`, `/curator/matching/{id}`), and candidate pages (alongside reCAPTCHA). So those pages, and no other site, can frame a stored PDF.
 - **Content rules:** flag text renders as text; every curator-supplied URL is validated to `http(s)` at write time; JSON-LD is serialized with `<` escaped; MT output is stored and rendered as plain text through normal escaping. Submitted flag links are never fetched.
 - **Logs carry IDs, not identities:** application logs never contain lookup addresses, EPIC numbers, voter names, flag tokens, raw IPs or report text — opaque ids and result kinds only. nginx access logs do contain client IPs.
 - **Processors.** Google (Geocoding, Maps JS, Places, reCAPTCHA, Analytics) and Anthropic process data outside India; the BBMP electoral API receives EPIC numbers. Flows are enumerated in `/privacy`. Affidavits are sworn public documents, not citizen personal data.
@@ -237,7 +232,6 @@ Per-mechanism details live where they apply (§5 cache, §7 sessions and abuse c
   - **Anonymous reports can be coordinated.** Browser receipts and network hashes are not identities; shared networks are deliberately allowed many reporters. The controls bound volume and curator workload, not truth — curators decide, and counts never rank or publish anything.
   - **Prompt injection** into MT and extraction (affidavit PDFs and curator text are adversarial inputs) is mitigated by escaping, a fixed extraction schema, visible provenance labels and the flag correction path. No further machinery.
   - **Sessions:** 1-hour sliding idle timeout for every role; no session revocation on role change and no login notifications for staff — the short timeout carries the weight.
-  - **Backups:** none off-box (§10). The rule for whatever is chosen is India residency for the dump over disaster isolation, accepting that a region-wide provider failure would take site and backups together.
   - **A merge to `main` is a production deploy.** CI deploys as `root` over key-only SSH with the host key pinned (§14.4); the ruleset requires a PR and the `test` check but zero approvals, and repository admins can bypass it. So a malicious or mistaken change that passes the tests reaches production, and anyone holding the `production` environment's SSH key holds the box. A `docker`-group deploy user would be root-equivalent anyway, so there is no pretended privilege boundary; the controls are who can merge and key custody. Fork PRs get no secrets (`pull_request`, never `pull_request_target`); actions are pinned by SHA.
 
 ## 14. Deployment (Hostinger VPS)
@@ -254,7 +248,7 @@ One Hostinger VPS, **4 vCPU / 16 GB / 193 GB**, in **Mumbai**, the closest India
 
 Consequences:
 
-- **Nothing exercises a migration before production does.** Rehearse a risky migration against a restored backup or the local stack first.
+- **Nothing exercises a migration before production does.** Rehearse a risky migration against the local stack first.
 - **The local Compose stack** (`deploy/compose.local.yml`) is the only preview of unreleased work.
 
 ### 14.3 Images
@@ -308,7 +302,6 @@ No Terraform. Provisioning is `deploy/runbook.md`:
 6. Run migrations (`docker compose run --rm app npm run migrate`) — `up -d` does not migrate.
 7. Seed wards and the first admin (`npm run seed:admin -- <address>`). Every later role grant is an admin action at `/admin/users`.
 8. Verify the hostname, including a real POST.
-9. Initialize the restic repository and rehearse a restore — **blocked**: no backup target (§10, §16).
 
 ### 14.7 Database migrations
 
@@ -318,19 +311,15 @@ No Terraform. Provisioning is `deploy/runbook.md`:
 
 ### 14.8 Running cost
 
-The VPS is already paid for. Backups and monitoring cost nothing because neither exists (§10). Metered spend sits on top and has no total on paper: geocoding (capped by budget), Maps JS loads and Places Autocomplete (§16), and Anthropic.
+The VPS is already paid for. Monitoring costs nothing because none exists (§10). Metered spend sits on top and has no total on paper: geocoding (capped by budget), Maps JS loads and Places Autocomplete (§16), and Anthropic.
 
 ## 15. Dormant code slated for removal
 
-Citizen registration, citizen accounts, OTP sign-in, email/WhatsApp messaging and Sentry were removed in full (code, jobs, tables and columns: migration `0016`). The code below is still in the repo and must not be treated as a feature. Each item is a removal candidate.
+Citizen registration, citizen accounts, OTP sign-in, email/WhatsApp messaging and Sentry were removed in full (code, jobs, tables and columns: migration `0016`); further dormant features and tables were removed by migration `0017`. The code below is still in the repo and must not be treated as a feature. Each item is a removal candidate.
 
 | Leftover | Paths | Why it is dormant, and the live risk |
 |---|---|---|
-| Partner and EOI | `src/pages/partner/[slug].astro`, `src/pages/kn/partner/[slug].astro`, `src/features/pages/PartnerKit.astro`, `src/pages/admin/partners.astro`, `src/lib/partners.ts`, `src/lib/attribution.ts` (the `?src` cookie writer in `Base.astro`, which nothing reads), `src/pages/api/eoi.ts`; `partners`, `partner_wards`, `eoi_submissions` | No public EOI form; attribution has no reader. `/partner/{slug}` still renders (noindex) |
-| EC-link affidavit fetch | `src/lib/affidavit-fetch.ts` (`fetchAffidavitFromEc`, SSRF-hardened) | No caller outside `tests/unit/affidavit-fetch.test.ts` |
-| Candidate stances and photos | `candidate_stances`, `publishStance` in `src/lib/publish.ts`; `candidates.photo_media_id`, legacy `name_kn`/`party_kn` | No editor writes them; pages render a photo only if one was stored |
 | Orphan pages | `src/features/pages/HowToVote.astro`, `VoterId.astro`, `FindBooth.astro` | Not routed; `/voter-faqs` and the home-page booth card replace them |
-| Unused table | `booths` (booth lookup uses the BBMP API) | No reader |
 
 ## 16. External dependencies & known gaps
 
@@ -345,13 +334,11 @@ Citizen registration, citizen accounts, OTP sign-in, email/WhatsApp messaging an
 | Google Analytics 4 | Visitor measurement | `GA_MEASUREMENT_ID`; public indexable pages only; disclosed in `/privacy` |
 | Let's Encrypt | TLS | Renewal failure has no alert |
 | GitHub | Source the box builds from | Free; the access list is the trust boundary |
-| **Off-box backup storage** | `scripts/backup.sh` | **None chosen. No off-box backup exists; launch blocker** (§10) |
-| **Monitoring** | Uptime, SSL expiry, disk, budget alarms, backup dead-man's-switch | **None in place** (§10) |
+| **Monitoring** | Uptime, SSL expiry, disk, budget alarms | **None in place** (§10) |
 | **Sitemap serving** | §8 | `jobs` writes sitemaps to its own container's `/app/public` (`src/lib/seo/sitemaps.ts`); neither `app` nor nginx reads that path, and no route serves `/sitemap.xml`, so production likely serves no sitemap. Unverified against the live site |
 | **Breach-response runbook** | DPDP obligation (§13) | No named owner or written procedure |
 
 ## Open questions
 
-- Which off-box backup target (India-resident, S3-compatible)?
 - Which external monitor for uptime, SSL expiry and disk?
 - Retention period for staff accounts and citizen report text, pending legal confirmation.

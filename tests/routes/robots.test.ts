@@ -20,7 +20,7 @@ describe('robots.txt (Task 57; architecture §8)', () => {
     expect(body).not.toContain('Disallow: /account/');
     expect(body).toContain('Disallow: /curator/');
     expect(body).toContain('Disallow: /admin/');
-    expect(body).toContain('Disallow: /partner/');
+    expect(body).not.toContain('Disallow: /partner/');
     expect(body).toContain('Disallow: /api/');
     expect(body).toContain('Disallow: /login');
     expect(body).toContain('Sitemap: https://bengaluruvotes.opencity.in/sitemap.xml');

@@ -6,7 +6,7 @@
  * is explicit that a `'pending'` outcome means "the translator timed out,
  * threw, or (no `ANTHROPIC_API_KEY`) was never attempted; `jobs` retries."
  * This is that retry: every 5 minutes (deploy/crontab), find every row
- * across the three translatable tables still `translationStatus:
+ * across the two translatable tables still `translationStatus:
  * 'pending'` and re-drive it.
  *
  * WHY THIS AWAITS instead of calling `translateFieldSoon`: that function
@@ -26,22 +26,18 @@
 import { eq } from 'drizzle-orm';
 import { pathToFileURL } from 'node:url';
 import { db } from '../src/db/client';
-import { candidateFields, wardIssues, candidateStances } from '../src/db/schema';
+import { candidateFields, wardIssues } from '../src/db/schema';
 import { translateFieldNow, type TranslateTable, type TranslateOutcome } from '../src/lib/translate-runtime';
 import { captureException } from '../src/lib/logger';
 
-const TABLES: TranslateTable[] = ['candidate_fields', 'ward_issues', 'candidate_stances'];
+const TABLES: TranslateTable[] = ['candidate_fields', 'ward_issues'];
 
 async function pendingIds(table: TranslateTable): Promise<number[]> {
   if (table === 'candidate_fields') {
     const rows = await db.select({ id: candidateFields.id }).from(candidateFields).where(eq(candidateFields.translationStatus, 'pending'));
     return rows.map((r) => r.id);
   }
-  if (table === 'ward_issues') {
-    const rows = await db.select({ id: wardIssues.id }).from(wardIssues).where(eq(wardIssues.translationStatus, 'pending'));
-    return rows.map((r) => r.id);
-  }
-  const rows = await db.select({ id: candidateStances.id }).from(candidateStances).where(eq(candidateStances.translationStatus, 'pending'));
+  const rows = await db.select({ id: wardIssues.id }).from(wardIssues).where(eq(wardIssues.translationStatus, 'pending'));
   return rows.map((r) => r.id);
 }
 
@@ -59,7 +55,6 @@ export async function main(): Promise<TranslateRetrySummary> {
     perTable: {
       candidate_fields: emptyOutcomeCounts(),
       ward_issues: emptyOutcomeCounts(),
-      candidate_stances: emptyOutcomeCounts(),
     },
     totalConsidered: 0,
   };

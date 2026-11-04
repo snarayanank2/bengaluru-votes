@@ -5,8 +5,7 @@
 # nginx, run certbot and the jobs container, and expect real vendor
 # credentials. This file exposes the Astro server directly on
 # http://localhost:4321 with none of that — no nginx, no certbot, no cron
-# jobs container (its entries need restic + off-box storage + healthchecks.io
-# credentials no laptop has, and the local database is disposable demo data).
+# jobs container (the local database is disposable demo data).
 # It does define `extract-worker`, the affidavit extraction worker, which
 # takes an Anthropic key from YOUR SHELL and exits without one.
 #

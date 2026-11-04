@@ -4,8 +4,8 @@
  * `/kn/voting-guide/find-booth`).
  *
  * INPUT IS A VOTER ID (EPIC) NUMBER since 2026-08-19. The page used to take
- * an address and resolve it against a local `booths` table that was never
- * populated, so every real visitor got "we don't have booth data yet" — see
+ * an address and resolve it against a local polling-station table (since
+ * dropped) that was never populated, so every real visitor got "we don't have booth data yet" — see
  * `src/pages/api/booth-lookup.ts` for the full account. Booth data now comes
  * from the BBMP electoral API, which answers an EPIC with the citizen's
  * polling station, their serial number on its roll, and the ward.

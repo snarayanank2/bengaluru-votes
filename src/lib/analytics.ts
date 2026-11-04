@@ -5,17 +5,16 @@
  * Rendered by src/layouts/Base.astro ONLY on public, indexable pages — the
  * gate is `!noindex && GA_MEASUREMENT_ID` (env). That gate cleanly excludes
  * every authenticated page without this module needing to know about roles:
- * `src/pages/account/*.astro` always render with `noindex={true}` (also
- * true of `/curator`, `/admin`, `/login`, `/partner/*` per
- * src/middleware.ts's `NOINDEX_PREFIXES`), and curator/admin pages never
+ * `/login` always renders with `noindex={true}` (also true of `/curator`,
+ * `/admin` and `/transcribe` per src/middleware.ts's `NOINDEX_PREFIXES`),
+ * and curator/admin pages never
  * render through Base at all — they use their own
  * `src/layouts/CuratorLayout.astro` / `AdminLayout.astro` — so GA can never
  * reach an authenticated screen even if a future page forgot to set
  * `noindex`.
  *
  * CACHE-SAFETY: the emitted markup is identical for every visitor of a
- * given page — only the per-request CSP nonce varies, the same discipline
- * as the `?src` writer (src/lib/attribution.ts). This module never reads
+ * given page — only the per-request CSP nonce varies. This module never reads
  * session/cookies/settings; GA's own cookies (`_ga`, etc.) are set
  * CLIENT-SIDE by gtag.js via `document.cookie`, never a server
  * `Set-Cookie` — so mounting this does not violate the "no Set-Cookie on a
@@ -45,8 +44,7 @@ export function gaLoaderSrc(measurementId: string): string {
 
 /**
  * The literal, dependency-free (no `import`/`require`/`export` inside the
- * emitted JS) inline gtag bootstrap — same convention as
- * `ATTRIBUTION_SCRIPT_SOURCE` (src/lib/attribution.ts). Built from
+ * emitted JS) inline gtag bootstrap. Built from
  * `measurementId` via a template literal (via `JSON.stringify`, never
  * hand-quoted) so the id embedded in the emitted JS can never drift from
  * what the loader `<script src>` above requested, and so a measurement id

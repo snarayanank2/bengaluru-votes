@@ -1,6 +1,6 @@
 /**
  * src/lib/recaptcha.ts (Task 50) — reCAPTCHA v3 server-side verification for
- * the ONE anonymous write path (/api/eoi). No network calls here at all:
+ * the anonymous write paths (issue votes, candidate reports). No network calls here at all:
  * every "Google call" is the injected `verifier`, per the module's own
  * design (architecture.md §7/§13).
  */
@@ -67,7 +67,7 @@ describe('verifyRecaptcha', () => {
     const result = await verifyRecaptcha('some-token', {
       secret: 'test-secret',
       expectedAction: 'issue_vote',
-      verifier: async () => ({ success: true, score: 0.9, action: 'eoi' }),
+      verifier: async () => ({ success: true, score: 0.9, action: 'candidate_flag' }),
     });
     expect(result).toEqual({ ok: false, score: 0.9, reason: 'wrong_action' });
   });

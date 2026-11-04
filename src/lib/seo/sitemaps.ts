@@ -39,8 +39,7 @@
  * out here.
  *
  * EXCLUDED (matches architecture §8's "noindex and sitemap exclusion"
- * list): `/partner/{slug}` (unlisted), `/account/*`, `/curator/*`,
- * `/admin/*`, `/login`, `/api/*`. None of these are ever enumerated here —
+ * list): `/curator/*`, `/admin/*`, `/transcribe/*`, `/login`, `/api/*`. None of these are ever enumerated here —
  * STATIC_ROUTES is a fixed public allowlist, and the ward/candidate
  * queries only ever produce `/ward/{id}` and `/candidate/{slug}` paths.
  */

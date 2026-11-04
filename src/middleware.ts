@@ -21,9 +21,7 @@
  *
  * ROUTE CLASSES:
  *  - PUBLIC: everything NOT under /curator, /admin, /transcribe, /api,
- *    /login, /media. Never blocked here; no guard, no CSRF check. (`/partner/*` is
- *    public in this sense — anonymous, no session read — but still gets the
- *    SEO noindex header below; those are independent concerns.)
+ *    /login, /media. Never blocked here; no guard, no CSRF check.
  *  - /curator/*, /admin/*, /transcribe/*: authenticated staff form routes. GET (and
  *    every other method) requires a session; wrong role -> 403; no session
  *    -> redirect to `/login?next=<validated relative path>`. Unsafe methods
@@ -55,7 +53,7 @@ import { assertMasterPasswordConfig } from './lib/master-login';
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 
-/** True for `pathname === prefix` or `pathname` under `prefix/…`. Never a bare substring match (`/partner` must not match `/partner-with-us`). */
+/** True for `pathname === prefix` or `pathname` under `prefix/…`. Never a bare substring match (`/admin` must not match `/administer`). */
 function isUnder(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
@@ -79,7 +77,7 @@ function stripLocalePrefix(pathname: string): string {
 }
 
 const AUTH_FORM_PREFIXES = ['/curator', '/admin', '/transcribe'];
-const NOINDEX_PREFIXES = ['/partner', '/curator', '/admin', '/transcribe', '/login'];
+const NOINDEX_PREFIXES = ['/curator', '/admin', '/transcribe', '/login'];
 
 function forbidden(): Response {
   return new Response('Forbidden', { status: 403 });

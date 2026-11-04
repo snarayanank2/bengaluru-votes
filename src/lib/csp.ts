@@ -21,8 +21,7 @@
  * as one unit, architecture §5) the stored CSP header and the stored HTML's
  * baked-in nonce always agree with each other, exactly like every other
  * per-request-but-not-per-session value this layout already bakes in (see
- * src/layouts/Base.astro's cache-safety docstring, and the `?src` writer in
- * src/lib/attribution.ts). Do not add any session/cookie-derived input to
+ * src/layouts/Base.astro's cache-safety docstring). Do not add any session/cookie-derived input to
  * this function.
  */
 
@@ -44,7 +43,7 @@ function isCuratorAffidavitPath(pathname: string): boolean {
   return /^\/curator\/(queue|candidate|matching)\/\d+$/.test(stripTrailingSlash(pathname));
 }
 
-/** `/media/{id}/{hash}`: a stored photo or affidavit PDF. */
+/** `/media/{id}/{hash}`: a stored affidavit PDF. */
 function isMediaPath(pathname: string): boolean {
   return /^\/media\/[^/]+\/[^/]+$/.test(pathname);
 }
@@ -60,8 +59,8 @@ function isWardDetailPath(pathname: string): boolean {
  * GA loader host (`www.googletagmanager.com`) + the Google Maps Platform
  * hosts (`maps.googleapis.com`, `maps.gstatic.com`, architecture.md §13 — see the
  * `MAPS_HOSTS` comment inside the function body) — NO `'unsafe-inline'` on
- * scripts (architecture §13). The two inline scripts this codebase ever
- * renders (the `?src` attribution writer and the GA config snippet, both in
+ * scripts (architecture §13). The inline scripts this codebase renders
+ * (JSON-LD blocks and the GA config snippet, both in
  * src/layouts/Base.astro) carry `nonce={cspNonce}`, the same `nonce` value
  * passed in here.
  *

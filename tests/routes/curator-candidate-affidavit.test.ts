@@ -1,11 +1,9 @@
 /** Retired status/upload actions are forbidden for every role on this page. */
-import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
+import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { eq, sql } from 'drizzle-orm';
 import { Fixtures, client, db, run, schema, tokenForm, ward, type Auth } from './support/staff-harness';
 import CandidateRoute from '../../src/pages/curator/candidate/[id].astro';
-import { fetchAffidavitFromEc } from '../../src/lib/affidavit-fetch';
-vi.mock('../../src/lib/affidavit-fetch', () => ({ fetchAffidavitFromEc: vi.fn() }));
 const fx = new Fixtures('retired-candidate-upload-');
 const WARD = ward(99470, 'Retired Upload Test Ward');
 let curator: Auth, admin: Auth;
@@ -25,17 +23,15 @@ describe('candidate editor restrictions', () => {
     const html = await (await page()).text();
     expect(html).not.toContain('name="status"');
     expect(html).not.toContain('name="affidavitFile"');
-    expect(html).not.toContain('name="ecUrl"');
     expect(html).toContain(c.pdfUrl.replace(/&/g, '&#38;'));
     const before = await db.select({ n: sql<number>`count(*)::int` }).from(schema.media);
     for (const action of ['core', 'affidavit']) {
-      const form = tokenForm(auth, { formAction: action, status: 'withdrawn', ecUrl: 'https://example.invalid/test.pdf' });
+      const form = tokenForm(auth, { formAction: action, status: 'withdrawn' });
       form.set('affidavitFile', new File(['%PDF-1.4 fictional test'], 'test.pdf', { type: 'application/pdf' }));
       expect((await page(form)).status).toBe(403);
     }
     expect(await db.select({ n: sql<number>`count(*)::int` }).from(schema.media)).toEqual(before);
     const [row] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, c.candidateId));
     expect(row.status).toBe('filed');
-    expect(fetchAffidavitFromEc).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,8 @@
 /**
  * `/robots.txt` (Task 57; architecture §8). Allows everything except
  * the same exclusion set the sitemaps deliberately never enumerate
- * (`src/lib/seo/sitemaps.ts`'s module docstring): `/account/*`,
- * `/curator/*`, `/admin/*`, `/partner/*` (unlisted partner pages), `/api/*`,
- * and `/login`. Points crawlers at the sitemap index.
+ * (`src/lib/seo/sitemaps.ts`'s module docstring): `/curator/*`,
+ * `/admin/*`, `/transcribe/*`, `/api/*` and `/login`. Points crawlers at the sitemap index.
  *
  * CACHE-SAFE (architecture §5): identical output for every request — no
  * cookie/session read, no per-visitor branching — so this is a plain
@@ -15,7 +14,7 @@ import type { APIRoute } from 'astro';
 
 const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
-const DISALLOWED_PREFIXES = ['/curator/', '/admin/', '/transcribe/', '/partner/', '/api/'];
+const DISALLOWED_PREFIXES = ['/curator/', '/admin/', '/transcribe/', '/api/'];
 
 export const GET: APIRoute = () => {
   const lines = [
