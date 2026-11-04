@@ -131,7 +131,7 @@ test('citizen flags a candidate field, curator accepts + publishes, correction g
   await curatorPage.locator('main input[name="destination"]').fill(seedFixtures.curatorEmail);
   await curatorPage.locator('main input[name="password"]').fill(E2E_MASTER_PASSWORD);
   await curatorPage.locator('main button[type="submit"]').click();
-  await expect(curatorPage).toHaveURL(/\/curator\/queue$/);
+  await expect(curatorPage).toHaveURL(/\/curator\/queue\?resolved=accepted$/);
 
   await curatorPage.goto(`/curator/queue/${flagItemId}`);
   await expect(curatorPage.getByText(FLAG_DETAIL)).toBeVisible();
@@ -143,7 +143,7 @@ test('citizen flags a candidate field, curator accepts + publishes, correction g
   await fixForm.locator('input[name="confirmPublish"]').check();
   await fixForm.getByRole('button', { name: 'Fix and publish' }).click();
 
-  await expect(curatorPage).toHaveURL(/\/curator\/queue$/);
+  await expect(curatorPage).toHaveURL(/\/curator\/queue\?resolved=accepted$/);
 
   // --- back to the PUBLIC page, a fresh load, no session at all -----------
   const publicContext = await browser.newContext();
