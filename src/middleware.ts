@@ -165,6 +165,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   };
 
+  // --- one URL per page: canonical trailing-slash form --------------------
+  // `/about/` -> `/about`, `/kn` -> `/kn/` (the Kannada home canonical).
+  // GET/HEAD only, so a POST to either form is never redirected. Sets no
+  // cookie, so it is cache-safe like every other public response.
+  if (method === 'GET' || method === 'HEAD') {
+    const canonicalPath = pathname === '/kn' ? '/kn/' : pathname.length > 1 && pathname !== '/kn/' && pathname.endsWith('/') ? pathname.replace(/\/+$/, '') : null;
+    if (canonicalPath && canonicalPath !== pathname) {
+      return respond(new Response(null, { status: 301, headers: { Location: canonicalPath + url.search } }));
+    }
+  }
+
   // Evaluated on EVERY request so a too-short MASTER_PASSWORD
   // (src/lib/master-login.ts) throws at once, health check included,
   // instead of running with a guessable password.

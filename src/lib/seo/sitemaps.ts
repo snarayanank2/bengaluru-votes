@@ -1,7 +1,7 @@
 /**
  * Sitemap generation (Task 55/57; architecture §8 "Per-language sitemaps
- * with `lastmod`... regenerated hourly by `jobs`"). `jobs/regen-sitemaps.ts` runs
- * `regenerateSitemaps` hourly.
+ * with `lastmod`"). Built per request by `buildSitemaps` and served by
+ * `src/pages/sitemap.xml.ts`, `sitemap-en.xml.ts`, `sitemap-kn.xml.ts`.
  *
  * FULL COVERAGE (Task 57): every ward's `/ward/{id}` and every candidate's
  * `/candidate/{slug}`, EN and KN, alongside the fixed STATIC_ROUTES set —
@@ -29,7 +29,9 @@
  *     a small, fixed set of static pages, so "the last time the job ran"
  *     is an acceptable, honest signal for them.
  *
- * CANDIDATE VISIBILITY RULE: every row in `candidates` is included,
+ * DEMO DATA: fixture candidates (`isDemoCandidateSlug`) are never listed.
+ *
+ * CANDIDATE VISIBILITY RULE: every non-demo row in `candidates` is included,
  * regardless of `status` — src/pages/candidate/[slug].astro's existence
  * check (and Candidate.astro's own docstring) confirm an UNKNOWN slug is
  * the only thing that 404s; an existing candidate (filed/contesting/
@@ -43,12 +45,11 @@
  * STATIC_ROUTES is a fixed public allowlist, and the ward/candidate
  * queries only ever produce `/ward/{id}` and `/candidate/{slug}` paths.
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
-import path from 'node:path';
 import { eq, max } from 'drizzle-orm';
 import { localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
 import { candidates, candidateFields, wards } from '../../db/schema';
+import { isDemoCandidateSlug } from '../demo-data';
 
 /**
  * Root-relative, EN-canonical paths — same convention as Base.astro's
@@ -113,25 +114,20 @@ function buildSitemapIndex(lastmod: string): string {
   );
 }
 
-export interface RegenerateSitemapsResult {
-  outputDir: string;
+export interface SitemapFiles {
+  index: string;
+  en: string;
+  kn: string;
   routesPerLanguage: number;
-  files: string[];
 }
 
 /**
- * Writes `sitemap-en.xml`, `sitemap-kn.xml`, and a `sitemap.xml` index into
- * `outputDir`, which defaults to the repo's `public/` directory — the same
- * directory Astro's own static assets are served from, so these land
- * wherever the running deployment already serves `/robots.txt`-adjacent
- * static files from. Tests pass a temp directory so runs never dirty the
- * working tree.
+ * Builds the sitemap index and both language urlsets from the database.
+ * Served live by `src/pages/sitemap*.xml.ts` (nginx's micro-cache absorbs
+ * the load) — nothing is written to disk. Demo/fixture candidates
+ * (`isDemoCandidateSlug`) are never listed.
  */
-export async function regenerateSitemaps(
-  outputDir: string = path.join(process.cwd(), 'public'),
-): Promise<RegenerateSitemapsResult> {
-  mkdirSync(outputDir, { recursive: true });
-
+export async function buildSitemaps(): Promise<SitemapFiles> {
   const regenTimestamp = new Date().toISOString();
 
   const wardRows = await db.select({ id: wards.id }).from(wards);
@@ -141,16 +137,18 @@ export async function regenerateSitemaps(
   // candidate_fields rows. Grouping by candidates.id alone is enough for
   // Postgres to permit selecting the other candidates columns too (they're
   // functionally dependent on the primary key).
-  const candidateRows = await db
-    .select({
-      slug: candidates.slug,
-      wardId: candidates.wardId,
-      candidateUpdatedAt: candidates.updatedAt,
-      maxFieldUpdatedAt: max(candidateFields.updatedAt),
-    })
-    .from(candidates)
-    .leftJoin(candidateFields, eq(candidateFields.candidateId, candidates.id))
-    .groupBy(candidates.id);
+  const candidateRows = (
+    await db
+      .select({
+        slug: candidates.slug,
+        wardId: candidates.wardId,
+        candidateUpdatedAt: candidates.updatedAt,
+        maxFieldUpdatedAt: max(candidateFields.updatedAt),
+      })
+      .from(candidates)
+      .leftJoin(candidateFields, eq(candidateFields.candidateId, candidates.id))
+      .groupBy(candidates.id)
+  ).filter((row) => !isDemoCandidateSlug(row.slug));
 
   const candidateEntries: RouteEntry[] = [];
   const wardLastmodByWardId = new Map<number, Date>();
@@ -171,16 +169,20 @@ export async function regenerateSitemaps(
   });
 
   const staticEntries: RouteEntry[] = STATIC_ROUTES.map((route) => ({ path: route, lastmod: regenTimestamp }));
-
   const allEntries = [...staticEntries, ...wardEntries, ...candidateEntries];
 
-  writeFileSync(path.join(outputDir, 'sitemap-en.xml'), buildUrlSet('en', allEntries), 'utf-8');
-  writeFileSync(path.join(outputDir, 'sitemap-kn.xml'), buildUrlSet('kn', allEntries), 'utf-8');
-  writeFileSync(path.join(outputDir, 'sitemap.xml'), buildSitemapIndex(regenTimestamp), 'utf-8');
-
   return {
-    outputDir,
+    index: buildSitemapIndex(regenTimestamp),
+    en: buildUrlSet('en', allEntries),
+    kn: buildUrlSet('kn', allEntries),
     routesPerLanguage: allEntries.length,
-    files: ['sitemap.xml', 'sitemap-en.xml', 'sitemap-kn.xml'],
   };
+}
+
+const XML_HEADERS = { 'content-type': 'application/xml; charset=utf-8' };
+
+/** Shared by the three `sitemap*.xml` route files. */
+export async function sitemapResponse(which: 'index' | 'en' | 'kn'): Promise<Response> {
+  const files = await buildSitemaps();
+  return new Response(files[which], { headers: XML_HEADERS });
 }

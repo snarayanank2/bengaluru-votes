@@ -8,7 +8,8 @@ import DeadlineBanner from '../../components/DeadlineBanner.astro';
 import ExternalLinkOut from '../../components/ExternalLinkOut.astro';
 import { t, type Lang } from '../../i18n';
 import { getPageContent } from '../../i18n/content';
-import { renderContentHtml, splitMarkdownSections } from '../../lib/render-content';
+import { renderContentHtml, splitMarkdownSections, extractFaqEntries } from '../../lib/render-content';
+import { faqLd } from '../../lib/seo';
 import { getSettings } from '../../lib/settings';
 
 interface Props {
@@ -36,6 +37,9 @@ const introduction = sections[0];
 const beforeLinkOut = sections.slice(1, 3).join('');
 const afterLinkOut = sections.slice(3).join('');
 
+const faqEntries = extractFaqEntries(content.body);
+const faqJsonLd = faqEntries.length > 0 ? [faqLd(faqEntries)] : [];
+
 const settings = await getSettings(['roll_deadline', 'roll_lookup_url']);
 const rollDeadline = settings.roll_deadline;
 const rollDeadlineActive = rollDeadline
@@ -44,7 +48,7 @@ const rollDeadlineActive = rollDeadline
 
 ---
 
-<Prose lang={lang} title={content.title} description={content.description} path="/voter-faqs">
+<Prose lang={lang} title={content.title} description={content.description} path="/voter-faqs" jsonLd={faqJsonLd}>
   <div set:html={renderContentHtml(introduction, lang)} />
 
   <nav class="faq-toc" aria-labelledby="faq-toc-heading">

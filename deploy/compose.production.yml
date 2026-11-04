@@ -157,14 +157,6 @@ services:
     restart: unless-stopped
     env_file: ${PROD_ENV_FILE:-./.env.production}
     environment:
-      # Selects the site-wide banner above the app bar (src/lib/env-banner.ts,
-      # design-system §7.14) — on production that is the pre-launch "under
-      # construction" notice EVERY citizen sees, so treat changing or
-      # removing it as a product decision, not a config tweak. Read at
-      # REQUEST time, hence a runtime var rather than a build arg like
-      # SITE_ORIGIN above. It lives here rather than in the box's .env file
-      # so the value is versioned with the stack that depends on it.
-      APP_ENV: production
       FLAGS_TRUST_PROXY: 'true'
     networks:
       - front

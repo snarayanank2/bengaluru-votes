@@ -60,7 +60,6 @@
  */
 import '../styles/global.css';
 import SkipLink from '../components/SkipLink.astro';
-import EnvBanner from '../components/EnvBanner.astro';
 import AppBar from '../components/AppBar.astro';
 import Footer from '../components/Footer.astro';
 import FlagModal from '../components/FlagModal.astro';
@@ -68,6 +67,9 @@ import { localePath, type Lang } from '../i18n';
 import { gaLoaderSrc, gaConfigScriptSource } from '../lib/analytics';
 import { jsonLd } from '../lib/seo';
 
+
+/** Shared social-preview image (1200×630) used when a page supplies none. */
+const DEFAULT_OG_IMAGE = '/img/og-default.png';
 
 interface Props {
   lang: Lang;
@@ -106,7 +108,7 @@ const siteOrigin = Astro.site ?? new URL('https://bengaluruvotes.opencity.in');
 const canonicalHref = new URL(localePath(lang, path), siteOrigin).href;
 const enHref = new URL(localePath('en', path), siteOrigin).href;
 const knHref = new URL(localePath('kn', path), siteOrigin).href;
-const ogImageHref = ogImage ? new URL(ogImage, siteOrigin).href : undefined;
+const ogImageHref = new URL(ogImage ?? DEFAULT_OG_IMAGE, siteOrigin).href;
 const ogLocale = lang === 'en' ? 'en_IN' : 'kn_IN';
 
 // Per-request CSP nonce (architecture §13, src/middleware.ts) for the
@@ -155,7 +157,13 @@ const showGa = !noindex && !!gaMeasurementId;
     <meta property="og:url" content={canonicalHref} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={ogLocale} />
-    {ogImageHref && <meta property="og:image" content={ogImageHref} />}
+    <meta property="og:image" content={ogImageHref} />
+    <meta property="og:site_name" content="Bengaluru Votes" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageHref} />
+    <link rel="manifest" href="/manifest.webmanifest" />
 
     {
       lang === 'en' ? (
@@ -203,10 +211,6 @@ const showGa = !noindex && !!gaMeasurementId;
   </head>
   <body>
     <SkipLink lang={lang} />
-    {/* Above the AppBar, below the skip link — the skip link must stay the
-        first focusable thing on the page (design-system §10). Renders
-        nothing outside production; see EnvBanner.astro. */}
-    <EnvBanner lang={lang} />
     <AppBar lang={lang} path={path} />
     <main id="main-content">
       <slot />

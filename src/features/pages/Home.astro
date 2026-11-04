@@ -29,6 +29,7 @@
  */
 import { eq } from 'drizzle-orm';
 import Base from '../../layouts/Base.astro';
+import { websiteLd } from '../../lib/seo';
 import Card from '../../components/Card.astro';
 import BoothLookupForm from '../../components/BoothLookupForm.astro';
 import FormField from '../../components/FormField.astro';
@@ -118,6 +119,7 @@ function wardName(ward: WardRow): string {
   title={t(lang, 'home.meta.title')}
   description={t(lang, 'home.meta.description')}
   path="/"
+  jsonLd={[websiteLd(lang)]}
 >
   <div class="home">
     <section class="home-hero">

@@ -1,7 +1,6 @@
 /**
  * Sitemap generation (Task 57; architecture §8). Drives the REAL
- * `regenerateSitemaps` against a temp output directory (never the repo's
- * `public/`) and a real DB, same fixture/high-id-range convention as
+ * `buildSitemaps` against a real DB, same fixture/high-id-range convention as
  * tests/routes/candidate.test.ts / tests/routes/ward.test.ts.
  *
  * COVERAGE MAP:
@@ -20,14 +19,12 @@
  *     candidate row for this module to filter out.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { readFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
-import { regenerateSitemaps } from '../../src/lib/seo/sitemaps';
+import { buildSitemaps, type SitemapFiles } from '../../src/lib/seo/sitemaps';
+import { GET as getIndex } from '../../src/pages/sitemap.xml';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -64,17 +61,19 @@ const WARD_EMPTY = {
 
 const ACTIVE_SLUG = 'sitemap-test-active-candidate';
 const WITHDRAWN_SLUG = 'sitemap-test-withdrawn-candidate';
+const DEMO_SLUG = 'demo-ward-96401-candidate-1';
 
 // Deliberately older than FIELD_UPDATED_AT so the assertions actually prove
 // the field timestamp (not the candidate row's own updatedAt) wins.
 const CANDIDATE_ROW_UPDATED_AT = new Date('2025-01-01T00:00:00.000Z');
 const FIELD_UPDATED_AT = new Date('2025-03-15T10:00:00.000Z');
 
-let outputDir: string;
+let built: SitemapFiles;
 let activeCandidateId: number;
 
 function readSitemap(filename: string): string {
-  return readFileSync(path.join(outputDir, filename), 'utf-8');
+  const key = filename === 'sitemap.xml' ? 'index' : filename === 'sitemap-en.xml' ? 'en' : 'kn';
+  return built[key];
 }
 
 function extractUrlBlock(xml: string, locSubstring: string): string {
@@ -96,8 +95,6 @@ async function deleteCandidateFixture(slug: string): Promise<void> {
 
 describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
   beforeAll(async () => {
-    outputDir = mkdtempSync(path.join(tmpdir(), 'bv-sitemap-test-'));
-
     await db.insert(schema.wards).values(WARD_WITH_CANDIDATE).onConflictDoUpdate({ target: schema.wards.id, set: WARD_WITH_CANDIDATE });
     await db.insert(schema.wards).values(WARD_EMPTY).onConflictDoUpdate({ target: schema.wards.id, set: WARD_EMPTY });
 
@@ -145,22 +142,41 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
       updatedAt: CANDIDATE_ROW_UPDATED_AT,
     });
 
-    await regenerateSitemaps(outputDir);
+    await deleteCandidateFixture(DEMO_SLUG);
+    await db.insert(schema.candidates).values({
+      slug: DEMO_SLUG,
+      wardId: WARD_WITH_CANDIDATE.id,
+      nameEn: 'Sitemap Test Demo Candidate (FICTIONAL)',
+      partyEn: 'Demo Party A (FICTIONAL)',
+      status: 'contesting',
+      updatedAt: CANDIDATE_ROW_UPDATED_AT,
+    });
+
+    built = await buildSitemaps();
   });
 
   afterAll(async () => {
     await deleteCandidateFixture(ACTIVE_SLUG);
     await deleteCandidateFixture(WITHDRAWN_SLUG);
+    await deleteCandidateFixture(DEMO_SLUG);
     await db.delete(schema.wards).where(eq(schema.wards.id, WARD_WITH_CANDIDATE.id));
     await db.delete(schema.wards).where(eq(schema.wards.id, WARD_EMPTY.id));
-    rmSync(outputDir, { recursive: true, force: true });
     await client.end();
   });
 
-  it('writes all three files to the given outputDir (never the repo public/)', () => {
-    expect(existsSync(path.join(outputDir, 'sitemap.xml'))).toBe(true);
-    expect(existsSync(path.join(outputDir, 'sitemap-en.xml'))).toBe(true);
-    expect(existsSync(path.join(outputDir, 'sitemap-kn.xml'))).toBe(true);
+  it('serves the index as XML from /sitemap.xml (no files on disk)', async () => {
+    const res = await getIndex({} as any);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/xml');
+    const body = await res.text();
+    expect(body).toContain(`${SITE_ORIGIN}/sitemap-en.xml`);
+    expect(body).toContain(`${SITE_ORIGIN}/sitemap-kn.xml`);
+  });
+
+  it('never lists demo/fixture candidates', () => {
+    for (const filename of ['sitemap-en.xml', 'sitemap-kn.xml']) {
+      expect(readSitemap(filename)).not.toContain('/candidate/demo-');
+    }
   });
 
   describe('exclusions (architecture §8 sitemap-exclusion list)', () => {

@@ -99,6 +99,18 @@ export function orgLd(): Record<string, unknown> {
   };
 }
 
+/** The site-level `WebSite` (home page). Static, no sitelinks search box — the site has no query-string search. */
+export function websiteLd(lang: 'en' | 'kn'): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Bengaluru Votes',
+    url: SITE_ORIGIN,
+    inLanguage: lang === 'kn' ? 'kn-IN' : 'en-IN',
+    publisher: { '@type': 'Organization', name: 'Oorvani Foundation' },
+  };
+}
+
 export interface CandidateForLd {
   /** Candidate's name, already resolved to the page's target language. */
   name: string;

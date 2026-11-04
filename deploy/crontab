@@ -16,10 +16,5 @@
 # absent, or a prior attempt timed out).
 */5 * * * * cd /app && tsx jobs/translate-retry.ts >> /var/log/gba-jobs/translate-retry.log 2>&1
 
-# Sitemap regeneration — MINIMAL today (Task 60 expands to full ward/
-# candidate coverage); rewrites sitemap.xml/sitemap-en.xml/sitemap-kn.xml
-# every hour so lastmod stays fresh.
-0 * * * * cd /app && tsx jobs/regen-sitemaps.ts >> /var/log/gba-jobs/regen-sitemaps.log 2>&1
-
 # Always active: expires short-lived report abuse metadata, not report content.
 15 6 * * * cd /app && tsx jobs/flag-cleanup.ts >> /var/log/gba-jobs/flag-cleanup.log 2>&1

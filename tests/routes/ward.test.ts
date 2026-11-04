@@ -362,12 +362,12 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
     it('emits its own WardMap island script, plus Base.astro\'s global Flag, inline issue voting, and Place JSON-LD scripts (Tasks 28/32/56) — no others', async () => {
       const html = normalize(await (await renderWard('en', WARD.id)).text());
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // Ward map, inline voting and the global Flag module; JSON-LD inline.
-      expect(scriptOpenTags).toHaveLength(4);
+      // Ward map, inline voting and the global Flag module; JSON-LD (Place + Breadcrumb) inline.
+      expect(scriptOpenTags).toHaveLength(5);
       const moduleScripts = scriptOpenTags.filter((tag) => tag.includes('type="module"'));
       const inlineScripts = scriptOpenTags.filter((tag) => !tag.includes('type="module"'));
       expect(moduleScripts).toHaveLength(3);
-      expect(inlineScripts).toHaveLength(1);
+      expect(inlineScripts).toHaveLength(2);
       expect(html).toMatch(/Ward\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
       expect(html).toMatch(/IssueVote\.astro\?astro&type=script/);

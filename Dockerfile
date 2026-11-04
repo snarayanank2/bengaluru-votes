@@ -150,12 +150,7 @@ COPY package.json ./package.json
 # `chown -R appuser:appuser /app` AFTER every COPY above (and before the
 # USER switch below) so appuser owns everything it needs to read (dist/,
 # data/, content/, drizzle/, jobs/, src/, deploy/, scripts/) *and* the one
-# thing it needs to WRITE at runtime: jobs/regen-sitemaps.ts ->
-# src/lib/seo/sitemaps.ts's `regenerateSitemaps()` defaults its
-# `outputDir` to `path.join(process.cwd(), 'public')` = `/app/public`,
-# which doesn't exist yet at image-build time (`mkdirSync(..., {recursive:
-# true})` creates it on first run) — so it's `/app` ownership, not a
-# specific existing directory, that has to be right.
+# thing it needs to WRITE at runtime, should a job ever need to.
 RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
     && chown -R appuser:appuser /app
 
@@ -178,7 +173,7 @@ EXPOSE 4321
 # non-root `appuser`, so supercronic's `sh -c` cannot open (let alone create)
 # that redirect target unless the directory exists AND is appuser-writable.
 # Without this, EVERY cron job fails with ENOENT before its command even runs
-# (sitemaps, translate-retry, flag-cleanup). Created here, owned by appuser,
+# (translate-retry, flag-cleanup). Created here, owned by appuser,
 # BEFORE the USER switch below (mkdir/chown need root).
 RUN mkdir -p /var/log/gba-jobs && chown appuser:appuser /var/log/gba-jobs
 

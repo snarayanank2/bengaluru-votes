@@ -58,7 +58,7 @@ import {
   wards,
 } from '../../db/schema';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
-import { placeLd } from '../../lib/seo';
+import { placeLd, breadcrumbLd } from '../../lib/seo';
 import { mapsConfig } from '../../lib/maps-config';
 import { getKnownSetting } from '../../lib/settings';
 
@@ -146,7 +146,15 @@ const pagePath = `/ward/${wardId}`;
 const title = ward ? t(lang, 'ward.meta.title', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
 const description = ward ? t(lang, 'ward.meta.description', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
 
-const wardJsonLd = ward ? [placeLd({ id: wardId, name: wardName, path: localePath(lang, pagePath) })] : [];
+const wardJsonLd = ward
+  ? [
+      placeLd({ id: wardId, name: wardName, path: localePath(lang, pagePath) }),
+      breadcrumbLd([
+        { name: 'Bengaluru Votes', url: localePath(lang, '/') },
+        { name: t(lang, 'nav.ward', { wardNumber, wardName }), url: localePath(lang, pagePath) },
+      ]),
+    ]
+  : [];
 ---
 
 <Base lang={lang} title={title} description={description} path={pagePath} jsonLd={wardJsonLd}>

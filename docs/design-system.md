@@ -432,10 +432,6 @@ Staff layouts (`CuratorLayout`, `AdminLayout`, `TranscriberLayout`) share the to
 
 **Working layouts:** curator screens that decide against a source document use `CuratorSplit.astro` (§7.17).
 
-### 7.14 Environment notice
-
-`EnvBanner.astro` renders a compact, full-width notice above the app bar: centered 14px bold text, 8px vertical padding, `role="status"`. It scrolls away and does not alter the app bar's sticky offset; it is not dismissible (that would need per-visitor state). `src/lib/env-banner.ts` maps `APP_ENV` to a variant; the only variant is `production` (an informational sun-tint notice, copy in `banner.production`). Any other or missing value renders nothing, so local development and tests show no banner.
-
 ### 7.15 Section navigation, breadcrumbs, and disclosures
 
 **Section navigation:** a paper strip beneath the app bar, sticky at the app bar's height. Links are 14px bold with 8px/12px padding and a 44px minimum height; the active link is forest with a 4px underline and `aria-current`. Real fragment links with smooth scrolling (immediate under reduced motion); the current section updates on scroll. On small screens the strip scrolls horizontally without widening the document. Targets get a `scroll-margin-top` that clears both sticky layers. Only show links whose targets exist. This is navigation, not tabs.
@@ -552,7 +548,6 @@ All files in `src/components/` plus the shared islands in `src/islands/`. “Unu
 | `AppBar.astro` | Global public header: wordmark, partner logos, language toggle | `lang`, `path` | §7.1 |
 | `Footer.astro` | Global footer: partners, navigation, legal, social | `lang` | §7.2 |
 | `SkipLink.astro` | “Skip to main content” link, visible on focus | `lang` | §10 |
-| `EnvBanner.astro` | Per-deployment notice above the app bar | `lang`; variant from `APP_ENV` (`production` only) | §7.14 |
 | `Breadcrumbs.astro` | Hierarchical navigation in a dark band | `items: {label, href?}[]`, `lang` | §7.15 |
 | `Button.astro` | Action or navigation control | `variant`: primary/secondary/tertiary/destructive/light; `href`, `target`, `rel`, `type`, `disabled`, `loading`, `iconOnly` + `label`, `data-*` | §7.3 |
 | `ExternalLinkOut.astro` | Primary-styled link to an official external process, with pending state | `href` (nullable), `label`, `lang` | §7.4, §8 |

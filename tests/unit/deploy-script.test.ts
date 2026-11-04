@@ -30,7 +30,7 @@ exit 0
 if [[ "$*" == *"-w"* ]]; then
   if [[ "$*" == *"-X POST"* ]]; then echo "\${FAKE_WARD_CODE:-200}"; else echo 200; fi
 else
-  echo '<html><div data-env-banner="production"></div><script src="/_astro/app.abc.js"></script></html>'
+  echo '<html><script src="/_astro/app.abc.js"></script></html>'
 fi
 `,
   );

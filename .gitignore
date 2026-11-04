@@ -41,10 +41,6 @@ tests/e2e/.fixtures.json
 *.dump
 *.sql.gz
 
-# Generated at runtime by jobs/regen-sitemaps.ts (src/lib/seo/sitemaps.ts) —
-# never hand-authored, never committed.
-public/sitemap*.xml
-
 # OS
 .DS_Store
 Thumbs.db

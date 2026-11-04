@@ -25,6 +25,7 @@ import {
   pickCandidateValue,
 } from '../../lib/candidate-profile';
 import { personLd, breadcrumbLd } from '../../lib/seo';
+import { isDemoCandidateSlug } from '../../lib/demo-data';
 
 interface Props {
   lang: Lang;
@@ -141,7 +142,7 @@ const candidateJsonLd = row
   : [];
 ---
 
-<Base lang={lang} title={title} description={description} path={pagePath} jsonLd={candidateJsonLd}>
+<Base lang={lang} title={title} description={description} path={pagePath} jsonLd={candidateJsonLd} noindex={isDemoCandidateSlug(slug)}>
   {
     row ? (
       <div class="candidate">

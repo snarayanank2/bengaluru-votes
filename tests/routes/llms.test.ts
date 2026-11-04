@@ -68,6 +68,11 @@ describe('llms.txt (Task 57)', () => {
     expect(body).toContain(`${SITE_ORIGIN}/sitemap-kn.xml`);
   });
 
+  it('has no percent-encoded placeholder URLs', async () => {
+    const body = await (await GET({} as any)).text();
+    expect(body).not.toContain('%7B');
+  });
+
   it('does not set cache-control: no-store (public, cacheable response)', async () => {
     const res = await GET({} as any);
     expect(res.headers.get('cache-control')).not.toBe('no-store');

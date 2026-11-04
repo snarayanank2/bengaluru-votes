@@ -12,6 +12,7 @@ import CandidateRow from '../../components/CandidateRow.astro';
 import type { CandidateRowCandidate } from '../../components/CandidateRow.astro';
 import VerificationLabel from '../../components/VerificationLabel.astro';
 import { t, localePath, type Lang } from '../../i18n';
+import { breadcrumbLd } from '../../lib/seo';
 import { db } from '../../db/client';
 import { candidateIdentitySelection } from '../../lib/candidate-identity';
 import { wards, candidates, candidateFields, candidateAffidavits, media } from '../../db/schema';
@@ -36,7 +37,7 @@ const { lang, wardId } = Astro.props as Props;
 const COMPARABLE_STATUSES = ['filed', 'contesting'] as const;
 
 const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
-const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
+const wardName = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn).replace(/^\d+\s*-\s*/, '') : '';
 
 interface ResolvedField {
   value: string | null;
@@ -152,9 +153,19 @@ const pagePath = `/ward/${wardId}/compare`;
 const title = ward ? t(lang, 'compare.meta.title', { wardName }) : t(lang, 'ward.notFound.fact');
 const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t(lang, 'ward.notFound.fact');
 
+const wardPath = `/ward/${wardId}`;
+const compareJsonLd = ward
+  ? [
+      breadcrumbLd([
+        { name: 'Bengaluru Votes', url: localePath(lang, '/') },
+        { name: t(lang, 'nav.ward', { wardNumber: wardId % 1000, wardName }), url: localePath(lang, wardPath) },
+        { name: t(lang, 'compare.pageHeading'), url: localePath(lang, pagePath) },
+      ]),
+    ]
+  : [];
 ---
 
-<Base lang={lang} title={title} description={description} path={pagePath}>
+<Base lang={lang} title={title} description={description} path={pagePath} jsonLd={compareJsonLd}>
   {
     ward ? (
       <div class="compare">
@@ -163,7 +174,7 @@ const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t
             <Breadcrumbs lang={lang} items={[
               { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
               {
-                label: t(lang, 'nav.ward', { wardNumber: wardId % 1000, wardName: wardName.replace(/^\d+\s*-\s*/, '') }),
+                label: t(lang, 'nav.ward', { wardNumber: wardId % 1000, wardName }),
                 href: localePath(lang, `/ward/${wardId}`),
               },
               { label: t(lang, 'compare.pageHeading') },

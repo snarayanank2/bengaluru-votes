@@ -1,0 +1,11 @@
+{
+  "name": "Bengaluru Votes",
+  "short_name": "Bengaluru Votes",
+  "description": "Ward-level information for the GBA ward elections: find your ward, read candidate report cards, and get ready to vote.",
+  "start_url": "/",
+  "display": "browser",
+  "lang": "en",
+  "icons": [
+    { "src": "/img/favicon-192.png", "sizes": "192x192", "type": "image/png" }
+  ]
+}

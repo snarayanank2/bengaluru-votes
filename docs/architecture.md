@@ -19,7 +19,7 @@ What runs where, what is cached, what is dynamic, and how the site stays fast, b
 | Application | One **Astro SSR monolith** (Node adapter, TypeScript): public pages, API endpoints, curator/admin/transcriber screens |
 | Database | One **Postgres 16** instance, accessed via Drizzle |
 | Edge | **nginx**: TLS, static files, per-IP rate limiting, **micro-cache** for anonymous page GETs |
-| Jobs | A **cron container** sharing the app image (translation retries, sitemap regeneration, flag-abuse cleanup) plus a long-running **extraction worker** |
+| Jobs | A **cron container** sharing the app image (translation retries, flag-abuse cleanup) plus a long-running **extraction worker** |
 | Language URLs | English at root, **Kannada under `/kn/`**, hreflang-linked; the toggle navigates between them |
 | Spike strategy | nginx micro-cache (~60 s TTL on pages); no purge machinery |
 | Geo | Ward polygons as static GeoJSON (`data/gba.geojson`); the map island fetches one ward's Feature from `GET /ward/<id>/boundary.json` (`src/pages/ward/[id]/boundary.json.ts`, `wardBoundaryFeature()` in `src/lib/geo.ts`); in-memory point-in-polygon (Turf.js) for address lookup; **no PostGIS** |
@@ -150,7 +150,7 @@ Public endpoints:
 
 - Complete HTML at first byte for all public content.
 - **JSON-LD** per page type (`src/lib/seo.ts`): `Person` (candidates), `AdministrativeArea` (wards), `Event` (the election, on `/about-election`, when `election_date` is set), `Organization` (Oorvani, on `/about`), `BreadcrumbList`. Voter questions are consolidated on `/voter-faqs`, which emits no `FAQPage`.
-- Per-language **sitemaps** with `lastmod` from publish timestamps, regenerated hourly by `jobs` (see the serving gap in §16); `robots.txt`; canonical URLs; `llms.txt`.
+- Per-language **sitemaps** with `lastmod` from publish timestamps, built per request by `src/pages/sitemap*.xml.ts` (demo candidates excluded); `robots.txt`; canonical URLs; `llms.txt`.
 - `noindex` (`X-Robots-Tag`, `src/middleware.ts`) and sitemap exclusion: `/curator/*`, `/admin/*`, `/transcribe/*` and `/login`.
 - **Open Graph tags on every page** in that page's language — distribution is WhatsApp forwarding.
 - AEO: a concise factual summary at the top of ward/candidate/guide pages; question-shaped headings; facts in visible text.
@@ -190,7 +190,6 @@ Never machine-translated: official bilingual data (ward names) and UI strings.
 | Schedule | Job |
 |---|---|
 | every 5 min | `jobs/translate-retry.ts` — re-drives `pending` translations |
-| hourly | `jobs/regen-sitemaps.ts` |
 | 06:15 | `jobs/flag-cleanup.ts` — expires flag-abuse metadata |
 
 - **Logs:** structured JSON to stdout (pino, `src/lib/logger.ts`), Compose `json-file` driver capped at 10 MB × 5 files per service. `/healthz` backs the nginx container healthcheck.
@@ -335,7 +334,6 @@ Citizen registration, citizen accounts, OTP sign-in, email/WhatsApp messaging an
 | Let's Encrypt | TLS | Renewal failure has no alert |
 | GitHub | Source the box builds from | Free; the access list is the trust boundary |
 | **Monitoring** | Uptime, SSL expiry, disk, budget alarms | **None in place** (§10) |
-| **Sitemap serving** | §8 | `jobs` writes sitemaps to its own container's `/app/public` (`src/lib/seo/sitemaps.ts`); neither `app` nor nginx reads that path, and no route serves `/sitemap.xml`, so production likely serves no sitemap. Unverified against the live site |
 | **Breach-response runbook** | DPDP obligation (§13) | No named owner or written procedure |
 
 ## Open questions

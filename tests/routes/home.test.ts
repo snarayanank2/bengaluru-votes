@@ -159,13 +159,14 @@ describe('Home page (/, /kn/)', () => {
     it('emits its own WardLookup island script, plus Base.astro\'s global Flag script (Tasks 28/32) — no others', async () => {
       const html = await renderHome('en');
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];
-      // Lookup and flagging modules; no inline script.
+      // Lookup and flagging modules, plus the WebSite JSON-LD block.
       // Issue voting is loaded only by the ward's inline form.
-      expect(scriptOpenTags).toHaveLength(2);
+      expect(scriptOpenTags).toHaveLength(3);
       const moduleScripts = scriptOpenTags.filter((tag) => tag.includes('type="module"'));
       const inlineScripts = scriptOpenTags.filter((tag) => !tag.includes('type="module"'));
       expect(moduleScripts).toHaveLength(2);
-      expect(inlineScripts).toHaveLength(0);
+      expect(inlineScripts).toHaveLength(1);
+      expect(inlineScripts[0]).toContain('application/ld+json');
       expect(html).toMatch(/Home\.astro\?astro&type=script/);
       expect(html).toMatch(/FlagModal\.astro\?astro&type=script/);
       expect(html).not.toMatch(/RegisterLoginModal\.astro\?astro&type=script/);
