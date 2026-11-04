@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
-import { sniffMediaType, storeMedia, MEDIA_LIMITS } from '../../src/lib/media';
+import { sniffMediaType, storeMedia, MEDIA_MAX_BYTES } from '../../src/lib/media';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -90,71 +90,41 @@ describe('storeMedia (Task 35)', () => {
     await client.end();
   });
 
-  it('stores a real PNG as kind photo: returns url /media/{id}/{16hex}, contentType image/png, correct sha256', async () => {
-    const result = await storeMedia(ACTOR, { bytes: PNG_BYTES, declaredType: 'image/png' }, 'photo');
+  it('stores a valid PDF: returns url /media/{id}/{16hex}, contentType application/pdf, correct sha256', async () => {
+    const result = await storeMedia(ACTOR, { bytes: PDF_BYTES });
 
     expect(typeof result.id).toBe('number');
-    const expectedSha256 = crypto.createHash('sha256').update(PNG_BYTES).digest('hex');
+    const expectedSha256 = crypto.createHash('sha256').update(PDF_BYTES).digest('hex');
     expect(result.hash).toBe(expectedSha256);
     expect(result.url).toBe(`/media/${result.id}/${expectedSha256.slice(0, 16)}`);
 
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, result.id));
     expect(row).toBeDefined();
-    expect(row!.contentType).toBe('image/png');
+    expect(row!.contentType).toBe('application/pdf');
     expect(row!.sha256).toBe(expectedSha256);
-    expect(row!.size).toBe(PNG_BYTES.length);
+    expect(row!.size).toBe(PDF_BYTES.length);
     expect(row!.createdBy).toBe(ACTOR.userId);
   });
 
-  it('rejects an SVG masquerading as a PNG (declaredType image/png, kind photo) -- sniff wins', async () => {
-    await expect(
-      storeMedia(ACTOR, { bytes: SVG_BYTES, declaredType: 'image/png' }, 'photo'),
-    ).rejects.toThrow('unsupported_media_type');
-  });
-
-  it('rejects a PDF passed as kind photo', async () => {
-    await expect(storeMedia(ACTOR, { bytes: PDF_BYTES, declaredType: 'application/pdf' }, 'photo')).rejects.toThrow(
+  it('rejects an image (PNG) even when declared as application/pdf -- sniff wins', async () => {
+    await expect(storeMedia(ACTOR, { bytes: PNG_BYTES, declaredType: 'application/pdf' })).rejects.toThrow(
       'unsupported_media_type',
     );
   });
 
-  it('rejects a GIF passed as kind photo', async () => {
-    await expect(storeMedia(ACTOR, { bytes: GIF_BYTES }, 'photo')).rejects.toThrow('unsupported_media_type');
-  });
-
-  it('rejects an image (PNG) passed as kind affidavit', async () => {
-    await expect(storeMedia(ACTOR, { bytes: PNG_BYTES, declaredType: 'application/pdf' }, 'affidavit')).rejects.toThrow(
+  it('rejects an SVG masquerading as a PDF', async () => {
+    await expect(storeMedia(ACTOR, { bytes: SVG_BYTES, declaredType: 'application/pdf' })).rejects.toThrow(
       'unsupported_media_type',
     );
   });
 
-  it('stores a valid PDF as kind affidavit', async () => {
-    const result = await storeMedia(ACTOR, { bytes: PDF_BYTES }, 'affidavit');
-    const [row] = await db.select().from(schema.media).where(eq(schema.media.id, result.id));
-    expect(row!.contentType).toBe('application/pdf');
+  it('rejects a GIF', async () => {
+    await expect(storeMedia(ACTOR, { bytes: GIF_BYTES })).rejects.toThrow('unsupported_media_type');
   });
 
-  it('rejects an oversize photo (> 2 MB)', async () => {
-    const big = Buffer.concat([PNG_BYTES, Buffer.alloc(MEDIA_LIMITS.photo)]); // header + padding pushes it over the cap
-    expect(big.length).toBeGreaterThan(MEDIA_LIMITS.photo);
-    await expect(storeMedia(ACTOR, { bytes: big }, 'photo')).rejects.toThrow('media_too_large');
-  });
-
-  it('rejects an oversize affidavit (> 20 MB)', async () => {
-    const big = Buffer.concat([PDF_BYTES, Buffer.alloc(MEDIA_LIMITS.affidavit)]);
-    expect(big.length).toBeGreaterThan(MEDIA_LIMITS.affidavit);
-    await expect(storeMedia(ACTOR, { bytes: big }, 'affidavit')).rejects.toThrow('media_too_large');
-  });
-
-  it('ignores declaredType: valid PNG bytes with declaredType application/pdf still stores as image/png', async () => {
-    const result = await storeMedia(ACTOR, { bytes: PNG_BYTES, declaredType: 'application/pdf' }, 'photo');
-    const [row] = await db.select().from(schema.media).where(eq(schema.media.id, result.id));
-    expect(row!.contentType).toBe('image/png');
-  });
-
-  it('ignores declaredType: SVG bytes with declaredType image/png is still rejected', async () => {
-    await expect(
-      storeMedia(ACTOR, { bytes: SVG_BYTES, declaredType: 'image/png' }, 'photo'),
-    ).rejects.toThrow('unsupported_media_type');
+  it('rejects an oversize PDF (> 20 MB) before any type check', async () => {
+    const big = Buffer.concat([PDF_BYTES, Buffer.alloc(MEDIA_MAX_BYTES)]);
+    expect(big.length).toBeGreaterThan(MEDIA_MAX_BYTES);
+    await expect(storeMedia(ACTOR, { bytes: big })).rejects.toThrow('media_too_large');
   });
 });

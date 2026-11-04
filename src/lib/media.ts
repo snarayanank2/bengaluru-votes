@@ -1,14 +1,13 @@
 /**
- * The media store (Task 35; architecture §5-§7, §13) — curator-uploaded
- * candidate photos and affidavit PDFs, stored as `bytea` in Postgres and
+ * The media store (Task 35; architecture §5-§7, §13) — admin-uploaded
+ * affidavit PDFs, stored as `bytea` in Postgres and
  * served back at an immutable content-hashed URL (`/media/{id}/{hash}`).
  *
  * SECURITY (arch §13): the declared MIME type and any filename extension
  * are NEVER trusted — both are attacker-controlled. `storeMedia` sniffs the
- * real type from the file's magic bytes and validates it against the
- * `kind`'s allowlist; an SVG (a script container, servable from this
- * origin) is rejected even when its declared type/extension claims to be a
- * PNG or JPEG. The type stored in `media.content_type` is the SNIFFED
+ * real type from the file's magic bytes and accepts only a PDF; anything
+ * else — an image, or an SVG (a script container, servable from this
+ * origin) — is rejected whatever its declared type/extension claims. The type stored in `media.content_type` is the SNIFFED
  * (validated) type, not the caller's `declaredType` — the serving route
  * (`src/pages/media/[id]/[hash].ts`) echoes that stored type back and never
  * re-sniffs or re-derives it from the request.
@@ -17,13 +16,8 @@ import crypto from 'node:crypto';
 import { db } from '../db/client';
 import { media } from '../db/schema';
 
-export type MediaKind = 'photo' | 'affidavit';
-
-/** Size caps in bytes: photos ≤2 MB, affidavit PDFs ≤20 MB. */
-export const MEDIA_LIMITS: Record<MediaKind, number> = {
-  photo: 2 * 1024 * 1024,
-  affidavit: 20 * 1024 * 1024,
-};
+/** Size cap in bytes for an affidavit PDF: 20 MB. */
+export const MEDIA_MAX_BYTES = 20 * 1024 * 1024;
 
 export type SniffedMediaType = 'jpeg' | 'png' | 'webp' | 'pdf' | 'svg' | 'gif' | 'unknown';
 
@@ -77,17 +71,7 @@ export function sniffMediaType(bytes: Buffer): SniffedMediaType {
   return 'unknown';
 }
 
-const CANONICAL_CONTENT_TYPE: Partial<Record<SniffedMediaType, string>> = {
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  webp: 'image/webp',
-  pdf: 'application/pdf',
-};
-
-const ALLOWED_TYPES_BY_KIND: Record<MediaKind, SniffedMediaType[]> = {
-  photo: ['jpeg', 'png', 'webp'],
-  affidavit: ['pdf'],
-};
+const PDF_CONTENT_TYPE = 'application/pdf';
 
 export interface MediaFileInput {
   bytes: Buffer;
@@ -102,30 +86,25 @@ export interface StoredMedia {
 }
 
 /**
- * Validates (magic-byte sniff + size cap) and stores an uploaded file as a
- * `media` row. Throws `Error('unsupported_media_type')` when the sniffed
- * type isn't in `kind`'s allowlist (wrong kind, or an unknown/SVG/GIF
- * type), and `Error('media_too_large')` when `bytes` exceeds `kind`'s cap
- * in `MEDIA_LIMITS`. `file.declaredType` is accepted for interface
+ * Validates (magic-byte sniff + size cap) and stores an uploaded affidavit
+ * PDF as a `media` row. Throws `Error('unsupported_media_type')` when the
+ * sniffed type isn't PDF, and `Error('media_too_large')` when `bytes`
+ * exceeds `MEDIA_MAX_BYTES`. `file.declaredType` is accepted for interface
  * symmetry with callers but never consulted.
  */
 export async function storeMedia(
   actor: { userId: number },
   file: MediaFileInput,
-  kind: MediaKind,
 ): Promise<StoredMedia> {
-  const limit = MEDIA_LIMITS[kind];
-  if (file.bytes.length > limit) {
+  if (file.bytes.length > MEDIA_MAX_BYTES) {
     throw new Error('media_too_large' satisfies MediaStoreErrorCode);
   }
 
-  const sniffed = sniffMediaType(file.bytes);
-  const allowed = ALLOWED_TYPES_BY_KIND[kind];
-  if (!allowed.includes(sniffed)) {
+  if (sniffMediaType(file.bytes) !== 'pdf') {
     throw new Error('unsupported_media_type' satisfies MediaStoreErrorCode);
   }
 
-  const contentType = CANONICAL_CONTENT_TYPE[sniffed]!;
+  const contentType = PDF_CONTENT_TYPE;
   const sha256 = crypto.createHash('sha256').update(file.bytes).digest('hex');
 
   const [row] = await db

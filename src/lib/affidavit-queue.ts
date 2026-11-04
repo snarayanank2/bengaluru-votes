@@ -62,7 +62,7 @@ export async function enqueueAffidavit(bytes: Buffer, opts: EnqueueOptions): Pro
 
   let mediaId: number;
   try {
-    mediaId = (await storeMedia({ userId: opts.uploadedBy }, { bytes }, 'affidavit')).id;
+    mediaId = (await storeMedia({ userId: opts.uploadedBy }, { bytes })).id;
   } catch (err) {
     const code = err instanceof Error ? err.message : '';
     if (code === 'unsupported_media_type' || code === 'media_too_large') return { kind: 'rejected', reason: code };

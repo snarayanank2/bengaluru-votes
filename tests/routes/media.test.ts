@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import crypto from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -35,65 +36,64 @@ async function get(id: number | string, hash: string) {
 }
 
 describe('GET /media/{id}/{hash} (Task 35)', () => {
-  let photoId: number;
-  let photoHash: string;
   let pdfId: number;
   let pdfHash: string;
+  let imageId: number;
+  let imageHash: string;
 
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 
-    const photo = await storeMedia(ACTOR, { bytes: PNG_BYTES }, 'photo');
-    photoId = photo.id;
-    photoHash = photo.hash.slice(0, 16);
-
-    const pdf = await storeMedia(ACTOR, { bytes: PDF_BYTES }, 'affidavit');
+    const pdf = await storeMedia(ACTOR, { bytes: PDF_BYTES });
     pdfId = pdf.id;
     pdfHash = pdf.hash.slice(0, 16);
+
+    // A legacy non-PDF row (e.g. an old candidate photo) written directly:
+    // storeMedia no longer accepts images, and the route must not serve one.
+    const sha256 = crypto.createHash('sha256').update(PNG_BYTES).digest('hex');
+    const [image] = await db
+      .insert(schema.media)
+      .values({ bytes: PNG_BYTES, contentType: 'image/png', sha256, size: PNG_BYTES.length, createdBy: ACTOR.userId })
+      .returning({ id: schema.media.id });
+    imageId = image!.id;
+    imageHash = sha256.slice(0, 16);
   });
 
   afterAll(async () => {
     await client.end();
   });
 
-  it('correct id + hash -> 200, body = stored bytes, stored Content-Type, nosniff, Content-Disposition, long immutable cache', async () => {
-    const res = await get(photoId, photoHash);
-
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Content-Type')).toBe('image/png');
-    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
-    expect(res.headers.get('Content-Disposition')).toContain('inline');
-    expect(res.headers.get('Content-Disposition')).toContain(`photo-${photoId}`);
-    expect(res.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable');
-
-    const body = Buffer.from(await res.arrayBuffer());
-    expect(body.equals(PNG_BYTES)).toBe(true);
-  });
-
-  it('a PDF is served inline with a .pdf filename and Content-Type application/pdf (stored, not sniffed)', async () => {
+  it('correct id + hash -> 200, body = stored bytes, application/pdf, nosniff, inline .pdf filename, long immutable cache', async () => {
     const res = await get(pdfId, pdfHash);
 
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('application/pdf');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(res.headers.get('Content-Disposition')).toContain('inline');
     expect(res.headers.get('Content-Disposition')).toContain(`affidavit-${pdfId}.pdf`);
+    expect(res.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable');
 
     const body = Buffer.from(await res.arrayBuffer());
     expect(body.equals(PDF_BYTES)).toBe(true);
   });
 
+  it('a stored non-PDF row is not served (404)', async () => {
+    const res = await get(imageId, imageHash);
+    expect(res.status).toBe(404);
+  });
+
   it('wrong hash (valid id) -> 404', async () => {
-    const res = await get(photoId, '0000000000000000');
+    const res = await get(pdfId, '0000000000000000');
     expect(res.status).toBe(404);
   });
 
   it('unknown id -> 404', async () => {
-    const res = await get(999999999, photoHash);
+    const res = await get(999999999, pdfHash);
     expect(res.status).toBe(404);
   });
 
   it('non-numeric id -> 404 (not a 500)', async () => {
-    const res = await get('not-a-number', photoHash);
+    const res = await get('not-a-number', pdfHash);
     expect(res.status).toBe(404);
   });
 });

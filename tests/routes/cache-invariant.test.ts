@@ -40,7 +40,7 @@ import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { onRequest } from '../../src/middleware';
-import { storeMedia, MEDIA_LIMITS } from '../../src/lib/media';
+import { storeMedia, MEDIA_MAX_BYTES } from '../../src/lib/media';
 
 import IndexPage from '../../src/pages/index.astro';
 import WardPage from '../../src/pages/ward/[id].astro';
@@ -334,28 +334,19 @@ describe('§12 cache-invariant + security guard suite', () => {
   // Guard 5: media validation (size + magic-byte type)
   // -------------------------------------------------------------------------
   describe('Guard 5 — media validation rejects oversize and off-type uploads (src/lib/media.ts)', () => {
-    it('rejects a photo over the 2 MB cap with media_too_large, before any type check', async () => {
-      const oversized = Buffer.alloc(MEDIA_LIMITS.photo + 1, 0);
-      // Give it a valid PNG magic-byte prefix so this is purely a size
-      // rejection, not conflated with the type guard below.
-      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(oversized);
-
-      await expect(storeMedia(MEDIA_ACTOR, { bytes: oversized }, 'photo')).rejects.toThrow('media_too_large');
-    });
-
-    it('rejects an off-type upload — an SVG masquerading as a photo — with unsupported_media_type', async () => {
+    it('rejects an off-type upload — an SVG masquerading as a PDF — with unsupported_media_type', async () => {
       const svgBytes = Buffer.from('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
 
       await expect(
-        storeMedia(MEDIA_ACTOR, { bytes: svgBytes, declaredType: 'image/png' }, 'photo'),
+        storeMedia(MEDIA_ACTOR, { bytes: svgBytes, declaredType: 'application/pdf' }),
       ).rejects.toThrow('unsupported_media_type');
     });
 
     it('rejects an affidavit upload over the 20 MB cap with media_too_large', async () => {
-      const oversized = Buffer.alloc(MEDIA_LIMITS.affidavit + 1, 0);
+      const oversized = Buffer.alloc(MEDIA_MAX_BYTES + 1, 0);
       Buffer.from('%PDF-1.4\n').copy(oversized);
 
-      await expect(storeMedia(MEDIA_ACTOR, { bytes: oversized }, 'affidavit')).rejects.toThrow('media_too_large');
+      await expect(storeMedia(MEDIA_ACTOR, { bytes: oversized })).rejects.toThrow('media_too_large');
     });
   });
 });

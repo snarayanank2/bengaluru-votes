@@ -2,7 +2,7 @@
  * GET /media/{id}/{hash} — public, immutable, content-hashed media serving
  * (architecture §5-§7, §13; Task 35).
  *
- * PUBLIC: candidate photos and affidavit PDFs are public sources
+ * PUBLIC: affidavit PDFs are public sources
  * — this route reads no session/cookie, and is not gated by role.
  *
  * The `{hash}` path segment is the first 16 hex chars of the stored row's
@@ -27,12 +27,6 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../../db/client';
 import { media } from '../../../db/schema';
 
-const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'application/pdf': 'pdf',
-};
 
 export const GET: APIRoute = async ({ params }) => {
   const id = Number(params.id);
@@ -43,7 +37,8 @@ export const GET: APIRoute = async ({ params }) => {
   }
 
   const [row] = await db.select().from(media).where(eq(media.id, id));
-  if (!row) {
+  // Only affidavit PDFs are stored; anything else is not served.
+  if (!row || row.contentType !== 'application/pdf') {
     return new Response('Not found', { status: 404 });
   }
 
@@ -54,8 +49,7 @@ export const GET: APIRoute = async ({ params }) => {
     return new Response('Not found', { status: 404 });
   }
 
-  const ext = EXTENSION_BY_CONTENT_TYPE[row.contentType] ?? 'bin';
-  const filename = row.contentType === 'application/pdf' ? `affidavit-${id}.${ext}` : `photo-${id}.${ext}`;
+  const filename = `affidavit-${id}.pdf`;
 
   // TS 5.7+'s `BodyInit` wants a `Uint8Array<ArrayBuffer>`; `Buffer`'s own
   // type is generic over `ArrayBufferLike` and doesn't structurally
