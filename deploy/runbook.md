@@ -519,7 +519,7 @@ Then sign in at `/login` with that email and the master password.
 Deploys are **automatic** (`docs/architecture.md` §14.4, revised 2026-11-04).
 Merge a PR to `main`: `ci.yml` must pass, then `deploy.yml` tags, installs the
 env file from the GitHub `production` environment, and runs
-`deploy/deploy.sh`. Failures roll back and email `DEPLOY_ALERT_EMAIL`.
+`deploy/deploy.sh`. Failures roll back, and GitHub emails whoever triggered the run.
 
 Manual actions: GitHub Actions → deploy → Run workflow
 (`redeploy-current`, `deploy-tag`, `rollback`). By hand from a laptop,

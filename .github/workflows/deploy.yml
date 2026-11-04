@@ -4,7 +4,10 @@ name: deploy
 #
 #   decide  -> was this exact tree already tested by a PR run?   (no secrets)
 #   test    -> if not, run the gate                               (no secrets)
-#   deploy  -> tag, install env from GitHub, deploy.sh, auto-rollback, alert
+#   deploy  -> tag, install env from GitHub, deploy.sh, auto-rollback
+#
+# A failed run emails whoever triggered it (GitHub Actions notifications, set to
+# "failed workflows only"); there is no separate alert mailer.
 #
 # Every push to main (a PR merge or a direct commit) deploys. workflow_dispatch
 # is kept for redeploy, deploy-tag and rollback.
@@ -89,33 +92,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/gate
-
-  # Separate from `test` so that job never holds secrets.
-  notify-test-failure:
-    needs: test
-    if: failure() && needs.test.result == 'failure'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment: production
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - name: Email
-        env:
-          ALERT_KIND: test-failed
-          ALERT_COMMIT: ${{ github.sha }}
-          ALERT_STEP: tests on main
-          ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          SENDGRID_FROM_EMAIL: ${{ vars.SENDGRID_FROM_EMAIL }}
-          DEPLOY_ALERT_EMAIL: ${{ vars.DEPLOY_ALERT_EMAIL }}
-        run: npx tsx scripts/ci/alert.ts
 
   deploy:
     needs: [decide, test]
@@ -251,26 +227,3 @@ jobs:
               exit 1
             fi
           fi
-
-      - name: Email the failure
-        if: failure()
-        env:
-          ALERT_KIND: ${{ steps.recover.outputs.kind || 'deploy-failed' }}
-          ALERT_COMMIT: ${{ github.sha }}
-          ALERT_TAG: ${{ steps.tag.outputs.tag }}
-          ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          OUTCOME_RENDER: ${{ steps.render.outcome }}
-          OUTCOME_SSH: ${{ steps.ssh.outcome }}
-          OUTCOME_TAG: ${{ steps.tag.outcome }}
-          OUTCOME_INSTALL: ${{ steps.install.outcome }}
-          OUTCOME_SHIP: ${{ steps.ship.outcome }}
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          SENDGRID_FROM_EMAIL: ${{ vars.SENDGRID_FROM_EMAIL }}
-          DEPLOY_ALERT_EMAIL: ${{ vars.DEPLOY_ALERT_EMAIL }}
-        run: |
-          step=setup
-          for s in RENDER SSH TAG INSTALL SHIP; do
-            v="OUTCOME_$s"
-            if [ "${!v}" = failure ]; then step=$(echo "$s" | tr '[:upper:]' '[:lower:]'); break; fi
-          done
-          ALERT_STEP="$step" npx tsx scripts/ci/alert.ts
