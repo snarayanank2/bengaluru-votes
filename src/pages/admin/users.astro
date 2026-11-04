@@ -83,6 +83,7 @@ function parseStatusFilter(raw: unknown): UserStatusFilter | undefined {
   return USER_STATUS_FILTERS.find((value) => value === raw);
 }
 
+// @ts-ignore TS6133: Astro's checker drops the expression of a top-level `return` in frontmatter, so a local used only there looks unread.
 function badRequest(): Response {
   return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
 }
@@ -110,6 +111,7 @@ function listingUrl(notice?: NoticeKind, userId?: number): string {
   return qs ? `/admin/users?${qs}` : '/admin/users';
 }
 
+// @ts-ignore TS6133: Astro's checker drops the expression of a top-level `return` in frontmatter, so a local used only there looks unread.
 function redirectWithNotice(notice: NoticeKind, userId: number): Response {
   return new Response(null, {
     status: 302,
@@ -139,6 +141,7 @@ if (Astro.request.method === 'POST') {
       responseStatus = 400;
     } else {
       try {
+        // @ts-ignore TS6133: Astro's checker drops the expression of a top-level `return` in frontmatter, so a local used only there looks unread.
         const newUserId = await addUser(actor, addEmail, addRole);
         // The new account is staff, so the unfiltered staff list shows it.
         query = '';

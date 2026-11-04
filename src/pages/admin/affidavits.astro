@@ -46,6 +46,7 @@ interface Message {
   params?: Record<string, string | number>;
 }
 
+// @ts-ignore TS6133: Astro's checker drops the expression of a top-level `return` in frontmatter, so a local used only there looks unread.
 function redirect(query: string): Response {
   return new Response(null, { status: 302, headers: { Location: `/admin/affidavits?${query}`, 'cache-control': 'no-store' } });
 }

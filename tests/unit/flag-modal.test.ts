@@ -35,7 +35,6 @@ if (!('showModal' in HTMLDialogElement.prototype)) {
 }
 
 type FlagModalModule = typeof import('../../src/islands/FlagModal');
-type FlagTarget = import('../../src/islands/FlagModal').FlagTarget;
 
 const MSGS = {
   rateLimit: "You've submitted a lot of flags recently. Please try again later.",

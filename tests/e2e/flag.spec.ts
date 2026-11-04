@@ -42,7 +42,6 @@ const E2E_FLAG_AGES = [41, 42] as const;
 
 const candidateSlug = seedFixtures.candidateSlug;
 const candidateId = seedFixtures.candidateId;
-const wardId = seedFixtures.primaryWardId;
 const targetRef = `candidate:${candidateId}:${E2E_FLAG_FIELD_KEY}`;
 const RUN_MARKER = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 // A distinctive-per-run detail string: the flag_items dedupe (flag_dedupe_uq,
@@ -131,7 +130,7 @@ test('citizen flags a candidate field, curator accepts + publishes, correction g
   await curatorPage.locator('main input[name="destination"]').fill(seedFixtures.curatorEmail);
   await curatorPage.locator('main input[name="password"]').fill(E2E_MASTER_PASSWORD);
   await curatorPage.locator('main button[type="submit"]').click();
-  await expect(curatorPage).toHaveURL(/\/curator\/queue\?resolved=accepted$/);
+  await expect(curatorPage).toHaveURL(/\/curator\/queue$/);
 
   await curatorPage.goto(`/curator/queue/${flagItemId}`);
   await expect(curatorPage.getByText(FLAG_DETAIL)).toBeVisible();

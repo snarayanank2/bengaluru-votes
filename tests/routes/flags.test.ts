@@ -2,10 +2,9 @@ import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { randomUUID } from 'node:crypto';
-import { issueFlagToken, FLAG_COOKIE } from '../../src/lib/flag-abuse';
+import { issueFlagToken } from '../../src/lib/flag-abuse';
 import { POST as flagsPOST } from '../../src/pages/api/flags';
 vi.mock('../../src/lib/recaptcha', () => ({ verifyRecaptcha: vi.fn(async () => ({ ok: true })) }));
 import { verifyRecaptcha } from '../../src/lib/recaptcha';

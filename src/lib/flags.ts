@@ -32,7 +32,7 @@
  * transaction (still open) can then re-SELECT the winner's row and
  * proceed with the submission as normal.
  */
-import { and, eq, sql, or } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db, type Tx } from '../db/client';
 import { candidates, candidateFields, flagItems, flagSubmissions } from '../db/schema';
 import { FLAGGABLE_FIELD_KEYS } from './candidate-profile';

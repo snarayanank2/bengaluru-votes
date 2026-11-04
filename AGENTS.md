@@ -26,7 +26,7 @@ Source comments cite "Task NN" throughout — historical task briefs, mostly no 
 npm run dev                 # astro dev
 npm run build               # production build (see the SITE_ORIGIN warning below)
 npm test                    # vitest, whole suite — requires DATABASE_URL
-npm run typecheck           # astro check && tsc --noEmit
+npm run typecheck           # astro check && tsc --noEmit; noUnusedLocals/noUnusedParameters are errors (remove dead code; in .astro frontmatter a local used only in a top-level `return` needs the documented `@ts-ignore`)
 npm run migrate             # drizzle migrations, forward-only, idempotent
 npm run translate -- --check  # bilingual staleness gate; no API calls, no key needed
 npm run translate           # regenerate stale Kannada via the translation backend; routine translations are authored directly (below)
