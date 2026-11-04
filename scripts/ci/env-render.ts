@@ -70,7 +70,7 @@ export function valuesFromEnv(env: Record<string, string | undefined>): Record<s
   return { ...env };
 }
 
-function parseEnvFile(text: string): Map<string, string> {
+export function parseEnvFile(text: string): Map<string, string> {
   const m = new Map<string, string>();
   for (const raw of text.split('\n')) {
     const line = raw.trim();
