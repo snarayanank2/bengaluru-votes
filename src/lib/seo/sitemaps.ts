@@ -29,7 +29,7 @@
  *     a small, fixed set of static pages, so "the last time the job ran"
  *     is an acceptable, honest signal for them.
  *
- * DEMO DATA: fixture candidates (`isDemoCandidateSlug`) are never listed.
+ * DEMO DATA: fixture candidates (`isTestCandidate`) are never listed.
  *
  * CANDIDATE VISIBILITY RULE: every non-demo row in `candidates` is included,
  * regardless of `status` — src/pages/candidate/[slug].astro's existence
@@ -49,7 +49,7 @@ import { eq, max } from 'drizzle-orm';
 import { localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
 import { candidates, candidateFields, wards } from '../../db/schema';
-import { isDemoCandidateSlug } from '../demo-data';
+import { isTestCandidate } from '../demo-data';
 
 /**
  * Root-relative, EN-canonical paths — same convention as Base.astro's
@@ -124,8 +124,8 @@ export interface SitemapFiles {
 /**
  * Builds the sitemap index and both language urlsets from the database.
  * Served live by `src/pages/sitemap*.xml.ts` (nginx's micro-cache absorbs
- * the load) — nothing is written to disk. Demo/fixture candidates
- * (`isDemoCandidateSlug`) are never listed.
+ * the load) — nothing is written to disk. Demo/test candidates
+ * (`isTestCandidate`) are never listed.
  */
 export async function buildSitemaps(): Promise<SitemapFiles> {
   const regenTimestamp = new Date().toISOString();
@@ -141,6 +141,7 @@ export async function buildSitemaps(): Promise<SitemapFiles> {
     await db
       .select({
         slug: candidates.slug,
+        nameEn: candidates.nameEn,
         wardId: candidates.wardId,
         candidateUpdatedAt: candidates.updatedAt,
         maxFieldUpdatedAt: max(candidateFields.updatedAt),
@@ -148,7 +149,7 @@ export async function buildSitemaps(): Promise<SitemapFiles> {
       .from(candidates)
       .leftJoin(candidateFields, eq(candidateFields.candidateId, candidates.id))
       .groupBy(candidates.id)
-  ).filter((row) => !isDemoCandidateSlug(row.slug));
+  ).filter((row) => !isTestCandidate(row));
 
   const candidateEntries: RouteEntry[] = [];
   const wardLastmodByWardId = new Map<number, Date>();

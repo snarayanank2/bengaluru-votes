@@ -62,6 +62,7 @@ const WARD_EMPTY = {
 const ACTIVE_SLUG = 'sitemap-test-active-candidate';
 const WITHDRAWN_SLUG = 'sitemap-test-withdrawn-candidate';
 const DEMO_SLUG = 'demo-ward-96401-candidate-1';
+const TEST_NAME_SLUG = '96401-sitemap-test-named-candidate';
 
 // Deliberately older than FIELD_UPDATED_AT so the assertions actually prove
 // the field timestamp (not the candidate row's own updatedAt) wins.
@@ -152,6 +153,16 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
       updatedAt: CANDIDATE_ROW_UPDATED_AT,
     });
 
+    await deleteCandidateFixture(TEST_NAME_SLUG);
+    await db.insert(schema.candidates).values({
+      slug: TEST_NAME_SLUG,
+      wardId: WARD_WITH_CANDIDATE.id,
+      nameEn: 'TEST Marked Only In The Name',
+      partyEn: 'Independent',
+      status: 'contesting',
+      updatedAt: CANDIDATE_ROW_UPDATED_AT,
+    });
+
     built = await buildSitemaps();
   });
 
@@ -159,6 +170,7 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
     await deleteCandidateFixture(ACTIVE_SLUG);
     await deleteCandidateFixture(WITHDRAWN_SLUG);
     await deleteCandidateFixture(DEMO_SLUG);
+    await deleteCandidateFixture(TEST_NAME_SLUG);
     await db.delete(schema.wards).where(eq(schema.wards.id, WARD_WITH_CANDIDATE.id));
     await db.delete(schema.wards).where(eq(schema.wards.id, WARD_EMPTY.id));
     await client.end();
@@ -176,6 +188,7 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
   it('never lists demo/fixture candidates', () => {
     for (const filename of ['sitemap-en.xml', 'sitemap-kn.xml']) {
       expect(readSitemap(filename)).not.toContain('/candidate/demo-');
+      expect(readSitemap(filename)).not.toContain(TEST_NAME_SLUG);
     }
   });
 
