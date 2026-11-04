@@ -176,7 +176,7 @@ No layer translates at request time; every render is from stored text.
 
 **Glossary:** one repo file of canonical Kannada renderings for recurring terms — party names, corporation names, "corporator", "ward", "affidavit" — included in the prompt by **both** the dev-time script and the runtime curator-data path, so the same term never renders two ways in different parts of the site. Effectively the site-wide layer of the hints mechanism.
 
-**Staleness check** (`npm run translate -- --check`): exits non-zero when any `kn/` file or key is missing, or its stored English-source hash no longer matches. The check only compares hashes; it makes no API calls, so it needs no Anthropic key. This was a CI gate that blocked the merge of an English-only or out-of-date `/kn/` page; with CI removed (§14.4) it is a manual pre-deploy step, and nothing now prevents such a page from being committed.
+**Staleness check** (`npm run translate -- --check`): exits non-zero when any `kn/` file or key is missing, or its stored English-source hash no longer matches. The check only compares hashes; it makes no API calls, so it needs no Anthropic key. This was a CI gate that blocked the merge of an English-only or out-of-date `/kn/` page; CI (§14.4) runs it as part of the merge gate.
 
 **Runtime path (curator data), per field:**
 
@@ -217,7 +217,7 @@ Never machine-translated: official bilingual data (ward names arrive with Kannad
 - One k6 load test proving the nginx micro-cache holds election-day read volume on the actual VM size — asserting, too, that legitimate-shaped traffic through the CGNAT-sized rate limits (§7) sees no 429s.
 - A route test asserting public GETs set no cookies and contain no session-dependent bytes — the guard on the §5 cache invariant.
 - Route tests for the §7 webhook endpoints (invalid signatures rejected; a bounce event lands in `suppressions`) and for media ingest (over-size and off-allowlist uploads rejected).
-- The translation staleness check (`npm run translate -- --check`, §9) is the guard on bilingual completeness. With no CI to enforce it (§14.4), it runs as a step of the manual pre-deploy check — a missing or stale `kn/` file is a release blocker, not a warning.
+- The translation staleness check (`npm run translate -- --check`, §9) is the guard on bilingual completeness. CI (§14.4) enforces it — a missing or stale `kn/` file blocks the merge.
 
 ## 13. Security
 
@@ -240,7 +240,7 @@ Decided 2026-07-17 after a security review of this design. The per-mechanism det
   - The intended 24-hour staff session (against a citizen's 1-hour idle timeout) is NOT built yet — every role is on the 1-hour sliding session today. When built it is a deliberate trade for operators working a shift, and the widest window an unattended browser gives an attacker; no session revocation on role change, no login notifications for privileged accounts — the short timeout carries the weight.
   - Backup isolation is currently moot: there is no off-box backup (§10). The prior decision — India residency for the DPDP-regulated dump beating disaster isolation, accepting that a region-wide provider failure would take the site and its backups together — stands as the rule for whatever storage is chosen next, but nothing satisfies it today. Provider snapshots, if enabled, share the box's provider and region too.
   - Backups are nightly only: up to 24 hours of registrations, issue votes and flags are lost if the box's disk dies (decided 2026-07-19). Affidavit PDFs are in the same dump, so the same window applies to them. WAL archiving would shrink the window to minutes and was rejected as a second backup mechanism to operate and rehearse — even election-week write volume was judged worth less than that operational load. Recovery targets: §10. Both of these describe the intended steady state; §10 records what is actually in place as of 2026-08-13.
-  - Whoever deploys holds the keys to the box: deploys run as `root` (§14.4), so a compromised deploy key is full compromise of production (§14.2). Accepted for a single-VM project; the mitigations are key-only SSH and ordinary key custody. Revised 2026-08-13 — this exposure was previously larger and automated (a CI system held the key and the staging deploy fired on every push to `main` with no approval gate, so a compromised Actions workflow or a malicious merge reached production). Removing CI (§14.4) removed that path; the trade is that nothing now gates a deploy except the person running it.
+  - Whoever deploys holds the keys to the box: deploys run as `root` (§14.4), so a compromised deploy key is full compromise of production (§14.2). Accepted for a single-VM project; the mitigations are key-only SSH and ordinary key custody. Revised 2026-11-04 — CI is back (§14.4): the `production` environment holds the root deploy key and every merge to `main` deploys with no approval gate, so a malicious merged change reaches production; accepted, with no review rule. The exposure was earlier larger and automated, then removed 2026-08-13 (a CI system held the key and the staging deploy fired on every push to `main` with no approval gate, so a compromised Actions workflow or a malicious merge reached production). Removing CI (§14.4) removed that path; the trade is that nothing now gates a deploy except the person running it.
   - **Deploys run as `root` on the box** (§14.4). The prior design specified a dedicated key-only `deploy` user, but that user had to be in the `docker` group, which is root-equivalent on the host — so it read as privilege separation while providing none. Root SSH stays key-only with password authentication disabled. The real control is key custody, and it is worth saying that outright rather than implying an isolation boundary that never existed.
 
 ## 14. Deployment (Hostinger VPS)
@@ -292,23 +292,16 @@ The Compose project name is **pinned in the compose file** (`bengaluru-votes-pro
 
 ### 14.4 Release flow
 
-Revised 2026-08-13: deploys are **manual**. There is no `.github/workflows/`; nothing deploys on push, on merge, or on release.
+Revised 2026-11-04: deploys are **automatic from `main`**. This reverses the 2026-08-13 decision to remove CI and deploy by hand; the reason is that changes now come from cloud coding agents and outside contributors, with no laptop in the loop. Design: `docs/superpowers/specs/2026-11-04-ci-cd-design.md`.
 
-`deploy/deploy.sh` (committed) runs the whole sequence and verifies it:
-
-```sh
-deploy/deploy.sh production v2026.08.14   # build+deploy that annotated tag
-deploy/deploy.sh production --rollback    # retag :previous, restart, re-verify
-```
-
-What it does: preflight (ssh, tree exists and is clean, env file present) → tag the current image `:previous` **before** the build overwrites `:latest` → check the tree out on the tag → build with production's `SITE_ORIGIN` → migrate (§14.7) → `up -d` → re-run `static-init` unconditionally → test and reload nginx's config → verify.
-
-- **Branch policy:** **production is a tag.** A commit on `main` that has passed `npm test`, `npm run typecheck` and `npm run translate -- --check` locally is tagged `vYYYY.MM.DD` (`.2` for a second same-day release) and pushed; production checks it out detached. Tagging is the human judgement in the loop — nothing automates the decision that a commit is production-worthy.
-- **No staging step.** Staging was retired (§14.2), so those local checks and the deploy script's own verification are the only gates.
-- **Versioning is date-based:** `vYYYY.MM.DD`, with `.2` appended for a second same-day release — the tag is not decoration: it is the ref production is checked out on.
-- **Rollback:** `docker image tag <image>:previous <image>:latest` and `up -d` again. Never a schema step, because migrations are backward-compatible (§14.7) — `deploy/deploy.sh <env> --rollback` does this, restarts, and re-verifies.
-- **Access:** SSH to the box as `root`, key-only, password authentication disabled. The prior design's dedicated `deploy` user is dropped — see §13 for why it was ceremony rather than privilege separation.
-- **The tests are not gone, only unenforced.** `npm test`, `npm run typecheck` and `npm run translate -- --check` (§9) previously blocked a merge. Run them before deploying; nothing else will.
+- **Merging.** Every change reaches `main` by pull request (ruleset `.github/rulesets/main.json`: PR required, 0 approvals, required check `test`; repository admins can bypass). `ci.yml` runs the gate (typecheck, Kannada staleness check with the accepted `privacy.md` exception, build, Vitest, Playwright smoke) with no secrets. Agent PRs auto-merge once `test` passes.
+- **Deploying.** `.github/workflows/deploy.yml` runs on every push to `main`. If the pushed tree equals a tree a same-repo PR run already passed (`scripts/ci/tested-tree.ts`), tests are skipped; a direct commit to `main` has no such run, so the gate runs first. Then: tag `vYYYY.MM.DD` (`.2`, `.3`…, Asia/Kolkata date) → render `/etc/bengaluru-votes/.env.production` from the GitHub `production` environment per `deploy/env.production.manifest` and install it → `deploy/deploy.sh production <tag>`.
+- **Secrets and config live in the GitHub `production` environment** (limited to `main`). Add a key there and in the manifest in the same PR. The deploy fails before touching the box if a required key is missing.
+- **Failure handling.** `deploy.sh` exits 1 for a failure before the restart (old version still serving) and 3 after it; CI restores the previous env file on any failure and runs `--rollback` on exit 3. A failed deploy or test run emails `DEPLOY_ALERT_EMAIL` through SendGrid (not yet configured as of 2026-11-04).
+- **Manual:** Actions → deploy → Run workflow: `redeploy-current`, `deploy-tag`, `rollback`. `deploy/deploy.sh` still works by hand.
+- **No staging step**, migrations run unpaused (§14.7).
+- **Access:** CI holds a dedicated root SSH key as an environment secret, with the host key pinned. A malicious change merged to `main` therefore reaches production; with no review rule this is accepted (see §13). Fork PRs get no secrets (`pull_request`, never `pull_request_target`); actions are pinned by SHA.
+- **Versioning is date-based**, and the tag is the ref production is checked out on. Rollback is `:previous` retag and restart, never a schema step (§14.7).
 
 ### 14.5 Network & TLS
 

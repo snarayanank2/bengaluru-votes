@@ -6,8 +6,8 @@ name: deploy
 #   test    -> if not, run the gate                               (no secrets)
 #   deploy  -> tag, install env from GitHub, deploy.sh, auto-rollback, alert
 #
-# ROLLOUT: until the env file has been proven identical to the box's (plan Task
-# 11), only workflow_dispatch is enabled. Task 12 adds the push trigger below.
+# Every push to main (a PR merge or a direct commit) deploys. workflow_dispatch
+# is kept for redeploy, deploy-tag and rollback.
 
 on:
   workflow_dispatch:
@@ -25,8 +25,8 @@ on:
         description: Existing tag for deploy-tag, e.g. v2026.11.04
         type: string
         required: false
-  # push:                      # enabled in plan Task 12
-  #   branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read

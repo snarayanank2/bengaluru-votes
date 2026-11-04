@@ -516,48 +516,29 @@ Then sign in at `/login` with that email and the master password.
 
 ## Deploying
 
-Deploys are **manual** (`docs/architecture.md` §14.4). There is no CI, no
-registry, and nothing that fires on push, merge or release. Images are built
-on the box from the per-environment checkouts (architecture §14.3).
+Deploys are **automatic** (`docs/architecture.md` §14.4, revised 2026-11-04).
+Merge a PR to `main`: `ci.yml` must pass, then `deploy.yml` tags, installs the
+env file from the GitHub `production` environment, and runs
+`deploy/deploy.sh`. Failures roll back and email `DEPLOY_ALERT_EMAIL`.
 
-**Run the checks first — nothing else will.** On your machine, not the box:
-
-```sh
-npm run translate -- --check   # bilingual completeness (architecture §9)
-npm run typecheck
-npm test
-```
+Manual actions: GitHub Actions → deploy → Run workflow
+(`redeploy-current`, `deploy-tag`, `rollback`). By hand from a laptop,
+`deploy/deploy.sh production <tag>` still works, but the next CI deploy
+overwrites `/etc/bengaluru-votes/.env.production` from GitHub, so **change env
+values in the GitHub `production` environment, never on the box**, and list
+new keys in `deploy/env.production.manifest`.
 
 **Accepted translation-check exception (2026-08-19):**
-`content/pages/kn/privacy.md` is a known stale target because its location-
-privacy paragraph was translated without an available `ANTHROPIC_API_KEY`.
-Do not hand-write its `sourceHash`; that would forge translation provenance.
-
-A deploy may proceed when `npm run translate -- --check` lists **only** this
-file. Any other missing or stale target still blocks the deploy. Once a real
-key is available, regenerate and review the privacy translation, commit it,
-and remove this exception.
+`content/pages/kn/privacy.md` is a known stale target (the gate tolerates only
+this file). Do not hand-write its `sourceHash`; regenerate it once a real
+`ANTHROPIC_API_KEY` is available and remove the exception in
+`scripts/ci/translate-gate.ts`.
 
 ### Production
 
-There is no staging step: production is the only environment. Before tagging,
-run the checks nothing else will run for you, on the commit you intend to
-ship:
-
-```sh
-npm run typecheck
-npm run translate -- --check
-# the Vitest suite, inside the local app image (see AGENTS.md, "Tests need a database")
-```
-
-Then tag that commit and deploy the tag:
-
-```sh
-git push origin main
-git tag -a v2026.08.14 -m "release" origin/main
-git push origin v2026.08.14
-deploy/deploy.sh production v2026.08.14
-```
+There is no staging step: production is the only environment, and the gate in
+CI is the check. Run `npm run typecheck`, `npm test` locally if you want
+earlier feedback.
 
 **Each migration's first real run is against production.** The script
 migrates before any container restarts, and a failed migration aborts the
