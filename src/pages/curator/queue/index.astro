@@ -10,6 +10,8 @@ import { loadQueueList, loadCuratorLang, type QueueSort } from '../../../lib/cur
 const session = Astro.locals.session!;
 const page = Math.max(1,Math.min(10000,Math.trunc(Number(Astro.url.searchParams.get('page')))||1));
 const sortParam = Astro.url.searchParams.get('sort');
+const resolvedParam = Astro.url.searchParams.get('resolved');
+const resolved = resolvedParam === 'accepted' || resolvedParam === 'rejected' ? resolvedParam : undefined;
 const sort: QueueSort = sortParam === 'ward' ? 'ward' : 'recent';
 
 const [items, lang] = await Promise.all([
@@ -20,4 +22,4 @@ const [items, lang] = await Promise.all([
 Astro.response.headers.set('cache-control', 'no-store');
 ---
 
-<Queue lang={lang} items={items} sort={sort} page={page} />
+<Queue lang={lang} items={items} sort={sort} page={page} resolved={resolved} />

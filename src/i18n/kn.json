@@ -339,7 +339,7 @@
     "curator.queueItem.currentValue.field": "3162fce300a190b54e287d97547a1335fd4648a4841948b2cd883c84dec7a626",
     "curator.queueItem.currentValue.none": "4895f73177ab5d67c30c183a49d2477e014a2ef69b65150762d17e877f4f5b95",
     "curator.queueItem.reject.heading": "6a2b481f2d5f79cfe96f367dd4a4253f2d31b7a15b2ac61f238a4565e102455e",
-    "curator.queueItem.reject.reasonLabel": "c0235fff1681e298f7256a27842a28a72c4326f32a83037dd0657bbe3ca54787",
+    "curator.queueItem.reject.reasonLabel": "1b4d45c29f20c99ea3ad7d059c5d1b7bb89efd7f5d068382a3ba7fb1b8e79518",
     "curator.queueItem.reject.submit": "ab604a360777735fe2993aec7d4ffae415f1515b0a4c989269603fd3d5c07b61",
     "curator.queueItem.accept.notDeclaredLabel": "e9c7175e6ed1964ea82a587edd023152391994ba771631bfc0433bff29e9f8c0",
     "curator.queueItem.accept.sourceUrlLabel": "4a31dee5b06f0dc7cda33087542ef5ffea17e008dd2d73e1d038373493eeb8a9",
@@ -840,7 +840,9 @@
     "flag.metrics.spam": "899de3711eb907351a330360e5bb973e1ef8a94db353b313342381e2567ea0f7",
     "flag.metrics.pending": "adfa0320045c8385268dc89f8f340bc03129ebf53f2effd2d9694893fd1577d1",
     "flag.metrics.oldest": "10443dd8c9bb8beac3bdb4389a482875188354b35a4ca521b5cf4392859aabb2",
-    "flag.review.guide": "c3058657784ab784e9b2a10830c05ac0289258b956b0dd9e38a07404ac4ccb74"
+    "flag.review.guide": "c3058657784ab784e9b2a10830c05ac0289258b956b0dd9e38a07404ac4ccb74",
+    "curator.queue.resolved.accepted": "4658d61c8f012ccba1a385ced2cc99a59786677df069069b7420f48677a923cd",
+    "curator.queue.resolved.rejected": "496e9a5c7c7b20627c3f51a98ff7f54c0a998329d99ad9cd807ce53b68a55f3b"
   },
   "legal.courtesyNote": "ಇದು ಸೌಜನ್ಯ ಅನುವಾದವಾಗಿದೆ. ಈ ಪುಟದ ಇಂಗ್ಲಿಷ್ ಆವೃತ್ತಿಯು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಯಂತ್ರಿಸುವ ಪಠ್ಯವಾಗಿದೆ.",
   "error.notFound.title": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
@@ -917,7 +919,7 @@
   "curator.queueItem.currentValue.field": "ಕ್ಷೇತ್ರ: {field}",
   "curator.queueItem.currentValue.none": "ಹೊಂದಿಸಿಲ್ಲ",
   "curator.queueItem.reject.heading": "ಈ ಫ್ಲ್ಯಾಗ್ ಅನ್ನು ತಿರಸ್ಕರಿಸಿ",
-  "curator.queueItem.reject.reasonLabel": "ಕಾರಣ (ಸಲ್ಲಿಸಿದವರಿಗೆ ತೋರಿಸಲಾಗುತ್ತದೆ)",
+  "curator.queueItem.reject.reasonLabel": "ಕಾರಣ (ಆಂತರಿಕ ಟಿಪ್ಪಣಿ; ವರದಿ ಮಾಡಿದವರು ಅನಾಮಧೇಯರು, ಅವರಿಗೆ ತಿಳಿಸಲಾಗುವುದಿಲ್ಲ)",
   "curator.queueItem.reject.submit": "ತಿರಸ್ಕರಿಸಿ",
   "curator.queueItem.accept.notDeclaredLabel": "ಘೋಷಿಸಿಲ್ಲ (ಒಂದು ಮಾನ್ಯ, ಸಂಪೂರ್ಣ ಉತ್ತರ)",
   "curator.queueItem.accept.sourceUrlLabel": "ಮೂಲದ ಲಿಂಕ್",
@@ -1406,5 +1408,7 @@
   "flag.metrics.spam": "ಅನಗತ್ಯವೆಂದು ಗುರುತಿಸಿದ ವರದಿಗಳು",
   "flag.metrics.pending": "ಬಾಕಿ ಇರುವ ಮಾಹಿತಿ ಪರಿಶೀಲನೆಗಳು (ಪ್ರಸ್ತುತ)",
   "flag.metrics.oldest": "ಅತ್ಯಂತ ಹಳೆಯ ಬಾಕಿ ವರದಿ (UTC)",
-  "flag.review.guide": "ಯಾರಾದರೂ ಖಾತೆ ಇಲ್ಲದೆ ತಪ್ಪನ್ನು ವರದಿ ಮಾಡಬಹುದು. ವರದಿಗಳ ಸಂಖ್ಯೆಯು ಸಾಕ್ಷಿಯಲ್ಲ ಮತ್ತು ದೃಢೀಕೃತ ವ್ಯಕ್ತಿಗಳ ಸಂಖ್ಯೆಯೂ ಅಲ್ಲ. ಅಫಿಡವಿಟ್ ಪರಿಶೀಲಿಸಿ. ದುರುಪಯೋಗ ಅಥವಾ ಅಸಂಬದ್ಧ ವರದಿಗಳಿಗೆ ಮಾತ್ರ ಅನಗತ್ಯ ವರದಿ ನಿಯಂತ್ರಣಗಳನ್ನು ಬಳಸಿ; ಸದುದ್ದೇಶದಿಂದ ಬಂದ ತಪ್ಪು ವರದಿಯನ್ನು ಕಾರಣ ನೀಡಿ ತಿರಸ್ಕರಿಸಿ. ಕೆಲವು ವರದಿಗಳನ್ನು ಅನಗತ್ಯವೆಂದು ಗುರುತಿಸಿದರೂ ಉಳಿದ ಸಕ್ರಿಯ ವರದಿಗಳು ಪರಿಶೀಲನೆಗಾಗಿ ತೆರೆದಿರುತ್ತವೆ. ಅದೇ ಮಾಹಿತಿಯ ಬಗ್ಗೆ ಮತ್ತೆ ವರದಿ ಬಂದಾಗ ಹಿಂದಿನ ಪರಿಶೀಲನೆಗಳನ್ನು ನೋಡಿ."
+  "flag.review.guide": "ಯಾರಾದರೂ ಖಾತೆ ಇಲ್ಲದೆ ತಪ್ಪನ್ನು ವರದಿ ಮಾಡಬಹುದು. ವರದಿಗಳ ಸಂಖ್ಯೆಯು ಸಾಕ್ಷಿಯಲ್ಲ ಮತ್ತು ದೃಢೀಕೃತ ವ್ಯಕ್ತಿಗಳ ಸಂಖ್ಯೆಯೂ ಅಲ್ಲ. ಅಫಿಡವಿಟ್ ಪರಿಶೀಲಿಸಿ. ದುರುಪಯೋಗ ಅಥವಾ ಅಸಂಬದ್ಧ ವರದಿಗಳಿಗೆ ಮಾತ್ರ ಅನಗತ್ಯ ವರದಿ ನಿಯಂತ್ರಣಗಳನ್ನು ಬಳಸಿ; ಸದುದ್ದೇಶದಿಂದ ಬಂದ ತಪ್ಪು ವರದಿಯನ್ನು ಕಾರಣ ನೀಡಿ ತಿರಸ್ಕರಿಸಿ. ಕೆಲವು ವರದಿಗಳನ್ನು ಅನಗತ್ಯವೆಂದು ಗುರುತಿಸಿದರೂ ಉಳಿದ ಸಕ್ರಿಯ ವರದಿಗಳು ಪರಿಶೀಲನೆಗಾಗಿ ತೆರೆದಿರುತ್ತವೆ. ಅದೇ ಮಾಹಿತಿಯ ಬಗ್ಗೆ ಮತ್ತೆ ವರದಿ ಬಂದಾಗ ಹಿಂದಿನ ಪರಿಶೀಲನೆಗಳನ್ನು ನೋಡಿ.",
+  "curator.queue.resolved.accepted": "ಫ್ಲ್ಯಾಗ್ ಪರಿಹರಿಸಲಾಗಿದೆ ಮತ್ತು ತಿದ್ದುಪಡಿಯನ್ನು ಪ್ರಕಟಿಸಲಾಗಿದೆ. ಸಾರ್ವಜನಿಕ ಪುಟಗಳಲ್ಲಿ ಇದು ಕಾಣಿಸಲು ಕೆಲವು ನಿಮಿಷಗಳು ತೆಗೆದುಕೊಳ್ಳಬಹುದು.",
+  "curator.queue.resolved.rejected": "ಫ್ಲ್ಯಾಗ್ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ."
 }

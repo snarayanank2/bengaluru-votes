@@ -60,7 +60,7 @@ if (Astro.request.method === 'POST') {
   if (outcome.kind === 'accepted' || outcome.kind === 'rejected') {
     return new Response(null, {
       status: 302,
-      headers: { Location: '/curator/queue', 'cache-control': 'no-store' },
+      headers: { Location: `/curator/queue?resolved=${outcome.kind}`, 'cache-control': 'no-store' },
     });
   }
 

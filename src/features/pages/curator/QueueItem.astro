@@ -32,6 +32,7 @@ import CuratorFieldForm from '../../../components/CuratorFieldForm.astro';
 import CuratorWardForm from '../../../components/CuratorWardForm.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
+import { formatDateTime } from '../../../lib/format-datetime';
 import { profileLabelKey } from '../../../lib/candidate-profile';
 import type { FieldError, RawField } from '../../../lib/affidavit-form';
 import type { QueueItemDetail } from '../../../lib/curator';
@@ -154,7 +155,7 @@ const publishedText = field
                 )}
               </p>
             )}
-            <p class="meta">{submission.createdAt.toISOString()}</p>
+            <p class="meta">{formatDateTime(lang, submission.createdAt)}</p>
           </li>
         ); })}
       </ul>

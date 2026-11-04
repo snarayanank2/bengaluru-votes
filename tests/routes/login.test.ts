@@ -135,6 +135,13 @@ describe('/login, /kn/login', () => {
     expect(res.headers.get('location')).toBe('/transcribe');
   });
 
+  it.each([['curator', '/curator'], ['admin', '/admin']] as const)('a %s with nowhere particular to go lands on %s', async (role, landing) => {
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role, status: 'active' });
+    const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/' });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(landing);
+  });
+
   it('a transcriber who asked for a page still gets that page', async () => {
     await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'transcriber', status: 'active' });
     const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/transcribe/guide' });
@@ -181,11 +188,11 @@ describe('/login, /kn/login', () => {
       expect(html).toContain('name="next" value="/"');
     });
 
-    it.each(['https://evil.example/x', '//evil.example/x'])('a hostile next (%s) collapses to /', async (next) => {
+    it.each(['https://evil.example/x', '//evil.example/x'])('a hostile next (%s) collapses to the staff default, never off-site', async (next) => {
       await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active' });
       const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next });
       expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe('/');
+      expect(res.headers.get('location')).toBe('/curator');
     });
   });
 });

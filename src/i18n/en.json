@@ -267,7 +267,7 @@
   "curator.queueItem.currentValue.field": "Field: {field}",
   "curator.queueItem.currentValue.none": "Not set",
   "curator.queueItem.reject.heading": "Reject this flag",
-  "curator.queueItem.reject.reasonLabel": "Reason (shown to the submitter)",
+  "curator.queueItem.reject.reasonLabel": "Reason (internal note; reporters are anonymous and are not told)",
   "curator.queueItem.reject.submit": "Reject",
   "curator.queueItem.accept.notDeclaredLabel": "Not declared (a valid, complete answer)",
   "curator.queueItem.accept.sourceUrlLabel": "Source link",
@@ -949,5 +949,7 @@
   "flag.metrics.spam": "Submissions marked as spam",
   "flag.metrics.pending": "Pending fields (current)",
   "flag.metrics.oldest": "Oldest pending report (UTC)",
-  "flag.review.guide": "Anyone can report an error without an account. Report counts are not evidence or verified people. Check the affidavit. Use the spam controls only for abusive or irrelevant submissions; reject a good-faith but incorrect report with a reason. Marking some submissions as spam keeps other active submissions open. Check previous reviews when a field is reported again."
+  "flag.review.guide": "Anyone can report an error without an account. Report counts are not evidence or verified people. Check the affidavit. Use the spam controls only for abusive or irrelevant submissions; reject a good-faith but incorrect report with a reason. Marking some submissions as spam keeps other active submissions open. Check previous reviews when a field is reported again.",
+  "curator.queue.resolved.accepted": "Flag resolved and the fix is published. Public pages can take a few minutes to show it.",
+  "curator.queue.resolved.rejected": "Flag rejected."
 }

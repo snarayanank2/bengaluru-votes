@@ -223,6 +223,11 @@ const candidateJsonLd = row
     gap: var(--space-6);
   }
 
+  /* The flag button is a flex item of the column above; without this it stretches the full width. */
+  .candidate > :global([data-flag-action]) {
+    align-self: flex-start;
+  }
+
   .report-fields {
     min-width: 0;
     overflow-wrap: anywhere;

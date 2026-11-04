@@ -375,7 +375,7 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34)', () => {
         fields: { formAction: 'reject', reason: 'Not a valid correction.', [CSRF_FIELD_NAME]: curatorAuth.token },
       });
       expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe('/curator/queue');
+      expect(res.headers.get('location')).toBe('/curator/queue?resolved=rejected');
 
       const [item] = await db.select().from(schema.flagItems).where(eq(schema.flagItems.id, itemRejectValid.id));
       expect(item?.status).toBe('rejected');

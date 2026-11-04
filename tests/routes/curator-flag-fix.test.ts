@@ -63,7 +63,7 @@ describe('a flag on an affidavit field', () => {
     const id = await flag(c.candidateId, 'assets');
     const res = await item(id, curator, fix({ 'status.assets': 'value', movableInr: '1,02,10,000', immovableInr: '2,40,00,000' }));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('/curator/queue');
+    expect(res.headers.get('location')).toBe('/curator/queue?resolved=accepted');
     const row = (await fieldRow(c.candidateId, 'assets'))!;
     expect(row.valueData).toEqual({ key: 'assets', status: 'value', movableInr: 10210000, immovableInr: 24000000 });
     expect(row.checkedBy).toBe(curator.userId);

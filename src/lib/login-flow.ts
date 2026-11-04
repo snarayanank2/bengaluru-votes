@@ -34,15 +34,18 @@ export function initialLoginState(nextRaw: unknown, error?: string): LoginRender
 
 /**
  * Where a successful sign-in goes. A caller who asked for a page gets it;
- * one who asked for nothing in particular (`next` is `/`) and is a
- * transcriber is taken to their one screen instead of the public home page.
+ * one who asked for nothing in particular (`next` is `/`) is taken to their
+ * own area (transcriber, curator or admin) instead of the public home page.
  */
 async function landingFor(destinationRaw: string, next: string): Promise<string> {
   if (next !== '/') return next;
   const email = normalizeEmail(destinationRaw);
   if (email === '') return next;
   const [user] = await db.select({ role: users.role }).from(users).where(eq(users.email, email));
-  return user?.role === 'transcriber' ? '/transcribe' : next;
+  if (user?.role === 'transcriber') return '/transcribe';
+  if (user?.role === 'curator') return '/curator';
+  if (user?.role === 'admin') return '/admin';
+  return next;
 }
 
 export async function handleLoginPost(form: FormData): Promise<LoginPostOutcome> {

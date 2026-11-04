@@ -7,6 +7,8 @@
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import { t, type Lang } from '../../../i18n';
+import Banner from '../../../components/Banner.astro';
+import { formatDateTime } from '../../../lib/format-datetime';
 import { profileLabelKey } from '../../../lib/candidate-profile';
 import type { QueueListItem, QueueSort } from '../../../lib/curator';
 
@@ -15,9 +17,11 @@ interface Props {
   items: QueueListItem[];
   sort: QueueSort;
   page?: number;
+  /** Set when the curator has just resolved a flag (`?resolved=`); shown as a confirmation. */
+  resolved?: 'accepted' | 'rejected';
 }
 
-const { lang, items, sort, page = 1 } = Astro.props;
+const { lang, items, sort, page = 1, resolved } = Astro.props;
 
 /** "{candidate} — {field}" for a flag on a candidate's field; the reference as stored for anything older or orphaned. */
 function targetLabel(item: QueueListItem): string {
@@ -29,6 +33,13 @@ function targetLabel(item: QueueListItem): string {
 <CuratorLayout lang={lang} title={t(lang, 'curator.queue.meta.title')} description={t(lang, 'curator.queue.meta.description')}>
   <div class="curator-page">
     <h1>{t(lang, 'curator.queue.heading')}</h1>
+    {
+      resolved && (
+        <Banner kind="notice" lang={lang}>
+          {t(lang, resolved === 'accepted' ? 'curator.queue.resolved.accepted' : 'curator.queue.resolved.rejected')}
+        </Banner>
+      )
+    }
     <p><a href="/curator">{t(lang, 'curator.queue.backToDashboard')}</a></p>
 
     <nav class="sort-nav" aria-label={t(lang, 'curator.queue.sort.label')}>
@@ -60,7 +71,7 @@ function targetLabel(item: QueueListItem): string {
                 <td>{lang === 'kn' ? item.wardNameKn : item.wardNameEn}</td>
                 <td>{targetLabel(item)}</td>
                 <td>{item.submissionCount} · {t(lang, 'flag.review.spamCount', {count:item.spamCount ?? 0})}</td>
-                <td>{item.createdAt.toISOString()}</td>
+                <td>{formatDateTime(lang, item.createdAt)}</td>
                 <td>
                   <a href={`/curator/queue/${item.id}`}>{t(lang, 'curator.queue.viewLink')}</a>
                 </td>
