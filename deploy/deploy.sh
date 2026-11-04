@@ -193,7 +193,9 @@ echo "  ssh ok, checkout clean, env file present"
 # Before the build, because the build overwrites :latest. There is no
 # registry (§14.3), so this image on this box IS the rollback story.
 say "Tagging the running image as $PREV"
-remote "docker image inspect $IMAGE >/dev/null 2>&1 && docker image tag $IMAGE $PREV || echo '  (no current image — first deploy, skipping)'"
+# Tag the image the RUNNING app container uses, not :latest: after a deploy that
+# built but failed to migrate, :latest is an image that never ran.
+remote "cid=\$($COMPOSE ps -q $APP_SERVICE 2>/dev/null | head -1); img=\$([ -n \"\$cid\" ] && docker inspect -f '{{.Image}}' \"\$cid\" 2>/dev/null); if [ -n \"\$img\" ]; then docker image tag \"\$img\" $PREV; elif docker image inspect $IMAGE >/dev/null 2>&1; then docker image tag $IMAGE $PREV; else echo '  (no current image — first deploy, skipping)'; fi"
 
 say "Updating $TREE to $REF"
 # Detached on an immutable tag: `git log -1` in this tree is then an honest

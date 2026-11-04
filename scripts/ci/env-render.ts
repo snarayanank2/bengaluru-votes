@@ -6,6 +6,7 @@
  *
  *   tsx scripts/ci/env-render.ts render                  # stdout = the file
  *   tsx scripts/ci/env-render.ts compare --box <file>    # key-name diff vs the box's current file
+ *   tsx scripts/ci/env-render.ts orphans --box <file>    # fail if the box has keys the manifest lacks
  *
  * Values come from ALL_VARS / ALL_SECRETS (the JSON of the `vars` and
  * `secrets` contexts, so the manifest, not the workflow, lists the keys) or,
@@ -40,6 +41,7 @@ export function parseManifest(text: string): Entry[] {
 export function renderEnv(entries: Entry[], values: Record<string, string | undefined>): string {
   const missing: string[] = [];
   const badValue: string[] = [];
+  const unsafe: string[] = [];
   const forbidden = FORBIDDEN.filter((k) => (values[k] ?? '') !== '');
   const lines: string[] = [];
   for (const e of [...entries].sort((a, b) => a.name.localeCompare(b.name))) {
@@ -52,11 +54,19 @@ export function renderEnv(entries: Entry[], values: Record<string, string | unde
       badValue.push(e.name);
       continue;
     }
+    // The file is read by Docker Compose's env_file parser, which expands $VAR,
+    // strips ` #...` comments, unquotes quotes and trims edge spaces. Rather
+    // than guess its rules, refuse values it could change.
+    if (/[$#"'\\`]/.test(v) || v !== v.trim()) {
+      unsafe.push(e.name);
+      continue;
+    }
     lines.push(`${e.name}=${v}`);
   }
   const problems = [
     missing.length && `missing required: ${missing.join(', ')}`,
     badValue.length && `value contains a line break: ${badValue.join(', ')}`,
+    unsafe.length && `value has a character Compose would change ($ # quotes backslash backtick, or edge spaces): ${unsafe.join(', ')}`,
     forbidden.length && `must not be set in production: ${forbidden.join(', ')}`,
   ].filter(Boolean);
   if (problems.length) throw new EnvRenderError(problems.join('; '));
@@ -101,6 +111,16 @@ function main(): void {
   const [mode, flag, boxPath] = process.argv.slice(2);
   const manifestPath = new URL('../../deploy/env.production.manifest', import.meta.url);
   const entries = parseManifest(readFileSync(manifestPath, 'utf8'));
+  if (mode === 'orphans' && flag === '--box' && boxPath) {
+    // Keys on the box the manifest lacks would be deleted by the next install.
+    const names = new Set(entries.map((e) => e.name));
+    const orphans = [...parseEnvFile(readFileSync(boxPath, 'utf8')).keys()].filter((k) => !names.has(k)).sort();
+    if (orphans.length) {
+      console.error(`keys on the box but not in deploy/env.production.manifest (a deploy would delete them): ${orphans.join(', ')}`);
+      process.exit(1);
+    }
+    return;
+  }
   try {
     const rendered = renderEnv(entries, valuesFromEnv(process.env));
     if (mode === 'render') {

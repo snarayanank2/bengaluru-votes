@@ -154,9 +154,30 @@ jobs:
             echo "  BatchMode yes"
           } > ~/.ssh/config
 
+      # A push that is no longer main's head is skipped: a newer push is (or will
+      # be) deploying a tree that includes it. This stops a slow, fully tested
+      # older commit from overwriting a newer fast one.
+      - name: Is this still the head of main?
+        id: fresh
+        if: env.ACTION != 'rollback' && github.event_name == 'push'
+        run: |
+          head=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$head" != "$SHA" ]; then
+            echo "main has moved on ($SHA is not the head); a newer deploy covers it."
+            echo "STALE=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Refuse to delete box keys the manifest lacks
+        if: env.ACTION != 'rollback' && env.STALE != 'true'
+        run: |
+          umask 077
+          ssh vps 'cat /etc/bengaluru-votes/.env.production' > "$RUNNER_TEMP/box.env"
+          npx tsx scripts/ci/env-render.ts orphans --box "$RUNNER_TEMP/box.env"
+          rm -f "$RUNNER_TEMP/box.env"
+
       - name: Decide the tag
         id: tag
-        if: env.ACTION != 'rollback'
+        if: env.ACTION != 'rollback' && env.STALE != 'true'
         run: |
           set -euo pipefail
           case "$ACTION" in
@@ -166,6 +187,8 @@ jobs:
             deploy-tag)
               [[ "$INPUT_TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$ ]] || { echo "tag input must look like v2026.11.04" >&2; exit 1; }
               git rev-parse --verify --quiet "refs/tags/$INPUT_TAG" >/dev/null || { echo "no such tag: $INPUT_TAG" >&2; exit 1; }
+              # Tests are skipped for an existing tag, so it must point into main's history.
+              git merge-base --is-ancestor "$INPUT_TAG^{commit}" origin/main || { echo "$INPUT_TAG is not in main's history" >&2; exit 1; }
               echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
               echo "create=false" >> "$GITHUB_OUTPUT"
               ;;
@@ -178,7 +201,7 @@ jobs:
           esac
 
       - name: Create and push the release tag
-        if: steps.tag.outputs.create == 'true'
+        if: steps.tag.outputs.create == 'true' && env.STALE != 'true'
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
@@ -188,11 +211,12 @@ jobs:
 
       - name: Install the env file
         id: install
-        if: env.ACTION != 'rollback'
+        if: env.ACTION != 'rollback' && env.STALE != 'true'
         run: deploy/install-env.sh < "$RUNNER_TEMP/env.production"
 
       - name: Deploy
         id: ship
+        if: env.STALE != 'true'
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
@@ -211,14 +235,16 @@ jobs:
       # matches what is actually running; only exit 3 needs the image rolled back.
       - name: Restore the previous env and roll back
         id: recover
-        if: failure() && steps.ship.outcome == 'failure'
+        if: (failure() || cancelled()) && (steps.ship.outcome == 'failure' || steps.ship.outcome == 'cancelled')
         env:
           SHIP_RC: ${{ steps.ship.outputs.rc }}
         run: |
           set +e
-          if [ "$ACTION" != rollback ] && [ "$SHIP_RC" != 0 ]; then
+          if [ "$ACTION" != rollback ]; then
             ssh vps 'f=/etc/bengaluru-votes/.env.production; [ -f $f.prev ] && cp -p $f.prev $f'
           fi
+          # A cancelled or timed-out deploy leaves no exit code: assume the worst.
+          [ -z "$SHIP_RC" ] && SHIP_RC=3
           if [ "$SHIP_RC" = 3 ] && [ "$ACTION" != rollback ]; then
             if deploy/deploy.sh production --rollback; then
               echo "kind=rolled-back" >> "$GITHUB_OUTPUT"

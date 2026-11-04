@@ -51,6 +51,19 @@ describe('renderEnv', () => {
   });
 });
 
+describe('renderEnv: values Compose would mangle in an unquoted env_file', () => {
+  const e = [{ name: 'PW', kind: 'secret' as const, required: true }];
+  for (const [label, v] of [['dollar', 'ab$cd'], ['hash', 'ab #cd'], ['quote', 'a"b'], ['apostrophe', "a'b"], ['backslash', 'a\\b'], ['backtick', 'a`b'], ['leading space', ' ab'], ['trailing space', 'ab ']] as const) {
+    it(`rejects a value with a ${label}, naming the key only`, () => {
+      let msg = '';
+      try { renderEnv(e, { PW: v }); } catch (err) { msg = (err as Error).message; }
+      expect(msg).toContain('PW');
+      expect(msg).not.toContain(v.trim());
+    });
+  }
+  it('accepts url-safe values', () => expect(renderEnv(e, { PW: 'postgres://u:p%24w@h:5432/db?x=1&y=2' })).toContain('PW=postgres://'));
+});
+
 describe('valuesFromEnv', () => {
   it('merges ALL_VARS and ALL_SECRETS JSON, secrets winning', () => {
     expect(valuesFromEnv({ ALL_VARS: '{"A":"1","B":"v"}', ALL_SECRETS: '{"B":"s"}' })).toEqual({ A: '1', B: 's' });
