@@ -109,6 +109,38 @@ Still confirm you can open a **second** session before closing the first —
 survives it; that guards against lockout, which the config check alone does
 not.
 
+### Second layer and brute-force protection (applied 2026-11-04)
+
+**Hostinger panel firewall.** In hPanel → VPS → Security → Firewall, the group
+`apr-ssh-web` (accept TCP 22, 80, 443; drop everything else) is attached to
+this VPS. It filters outside the VM, so it also covers Docker-published ports
+that bypass `ufw`. Keep 80 open: certbot's HTTP-01 renewal needs it. Do not
+restrict 22 by source IP — CI deploys from GitHub runners whose addresses
+change.
+
+**sshd drop-in.** `/etc/ssh/sshd_config.d/00-hardening.conf` sets
+`PermitRootLogin prohibit-password`, `PasswordAuthentication no`,
+`KbdInteractiveAuthentication no`, `MaxAuthTries 3`, `LoginGraceTime 30`. It
+sorts before `50-cloud-init.conf`, so it wins under sshd's first-value-wins
+parsing. On 2026-11-04 the box was found with `PermitRootLogin yes` and
+`PasswordAuthentication yes` despite the steps above; re-verify with
+`sshd -T` after provisioning or an image rebuild.
+
+**fail2ban** watches sshd (`/etc/fail2ban/jail.d/sshd-local.conf`: 4 failures
+in 10 minutes, 1 hour ban, increasing). Your own admin address goes in
+`/etc/fail2ban/jail.d/ignore-admin.conf` (`ignoreip`) — a few failed
+attempts from a laptop will otherwise ban it, and recovery is the hPanel
+**Web console** (`fail2ban-client set sshd unbanip <ip>`). Refresh that
+address if your ISP changes it.
+
+**unattended-upgrades** is enabled for the security pockets, without
+automatic reboot. Check `/var/run/reboot-required` occasionally; a reboot
+restarts the stack.
+
+**CI deploy key** in `/root/.ssh/authorized_keys` carries
+`no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc`. The
+deploy only runs plain remote commands.
+
 ---
 
 ## 2. DNS
