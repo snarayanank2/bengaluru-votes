@@ -1,208 +1,237 @@
-# Candidate data processing: four stages, people and budget
+# Candidate data operations
 
-**For:** Oorvani Foundation Board and the team hiring transcribers and curators
+How roughly 4,000 GBA candidate affidavits across 369 wards become published, sourced report cards: who does each step, what the code does, and what it costs. Election dates are offsets from the announcement **N** in [election-timelines.md](election-timelines.md); whether the affidavits can be obtained at all is [ksec-data-risk.md](ksec-data-risk.md).
 
-**Date:** 20 September 2026
+## 1. The pipeline
 
-**Status:** Operating plan for review. Online availability is an assumption; throughput and costs need a representative pilot.
+| Stage | Who | Where | Publishes? |
+|---|---|---|---|
+| 1. Bulk loading (§2) | Admin (Siva) | `/admin/affidavits`, `npm run upload:affidavits` | No |
+| 2. AI extraction (§3) | `extract-worker` | `jobs/extract-affidavits.ts` | Yes, immediately, labelled AI-extracted, when the ward resolves |
+| 3. Transcription (§4) | Paid Kannada-reading transcribers | `/transcribe` | Yes, immediately, labelled checked by a person |
+| 4. Curation (§5) | Two curators on a rota | `/curator/queue`, `/curator/matching` | Yes, immediately |
 
-Bengaluru Votes will turn approximately **4,000 candidate affidavits across 369 wards** into sourced report cards in English and Kannada. Citizens can compare candidates and open the original affidavit. The operation follows four stages, in this order:
+- Stages overlap. **Nothing waits for the notification, the final candidate list or a complete set**: each affidavit moves on as soon as the one before it is done.
+- Every published value links to the stored affidavit PDF (`/media/{id}/{hash}`), served from Postgres.
+- A value is in one of two states: *AI-extracted* or *checked by a person*. There is no second reading, consensus or approval step; citizen flags (§5) are the correction net.
+- Public report cards show seven affidavit fields (§3.2) plus the ward. Rejected and withdrawn candidates are §6.
 
-1. **Siva loads the documents as soon as initial data is available online.**
-2. **AI extracts candidate fields and one confidence percentage per affidavit.** Allow three elapsed days for extraction.
-3. **Transcribers check the affidavits:** missing data first, low confidence next, then the rest. Allow five working days for transcription.
-4. **Curators respond to user flags and match affidavits waiting for a candidate or ward**, dismissing incorrect flags or fixing the data. Coverage continues through election day.
+**Timing envelope.** Three elapsed days of AI extraction (§3.6) followed by five working days of transcription (§4.4): about eight days after a complete usable set is ready. From a complete set at nominations close (N+12) that is around N+20; from the final list (N+15), around N+23, the assumed poll day, with no margin. Early partial loading brings this forward; late files push it back.
 
-The stages can overlap as documents arrive. **We do not wait for a final notification, the final candidate list or the complete bulk set to start loading and processing.** Siva reconciles later candidate-status changes against the official lists. The plan below describes the intended operation; it does not claim that all tools are implemented or change the application's permissions.
+## 2. Bulk loading
 
-## 1. Bulk loading — Siva
+**Owner:** the admin (Siva). **Start:** as soon as the first filed affidavits are online. Do not wait for final lists.
 
-**Starting assumption: all election affidavits are available online.** This is the scenario used for planning, not a claim that access has been secured. The separate [acquisition risk assessment](ksec-data-risk.md) records the unresolved access dependency.
+- **Upload form:** `/admin/affidavits` (admin only), one or more PDFs per request.
+- **Bulk script:** `npm run upload:affidavits -- <directory> --as <admin email>` (`scripts/upload-affidavits.ts`). Uses `DATABASE_URL`; makes no API calls.
+- Both call `enqueueAffidavit` (`src/lib/affidavit-queue.ts`): validates a PDF of at most 20 MB, stores it in Postgres (`media`), and inserts a `queued` row in `candidate_affidavits`. A PDF whose SHA-256 is already stored is reported as a duplicate and skipped, so reruns are safe.
+- No manifest is needed: the AI reads who the affidavit is for (§3.4).
+- The admin also owns the **Failed** list on `/admin/affidavits`: **Retry** (back to `queued`, attempts reset) or **Discard** (deletes the affidavit and its PDF; refused once a candidate is attached). Curators cannot upload, retry or discard.
+- Late arrivals are loaded the same way, whenever they appear.
 
-As soon as the first documents are available, Siva:
+Loading time and any acquisition charges are not measured or budgeted.
 
-- Downloads and loads available affidavits and the accompanying candidate-list data.
-- Matches each document to the correct candidate and ward, checks duplicates and records coverage.
-- Preserves the original affidavit and its source link so citizens can open it from the report card.
-- Sends usable records to AI extraction without waiting for the remaining documents.
-- Loads later arrivals and reconciles rejected or withdrawn candidates as official lists change.
+## 3. AI extraction
 
-Name, ward, party and gender were expected from the nomination list. **As built (2026-10-13), the AI reads them from the affidavit itself**, and the affidavits whose ward the AI could not place wait for a person to match them: curators do that at `/curator/matching` (an admin can too, at `/admin/affidavits`, "Needs matching"). A wrong AI-read ward is public until a person reads that affidavit, so transcribers confirm name, party and gender as part of each reading. If a nomination list arrives, reconciling it against these candidates is still to design. Poor scans that need repair still increase the workload. Affidavits are stored in the platform's own database (decided 2026-10-13; Google Cloud Storage was dropped).
+### 3.1 The worker
 
-**Time and cost:** loading time depends on the online source and file quality and has not been measured. Siva's loading time and any acquisition charges are not priced in the budget below. The three-day AI allowance starts with usable, matched records; it must not silently absorb unmeasured loading or scan-repair work.
-
-## 2. AI extraction — three elapsed days
-
-For each loaded affidavit, AI produces the following candidate information plus **one confidence percentage for the affidavit as a whole**:
-
-| Field | Information to extract |
+| Item | Value |
 |---|---|
-| Age | Age declared in the affidavit |
-| Educational qualifications | Qualifications as stated in the source |
-| Total value of assets | Declared total value |
-| Criminal cases | Pending cases and convictions |
+| Process | `jobs/extract-affidavits.ts`, long-running; the `extract-worker` service in `deploy/compose.production.yml` (operations: `deploy/runbook.md`) |
+| Extraction module | `src/lib/affidavit-extraction.ts` (pure, no database) |
+| Model | `EXTRACTION_MODEL`, default `claude-opus-5-5`; one of Haiku 5.5, Sonnet 5.5, Opus 5.5 |
+| Concurrency | `EXTRACTION_CONCURRENCY`, default 10 (1–50); `deploy/compose.local.yml` defaults to 3 |
+| Input | The PDF itself, sent as a document block. No separate OCR step |
+| Claim | Atomic `SKIP LOCKED` claim with a 15-minute lease; a dead worker's affidavit is reclaimed after the lease |
+| Attempts | 3. `api_error`, `truncated` and `invalid_output` retry; `refusal` fails at once. Then `failed` (§2) |
+| No `ANTHROPIC_API_KEY` | Exits non-zero; the queue is left untouched |
 
-An explicit **“not declared”** must remain distinguishable from a missing or unreadable extraction. Confidence is a signal for ordering the human queue, not a measured probability that the affidavit is correct. The pilot must determine the low-confidence threshold; this plan does not invent one.
+States (`affidavit_state`): `queued` → `extracting` → `published` | `needs_matching` | `failed`.
 
-**Publication remains immediate:** extracted values publish with an “AI-extracted” label and a link to the source. Human review follows. Missing data takes queue priority regardless of the affidavit's confidence percentage.
+### 3.2 Extracted fields
 
-### AI time budget
+Seven published fields (`AFFIDAVIT_FIELD_KEYS`, `src/lib/affidavit-publish.ts`), plus the ward, which is used for matching:
 
-**Allow three elapsed days, or 72 hours, for the planned 4,000-affidavit extraction workload.** Begin on the initial usable records and continue as more arrive. This is a processing allowance, not a promise to finish all candidates within three days of the first file appearing if the rest arrive later.
-
-There is no measured processing rate for these Kannada affidavits yet. Retain the earlier planning assumptions of roughly ten scanned pages per affidavit, **two to five minutes per affidavit**, and **25% overhead for ordinary retries and processing**:
-
-| Simultaneous extraction jobs | Modelled elapsed time for 4,000 affidavits, including 25% overhead |
-|---|---:|
-| 1 | 167–417 hours |
-| 6 | 28–69 hours |
-| **10: working provision** | **17–42 hours** |
-
-Calculation: **4,000 × minutes per affidavit ÷ simultaneous jobs ÷ 60 × 1.25**.
-
-Ten simultaneous jobs leave approximately 30 hours inside the 72-hour window at the slower assumed pace. Six just fit the modelled range but leave little margin. These calculations assume jobs can run continuously, including overnight, and that account limits support the throughput. The three-day allowance replaces the earlier one-day run plus a separate contingency day; it is not three days plus another day. Software development, major outages and extensive scan repair remain outside it.
-
-### AI cost budget
-
-**Provision ₹35,000–₹70,000 for extraction API usage, before taxes and the overall budget contingency.** This includes ordinary retries and remains a provisional reserve pending the pilot. Extending the processing window reduces the concurrency needed; it does not by itself reduce the cost of reading the same 4,000 documents.
-
-The reserve came from approximately doubling the older ₹17,000–₹35,000 allowance, which assumed discounted batch processing with the previously specified provider, about 30,000 input and 500 output tokens for each ten-page affidavit. It is **not an OpenAI quote**. A batch option may reduce cost, but its actual price and turnaround must be tested together before lowering the reserve.
-
-The current architecture specifies Anthropic. The proposed alternative is an automated OpenAI API process that Codex builds and orchestrates. API usage is separate from development cost; a Codex subscription should not be assumed to cover the API bill. No vendor switch is approved by this document.
-
-### Pilot before committing the run
-
-Use **50–100 representative Kannada affidavits**, including handwriting and poor scans. Measure errors found by readers, candidate completeness, confidence behaviour, processing time, retry frequency, token use and actual cost. Repeat at the intended concurrency and measure human reading time too. Cleaner English samples can test the machinery but cannot establish Kannada reading accuracy.
-
-## 3. Transcriber queue — five working days
-
-Every loaded and extracted affidavit enters the human queue. Paid, Kannada-reading transcribers receive one affidavit at a time and compare the original scan with the AI-prefilled fields.
-
-**Queue order is mandatory:**
-
-1. Affidavits with missing data.
-2. Affidavits with low confidence, using the affidavit-level confidence percentage.
-3. All remaining affidavits.
-
-The queue is city-wide. Transcribers cannot choose their ward, party or candidate. Abandoned assignments return to the queue. One transcriber confirms or corrects each assigned affidavit. Their save publishes immediately and marks the checked fields **“checked by a person”**; any fields not checked remain AI-labelled. There is no compulsory second reading or curator approval.
-
-A transcriber must not guess an unreadable value. Unresolved readings remain visibly unresolved. They do not automatically enter the curator queue: that queue contains user flags only. Loading, failed extractions and discarding unusable files are Siva's; curators match the affidavits that are waiting for a ward or a candidate.
-
-### Staffing and pay
-
-Schedule each transcriber for **eight hours a day for five days: 40 paid hours**. Preserve the earlier productive-time ratio of 20 hours out of 24: this gives **33⅓ productive reading hours per person**, with **6⅔ hours** for briefing, breaks, handover and coordination. This is a staffing assumption to validate in the pilot.
-
-At **ten minutes per affidavit**, one person reads **200 affidavits** over five days. The total workload remains approximately **667 person-hours**.
-
-| Staffing option | Readers | Capacity over five days | Fees at ₹3,500 per person |
-|---|---:|---:|---:|
-| Minimum full coverage at ten minutes | 20 | 4,000 affidavits | ₹70,000 |
-| **Recommended provision** | **23** | **4,600 affidavits** | **₹80,500** |
-| Minimum at fifteen minutes per affidavit | 30 | 4,000 affidavits | ₹1,05,000 |
-
-**Provision 23 transcribers**, giving a 15% capacity buffer at the assumed ten-minute pace. The agreed planning fee is **₹3,500 per person for the five-day engagement**. This replaces the previous ₹2,000-for-three-days rate; it is not confirmation that staff have been contracted.
-
-Transcription can start while later AI work continues, once the queue has enough ready work. Schedule the five paid shifts so waiting for files or AI does not consume the budgeted reading hours. Late arrivals may require extending or rescheduling the engagement rather than treating the five days as unlimited availability.
-
-Before recruitment closes, confirm Kannada reading ability, equipment, email access for staff OTP login, shift availability, fees and the queue briefing. Staffing targets full human coverage and does not depend on an unmeasured claim that AI gets 85% of candidates right.
-
-## 4. Curator queue — user flags through election day
-
-**Curators respond to user flags and match affidavits waiting for a candidate or ward.** When a user flags candidate information as wrong, the flag enters the curator queue. The curator checks the reported issue against the affidavit and chooses one of two outcomes:
-
-| Finding | Curator action |
-|---|---|
-| The flag is incorrect or unsupported | Dismiss the flag with a reason |
-| The published data is wrong | Fix the data; the correction publishes immediately |
-
-An affidavit waits to be matched when the AI could not place it in a ward, when a candidate of the same name is already in that ward, or when a transcriber sent it back as the wrong ward or the wrong document. The curator reads the affidavit, picks the ward and confirms the name and party. Nothing from an affidavit that has never been published is public until then; one a transcriber sent back was already published, and its values stay on the candidate's page until it is matched again.
-
-Curators do not routinely read every affidavit, approve transcriber work, monitor transcriber performance or receive unflagged transcription cases. They add one candidate's affidavit in the candidate editor when it is missing; they do not bulk upload, retry or discard affidavits. Publication does not depend on their approval.
-
-**Curation starts when published data receives user flags and continues through election day.** It can therefore overlap AI extraction and transcription. It is an ongoing rota, not another fixed three-day or five-day production stage.
-
-### Workload and provision
-
-Assume **5% of 4,000 candidates are flagged: about 200 candidate cases** over the period. For planning, retain **ten minutes of total handling per flagged candidate**, including related flags, rather than assuming exactly one flag per candidate or counting duplicates twice.
-
-| Planning measure | Estimate |
-|---|---:|
-| Candidates with user flags | 200 |
-| Total handling time | Approximately 33⅓ hours |
-| **Recommended curator provision** | **2 people on a rota through election day** |
-| Casework capacity to reserve | 20 productive hours each across the period; 40 hours total |
-| Planning fee | ₹5,000 each for the cycle; **₹10,000 total** |
-
-Two curators provide shared availability and about 6⅔ hours of casework capacity above the estimate. The two-curator provision was sized on flags from 5% of candidates; matching volume depends on how often the AI cannot resolve a ward and is not in that estimate. This headcount is a planning recommendation, not a measured service-level requirement. Confirm daily coverage, handovers and response expectations before hiring. The 40-hour capacity reservation does not imply full-time daily shifts, and the cycle fee does not mean unlimited work.
-
-Flags may cluster near polling or take longer than ten minutes. Multiple distinct problems, repeated flags, or unresolved source issues can exceed the allowance. Review actual incoming work and remaining capacity daily. A 20-minute handling average would double casework to about 67 hours and require more provision. Any coverage after election day would need a separate agreement.
-
-One human reading can still miss an error. Source links, visible checking labels and the user-flag queue support correction; a “checked by a person” label is not a guarantee of accuracy. The current plan has no change-history or restore facility.
-
-## 5. Combined schedule and election window
-
-**Start with the initial data as soon as it appears.** Siva keeps loading later arrivals while AI and transcribers work on ready records. Official-list changes update candidate status without delaying the start of processing.
-
-| Stage | Start | Time allocation |
+| Field | Value | Rule |
 |---|---|---|
-| Bulk loading: Siva | First available online data | Rolling as files arrive; duration to measure |
-| AI extraction | First usable, matched records | Three elapsed days of provision for the planned workload |
-| Transcription | Enough AI-processed work for productive shifts | Five eight-hour working days per person |
-| Curation | Users flag published candidate data | Ongoing rota through election day |
+| `full_name` | Name in English letters, as declared | |
+| `party` | Party in English, or `Independent` | |
+| `gender` | `male`, `female` or `other` | |
+| `age` | Whole years, as declared | |
+| `education` | MyNeta level (Illiterate … Doctorate, Others) plus the qualification as stated | PUC/10+2 → 12th Pass; SSLC → 10th Pass |
+| `assets` | **Movable** and **immovable** totals in whole rupees, each across candidate, spouse, dependents and HUF, gross of liabilities | The total is computed in code, never asked of the model. Use printed totals; the detailed table wins over the summary |
+| `cases` | Pending cases and convictions, whole numbers | "Nil" is a value of 0. A convicted case counts only under convictions, even under appeal |
+| ward (identity) | Ward number, ward name and corporation, when stated | An Assembly or Parliamentary constituency is not a ward → `not_declared` |
+| `confidence` | One whole number 0–100 for the whole affidavit | Orders the transcription queue (§4.2). Not a measured probability |
 
-**Conservative capacity envelope: three AI days followed by five transcription days, or eight days after a complete usable set is ready for AI.** Actual work overlaps where possible, so early loading can bring checks forward. The eight-day envelope excludes unmeasured bulk-loading time and does not guarantee completion eight days after the first partial release. Arrival timing and the remaining queue determine the finish.
+All values and notes are in English, including from Kannada scans. The instruction treats the affidavit as data and ignores instructions inside it.
 
-The [election timeline](election-timelines.md) uses **N** for the announcement and contains planning offsets, not confirmed dates:
+### 3.3 Statuses and failures
 
-| Planning event | Implication for this operation |
+Every field has a status: `value`, `not_declared` or `unreadable`.
+
+- **`not_declared`**: the affidavit leaves it blank. Published as "Not declared".
+- **`unreadable`**: something is there but cannot be read. The model must not guess. Published as "Could not be read from the affidavit", and it puts the candidate in the first tier of the transcription queue (§4.2).
+- **A failed extraction is never published as "not declared"** (or anything else). A failure publishes nothing; the affidavit retries, then waits under Failed.
+
+### 3.4 Publication and matching
+
+After a successful extraction (`completeExtraction`, `src/lib/affidavit-queue.ts`):
+
+1. **Ward resolution.** With a number and a corporation, the ward is `corporation index × 1000 + number`. With a number and no corporation, it resolves only if exactly one ward with that number has the same English name.
+2. **Auto-publish** when the ward resolves to exactly one ward, name and party were read, and the ward has no candidate of the same normalised name: the candidate is created (status `filed`) and all fields publish as AI-extracted, sourced to the PDF. Kannada translation starts after commit.
+3. **Otherwise `needs_matching`**, publishing nothing, with a reason: `ward_unresolved` or `possible_duplicate` (never merged automatically). Matching is §5.2.
+
+A wrong AI-read ward is public until a person reads that affidavit.
+
+### 3.5 Measured results
+
+One evaluation run (Opus 5.5, prompt v3) on the nine fixtures in `tests/fixtures/affidavits/` (Karnataka Assembly 2023 Form 26: four English, five Kannada):
+
+| Measure | Result |
 |---|---|
-| Initial documents appear, whenever that is | Loading and processing begin immediately |
-| Around N+12: nominations close | If a complete set is ready for AI then, the conservative eight-day finish is around **N+20** |
-| Around N+15: final contesting list | Reconcile rejections/withdrawals. If the complete set is only AI-ready then, the eight-day finish is around **N+23**, with no pre-poll margin |
-| Around N+21: outbound candidate communications stop | The website and user-flag handling remain available |
-| Around N+23: polling | Curator coverage continues through election day |
+| Scored values | 45 (age, education level, assets total, pending cases, convictions × 9) |
+| Correct / wrong / abstained / unscored | 41 / 2 / 1 / 1. Both wrong values are assets totals; the abstention is an education level |
+| Assets within 1% | 6 of 8 |
+| Failed attempts | 1, succeeded on retry |
+| Mean time per successful call | ~19 s (Kannada 23 s, English 14 s) |
+| Cost | $1.76 for 9 affidavits, about $0.20 each |
 
-The N+15 case is a late-data scenario, **not an instruction to wait**. Earlier partial work helps but does not establish a guaranteed completion date. Late files or a slow pilot require an explicit staffing or coverage decision. Data completion also does not itself complete the wider launch campaign.
+Limits: nine documents, one model, Assembly-format affidavits rather than the KSEC local-body format, identity fields not scored in this run, concurrency and rate limits not exercised.
 
-## 6. Combined cost budget
+**Scoring** (`scripts/eval-extraction/grade.ts`), against `tests/fixtures/affidavits/expected.json` (MyNeta values, or Siva's reading with a reason):
 
-The budget covers the **candidate-data operation**, not the full platform or election campaign. It uses **23 transcribers for five days at ₹3,500 each**, **two curators at ₹5,000 each through election day**, and the existing non-staff reserves.
-
-| Item, in operational order | Basis | Planning amount |
-|---|---|---:|
-| Bulk loading | Siva; time and any acquisition charges not priced | Excluded |
-| AI extraction | Same 4,000-document workload; provisional API reserve | ₹35,000–₹70,000 |
-| Transcription | 23 × ₹3,500 for five days | ₹80,500 |
-| Curation | 2 × ₹5,000 for the cycle; rota through election day | ₹10,000 |
-| Affidavit storage and downloads | Existing cycle allowance | ₹2,000–₹10,000 |
-| Kannada translation | Up to the existing platform-wide allowance | ₹5,000 |
-| **Subtotal** | Before contingency and taxes | **₹1,32,500–₹1,75,500** |
-| Contingency | 20% of subtotal | ₹26,500–₹35,100 |
-| **Planning total** | Before applicable taxes | **₹1,59,000–₹2,10,600** |
-
-**Proposed rounded provision: ₹2.11 lakh before taxes.** This remains conditional on the pilot and the scope below; it is not approved spending or a guaranteed cap. Longer AI time does not create an assumed API discount.
-
-If reading takes fifteen minutes, the minimum becomes 30 transcribers, without the 15% reading-capacity buffer. At ₹3,500 each, transcription costs ₹1,05,000 and the same budget with two curators becomes **₹1,88,400–₹2,40,000 including 20% contingency, before taxes**. Measure the pace before fixing the team.
-
-**Excluded or shared costs:** Siva's loading time, acquisition charges, software development, the operations lead's time, recruitment/training beyond the engagement, workspace/equipment/travel, shared email/OTP services, wider hosting and backup, legal review, and citizen outreach. Additional curator hours or post-election coverage are not separately priced. Finance should review applicable taxes and foreign-exchange movements and avoid double-counting costs already funded in platform budgets. Storage and translation remain inherited allowances, not refreshed vendor quotations.
-
-## 7. Hiring and readiness decisions
-
-| Decision | What Oorvani needs to confirm |
+| Outcome | Rule |
 |---|---|
-| Bulk loading | Siva's access and loading method, starting with initial online data |
-| AI | Representative pilot, provider/model, ten-job throughput, confidence threshold and actual API cost |
-| Transcribers | Provision 23 Kannada readers, five shifts, ₹3,500 each, equipment and working staff email login |
-| Curators | Provision two vetted people, ₹5,000 each, daily rota and reserved casework hours through polling |
-| Coordination and finance | Named operations lead and budget owner; ₹2.11 lakh provisional envelope before taxes |
-| Rehearsal and daily review | Prove loading, source links, labels, assignments and flag resolution; track imported, extracted, checked, unresolved and flagged records against capacity |
+| correct | Status `value` and equal to the expected value (assets: exact rupees; name and party after normalisation; gender exactly) |
+| wrong | Status `value` and different, or `not_declared` where a value is expected |
+| abstained | Status `unreadable` |
+| unscored | No expected value |
 
-## References and status of assumptions
+`not_declared` for cases counts as an expected zero and is flagged. Assets also report within-1% as a secondary figure. Notes, the stated qualification and confidence are not scored. A failed call produces no scored values and is counted separately.
 
-- [Stakeholder overview](overview.md), §§3.1, 8–9 and 11: report-card scope, publication policy and original fee/workload assumptions. The five-day ₹3,500 transcriber engagement and revised staffing above replace the older operation's figures.
-- [Milestone plan](milestones.md), §§9–11 and 13, and [architecture](architecture.md), §§6–7: implementation context. This operating brief follows the clarified curator role (user flags, plus matching the affidavits waiting for a candidate or ward, added 2026-10-13) and immediate initial-data start; older descriptions of broader curator oversight do not define this operation.
-- [Election timeline](election-timelines.md), §§3–4: authority for unconfirmed election offsets.
-- [Acquisition risk assessment](ksec-data-risk.md): the online-access dependency assumed solved for this scenario.
-- [OpenAI PDF inputs](https://developers.openai.com/api/docs/guides/file-inputs) and [rate limits](https://developers.openai.com/api/docs/guides/rate-limits): technical references retained from the earlier proposal, which consulted them on 20 September 2026. They do not establish affidavit-specific time, accuracy or cost.
+**Reproduce:** `npm run eval:extraction -- --pilot` (one affidavit per model, prints a cost projection), `-- --full --out <dir>`, `-- --regrade <dir>` (rescore without API calls); `--model <id>` restricts to one model. Makes paid calls and needs `ANTHROPIC_API_KEY`. Output goes to `eval-runs/` (gitignored): `results.jsonl`, `errors.jsonl`, `summary.md`, `disagreements.md`.
 
-Curators matching waiting affidavits was added on 2026-10-13 and is not in the workload estimate. The four stages, Siva's loading ownership, immediate initial-data start, affidavit-level confidence, three-day AI window, five-day transcription window, 5% flagged-candidate assumption, curation through polling and ₹3,500 transcriber fee reflect the clarified planning brief. The 23-reader/two-curator provision, productive-time ratio, AI and human processing rates, API reserve and contingency remain estimates to validate. None is measured performance or a confirmed staff contract.
+### 3.6 Planning allowance
+
+The allowance is a provision, not a measurement. Keep it separate from §3.5.
+
+| Item | Planning allowance | Measured equivalent (§3.5) |
+|---|---|---|
+| Elapsed time | **Three days (72 h)** for 4,000 affidavits, from the first usable records | — |
+| Per affidavit | 2–5 min, plus 25% overhead for retries | ~19 s per call |
+| 4,000 at 10 concurrent jobs | 17–42 h (`4,000 × minutes ÷ 10 ÷ 60 × 1.25`) | ~2 h before retries and rate limits |
+| API cost | **₹35,000–₹70,000** reserve, before taxes | ~$800 for 4,000 before retries |
+
+The three days assume continuous running and account rate limits that allow ten concurrent jobs. They exclude scan repair, outages and loading.
+
+**Pilot before the real run:** 50–100 representative KSEC Kannada affidavits, including handwriting and poor scans, at the intended concurrency. Measure errors, abstentions, confidence behaviour, time, retries, tokens and cost, and set the low-confidence threshold (§4.2) from it.
+
+## 4. Transcription
+
+### 4.1 Screens
+
+| Route | What |
+|---|---|
+| `/transcribe` | One Start control. **No list**, search, filters or ward selector |
+| `/transcribe/{assignment-id}` | The scan beside a form pre-filled with the published values |
+| `/transcribe/guide` | Onboarding: the rules a transcriber works to |
+
+- Admitted roles: transcriber and admin; a curator gets 403. Every read and write also requires an open, unexpired assignment belonging to the caller, otherwise 404, for an admin too (`src/lib/transcribe.ts`).
+- **Desktop only.** The scan and the form must be side by side; there is no phone layout.
+
+### 4.2 Queue order
+
+The draw (`drawAssignment`) is one atomic statement. The queue holds published affidavits with an extraction and a candidate that nobody has transcribed yet. Order:
+
+1. **Missing data**: the candidate has any field marked unreadable.
+2. **Low confidence**: affidavit confidence below `low_confidence_threshold` in `app_settings`, or no confidence. Unset or invalid → **70**, a placeholder until the pilot (§3.6) sets it.
+3. **The rest.**
+
+**Random within each tier.** City-wide; nobody chooses a ward, party or candidate. A transcriber holds at most one assignment.
+
+### 4.3 The hold and the save
+
+- An assignment is a **10-minute hold** (`ASSIGNMENT_MINUTES`). Once it expires the affidavit goes back to the queue, and a save after expiry writes nothing. The transcriber can also release it.
+- For each field the transcriber confirms or corrects the value, or marks it *Not declared* or *Cannot read*. They must not guess.
+- **One "I checked this against the affidavit" checkbox for the whole form**, required server-side (`confirmChecked`); without it nothing saves. All fields then validate and publish together.
+- The save publishes at once and marks values *checked by a person*. A *Cannot read* value stays unresolved publicly and is not counted as checked.
+- Each affidavit is read once (`transcribed_at`); it then leaves the queue.
+- **The ward is read-only.** "Wrong ward or wrong document", with a required note, sends the affidavit to `needs_matching` (`reported_by_transcriber`); its published values stay on the candidate's page until it is matched again (§5.2).
+
+**Known weakness:** values are pre-filled, so a confident wrong extraction is more likely to be confirmed than caught.
+
+### 4.4 Budget and sizing
+
+**Five working days** of transcription, in paid shifts that start once enough extracted work is queued.
+
+| Assumption | Value |
+|---|---|
+| Affidavits | 4,000, all read by a person |
+| Pace | 10 min per affidavit (unmeasured) |
+| Shift | 8 h × 5 days = 40 paid hours; 33⅓ productive reading hours |
+| Per transcriber | 200 affidavits; total workload ~667 person-hours |
+| Fee | ₹3,500 per person for the five days |
+
+| Staffing | Transcribers | Capacity | Fees |
+|---|---:|---:|---:|
+| Minimum at 10 min | 20 | 4,000 | ₹70,000 |
+| **Provision** | **23** | **4,600** | **₹80,500** |
+| Minimum at 15 min | 30 | 4,000 | ₹1,05,000 |
+
+The worst-first order means a short-handed or slower team leaves the cleanest affidavits unread. Before hiring closes, confirm Kannada reading, a desktop or laptop, shift availability and a staff account for each person (created at `/admin/users`). Staff sign-in is being reworked to per-staff passwords in a separate change.
+
+## 5. Curation
+
+Curators are city-wide (no ward scoping). Their job is two lists, nothing else. Onboarding is `/curator/guide`.
+
+### 5.1 Citizen flags
+
+Citizens flag candidate fields anonymously (CAPTCHA, rate limits, duplicate suppression). Each flag lands in `/curator/queue`. The curator checks it against the affidavit, then either:
+
+| Finding | Action |
+|---|---|
+| Flag is wrong or unsupported | **Dismiss** with a reason. Nothing publishes |
+| Published value is wrong | **Fix** in the structured inputs beside the affidavit (a ward flag is fixed by moving the candidate), ticking `confirmPublish` ("I have checked this against the affidavit"). Publishes immediately |
+
+The same inputs are on the candidate editor, `/curator/candidate/{id}`, for a wrong value a curator happens to find. Routinely checking unflagged values is not part of the role. A candidate with no stored affidavit has nothing to correct against.
+
+### 5.2 Matching
+
+`/curator/matching` lists affidavits waiting for a candidate or ward: `ward_unresolved`, `possible_duplicate` and `reported_by_transcriber`. The curator reads the affidavit, picks the ward, confirms name and party (for a possible duplicate: attach to the existing candidate or create a separate one) and ticks `confirmPublish`. Name and party publish as checked by a person; the other values keep the AI label. Admins can do the same on `/admin/affidavits`.
+
+**Curators do not upload, retry or discard affidavits** (§2). They do not approve transcriber work or monitor transcribers.
+
+### 5.3 Rota and sizing
+
+**Coverage runs from the first published data through election day**, as an ongoing rota rather than a fixed stage.
+
+| Measure | Estimate |
+|---|---:|
+| Candidates flagged | 5% of 4,000 = 200 |
+| Handling | 10 min per flagged candidate ≈ 33⅓ h |
+| **Provision** | **2 curators**, 20 productive hours each reserved |
+| Fee | ₹5,000 each for the cycle, ₹10,000 total |
+
+Matching volume is not in this estimate. It depends on how often the ward fails to resolve. Review incoming work against capacity daily; a 20-minute average doubles the casework.
+
+## 6. Candidate status and reconciliation
+
+`candidates.status` is `filed`, `contesting`, `rejected` or `withdrawn` (`candidate_status`). Every candidate the pipeline creates starts `filed`.
+
+What reads it:
+
+- The ward page and candidate page show a withdrawn or rejected notice; the row is never hidden.
+- Comparison (`Compare.astro`) includes only `filed` and `contesting`.
+
+**Known gap: nothing can set the status today.** `publishCandidateCore` (`src/lib/publish.ts`) updates it but is called only from tests. No admin or curator screen, route, job or script writes it (`scripts/seed-dev.ts` seeds demo data as `contesting`). Before the final contesting list at about N+15 there must be a way to mark rejections and withdrawals, and to reconcile the AI-created candidates against the official list.
+
+## 7. Open questions
+
+| # | Question | Why it matters |
+|---|---|---|
+| 1 | How are rejections, withdrawals and the official list reconciled (§6)? | No code path exists |
+| 2 | What do the pilot (§3.6) and a real KSEC Kannada affidavit show for accuracy, pace and cost? | The threshold (70), the 2–5 min allowance and the 10-min reading pace are unmeasured |
+| 3 | Is the ₹35,000–₹70,000 API reserve still right against the measured ~$0.20 per affidavit? | ~$800 for 4,000 sits at or above the reserve's top, depending on the exchange rate |
+| 4 | How many affidavits will need matching? | It sets curator load beyond flags (§5.3) |
+| 5 | Are the 23 transcribers and 2 curators contracted, and who is the named operations lead? | Lead time, not money, is the constraint |

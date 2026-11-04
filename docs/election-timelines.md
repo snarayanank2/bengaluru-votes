@@ -1,8 +1,7 @@
 # Election Timelines
 
-**Date:** 2026-08-15
-**Status:** Assumptions — derived from three precedents, pending KSEC confirmation
-**Scope:** What we assume about when each stage of the GBA ward election happens, expressed as days from the announcement (**N**). This document is self-contained and holds the assumptions only; anything that depends on a date should cite this document rather than restate it.
+**Status:** Assumptions derived from three precedents, pending the KSEC announcement.
+**Scope:** When each stage of the GBA ward election happens, as days from the announcement (**N**). Anything that depends on an election date should cite this document rather than restate it.
 
 ---
 
@@ -27,7 +26,7 @@ Three elections, all extrapolated from press-released schedules.
 
 ### BBMP 2015
 
-Bengaluru's last municipal election, eleven years ago, for the 198 wards of the Bruhat Bengaluru Mahanagara Palike. Announced 16 July 2015, polled 22 August.
+Bengaluru's last municipal election before GBA, for the 198 wards of the Bruhat Bengaluru Mahanagara Palike. Announced 16 July 2015, polled 22 August.
 
 It matters because it is the same commission and the same city. It ran under judicial deadline pressure after a long delay, as GBA does. It is also the widest of the three: 37 days from announcement to poll, driven entirely by an 18-day wait between the announcement and the notification.
 
@@ -41,7 +40,7 @@ It matters because it is the same commission at a more recent date, and because 
 
 The Brihanmumbai Municipal Corporation election for 227 wards, announced 15 December 2025 and polled 15 January 2026, alongside 28 other Maharashtra corporations — 2,869 seats and 3.48 crore voters in a single phase.
 
-It is run by the Maharashtra State Election Commission under Maharashtra law, so nothing in it binds KSEC, and its nomination sequence visibly differs — nominations opened eight days after the notification rather than on the day of it. It is here for two reasons: it is eight months old, and it announced 29 corporations in one release polling on one day, which is the only available evidence on how a multi-corporation election gets scheduled.
+It is run by the Maharashtra State Election Commission under Maharashtra law, so nothing in it binds KSEC, and its nomination sequence visibly differs — nominations opened eight days after the notification rather than on the day of it. It is here for two reasons: it is the most recent precedent (polled January 2026), and it announced 29 corporations in one release polling on one day, which is the only available evidence on how a multi-corporation election gets scheduled.
 
 ---
 
@@ -77,17 +76,29 @@ Only the first row carries real dates. Everything below is days from that row.
 
 ## 4. What the timeline constrains
 
-These follow from §3 alone and hold regardless of when N falls.
+**The deadline.** The Supreme Court has set **31 December 2026** as the deadline for the GBA polls, with no further extension (§7). As of 4 November 2026 no schedule has been announced, so N has not happened and no date in §3 is real yet. Working back from a poll on or before 31 December:
+
+| Announcement-to-poll gap | Precedent | Latest N |
+|---|---|---|
+| 23 days (the §3 assumption) | Karnataka 2021, the shortest | **8 Dec 2026** |
+| 31 days | BMC 2026 | 30 Nov 2026 |
+| 37 days | BBMP 2015 | 24 Nov 2026 |
+
+An announcement after 8 December 2026 means either a schedule tighter than any precedent or a missed deadline. Counting at N+26 can fall after 31 December even when the poll does not.
+
+**Five corporations, 369 wards.** Central 63, North 72, South 72, East 50, West 112 (`data/gba.geojson`). All three precedents polled every ward on one day; whether GBA does is Q2.
+
+The rest follows from §3 alone and holds whenever N falls.
 
 **Nothing about candidates exists before N+5.** No nomination filed, no name known, no affidavit. Anything scheduled earlier that names a specific candidate cannot be honoured.
 
 **No affidavit exists before N+12**, and the set is not complete until then. Filing is back-loaded: most nominations land in the last two days of the window.
 
-**No final list of contesting candidates exists before N+15.** Anything pulled between N+12 and N+15 is a superset — it holds candidates who will be rejected at scrutiny and candidates who will withdraw.
+**No final list of contesting candidates exists before N+15.** Anything pulled between N+12 and N+15 is a superset: it holds candidates who will be rejected at scrutiny and candidates who will withdraw.
 
-**The list is final for eight days**, from N+15 to the poll at N+23. Measured from the first complete affidavit set at N+12 it is eleven. **Work on candidate records does not wait for N+15** (revised 2026-09-20, `docs/candidate-data.md` §5): loading, extraction and transcription start on initial availability and overlap, and rejections and withdrawals are reconciled when the final list arrives. The planning envelope is three days of extraction plus five of transcription — done around N+20 from a complete set at N+12, around N+23 from one at N+15.
+**The list is final for eight days**, from N+15 to the poll at N+23; eleven from the complete affidavit set at N+12. Candidate-data work does not wait for N+15: loading, extraction and transcription start on initial availability and overlap, and rejections and withdrawals are reconciled against the final list ([candidate-data.md](candidate-data.md) §1, §6). Three days of extraction plus five of transcription finish around N+20 from a complete set at N+12, around N+23 from one at N+15.
 
-**The last two days are unusable.** Silence begins at N+21 and the poll is at N+23.
+**The last two days are silent.** The 48-hour silence before the close of poll begins at N+21; the poll is at N+23.
 
 **Results land at N+26**, which starts the clock on anything measured from the declaration of results.
 
@@ -98,17 +109,17 @@ These follow from §3 alone and hold regardless of when N falls.
 | # | Question | Why it matters | Owner |
 |---|---|---|---|
 | Q1 | **How long after the announcement does the notification come?** Observed at +18, +5 and +0 | The widest source of error in §3. Every date below it moves with it | unassigned |
-| Q2 | **Do all five corporations poll on one day?** The GBA election covers 369 wards across five corporations; all three precedents polled every ward on one day | If not, the tail of §3 forks per corporation and every date becomes ward-dependent | unassigned |
+| Q2 | **Do all five corporations poll on one day?** | If not, the tail of §3 forks per corporation and every date becomes ward-dependent | unassigned |
 | Q3 | **When does an addressed list of polling stations become public?** No precedent records it | A citizen cannot be told where to vote until it exists | unassigned |
-| Q4 | **How and where does KSEC publish candidate affidavits?** The ECI's national affidavit portal does not cover local body polls | No confirmed source for the largest piece of candidate data | unassigned |
+| Q4 | **How and where does KSEC publish candidate affidavits?** The ECI's national affidavit portal does not cover local body polls ([ksec-data-risk.md](ksec-data-risk.md) §6) | No confirmed source for the largest piece of candidate data | unassigned |
 
 ---
 
 ## 6. How to use this document
 
-- **Quote offsets from N, not dates.** Nothing in the assumption column is a real date. The only real dates here are the three announcements.
+- **Quote offsets from N, not dates.** Nothing in the assumption column is a real date. The only real dates here are the three precedent announcements and the Supreme Court deadline.
 - **Plan against the assumption column.** It takes the Karnataka sequence where the two Karnataka elections agree, and the tightest observed value everywhere else.
-- **This document does not cite others by design.** Things that depend on dates should point here rather than copy the numbers, so one update at N propagates instead of leaving stale copies behind.
+- **Cite, do not copy.** Other documents point here for election dates, so one update at N reaches all of them.
 - **When KSEC announces, update this first**, then re-run §4 against the real numbers.
 
 ---
@@ -120,3 +131,4 @@ These follow from §3 alone and hold regardless of when N falls.
 - **BMC general election 2026** — announced and model code in force 15 Dec 2025, covering 29 Maharashtra corporations, 2,869 seats and 3.48 crore voters; notification 15 Dec; nominations 23–30 Dec; scrutiny 31 Dec; withdrawal 2 Jan 2026; final list and symbols 3 Jan; campaigning ends 13 Jan; poll 15 Jan; counting 16 Jan. 227 wards in Greater Mumbai. 39,092 polling booths statewide; the Maharashtra SEC ran an EPIC- and name-wise booth lookup, with slips also distributed door to door.
 - Karnataka Municipal Corporations Act, 1976 §§35, 39(ii) — the basis on which candidates file affidavits of assets, liabilities and criminal antecedents with their nominations.
 - Greater Bengaluru Governance Act, 2024 (Karnataka Act 36 of 2025) — the five corporations and their ward counts.
+- [Supreme Court extends deadline to conduct GBA polls to 31 December](https://thesouthfirst.com/karnataka/supreme-court-extends-deadline-to-conduct-greater-bengaluru-authority-polls-to-31-december/), South First — deadline for the polls; no further extension.
