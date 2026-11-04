@@ -1,0 +1,44 @@
+name: gate
+description: >
+  The checks every change must pass before it can merge or deploy: typecheck,
+  Kannada translation staleness (with the one accepted exception), a production
+  build, the Vitest suite, and the Playwright smoke suite (measured at about
+  15s plus the browser install; if the whole job nears 2 minutes, drop the
+  last four steps rather than the timeout). The calling job supplies the Postgres service
+  (composite actions cannot declare one) and DATABASE_URL / SITE_ORIGIN.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 22
+        cache: npm
+    - name: Install
+      shell: bash
+      run: npm ci
+    - name: Typecheck
+      shell: bash
+      run: npm run typecheck
+    - name: Translation staleness
+      shell: bash
+      run: npx tsx scripts/ci/translate-gate.ts
+    - name: Build
+      shell: bash
+      run: npm run build
+    - name: Unit and route tests
+      shell: bash
+      run: npm test
+    - name: Install the browser for the smoke suite
+      shell: bash
+      run: npx playwright install --with-deps chromium
+    - name: Create the e2e database
+      shell: bash
+      run: psql "$DATABASE_URL" -c 'CREATE DATABASE bv_e2e'
+    - name: Build, seed and run the smoke suite
+      shell: bash
+      run: |
+        export DATABASE_URL="${DATABASE_URL%/bv_test}/bv_e2e"
+        npm run build:e2e
+        npm run seed:e2e
+        npm run test:e2e
