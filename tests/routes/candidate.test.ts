@@ -375,7 +375,7 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
       expect(items[1]).toEqual({
         '@type': 'ListItem',
         position: 2,
-        name: WARD.nameEn,
+        name: t('en', 'nav.ward', { wardNumber: WARD.id % 1000, wardName: WARD.nameEn }),
         item: `${SITE_ORIGIN}/ward/${WARD.id}`,
       });
       expect(items[2]).toEqual({

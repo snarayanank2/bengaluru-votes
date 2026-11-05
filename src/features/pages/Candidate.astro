@@ -140,7 +140,7 @@ const candidateJsonLd = row
       personLd({ name: candidateName, party: partyName || null, path: localePath(lang, pagePath) }),
       breadcrumbLd([
         { name: 'Bengaluru Votes', url: localePath(lang, '/') },
-        { name: wardName, url: localePath(lang, `/ward/${row.wardId}`) },
+        { name: wardLabel, url: localePath(lang, `/ward/${row.wardId}`) },
         { name: candidateName, url: localePath(lang, pagePath) },
       ]),
     ]

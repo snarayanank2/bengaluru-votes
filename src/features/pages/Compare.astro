@@ -190,8 +190,8 @@ const compareJsonLd = ward
             ) : (
               <>
 
-                <p class="scroll-hint" id="compare-scroll-hint">{t(lang, 'compare.scrollHint')}</p>
-                <div class="compare-scroll" role="region" aria-label={t(lang, 'compare.table.caption')} aria-describedby="compare-scroll-hint" tabindex="0">
+                <p class="scroll-hint" id="compare-scroll-hint" data-compare-scroll-hint hidden>{t(lang, 'compare.scrollHint')}</p>
+                <div class="compare-scroll" role="region" aria-label={t(lang, 'compare.table.caption')} aria-describedby="compare-scroll-hint" tabindex="0" data-compare-scroll>
                   <table class="compare-table">
                     <caption class="sr-only">{t(lang, 'compare.table.caption')}</caption>
                     <thead>
@@ -250,6 +250,10 @@ const compareJsonLd = ward
       <EmptyState fact={t(lang, 'ward.notFound.fact')} />
     )
   }
+  <script>
+    import { initCompareScrollHint } from '../../islands/CompareScrollHint';
+    initCompareScrollHint();
+  </script>
 </Base>
 
 <style>
@@ -286,6 +290,11 @@ const compareJsonLd = ward
     gap: var(--space-4);
   }
 
+  /* Keyboard focus must not land under the sticky app bar (design-system §7.15). */
+  .compare-table :global(a) {
+    scroll-margin-top: calc(80px + var(--space-4));
+  }
+
   .scroll-hint {
     color: var(--color-text-muted);
     font-size: var(--text-sm);
@@ -308,6 +317,9 @@ const compareJsonLd = ward
      A focusable named region lets keyboard users scroll the same table. */
   .compare-scroll {
     min-width: 0;
+    scroll-margin-top: calc(80px + var(--space-4));
+    /* Focus must not land under the sticky label column (design-system §7.11). */
+    scroll-padding-inline-start: 128px;
     overflow-x: auto;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -401,6 +413,10 @@ const compareJsonLd = ward
   @media (min-width: 768px) {
     .page-header {
       padding-block: var(--space-12);
+    }
+
+    .compare-scroll {
+      scroll-padding-inline-start: 176px;
     }
 
     .label-col {

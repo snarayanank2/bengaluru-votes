@@ -33,7 +33,8 @@ interface Props {
 
 const { candidate, lang } = Astro.props;
 
-const name = lang === 'kn' && candidate.nameKn ? candidate.nameKn : candidate.nameEn;
+// A number-hyphen-number token (a demo id such as "1001-1") stays whole when the name wraps.
+const name = (lang === 'kn' && candidate.nameKn ? candidate.nameKn : candidate.nameEn).replace(/(\d)-(?=\d)/g, '$1\u2011');
 const party = lang === 'kn' && candidate.partyKn ? candidate.partyKn : candidate.partyEn;
 
 // Initials placeholder: first letter of up to the first two
