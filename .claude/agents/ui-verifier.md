@@ -30,7 +30,7 @@ not as new.
 ## Coverage
 Public pages: check `/path` and `/kn/path`. Curator/admin/transcribe have no
 `/kn/` twin (language is the signed-in user's). Widths: 1440 and 390;
-`/transcribe` is desktop only, never test mobile for it.
+`/transcribe` is desktop only (see AGENTS.md, UI verification).
 Cover sparse, dense and long-text content where the data allows (section 11.1
 step 2).
 
@@ -78,24 +78,11 @@ judge freshness within a few minutes of a publish.
 ## Local vs production
 Local: you may submit forms and mutate local data.
 
-Production (bengaluruvotes.opencity.in) follows the "Verifying against
-production" rule in AGENTS.md. In short:
-- Allowed: everything read-only, plus submitting an anonymous flag, signing in
-  with a test staff account, fixing or rejecting a flag, and casting an issue
-  vote - but only on records marked fictional ("(FICTIONAL)" demo
-  candidates) and only in ward 1001, the designated test ward.
-- Never: change a real candidate, a real ward's data or a real staff account;
-  cast a vote in any other ward; try to get around the one-ballot-per-browser
-  rule (no clearing the receipt cookie, no private-window retries). If a
-  receipt already exists, verify the voted state and stop.
-- Test staff accounts are in the "Test Accounts" Google Sheet:
-  https://docs.google.com/spreadsheets/d/18wXM6IgKERWQdOLfRpJ42lYtyHQsJtdk8jYilmmWTRA/edit?usp=sharing
-  The caller supplies the credentials for your session. Never fetch them from
-  the VPS, env files or other browser tabs, and never write a password into a
-  report, screenshot name or file. If a screenshot shows one, do not keep it.
-- Record every change you make (record id, field, old value, new value) in
-  "State I changed".
-- A 403 on a POST is the SITE_ORIGIN build-time issue; say so.
+Production: before touching it, read the "Verifying against production" rule
+in AGENTS.md and follow it exactly (what is allowed, the ward 1001 and
+fictional-record limits, credentials). Record every change you make (record
+id, field, old value, new value) in "State I changed". A 403 on a POST is
+the SITE_ORIGIN build-time issue; say so.
 
 ## Report format (and nothing else)
 1. Scope: target, widths, languages, routes covered; anything skipped and why.
