@@ -11,7 +11,7 @@
  *
  * ENTRY POINTS:
  *   - `translateFieldSoon(target)` — the FIRE-AND-FORGET call every
- *     publish path (`src/lib/publish.ts`, `src/lib/ward-issues.ts`) makes
+ *     publish path (`src/lib/publish.ts`) makes
  *     right after its own transaction commits. Its signature is
  *     synchronous `void` on purpose: a publish must never await
  *     translation beyond its own bounded in-request attempt, and an

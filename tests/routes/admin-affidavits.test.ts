@@ -8,7 +8,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
@@ -317,7 +317,7 @@ describe('/admin/affidavits', () => {
       expect(await affidavit(w.id)).toMatchObject({ state: 'published', candidateId: w.candidateId, matchReason: null, matchNote: null });
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, w.candidateId));
       expect(candidate).toMatchObject({ wardId: other.id, nameEn: 'Named By Admin (FICTIONAL)' });
-      const [age] = await db.select().from(schema.candidateFields).where(eq(schema.candidateFields.candidateId, w.candidateId));
+      const [age] = await db.select().from(schema.candidateFields).where(and(eq(schema.candidateFields.candidateId, w.candidateId), eq(schema.candidateFields.fieldKey, 'age')));
       expect(age).toMatchObject({ fieldKey: 'age', valueEn: '47', checkedBy: 7 });
 
       await db.delete(schema.candidateFields).where(eq(schema.candidateFields.candidateId, w.candidateId));

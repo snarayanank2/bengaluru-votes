@@ -1,7 +1,7 @@
 /** Anonymous candidate reporting: preserve the form on every failed submission. */
 import { ModalController, type ModalDialogLike, type FocusTarget } from './ModalShell';
 
-export type FlagTargetType = 'candidate_field' | 'ward_field' | 'ward_issue';
+export type FlagTargetType = 'candidate_field';
 
 export interface FlagTarget {
   targetType: FlagTargetType;
@@ -300,7 +300,7 @@ function parseTargets(raw: string | undefined): FlagTarget[] {
         t &&
         typeof t.targetRef === 'string' &&
         typeof t.label === 'string' &&
-        (t.targetType === 'candidate_field' || t.targetType === 'ward_field' || t.targetType === 'ward_issue'),
+        t.targetType === 'candidate_field',
     );
   } catch {
     return [];

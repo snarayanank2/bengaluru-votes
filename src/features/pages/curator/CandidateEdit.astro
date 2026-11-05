@@ -8,7 +8,6 @@ import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
 import Banner from '../../../components/Banner.astro';
 import Button from '../../../components/Button.astro';
-import FormField from '../../../components/FormField.astro';
 import CuratorSplit from '../../../components/CuratorSplit.astro';
 import CuratorFieldForm from '../../../components/CuratorFieldForm.astro';
 import type { CandidateBatchRefusal } from '../../../lib/curator-fix';
@@ -25,8 +24,7 @@ interface Props {
   wardId: number;
   wardNameEn: string;
   wardNameKn: string;
-  /** Present in EDIT mode (an existing candidate); absent on the `new` route. */
-  candidate?: CandidateEditData;
+  candidate: CandidateEditData;
   /** Every ward, for the ward select; empty when there is no stored affidavit. */
   wards?: WardOption[];
   message?: { kind: 'notice' | 'error'; key: string };
@@ -36,24 +34,18 @@ interface Props {
 }
 
 const { lang, csrfToken, wardId, wardNameEn, wardNameKn, candidate, wards = [], message, refused, batchRefused } = Astro.props;
-const isNew = candidate === undefined;
 const wardName = lang === 'kn' ? wardNameKn : wardNameEn;
 const messageText = message ? t(lang, message.key) : undefined;
 
 const confirmPath = `/ward/${wardId}`;
 
-const pageHeading = isNew
-  ? t(lang, 'curator.candidateEdit.new.heading', { ward: wardName })
-  : t(lang, 'curator.candidateEdit.heading', { name: candidate!.nameEn });
-const pageTitle = isNew ? t(lang, 'curator.candidateEdit.new.meta.title') : t(lang, 'curator.candidateEdit.meta.title');
-const pageDescription = isNew
-  ? t(lang, 'curator.candidateEdit.new.meta.description')
-  : t(lang, 'curator.candidateEdit.meta.description');
-const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/candidate/${candidate!.id}`;
+const pageHeading = t(lang, 'curator.candidateEdit.heading', { name: candidate.nameEn });
+const pageTitle = t(lang, 'curator.candidateEdit.meta.title');
+const pageDescription = t(lang, 'curator.candidateEdit.meta.description');
 ---
 
 <CuratorLayout lang={lang} title={pageTitle} description={pageDescription}>
-  <CuratorSplit lang={lang} pdfUrl={candidate?.pdfUrl ?? null}>
+  <CuratorSplit lang={lang} pdfUrl={candidate.pdfUrl}>
     <p><a href="/curator">{t(lang, 'curator.candidateEdit.backToDashboard')}</a></p>
     <h1>{pageHeading}</h1>
     <p class="ward-line">{t(lang, 'curator.candidateEdit.wardLine', { ward: wardName })}</p>
@@ -66,38 +58,15 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
       )
     }
 
-    {isNew && <Card>
-      <h2>{t(lang, isNew ? 'curator.candidateEdit.new.detailsHeading' : 'curator.candidateEdit.core.heading')}</h2>
-      <form method="post" action={formTarget}>
-        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-        <input type="hidden" name="formAction" value="core" />
-
-        {
-          isNew && (
-            <FormField label={t(lang, 'curator.candidateEdit.core.nameEnLabel')} name="nameEn" required lang={lang} />
-          )
-        }
-        {
-          isNew && (
-            <FormField label={t(lang, 'curator.candidateEdit.core.partyEnLabel')} name="partyEn" required lang={lang} />
-          )
-        }
-
-        <Button type="submit" variant="primary" lang={lang}>
-          {isNew ? t(lang, 'curator.candidateEdit.core.createSubmit') : t(lang, 'curator.candidateEdit.core.submit')}
-        </Button>
-      </form>
-    </Card>}
-
     {
-      !isNew && (
+      (
         <Card>
           <h2>{t(lang, 'curator.candidateEdit.fields.heading')}</h2>
-          {candidate!.pdfUrl ? (
+          {candidate.pdfUrl ? (
             <form method="post" class="field-cards">
               <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
               <input type="hidden" name="formAction" value="fields" />
-              {candidate!.fields.map((field) => {
+              {candidate.fields.map((field) => {
                 const formAction = `field:${field.key}`;
                 const own = refused?.formAction === formAction;
                 return (
@@ -118,7 +87,7 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
               <div class="form-field">
                 <label class="form-label" for="fix-ward">{t(lang, 'curator.fix.wardLabel')}</label>
                 <select id="fix-ward" name="wardId" class="form-input" required>
-                  {wards.map((ward) => <option value={ward.id} selected={String(ward.id) === (batchRefused?.wardId ?? String(candidate!.wardId))}>{ward.label}</option>)}
+                  {wards.map((ward) => <option value={ward.id} selected={String(ward.id) === (batchRefused?.wardId ?? String(candidate.wardId))}>{ward.label}</option>)}
                 </select>
               </div>
               <label class="batch-confirm">
@@ -127,9 +96,9 @@ const formTarget = isNew ? `/curator/candidate/new?ward=${wardId}` : `/curator/c
               </label>
               <Button type="submit" variant="primary" lang={lang}>{t(lang, 'curator.candidateEdit.field.submit')}</Button>
             </form>
-          ) : candidate!.waitingAffidavitId !== null ? (
+          ) : candidate.waitingAffidavitId !== null ? (
             <p class="placeholder-note">
-              {t(lang, 'curator.fix.affidavitWaiting')} <a href={`/curator/matching/${candidate!.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
+              {t(lang, 'curator.fix.affidavitWaiting')} <a href={`/curator/matching/${candidate.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
             </p>
           ) : (
             <p class="placeholder-note">{t(lang, 'curator.candidateEdit.fields.needAffidavit')}</p>

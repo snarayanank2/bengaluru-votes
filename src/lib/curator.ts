@@ -1,7 +1,7 @@
 /**
  * Business logic behind the curator pages: the dashboard, the review queue,
- * one flag (the fix and the dismissal), the candidate editor and the ward
- * page. Same split as src/lib/login-flow.ts: this module owns
+ * one flag (the fix and the dismissal), the candidate editor and the
+ * matching list. Same split as src/lib/login-flow.ts: this module owns
  * state-loading and the mutation dispatch, the page route twins
  * (src/pages/curator/*) own the HTTP concerns a plain module cannot
  * (redirects, no-store, 403/404 status). What a correction is, and how one
@@ -38,7 +38,6 @@ import { resolveFlag, type FlagFix } from './flags';
 import { AFFIDAVIT_FIELD_KEYS, type AffidavitFieldKey } from './affidavit-publish';
 import type { FieldError, RawField } from './affidavit-form';
 import { loadFixCandidate, loadFixFields, parseFieldFix, parseWardFix, publishedFieldData, saveFieldFix, saveWardFix, type FixCandidate, type FixField, type StaffActor } from './curator-fix';
-import { createCandidate } from './publish';
 import { countWaitingMatches } from './affidavit-queue';
 import type { Lang } from '../i18n';
 
@@ -277,7 +276,7 @@ export type FixOutcome =
  * Handles the FIX form: the flagged field's corrected value, or the ward
  * the candidate belongs in. The correction and the flag's acceptance are
  * one transaction (`resolveFlag`). Refused when there is no affidavit to
- * check against, when the flag is one that can only be dismissed, and for
+ * check against, and for
  * everything `parseFieldFix` / `parseWardFix` refuse. A
  * `flag_already_resolved` throw (another curator resolved it first) becomes
  * a friendly outcome rather than a 500.
@@ -416,28 +415,6 @@ export async function loadCandidateForEdit(candidateId: number): Promise<Candida
   };
 }
 
-/** Ward name lookup for `/curator/candidate/new?ward={id}` (no candidate exists yet to hang the ward name off of). `null` when the ward id doesn't exist — the route twin turns that into a 404. */
-export async function loadWardBasic(wardId: number): Promise<{ id: number; nameEn: string; nameKn: string } | null> {
-  const [row] = await db.select({ id: wards.id, nameEn: wards.nameEn, nameKn: wards.nameKn }).from(wards).where(eq(wards.id, wardId));
-  return row ?? null;
-}
-
-export type CandidateCreateOutcome = { kind: 'created'; id: number } | { kind: 'validation_error'; key: string };
-
-export async function handleCandidateCreate(
-  actor: CuratorActor,
-  wardId: number,
-  form: FormData,
-): Promise<CandidateCreateOutcome> {
-  const nameEn = String(form.get('nameEn') ?? '').trim();
-  const partyEn = String(form.get('partyEn') ?? '').trim();
-  if (!nameEn) return { kind: 'validation_error', key: 'curator.candidateEdit.error.nameRequired' };
-  if (!partyEn) return { kind: 'validation_error', key: 'curator.candidateEdit.error.partyRequired' };
-  const { id } = await createCandidate(actor, { wardId, nameEn, partyEn });
-
-  return { kind: 'created', id };
-}
-
 export type EditFixOutcome = { kind: 'saved' } | { kind: 'refused'; key: string; error?: FieldError; raw?: RawField };
 
 /** Saves one affidavit field from the editor: the same rules as a flag fix, with no flag involved. */
@@ -459,39 +436,6 @@ export async function handleCandidateWardFix(candidate: CandidateEditData, form:
   return { kind: 'saved' };
 }
 
-// ---------------------------------------------------------------------------
-// Ward page (Task 39) — `/curator/ward/{id}`'s data-loading side: read-only
-// ward metadata, with links out to the issues editor and "add candidate".
-// ---------------------------------------------------------------------------
-
-export interface WardEditData {
-  id: number;
-  nameEn: string;
-  nameKn: string;
-  corporation: string;
-  zone: string;
-  boundaryRef: string;
-}
-
-/**
- * Loads the ward's own (official, read-only) metadata for
- * `/curator/ward/{id}`. `null` when no such ward exists — the route twin
- * turns that into a 404.
- */
-export async function loadWardForEdit(wardId: number): Promise<WardEditData | null> {
-  const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
-  if (!ward) return null;
-
-  return {
-    id: ward.id,
-    nameEn: ward.nameEn,
-    nameKn: ward.nameKn,
-    corporation: ward.corporation,
-    zone: ward.zone,
-    boundaryRef: ward.boundaryRef,
-  };
-}
-
 export const SEARCH_CAP = 50;
 
 export interface CandidateHit {
@@ -508,7 +452,6 @@ export interface CuratorSearch {
   candidates: CandidateHit[];
   /** More candidates matched than `SEARCH_CAP`; the list is cut short. */
   capped: boolean;
-  wards: Array<{ id: number; nameEn: string; nameKn: string }>;
 }
 
 /** `%`, `_` and `\` are what the person typed, not wildcards. */
@@ -517,8 +460,8 @@ function likePattern(q: string): string {
 }
 
 /**
- * Candidates and wards whose name contains `q` (a ward also by its id). A
- * few thousand candidates and 369 wards: a sequential scan is enough.
+ * Candidates whose name contains `q`. A
+ * few thousand candidates: a sequential scan is enough.
  * Null for a query under two characters. A NUL byte is dropped (Postgres
  * refuses one in a bind parameter) and the query is cut at 100 characters.
  */
@@ -535,22 +478,5 @@ export async function searchCurator(q: string): Promise<CuratorSearch | null> {
     .orderBy(candidates.nameEn, candidates.id)
     .limit(SEARCH_CAP + 1);
 
-  const wardId = /^\d{1,9}$/.test(term) ? Number(term) : null;
-  const wardHits = await db
-    .select({ id: wards.id, nameEn: wards.nameEn, nameKn: wards.nameKn })
-    .from(wards)
-    .where(or(ilike(wards.nameEn, pattern), ilike(wards.nameKn, pattern), wardId === null ? undefined : eq(wards.id, wardId)))
-    .orderBy(wards.id)
-    .limit(SEARCH_CAP);
-
-  return { candidates: hits.slice(0, SEARCH_CAP), capped: hits.length > SEARCH_CAP, wards: wardHits };
-}
-
-/** Every candidate of one ward, for the curator ward page. */
-export async function loadWardCandidates(wardId: number): Promise<Array<{ id: number; nameEn: string; partyEn: string; status: CandidateStatus }>> {
-  return db
-    .select({ id: candidates.id, ...candidateIdentitySelection(), status: candidates.status })
-    .from(candidates)
-    .where(eq(candidates.wardId, wardId))
-    .orderBy(candidates.nameEn, candidates.id);
+  return { candidates: hits.slice(0, SEARCH_CAP), capped: hits.length > SEARCH_CAP };
 }

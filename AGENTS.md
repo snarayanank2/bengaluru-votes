@@ -157,9 +157,9 @@ For editorial or UI translation work, the coding agent authors the Kannada trans
 
 Curator edits **go live immediately** — no approval gate. Every field carries a visible source, distinguishing official/affidavit data from curator-compiled context. Curators edit through the same structured inputs as transcribers, beside the stored affidavit: there is no free-text field editor. `src/lib/curator-fix.ts` parses and saves a fix (a flag at `/curator/queue/{id}`, or the candidate editor at `/curator/candidate/{id}`), and every publish of a field value or ward move carries a required `confirmPublish` tick, re-checked on the server. The candidate editor uses one bottom confirmation and one atomic save for changed fields and the ward; unchanged fields keep their review status. `src/lib/publish.ts` keeps what is not an affidavit field: creating a candidate, its status, and `decideTranslationStatus` (manual-override vs source-change MT regeneration).
 
-**Flags are accepted only on the eight fields in `FLAGGABLE_FIELD_KEYS`** (`src/lib/candidate-profile.ts`: the seven affidavit fields and the ward). `ward_field` and `ward_issue` stay in the database enum so old rows can be read; a curator can only dismiss those.
+**Flags are accepted only on the eight fields in `FLAGGABLE_FIELD_KEYS`** (`src/lib/candidate-profile.ts`: the seven affidavit fields and the ward). Ward-targeted flags (`ward_field`, `ward_issue`) were removed on 2026-11-05 (migration `0018`); ward pages carry no flag control, and curators have no ward screens.
 
-The curator routes are `/curator` (dashboard and search), `/curator/queue`, `/curator/candidate/{id}`, `/curator/ward/{id}`, `/curator/matching` (the affidavits waiting for a candidate or ward) and `/curator/guide` (the onboarding page). They have no `/kn/` twin: the language is the signed-in user's saved one (`loadCuratorLang`).
+The curator routes are `/curator` (dashboard and search), `/curator/queue`, `/curator/candidate/{id}`, `/curator/matching` (the affidavits waiting for a candidate or ward) and `/curator/guide` (the onboarding page). They have no `/kn/` twin: the language is the signed-in user's saved one (`loadCuratorLang`).
 
 **The audit log was removed on 2026-08-19** (tracker 147; `docs/architecture.md` §6, §7, §13) — no change history, no `/admin/audit`, and no restore action. Migration `0008_remove_audit_log.sql` drops the legacy table; `0001_audit_append_only.sql` remains only as immutable migration history.
 
@@ -230,6 +230,8 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 **Button coverage:** Keep every button treatment documented and reusable, including light buttons and icon-only controls. Use shared styles for server-rendered and client-created buttons; page CSS should control placement rather than recreate a variant. Icon-only controls require a localized accessible name and documented sizing and interaction states.
 
 **Hierarchical navigation:** Use shared breadcrumbs above the title on ward and comparison pages instead of a standalone Back to ward button. The ward breadcrumb includes both its citizen-facing number and localized name (for example, “Ward 23 Jogpalya”), never the composite route id. Ancestors are links; the current page is noninteractive. Keep the pattern documented in the design system.
+
+**Docs stay consistent with every change:** Fix every affected doc in the same change, without being asked: `docs/`, `AGENTS.md`, `deploy/runbook.md`, editorial pages in `content/pages/` (with their Kannada twin and hash metadata), and user-visible UI strings that describe the changed behaviour. Search for the removed or renamed thing across all of them before declaring the work done. Run the `docs-consistency` agent after removing or changing a feature.
 
 **Approval before integration:** Once a requested change is implemented and verified, pause and ask the user once for approval to commit, push, and open its PR. That single approval covers all three steps; do not ask for separate approvals. Merging happens through the PR.
 

@@ -127,6 +127,13 @@
       "when": 1793800000000,
       "tag": "0017_remove_dead_features",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793900000000,
+      "tag": "0018_remove_ward_flag_targets",
+      "breakpoints": true
     }
   ]
 }

@@ -16,7 +16,7 @@ export const translationStatusEnum = pgEnum('translation_status', ['pending', 'd
 export const assignmentStateEnum = pgEnum('assignment_state', ['open', 'submitted', 'abandoned']);
 export const affidavitStateEnum = pgEnum('affidavit_state', ['queued', 'extracting', 'needs_matching', 'published', 'failed']);
 export const flagStatusEnum = pgEnum('flag_status', ['pending', 'accepted', 'rejected']);
-export const flagTargetEnum = pgEnum('flag_target', ['candidate_field', 'ward_field', 'ward_issue']);
+export const flagTargetEnum = pgEnum('flag_target', ['candidate_field']);
 export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'epic_lookup', 'anonymous_vote']);
 
 export const wards = pgTable('wards', {
@@ -196,7 +196,7 @@ export const flagItems = pgTable('flag_items', {          // deduped queue item
   id: serial('id').primaryKey(),
   wardId: integer('ward_id').notNull().references(() => wards.id),
   targetType: flagTargetEnum('target_type').notNull(),
-  targetRef: text('target_ref').notNull(),                // e.g. 'candidate:12:cases' | 'ward:57:name'
+  targetRef: text('target_ref').notNull(),                // e.g. 'candidate:12:cases'
   status: flagStatusEnum('status').notNull().default('pending'),
   resolutionReason: text('resolution_reason'),
   resolvedBy: integer('resolved_by'),

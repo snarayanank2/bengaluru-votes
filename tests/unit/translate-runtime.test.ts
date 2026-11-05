@@ -30,8 +30,7 @@ if (!process.env.DATABASE_URL) {
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
 
-// High, task-specific ward id (Task 40 brief) — the highest prior suite
-// (tests/unit/ward-issues.test.ts) owns up to 99499; this suite owns 99500.
+// High, task-specific ward id (Task 40 brief) — this suite owns 99500.
 const WARD_ID = 99500;
 const WARD = {
   id: WARD_ID,

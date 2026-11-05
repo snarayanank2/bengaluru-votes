@@ -40,9 +40,10 @@ it('finds a candidate by part of the name, whatever the case, and links to the e
   expect(html).not.toContain('100%_Sure');
 });
 
-it('finds a ward by name and by its id', async () => {
-  expect(await (await search('Zyxwv Search')).text()).toContain(`href="/curator/ward/${WARD.id}"`);
-  expect(await (await search(String(WARD.id))).text()).toContain(`href="/curator/ward/${WARD.id}"`);
+it('no longer lists wards', async () => {
+  const html = await (await search('Zyxwv Search')).text();
+  expect(html).not.toContain('/curator/ward/');
+  expect(html).toContain(t('en', 'curator.dashboard.search.none', { q: 'Zyxwv Search' }).replace(/"/g, '&quot;'));
 });
 
 it('treats % and _ as the characters they are', async () => {

@@ -234,13 +234,4 @@ describe('flags that cannot be fixed here', () => {
     expect((await item(id, curator, tokenForm(curator, { formAction: 'reject', reason: 'No affidavit on file yet' }))).status).toBe(302);
     expect((await flagRow(id)).status).toBe('rejected');
   });
-
-  it('offers only dismissal for an old ward-issue flag', async () => {
-    const [old] = await db.insert(schema.flagItems).values({ wardId: WARD_A.id, targetType: 'ward_issue', targetRef: 'ward_issue:999999', status: 'pending' }).returning({ id: schema.flagItems.id });
-    const html = await (await item(old.id, curator)).text();
-    expect(html).not.toContain('value="fix"');
-    expect(html).toContain(t('en', 'curator.fix.dismissOnly'));
-    expect((await item(old.id, curator, fix({ wardId: String(WARD_B.id) }))).status).toBe(400);
-    expect((await flagRow(old.id)).status).toBe('pending');
-  });
 });

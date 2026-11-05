@@ -1,5 +1,5 @@
 /**
- * `/curator/candidate/{id}`, `/curator/candidate/new` (Task 36,
+ * `/curator/candidate/{id}` (Task 36,
  * architecture §6).
  * Drives every request through the REAL middleware (src/middleware.ts)
  * composed with the real page twins via Astro's container API — same
@@ -8,11 +8,9 @@
  * COVERAGE MAP:
  *   - SOURCE REQUIRED: a report-card field publish with a value
  *     but no source is rejected, nothing written.
- *   - STATUS CHANGE / NEW CANDIDATE: exercised end-to-end through the
- *     real POST handlers (the lib-level slug coverage lives in
- *     tests/unit/publish-candidate.test.ts).
+ *   - STATUS CHANGE: refused (403) through the real POST handler.
  *   - CITY-WIDE: a curator with no ward assignment of any kind can open
- *     any candidate and start a new one in any ward.
+ *     any candidate.
  *   - RETIRED CORE POSTS: an old form posting a photo, a Kannada name or a
  *     status is rejected; the candidate row and the media table are untouched.
  *   - CSRF: POST without the synchronizer token -> 403.
@@ -30,7 +28,6 @@ import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
 import { onRequest } from '../../src/middleware';
 
 import CandidateEditRoute from '../../src/pages/curator/candidate/[id].astro';
-import CandidateNewRoute from '../../src/pages/curator/candidate/new.astro';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -194,7 +191,7 @@ async function resetFixtures(): Promise<void> {
   await db.delete(schema.candidates).where(inArray(schema.candidates.wardId, ALL_WARDS.map((w) => w.id)));
 }
 
-describe('/curator/candidate/{id}, /curator/candidate/new (Task 36)', () => {
+describe('/curator/candidate/{id} (Task 36)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
 
@@ -228,27 +225,6 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36)', () => {
       const html = normalize(await res.text());
       expect(html).toContain('Original Name');
     });
-
-    it('GET /curator/candidate/new?ward={id} -> 200', async () => {
-      const res = await run(CandidateNewRoute, '/curator/candidate/new', {
-        cookieValue: curatorAuth.cookieValue,
-        search: `?ward=${WARD_NEW_CANDIDATE.id}`,
-      });
-      expect(res.status).toBe(200);
-    });
-
-    it('GET /curator/candidate/new with no ?ward= -> 400', async () => {
-      const res = await run(CandidateNewRoute, '/curator/candidate/new', { cookieValue: curatorAuth.cookieValue });
-      expect(res.status).toBe(400);
-    });
-
-    it('GET /curator/candidate/new?ward={unknown} -> 404', async () => {
-      const res = await run(CandidateNewRoute, '/curator/candidate/new', {
-        cookieValue: curatorAuth.cookieValue,
-        search: '?ward=999999999',
-      });
-      expect(res.status).toBe(404);
-    });
   });
 
   describe('election status form', () => {
@@ -264,21 +240,6 @@ describe('/curator/candidate/{id}, /curator/candidate/new (Task 36)', () => {
 
       const [candidate] = await db.select().from(schema.candidates).where(eq(schema.candidates.id, candidateStatusClear));
       expect(candidate?.status).toBe('filed');
-    });
-  });
-
-  describe('new-candidate creation', () => {
-    it('creating a candidate redirects to the edit page', async () => {
-      const form = coreForm({ nameEn: 'Brand New Filing', partyEn: 'Independent' }, curatorAuth.token);
-      const res = await run(CandidateNewRoute, '/curator/candidate/new', {
-        method: 'POST',
-        cookieValue: curatorAuth.cookieValue,
-        search: `?ward=${WARD_NEW_CANDIDATE.id}`,
-        form,
-      });
-      expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toMatch(/^\/curator\/candidate\/\d+$/);
-
     });
   });
 

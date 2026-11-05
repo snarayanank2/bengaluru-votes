@@ -57,7 +57,7 @@ TBD
 
 We are not affiliated with any candidate, party, or government body. This platform exists to give Bengaluru citizens neutral, sourced, ward-level information ahead of the GBA Ward Elections.
 
-We don't endorse or oppose any candidate, party, or position. Candidates are presented side by side, with the same fields and the same sourcing standard applied to everyone. Ward issues are defined by local curators from resident input, not by us, and issue-voting results are shown to everyone, not just the people who voted.
+We don't endorse or oppose any candidate, party, or position. Candidates are presented side by side, with the same fields and the same sourcing standard applied to everyone. Every ward votes on the same list of civic issues, and issue-voting results are shown to everyone, not just the people who voted.
 
 ## What do you do with my data?
 

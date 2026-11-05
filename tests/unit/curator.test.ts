@@ -33,8 +33,8 @@ describe('src/lib/curator.ts — parseCandidateFieldTargetRef', () => {
 
   it.each([
     ['candidate:abc:cases', 'non-numeric candidate id'],
-    ['candidate:12', 'missing the fieldKey segment (ward_field-arity, not candidate_field)'],
-    ['ward:5:name', 'wrong prefix — a ward_field targetRef, not candidate_field'],
+    ['candidate:12', 'missing the fieldKey segment (ward-style arity, not candidate_field)'],
+    ['ward:5:name', 'wrong prefix — a ward targetRef, not candidate_field'],
     ['', 'empty string'],
     ['garbage', 'no colons at all'],
   ])('returns null (never throws) for %s — %s', (input) => {
@@ -50,9 +50,6 @@ describe('src/lib/curator.ts — flagFieldKey', () => {
 
   it.each([
     ['candidate_field', 'garbage', 'a candidate flag whose reference does not parse'],
-    ['ward_field', 'ward:5:name', 'an old ward-field row'],
-    ['ward_issue', 'ward_issue:9', 'an old ward-issue row'],
-    ['ward_issue', 'candidate:42:assets', 'a candidate-shaped reference on another target type'],
   ] as const)('gives null for %s %s — %s', (targetType, targetRef, _why) => {
     expect(flagFieldKey(targetType, targetRef)).toBeNull();
   });

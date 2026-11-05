@@ -42,7 +42,7 @@ import { translateFieldSoon } from './translate-runtime';
 import { createHash } from 'node:crypto';
 import { flagLock, lockReporter, checkFlagAllowance, recordFlagAdmission, reportFingerprint, metric, type FlagReporter } from './flag-abuse';
 
-export type FlagTargetType = 'candidate_field' | 'ward_field' | 'ward_issue';
+export type FlagTargetType = 'candidate_field';
 
 export interface SubmitFlagInput {
   /**
@@ -80,10 +80,9 @@ export class InvalidFlagTargetError extends Error {
  *
  * The one remaining case is `candidate_field` (`candidate:<id>:<fieldKey>`):
  * the candidate's own `wardId`, provided `<fieldKey>` is one of
- * {@link FLAGGABLE_FIELD_KEYS} and the candidate exists. Anything else — a
- * ward_field or ward_issue target, the affidavit document, an unknown field,
- * a malformed ref — throws {@link InvalidFlagTargetError}. `ward_field` and
- * `ward_issue` remain in the DB enum only so old rows can still be read.
+ * {@link FLAGGABLE_FIELD_KEYS} and the candidate exists. Anything else — the
+ * affidavit document, an unknown field, a malformed ref — throws
+ * {@link InvalidFlagTargetError}.
  */
 export async function deriveTargetWardId(targetType: FlagTargetType, targetRef: string): Promise<number> {
   if (targetType !== 'candidate_field') throw new InvalidFlagTargetError();

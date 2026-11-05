@@ -10,9 +10,8 @@
  * curator route to derive it from). See src/lib/curator.ts's
  * `loadCuratorLang`.
  *
- * SEARCH ("quick entry to edit candidates/wards"): a GET form on
- * `?q=` finds a candidate or a ward by name (a ward also by number) and
- * links to its editor.
+ * SEARCH ("quick entry to edit candidates"): a GET form on `?q=` finds a
+ * candidate by name and links to its editor.
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Button from '../../../components/Button.astro';
@@ -62,7 +61,7 @@ const { queueCount, matchCount } = data;
       </form>
 
       {search === null && <p class="search-note">{t(lang, 'curator.dashboard.search.tooShort')}</p>}
-      {search && search.candidates.length === 0 && search.wards.length === 0 && <p class="search-note">{t(lang, 'curator.dashboard.search.none', { q: q.trim() })}</p>}
+      {search && search.candidates.length === 0 && <p class="search-note">{t(lang, 'curator.dashboard.search.none', { q: q.trim() })}</p>}
       {
         search && search.candidates.length > 0 && (
           <section class="search-results">
@@ -82,20 +81,6 @@ const { queueCount, matchCount } = data;
               ))}
             </ul>
             {search.capped && <p class="search-note">{t(lang, 'curator.dashboard.search.capped', { count: SEARCH_CAP })}</p>}
-          </section>
-        )
-      }
-      {
-        search && search.wards.length > 0 && (
-          <section class="search-results">
-            <h3>{t(lang, 'curator.dashboard.search.wards')}</h3>
-            <ul>
-              {search.wards.map((w) => (
-                <li>
-                  <a href={`/curator/ward/${w.id}`}>{lang === 'kn' ? w.nameKn : w.nameEn}</a>
-                </li>
-              ))}
-            </ul>
           </section>
         )
       }

@@ -56,8 +56,6 @@ describe('src/lib/csp.ts#buildCsp', () => {
       '/curator/queue',
       '/curator/matching',
       '/curator/guide',
-      '/curator/candidate/new',
-      '/curator/ward/5',
       '/curator/queue/7/extra',
     ])('%s may frame nothing', (pathname) => {
       expect(buildCsp(NONCE, pathname)).toContain("frame-src 'none'");
