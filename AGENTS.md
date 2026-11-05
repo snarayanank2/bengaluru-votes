@@ -201,7 +201,7 @@ Anonymous citizen (no account; all citizen traffic) · Transcriber · Data curat
 
 ## Agent sessions and git workflow
 
-These rules apply to every coding agent, whichever tool runs it. Use normal sessions for implementation; do not route work through a mandatory subagent or coordinator workflow. Work in the primary checkout, one session at a time; two sessions must never edit the same checkout or branch at the same time.
+These rules apply to every coding agent, whichever tool runs it. Use normal sessions for implementation. Work in the primary checkout, one session at a time; two sessions must never edit the same checkout or branch at the same time.
 
 Every new session must start its own instance of Docker Compose, configured to listen on a different host port from other active sessions. After starting it, present the resulting review URL to the user so they can inspect the changes directly.
 
@@ -234,6 +234,10 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 ## UI verification
 
 After any UI change, use the `agent-browser` CLI to inspect the live page at desktop and mobile widths. Before the first browser command, run `agent-browser skills get core` (or `agent-browser skills get core --full` when the full command reference is needed). Verify the actual rendered layout—not just the CSS or DOM—including column proportions, spacing, vertical alignment, control heights and widths, text wrapping, hover/focus states, and horizontal overflow. Compare reference-based changes against the reference site at the same viewport size before considering the work complete. Prefer `agent-browser` over a tool's built-in browser for routine project UI verification.
+
+**Delegating UI verification:** Where the tool supports subagents, UI verification may be delegated to a browser-verification subagent (Claude Code: `.claude/agents/ui-verifier.md`). It checks the rendered UI against `docs/design-system.md` and reports three things separately: bugs, places the UI violates the design system, and places the design system is silent, ambiguous or wrong. It never edits source or docs; fixing the UI or amending the design system is the caller's decision.
+
+**Verifying against production:** UI verification may run against `bengaluruvotes.opencity.in`, not only a local stack. On production the agent may submit anonymous flags, sign in with test staff accounts, fix or reject flags, and cast an issue vote, but only on records marked fictional (the "(FICTIONAL)" demo candidates) and only in ward 1001, the designated test ward. It must never change a real candidate, a real ward's data, or a real staff account, and must never try to circumvent the one-ballot-per-browser rule. Report every change made (record, field, old and new value) so it can be reversed. Test staff accounts are listed in the "Test Accounts" sheet (https://docs.google.com/spreadsheets/d/18wXM6IgKERWQdOLfRpJ42lYtyHQsJtdk8jYilmmWTRA/edit?usp=sharing); the sheet holds the credentials, so never copy a password into this file, a commit, a PR, a screenshot or a report. Production test activity is real traffic: it lands in the curator queue, flag counts, vote tallies for ward 1001 and Google Analytics, and public pages may lag a publish by a few minutes because of the nginx cache.
 
 **Transcriber screens are desktop only:** Transcribing needs the affidavit scan and the form side by side, so it "will be difficult to transcribe on mobile". Do not design, build or browser-test a mobile layout for `/transcribe`; verify those screens with `agent-browser` at a desktop viewport alone. Public pages still get both widths.
 

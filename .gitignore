@@ -28,7 +28,7 @@ playwright-report/
 test-results/
 
 
-.claude/
+.claude/settings.local.json
 .codex/
 .agents/
 .worktrees/
