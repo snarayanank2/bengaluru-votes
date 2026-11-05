@@ -67,8 +67,12 @@ const hasValue = !notDeclared && !unreadable && Boolean(value);
   }
 
   .profile-field__value a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     color: var(--color-primary);
     font-weight: 700;
+    text-underline-offset: 3px;
   }
 
   .profile-field__value--empty {

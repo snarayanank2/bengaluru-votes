@@ -251,11 +251,12 @@ Every section starts with a content hierarchy: optional eyebrow → heading → 
 | Structured fact group | Parallel label/value units with optional lists | Equal columns, start-aligned, 32px gaps | Single column, 16px gaps |
 | Collection section | Heading plus rows, cards, or disclosures | One enclosing band; 16px card gaps or 24px identity-row gaps | Preserve item order and hierarchy |
 | Data/media section | Heading, map/chart/media frame, optional explanatory text | Frame aligned to container | Frame resizes; no page overflow |
+| Report card (identity + document beside data) | Dark identity band: breadcrumbs (§7.15), then initials placeholder, name, party and source note; below it an action group (secondary navigation, tertiary flag) and the fields-and-document layout (§7.17) | Band, then 24px-gap content on white | Same order; document becomes a link |
 | Document beside data | Structured fields next to their source PDF (§7.17) | Two columns, document panel sticky and internally scrolled | Fields only; document becomes a link |
 
 **Surface selection:** dark green establishes identity; gold gives explanatory material emphasis; white supports detailed reading and interaction; paper gently separates a collection or navigation strip; sage supports a related task or resource collection. Use the matching text tokens in §2.2.
 
-**Section rhythm:** continuous color bands meet without an extra gap. Separate content regions use the default 32px gap, or 48px for a clear hierarchy change. The final full-width band meets the footer directly; no container bottom padding or empty spacer beneath it. Restore the shared inset after any full-width breakout.
+**Section rhythm:** continuous color bands meet without an extra gap. Separate content regions use the default 32px gap, or 48px for a clear hierarchy change. The final full-width band meets the footer directly; no container bottom padding or empty spacer beneath it. A final white content region (for example a report card's fields and document) keeps its 32px bottom padding; only full-width bands meet the footer flush. Restore the shared inset after any full-width breakout.
 
 ## 7. Components
 
@@ -263,7 +264,7 @@ Every section starts with a content hierarchy: optional eyebrow → heading → 
 
 The global public brand/navigation shell (`AppBar.astro`) is 80px high, sticky at `top: 0`, on paper with `--shadow-sticky`. Its inner row uses the app container. Branding at the start, language control at the end. It never reads cookies or session and renders no account action.
 
-**Lockup:** the “Bengaluru Votes” text wordmark (the home link), a hairline separator, the OpenCity logo, a decorative star, and the Janaagraha logo; no byline. Below 768px the visible wordmark becomes “BV” (CSS only; the home link's accessible name stays “Bengaluru Votes”). Logo heights are 20px/22px on desktop, 13px/14px below 768px, and 12px below 360px, where the separator also disappears. Partner images sit outside the home link so they keep their own alt text.
+**Lockup:** the “Bengaluru Votes” text wordmark (the home link), a hairline separator, the OpenCity logo, a decorative star, and the Janaagraha logo; no byline. The wordmark link is 44px high; the compact “BV” may be narrower than 44px so the logos are not crowded. Below 768px the visible wordmark becomes “BV” (CSS only; the home link's accessible name stays “Bengaluru Votes”). Logo heights are 20px/22px on desktop, 13px/14px below 768px, and 12px below 360px, where the separator also disappears. Partner images sit outside the home link so they keep their own alt text.
 
 **Language control:** `EN | ಕನ್ನಡ` in fixed order. The current language is a noninteractive selected segment (forest on forest tint); the alternate language links to the equivalent page. Both segments have a minimum 44×44px target.
 
@@ -436,7 +437,7 @@ Staff layouts (`CuratorLayout`, `AdminLayout`, `TranscriberLayout`) share the to
 
 **Section navigation:** a paper strip beneath the app bar, sticky at the app bar's height. Links are 14px bold with 8px/12px padding and a 44px minimum height; the active link is forest with a 4px underline and `aria-current`. Real fragment links with smooth scrolling (immediate under reduced motion); the current section updates on scroll. On small screens the strip scrolls horizontally without widening the document. Targets get a `scroll-margin-top` that clears both sticky layers. Only show links whose targets exist. This is navigation, not tabs.
 
-**Breadcrumbs (`Breadcrumbs.astro`):** above the page title in a dark identity band. Pass localized `items` (label + `href`) in hierarchy order. Ancestors are links; the last item is noninteractive text with `aria-current="page"`. A `nav` with a localized accessible name wraps an ordered list; `›` separators are decorative (`aria-hidden`). 14px body text, cream ancestor links, muted hero color for the current item and separators, 8px gaps. Links have a 44×44px minimum target, underline on hover/focus, and a sun focus outline. Whole items wrap onto further lines; long labels wrap without truncation or overflow. A place label shows its public number and localized name, never an internal id.
+**Breadcrumbs (`Breadcrumbs.astro`):** above the page title in a dark identity band. Pass localized `items` (label + `href`) in hierarchy order. Ancestors are links; the last item is noninteractive text with `aria-current="page"`. Each separator trails its item, so a wrapped line never starts with `›`. A `nav` with a localized accessible name wraps an ordered list; `›` separators are decorative (`aria-hidden`). 14px body text, cream ancestor links, muted hero color for the current item and separators, 8px gaps. Links have a 44×44px minimum target, underline on hover/focus, and a sun focus outline. Whole items wrap onto further lines; long labels wrap without truncation or overflow. A place label shows its public number and localized name (the localized `nav.ward` string, “Ward 1 Ramaswamy Palya”), never an internal id, and reads the same in every breadcrumb, field value and title. A report card's trail is Home › Ward › Candidate name. A comparison page's H1 is the ward name; its breadcrumb's last item names the page (“Compare candidates”) and the table carries its own accessible caption.
 
 **Disclosure/accordion:** native `details`/`summary`, a clear title, optional number, trailing chevron. 16px padding, light border, 8px between disclosures. Opening may add the subtle disclosure shadow and rotates the decorative chevron. Multiple items may stay open unless the task needs an exclusive group. Do not rely on the icon alone to show state.
 
@@ -454,6 +455,8 @@ Shows structured fields next to the source PDF they come from. `AffidavitScan.as
 |---|---|
 | Reading (public) | From 768px, fields and document in a 2:3 grid with a 24px gap; the bordered document panel is sticky below the app bar, fits the remaining viewport height, and scrolls internally. Below 768px the panel is hidden; the field list keeps its source link. |
 | Working (`CuratorSplit.astro`, staff) | From 900px, document left and work panel right (58:42, panel at least 26rem), filling the viewport below the 56px staff bar; only the panel scrolls. Below 900px they stack and the document collapses to its link (`collapse`). |
+
+The embedded viewer is the browser's own PDF viewer, so its load-error text cannot be localized; the localized “open PDF” link above it (a body link, §7.4, with a 44px target) is the fallback and stays visible whenever the panel does. Never hide that link.
 
 Both columns must be shrinkable (`minmax(0, …)`) and let long values wrap. Without a document, keep the single-column layout.
 
@@ -479,7 +482,8 @@ Motion explains state: modal/toast transitions around 150–200ms, disclosure ch
 
 - Target WCAG AA contrast for text and interactive boundaries; verify actual pairs.
 - Visible keyboard focus, logical focus order, native semantics, meaningful accessible names.
-- Targets at least 44×44px; distinct actions normally 8px apart.
+- Targets at least 44×44px; distinct actions normally 8px apart. A smaller glyph (for example the 16px verification icon) keeps its look but extends an invisible 44×44px hit area around it. Inline body links and the wordmark link also reach 44px height (`min-height` with `inline-flex`). Native radios and checkboxes may stay small only when the whole label row is the target and at least 44px tall.
+- Vendor-rendered controls (the reCAPTCHA badge, Google Maps attribution, the browser PDF viewer) are exempt from the target size, but must not cover page content or controls at any width, and the page must offer its own localized fallback beside them.
 - Never use color, icons, position, hover, or motion as the only carrier of meaning.
 - Every layout renders `SkipLink.astro` first (a “Skip to main content” link to `#main-content`, visible on focus), plus landmarks, hierarchical headings, correct document language, and equivalent bilingual navigation.
 - Preserve content at narrow widths and text zoom; isolate necessary horizontal scrolling.
@@ -537,6 +541,7 @@ Differences between this standard and the code. Fix them; do not copy them.
 - Disabled links and duplicate-submission prevention are caller responsibilities; button styling does not enforce them.
 - The basemap is stock Google (colored POIs); the desaturated style needs a Map ID change outside the repo (§8.1).
 - `FieldRow`, `SourceLine`, `IssueBars`, and `Toast` are tested but not currently rendered by any page (§13).
+- The reCAPTCHA badge sits fixed bottom-right and, on narrow screens, covers the edge of the issue list. Moving it or hiding it behind the required legal notice is a pending decision (§10).
 - Brand lockup is decided (text wordmark plus partner logos, no byline; §7.1) — listed here because code cites it.
 
 ## 13. Component inventory

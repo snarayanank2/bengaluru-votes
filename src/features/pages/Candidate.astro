@@ -8,6 +8,7 @@
  */
 import Base from '../../layouts/Base.astro';
 import Banner from '../../components/Banner.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Button from '../../components/Button.astro';
 import Card from '../../components/Card.astro';
 import AffidavitScan from '../../components/AffidavitScan.astro';
@@ -50,7 +51,11 @@ const [row] = await db
 
 const candidateName = row ? (lang === 'kn' && row.nameKn ? row.nameKn : row.nameEn) : '';
 const partyName = row ? (lang === 'kn' && row.partyKn ? row.partyKn : row.partyEn) : '';
-const wardName = row ? (lang === 'kn' ? row.wardNameKn : row.wardNameEn) : '';
+// Same place label as the ward and comparison breadcrumbs: public number plus the
+// localized name, with any "N - " prefix in the stored name dropped (never the
+// composite route id).
+const wardName = row ? (lang === 'kn' ? row.wardNameKn : row.wardNameEn).replace(/^\d+\s*-\s*/, '') : '';
+const wardLabel = row ? t(lang, 'nav.ward', { wardNumber: row.wardId % 1000, wardName }) : '';
 
 // Neutral initials placeholder — same derivation as
 // CandidateRow.astro: first letter of up to the first two words of the
@@ -83,7 +88,7 @@ const profileFields = CANDIDATE_PROFILE_FIELD_KEYS.map((key) => {
     key === 'full_name'
       ? candidateName
       : key === 'ward'
-        ? wardName
+        ? wardLabel
         : key === 'party'
           ? partyName
           : key === 'ec_affidavit' && affidavitUrl
@@ -153,30 +158,42 @@ const candidateJsonLd = row
           </Banner>
         )}
 
-        <header class="candidate-header">
-          <span class="photo photo--placeholder" aria-hidden="true">
-            {initials}
-          </span>
-          <div class="identity">
-            <h1 class="name">{candidateName}</h1>
-            <p class="party">{partyName}</p>
-            <p class="ward-line">
-              <a href={localePath(lang, `/ward/${row.wardId}`)}>{wardName}</a>
-            </p>
+        <header class="candidate-hero">
+          <div class="candidate-container hero-content">
+            <Breadcrumbs lang={lang} items={[
+              { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
+              { label: wardLabel, href: localePath(lang, `/ward/${row.wardId}`) },
+              { label: candidateName },
+            ]} />
+            <div class="candidate-header">
+              <span class="photo photo--placeholder" aria-hidden="true">
+                {initials}
+              </span>
+              <div class="identity">
+                <h1 class="name">{candidateName}</h1>
+                <p class="party">{partyName}</p>
+                <p class="ec-source-note">{t(lang, 'candidate.header.sourceEcNomination')}</p>
+              </div>
+            </div>
           </div>
         </header>
-        <p class="ec-source-note">{t(lang, 'candidate.header.sourceEcNomination')}</p>
 
-        <Button
-          variant="tertiary"
-          type="button"
-          lang={lang}
-          data-flag-action
-          data-ward-id={row.wardId}
-          data-flag-targets={flagTargets}
-        >
-          {t(lang, 'common.flagError')}
-        </Button>
+        <div class="candidate-container candidate-body">
+        <div class="candidate-actions">
+          <Button variant="secondary" href={localePath(lang, `/ward/${row.wardId}/compare`)} lang={lang}>
+            {t(lang, 'candidate.links.compare')}
+          </Button>
+          <Button
+            variant="tertiary"
+            type="button"
+            lang={lang}
+            data-flag-action
+            data-ward-id={row.wardId}
+            data-flag-targets={flagTargets}
+          >
+            {t(lang, 'common.flagError')}
+          </Button>
+        </div>
 
         <div class:list={['report-layout', { 'report-layout--with-pdf': affidavitUrl }]}>
           <div class="report-fields">
@@ -204,9 +221,7 @@ const candidateJsonLd = row
           )}
         </div>
 
-        <nav class="candidate-links" aria-label={t(lang, 'candidate.links.label')}>
-          <a href={localePath(lang, `/ward/${row.wardId}/compare`)}>{t(lang, 'candidate.links.compare')}</a>
-        </nav>
+        </div>
       </div>
     ) : (
       <EmptyState fact={t(lang, 'candidate.notFound.fact')} />
@@ -216,17 +231,41 @@ const candidateJsonLd = row
 
 <style>
   .candidate {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .candidate-container {
+    width: 100%;
     max-width: var(--container-app);
     margin-inline: auto;
-    padding: var(--space-8) var(--container-pad-x);
+    padding-inline: var(--container-pad-x);
+    box-sizing: border-box;
+  }
+
+  /* Dark identity band (design-system §6.4, §7.15): breadcrumbs above the identity. */
+  .candidate-hero {
+    padding-block: var(--space-8);
+    background: var(--color-hero-bg);
+    color: var(--color-on-hero);
+  }
+
+  .hero-content {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .candidate-body {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
+    padding-block: var(--space-8);
   }
 
-  /* The flag button is a flex item of the column above; without this it stretches the full width. */
-  .candidate > :global([data-flag-action]) {
-    align-self: flex-start;
+  .candidate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 
   .report-fields {
@@ -239,6 +278,10 @@ const candidateJsonLd = row
   }
 
   @media (min-width: 768px) {
+    .candidate-hero {
+      padding-block: var(--space-12);
+    }
+
     .report-layout--with-pdf {
       display: grid;
       grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
@@ -299,34 +342,19 @@ const candidateJsonLd = row
     font-size: var(--text-3xl);
     line-height: var(--leading-3xl);
     margin: 0;
+    color: var(--color-on-hero);
   }
 
   .party {
     margin: 0;
     font-size: var(--text-base);
-    color: var(--color-text);
-  }
-
-  .ward-line {
-    margin: 0;
-    font-size: var(--text-sm);
-  }
-
-  .ward-line a {
-    color: var(--color-primary);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .ward-line a:hover,
-  .ward-line a:focus-visible {
-    text-decoration: underline;
+    color: var(--color-on-hero);
   }
 
   .ec-source-note {
     margin: 0;
     font-size: var(--text-xs);
-    color: var(--color-text-muted);
+    color: var(--color-hero-muted);
   }
 
   .field-rows {
@@ -336,22 +364,5 @@ const candidateJsonLd = row
 
   .field-rows > :global(*:not(:last-child)) {
     border-bottom: 1px solid var(--color-border);
-  }
-
-  .candidate-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-  }
-
-  .candidate-links a {
-    color: var(--color-primary);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .candidate-links a:hover,
-  .candidate-links a:focus-visible {
-    text-decoration: underline;
   }
 </style>

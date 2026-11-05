@@ -107,7 +107,7 @@ const compareCandidates: CompareCandidate[] = orderedCandidates.map((c) => {
         key === 'full_name'
           ? pickCandidateValue(lang, c.nameEn, c.nameKn)
           : key === 'ward'
-            ? wardName
+            ? t(lang, 'nav.ward', { wardNumber: wardId % 1000, wardName })
             : key === 'party'
               ? pickCandidateValue(lang, c.partyEn, c.partyKn)
               : key === 'ec_affidavit' && affidavitUrl
@@ -382,6 +382,9 @@ const compareJsonLd = ward
   }
 
   .field-value a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     color: var(--color-primary);
     text-underline-offset: 3px;
   }

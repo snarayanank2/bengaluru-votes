@@ -64,6 +64,14 @@ const label = t(lang, aiExtracted ? 'common.verification.aiExtracted' : 'common.
     flex: none;
   }
 
+  /* The glyph stays 16px; an invisible 44x44px hit area is centered on it (design-system §10). */
+  .verification-label::after {
+    content: '';
+    position: absolute;
+    inset-block: -14px;
+    inset-inline: -14px;
+  }
+
   .verification-tooltip {
     position: absolute;
     z-index: 2;
