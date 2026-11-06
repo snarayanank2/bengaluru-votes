@@ -27,7 +27,7 @@
     "upload:affidavits": "tsx scripts/upload-affidavits.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.112.3",
+    "@anthropic-ai/sdk": "^1.4.0",
     "@astrojs/node": "^9.5.5",
     "@googlemaps/js-api-loader": "^2.1.1",
     "@turf/boolean-point-in-polygon": "^7.3.5",
