@@ -36,17 +36,27 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
+      # The required check must always report, so a docs-only PR still runs this
+      # job; it just skips the gate (scripts/ci/changed-paths.mjs). On a
+      # pull_request run HEAD is the merge commit, so HEAD^1 is the base tip.
+      - name: Does this change need the gate?
+        id: changes
+        run: node scripts/ci/changed-paths.mjs HEAD^1 HEAD
       - uses: ./.github/actions/gate
+        if: steps.changes.outputs.gate == 'true'
       # Marker that deploy.yml looks for: "this exact tree passed the gate".
       # The tree (file contents) is compared rather than the commit, because a
       # squash merge always makes a new commit. See scripts/ci/tested-tree.ts.
       - name: Record the tested tree
         id: tree
+        if: steps.changes.outputs.gate == 'true'
         run: |
           tree=$(git rev-parse 'HEAD^{tree}')
           echo "tree=$tree" >> "$GITHUB_OUTPUT"
           echo "$tree" > tested-tree.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.changes.outputs.gate == 'true'
         with:
           name: tested-tree-${{ steps.tree.outputs.tree }}
           path: tested-tree.txt

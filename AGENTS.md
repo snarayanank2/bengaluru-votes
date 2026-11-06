@@ -197,7 +197,7 @@ Anonymous citizen (no account; all citizen traffic) · Transcriber · Data curat
 - **Curator publish:** trusted; immediate, no approval gate.
 - **Bilingual:** EN at root, KN under `/kn/`, each with its own URL.
 - **Deployment:** one Hostinger VPS (Mumbai, 4 vCPU / 16 GB) runs production Compose, from `/root/src/bengaluru-votes-production`. The staging site/stack was retired on 2026-09-18 and removed from the repo on 2026-10-13; production is the only environment. **There is no registry**: images are built on the box. CI/CD returned 2026-11-04: PRs must pass the `test` check, and every push to `main` deploys to production automatically (`.github/workflows/deploy.yml`, secrets from the GitHub `production` environment). “Deploy” means production; there is no staging step. `deploy/runbook.md` ("Deploying") is the procedure, and `.claude/skills/deploy-vps/SKILL.md` is a step-by-step version any agent can read; `architecture.md` §14.3/§14.4 is the design. Moved off the never-provisioned DigitalOcean Droplet on 2026-08-13.
-- **Consequence worth holding onto:** a merge to `main` deploys production with no approval step. The `test` check (typecheck, translation staleness, build, Vitest, Playwright smoke) is the only gate.
+- **Consequence worth holding onto:** a merge to `main` deploys production with no approval step. The `test` check (typecheck, translation staleness, Vitest, Playwright smoke over the e2e build) is the only gate. A change that touches only docs (including `AGENTS.md`, `docs/`, `.claude/`, `deploy/runbook.md`) skips the gate and does not deploy; tests- or CI-only changes run the gate but do not deploy (`scripts/ci/changed-paths.mjs`; the runtime path list is in architecture §14.4).
 
 ## Agent sessions and git workflow
 

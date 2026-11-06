@@ -2,9 +2,9 @@ name: gate
 description: >
   The checks every change must pass before it can merge or deploy: typecheck,
   Kannada translation staleness (with the one accepted exception), a production
-  build, the Vitest suite, and the Playwright smoke suite (measured at about
-  15s plus the browser install; if the whole job nears 2 minutes, drop the
-  last four steps rather than the timeout). The calling job supplies the Postgres service
+  build, the Vitest suite, and the Playwright smoke suite. Budget: the whole
+  job stays under 2 minutes (typecheck runs alongside Vitest; the only build is
+  the e2e one; the Chromium download is cached). The calling job supplies the Postgres service
   (composite actions cannot declare one) and DATABASE_URL / SITE_ORIGIN.
 
 runs:
@@ -17,21 +17,38 @@ runs:
     - name: Install
       shell: bash
       run: npm ci
-    - name: Typecheck
-      shell: bash
-      run: npm run typecheck
     - name: Translation staleness
       shell: bash
       run: npx tsx scripts/ci/translate-gate.ts
-    - name: Build
+    # Typecheck is one busy core and Vitest (single fork) another, so they run
+    # side by side on the 2-vCPU runner. Typecheck output is held and printed after.
+    - name: Typecheck and unit/route tests
       shell: bash
-      run: npm run build
-    - name: Unit and route tests
+      run: |
+        npm run typecheck > "$RUNNER_TEMP/typecheck.log" 2>&1 &
+        tc=$!
+        rc=0
+        npm test || rc=$?
+        wait $tc || { echo "::group::typecheck failed"; cat "$RUNNER_TEMP/typecheck.log"; echo "::endgroup::"; rc=1; }
+        exit $rc
+    - name: Playwright version
+      id: pw
       shell: bash
-      run: npm test
+      run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+    - name: Cache the Chromium download
+      id: pwcache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
     - name: Install the browser for the smoke suite
       shell: bash
-      run: npx playwright install --with-deps chromium
+      run: |
+        if [ "${{ steps.pwcache.outputs.cache-hit }}" = true ]; then
+          npx playwright install-deps chromium
+        else
+          npx playwright install --with-deps chromium
+        fi
     - name: Create the e2e database
       shell: bash
       run: psql "$DATABASE_URL" -c 'CREATE DATABASE bv_e2e'

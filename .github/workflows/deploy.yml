@@ -42,18 +42,36 @@ jobs:
       contents: read
       actions: read
     outputs:
+      runtime: ${{ steps.changes.outputs.runtime }}
       tested: ${{ steps.check.outputs.tested }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      # A push that changed nothing the image or the box runs (docs, tests, CI
+      # config) neither tests nor deploys. Manual runs always deploy.
+      - name: Did this push change anything production runs?
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = push ]; then
+            node scripts/ci/changed-paths.mjs "$BEFORE" HEAD
+          else
+            echo "runtime=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.changes.outputs.runtime == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
+        if: steps.changes.outputs.runtime == 'true'
       - name: Was this exact tree already tested?
         id: check
+        if: steps.changes.outputs.runtime == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
@@ -68,7 +86,7 @@ jobs:
 
   test:
     needs: decide
-    if: needs.decide.outputs.tested != 'true'
+    if: needs.decide.outputs.runtime == 'true' && needs.decide.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -95,7 +113,7 @@ jobs:
 
   deploy:
     needs: [decide, test]
-    if: ${{ !cancelled() && needs.decide.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    if: ${{ !cancelled() && needs.decide.result == 'success' && needs.decide.outputs.runtime == 'true' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production

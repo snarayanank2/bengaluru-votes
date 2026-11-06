@@ -212,7 +212,7 @@ Never machine-translated: official bilingual data (ward names) and UI strings.
 - `tests/load/k6-election-day.js` proves the micro-cache holds election-day read volume on the real VM and that legitimate-shaped traffic through the CGNAT-sized limits (§7) sees no 429s.
 - `tests/routes/cache-invariant.test.ts` asserts public GETs set no cookies and carry no session-dependent bytes — the guard on §5.
 - `tests/unit/media.test.ts` rejects over-size and off-allowlist uploads.
-- **The CI gate** (`.github/actions/gate/action.yml`, run by `ci.yml` on every PR and by `deploy.yml` before deploying an untested tree): typecheck, translation staleness (§9), build, Vitest against a Postgres service, Playwright smoke. The required status check is `test` (§14.4).
+- **The CI gate** (`.github/actions/gate/action.yml`, run by `ci.yml` on every PR and by `deploy.yml` before deploying an untested tree): typecheck, translation staleness (§9), Vitest against a Postgres service, and the Playwright smoke suite over the e2e build (the only build in the gate). The gate runs only when `scripts/ci/changed-paths.mjs` finds a change to code, tests or CI; a docs-only PR still reports `test` (it is a required check) but does nothing. The required status check is `test` (§14.4).
 
 ## 13. Security
 
@@ -273,7 +273,7 @@ The Compose project name is **pinned in the compose file** (`bengaluru-votes-pro
 
 ### 14.4 Release flow
 
-Deploys are **automatic from `main`**: every push to `main` (a PR merge or a direct commit) deploys production.
+Deploys are **automatic from `main`**: every push to `main` (a PR merge or a direct commit) that changes something production runs deploys production. A push that changes only documentation, tests or CI config neither tests nor deploys (`scripts/ci/changed-paths.mjs`, unit-tested in `tests/unit/ci/changed-paths.test.ts`). Runtime means `src/`, `data/`, `content/` (including its Markdown), `drizzle/`, `jobs/`, `deploy/` (except Markdown), `scripts/` (except `scripts/ci/`), `public/`, `package*.json`, `Dockerfile`, `.dockerignore`, `astro.config.mjs`, `tsconfig.json`, `drizzle.config.ts`. Any other Markdown is documentation. Unknown base commits fail safe to "deploy"; manual runs always deploy.
 
 Why: changes come from cloud coding agents and outside contributors, so a change must go from pull request to production with no laptop in the loop, and production config lives in GitHub rather than only on the box.
 
@@ -285,7 +285,7 @@ Why: changes come from cloud coding agents and outside contributors, so a change
 - **New config:** add the key to the GitHub `production` environment and to `deploy/env.production.manifest` in the same PR.
 - **Production is a tag**, checked out detached; `git log -1` on the box answers "what is running". Rollback is a `:previous` retag and restart, never a schema step, because migrations are backward-compatible (§14.7).
 - **Access:** SSH as `root`, key-only, password authentication disabled (§13). CI uses its own dedicated key pair (revocable without touching personal keys), with the host key pinned in the workflow. It is not restricted to a forced command, because `deploy.sh` issues many remote commands.
-- **Gate time:** the `test` job measured 2m43s on GitHub. To trim it, drop the Playwright steps from `.github/actions/gate/action.yml` first.
+- **Gate time:** budget is under 2 minutes. Measured 1m55s–2m45s before 2026-11-06; trimmed by running typecheck beside Vitest, dropping the duplicate plain `npm run build` (`build:e2e` already compiles everything) and caching the Chromium download. Vitest (~27 s) and the Playwright suite (~20 s with build and seed) dominate; if it creeps back, drop the Playwright steps from `.github/actions/gate/action.yml` first.
 
 ### 14.5 Network & TLS
 

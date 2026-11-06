@@ -481,6 +481,8 @@ Deploys are **automatic** (`docs/architecture.md` §14.4, revised 2026-11-04).
 Merge a PR to `main`: `ci.yml` must pass, then `deploy.yml` tags, installs the
 env file from the GitHub `production` environment, and runs
 `deploy/deploy.sh`. Failures roll back, and GitHub emails whoever triggered the run.
+A push that changes only docs, tests or CI config is skipped (no gate, no deploy);
+use Run workflow → `deploy-head` to ship such a commit anyway.
 
 Manual actions: GitHub Actions → deploy → Run workflow
 (`redeploy-current`, `deploy-tag`, `rollback`). By hand from a laptop,

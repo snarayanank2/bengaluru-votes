@@ -5,7 +5,7 @@ description: Use when deploying, updating, redeploying, or rolling back bengalur
 
 # Deploying to the VPS
 
-Deploys now run automatically on every push to `main` (`.github/workflows/deploy.yml`, revised 2026-11-04); for manual runs use Actions → deploy → Run workflow, or `deploy/deploy.sh` by hand. Env values live in the GitHub `production` environment — never edit the box's env file by hand, the next deploy overwrites it.
+Deploys now run automatically on every push to `main` that changes runtime files (docs-, tests- and CI-only pushes are skipped, architecture §14.4) (`.github/workflows/deploy.yml`, revised 2026-11-04); for manual runs use Actions → deploy → Run workflow, or `deploy/deploy.sh` by hand. Env values live in the GitHub `production` environment — never edit the box's env file by hand, the next deploy overwrites it.
 
 The deploy tool is `deploy/deploy.sh`, committed in the repo — not in this
 skill. It does the whole sequence and verifies it:
