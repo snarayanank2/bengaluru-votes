@@ -65,18 +65,6 @@ export const wardKeyAreas = pgTable('ward_key_areas', {
   check('ward_key_areas_position_check', sql`${t.position} > 0`),
 ]);
 
-export const wardCandidateQuestions = pgTable('ward_candidate_questions', {
-  id: serial('id').primaryKey(),
-  wardId: integer('ward_id').notNull().references(() => wards.id, { onDelete: 'cascade' }),
-  position: integer('position').notNull(),
-  questionEn: text('question_en').notNull(),
-  questionKn: text('question_kn').notNull(),
-}, (t) => [
-  uniqueIndex('ward_candidate_questions_ward_position_uq').on(t.wardId, t.position),
-  index('ward_candidate_questions_ward_idx').on(t.wardId),
-  check('ward_candidate_questions_position_check', sql`${t.position} between 1 and 5`),
-]);
-
 export const media = pgTable('media', {
   id: serial('id').primaryKey(),
   bytes: bytea('bytes').notNull(),

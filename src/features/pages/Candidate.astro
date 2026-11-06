@@ -179,6 +179,10 @@ const candidateJsonLd = row
         </header>
 
         <div class="candidate-container candidate-body">
+        <a class="back-link" href={localePath(lang, `/ward/${row.wardId}`)}>
+          <span class="back-link-chevron" aria-hidden="true">‹</span>
+          {t(lang, 'candidate.links.backToWard')}
+        </a>
         <div class="candidate-actions">
           <Button variant="secondary" href={localePath(lang, `/ward/${row.wardId}/compare`)} lang={lang}>
             {t(lang, 'candidate.links.compare')}
@@ -260,6 +264,24 @@ const candidateJsonLd = row
     flex-direction: column;
     gap: var(--space-6);
     padding-block: var(--space-8);
+  }
+
+  /* Return link (design-system §7.4): body link, forest with underline. */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: var(--space-2);
+    min-height: 44px;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+  }
+
+  .back-link-chevron {
+    font-size: var(--text-lg);
+    line-height: 1;
   }
 
   .candidate-actions {

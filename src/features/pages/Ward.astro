@@ -2,8 +2,7 @@
 /**
  * Ward result (`/ward/{id}`, `/kn/ward/{id}`). The hub page for a single GBA ward: name/number/
  * corporation, the boundary map, the ward's
- * candidate list and comparison entry point, issue voting, and candidate
- * questions.
+ * candidate list and comparison entry point, and issue voting.
  *
  * Existence check lives in the route twins (src/pages/ward/[id].astro,
  * src/pages/kn/ward/[id].astro), not here — only a page-level frontmatter
@@ -40,7 +39,6 @@
  */
 import Base from '../../layouts/Base.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
-import Card from '../../components/Card.astro';
 import IssueVote from '../../components/IssueVote.astro';
 import Button from '../../components/Button.astro';
 import EmptyState from '../../components/EmptyState.astro';
@@ -51,7 +49,6 @@ import { db } from '../../db/client';
 import { candidateIdentitySelection } from '../../lib/candidate-identity';
 import {
   candidates,
-  wardCandidateQuestions,
   wardIssues,
   wardKeyAreas,
   wardOldWardOverlaps,
@@ -71,13 +68,6 @@ interface Props {
 const { lang, wardId } = Astro.props;
 
 const [ward] = await db.select().from(wards).where(eq(wards.id, wardId));
-const questions = ward
-  ? await db
-      .select()
-      .from(wardCandidateQuestions)
-      .where(eq(wardCandidateQuestions.wardId, wardId))
-      .orderBy(asc(wardCandidateQuestions.position))
-  : [];
 const candidateRows = ward
   ? await db
       .select({
@@ -227,7 +217,6 @@ const wardJsonLd = ward
           <a href="#ward-overview" data-ward-section-tab="ward-overview" aria-current="page">{t(lang, 'ward.nav.overview')}</a>
           <a href="#ward-candidates" data-ward-section-tab="ward-candidates">{t(lang, 'ward.nav.candidates')}</a>
           {cityIssues.length > 0 && <a href="#ward-issues" data-ward-section-tab="ward-issues">{t(lang, 'ward.nav.issues')}</a>}
-          {questions.length > 0 && <a href="#ward-questions" data-ward-section-tab="ward-questions">{t(lang, 'ward.nav.questions')}</a>}
         </nav>
 
         <section id="ward-overview" class="ward-section ward-overview-section" aria-label={t(lang, 'ward.map.label')}>
@@ -310,21 +299,6 @@ const wardJsonLd = ward
           </section>
         )}
 
-        {questions.length > 0 && (
-          <section id="ward-questions" class="ward-section candidate-questions candidate-questions-section" aria-labelledby="candidate-questions-heading">
-            <p class="ward-section-eyebrow eyebrow">{t(lang, 'ward.nav.questions')}</p>
-            <h2 id="candidate-questions-heading">{t(lang, 'ward.questions.heading')}</h2>
-            <ol>
-              {questions.map((question) => (
-                <li>
-                  <Card>
-                    <p>{lang === 'kn' ? question.questionKn : question.questionEn}</p>
-                  </Card>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
       </div>
     ) : (
       <EmptyState fact={t(lang, 'ward.notFound.fact')} />
@@ -454,11 +428,6 @@ const wardJsonLd = ward
 
   .issue-vote-section {
     background: var(--color-bg);
-  }
-
-  .candidate-questions-section {
-    background: var(--color-methodology-bg);
-    color: var(--color-methodology-text);
   }
 
   .ward-header h1 {
@@ -677,25 +646,6 @@ const wardJsonLd = ward
     margin-top: var(--space-2);
   }
 
-  .candidate-questions h2 {
-    font-family: var(--font-heading);
-    font-size: 1.6rem;
-    line-height: var(--leading-3xl);
-    margin: 0 0 var(--space-4);
-  }
-
-  .candidate-questions ol {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-4);
-  }
-
-  .candidate-questions p {
-    margin: 0;
-  }
-
   .issue-vote {
     display: grid;
     gap: var(--space-4);
@@ -725,11 +675,6 @@ const wardJsonLd = ward
   .issue-vote-section h2,
   .issue-vote-section > p:not(.ward-section-eyebrow) {
     color: var(--color-text);
-  }
-
-  .candidate-questions-section .ward-section-eyebrow {
-    color: var(--color-danger);
-    margin-bottom: var(--space-2);
   }
 
   .vote-personal h3, .vote-results-heading {

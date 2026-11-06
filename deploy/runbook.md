@@ -330,8 +330,7 @@ COMPOSE="docker compose -p bengaluru-votes-production -f deploy/compose.producti
 $COMPOSE run --rm app npm run migrate
 ```
 
-Wards first — everything else depends on them. `seed:wards` also upserts the
-five bilingual candidate questions for every ward.
+Wards first — everything else depends on them.
 
 ```sh
 # Production: the real 369 wards, then the first admin.

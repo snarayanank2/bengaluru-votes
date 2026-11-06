@@ -77,14 +77,14 @@ Schema: `src/db/schema.ts`; migrations: `drizzle/`.
 
 | Area | Tables |
 |---|---|
-| Wards | `wards` (id = corporation × 1000 + ward number, EN/KN names, corporation, zone, `boundary_ref`, assembly, population, reservation, facts source) · `ward_old_ward_overlaps` (pre-delimitation wards and published overlap, basis points) · `ward_key_areas` · `ward_candidate_questions` (five bilingual questions per ward) · `ward_issues` (20-item bilingual catalog copied to every ward, `catalog_key`) |
+| Wards | `wards` (id = corporation × 1000 + ward number, EN/KN names, corporation, zone, `boundary_ref`, assembly, population, reservation, facts source) · `ward_old_ward_overlaps` (pre-delimitation wards and published overlap, basis points) · `ward_key_areas` · `ward_issues` (20-item bilingual catalog copied to every ward, `catalog_key`) |
 | Candidates | `candidates` (slug, ward, lifecycle `filed\|contesting\|rejected\|withdrawn`; English name/party columns are a search projection) · `candidate_fields` (below) |
 | Affidavits | `media` (bytes, validated content type, sha256, size) · `candidate_affidavits` (the extraction queue, below) · `transcription_assignments` |
 | Citizen contributions | `anonymous_issue_vote_sets` / `anonymous_issue_vote_selections` · `flag_items` / `flag_submissions` / `flag_admissions` / `flag_request_buckets` / `flag_metrics` |
 | Staff | `users` (staff only: role `transcriber\|curator\|admin`, status `active\|banned\|erased`, email, language) · `sessions` |
 | Operations | `app_settings` (election anchors, `low_confidence_threshold`, guide link-out URLs) · `geocode_cache` (normalized address → ward id only; null = out of coverage) · `budget_counters` (per-day counters: `geocode`, `epic_lookup`, `anonymous_vote`, …) |
 
-Seeds: `npm run seed:wards` loads `data/gba.geojson` (369 wards), `data/ward-facts.json`, `data/city-issues.json` and `data/ward-candidate-questions.json`; `npm run seed:admin` creates the first admin.
+Seeds: `npm run seed:wards` loads `data/gba.geojson` (369 wards), `data/ward-facts.json` and `data/city-issues.json`; `npm run seed:admin` creates the first admin.
 
 **Issue voting.** An anonymous ballot is a row in `anonymous_issue_vote_sets` holding only a SHA-256 hash of an opaque browser receipt (unique city-wide) plus exactly three `anonymous_issue_vote_selections`; immutable once written. Deleting a ward issue cascades its selections.
 
@@ -314,7 +314,7 @@ The VPS is already paid for. Monitoring costs nothing because none exists (§10)
 
 ## 15. Dormant code slated for removal
 
-Citizen registration, citizen accounts, OTP sign-in, email/WhatsApp messaging and Sentry were removed in full (code, jobs, tables and columns: migration `0016`); further dormant features and tables were removed by migration `0017`. The code below is still in the repo and must not be treated as a feature. Each item is a removal candidate.
+Citizen registration, citizen accounts, OTP sign-in, email/WhatsApp messaging and Sentry were removed in full (code, jobs, tables and columns: migration `0016`); further dormant features and tables were removed by migration `0017`. The ward page's "Questions to ask your candidates" section, its section-nav tab, the `ward_candidate_questions` table and its seed data (`data/ward-candidate-questions.json`) were removed on 2026-11-06 (migration `0019`). The code below is still in the repo and must not be treated as a feature. Each item is a removal candidate.
 
 | Leftover | Paths | Why it is dormant, and the live risk |
 |---|---|---|
