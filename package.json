@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
-    "@astrojs/node": "^9.5.5",
+    "@astrojs/node": "^11.1.9",
     "@googlemaps/js-api-loader": "^2.1.1",
     "@turf/boolean-point-in-polygon": "^7.3.5",
     "@turf/helpers": "^7.3.5",
