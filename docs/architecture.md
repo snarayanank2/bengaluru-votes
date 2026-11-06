@@ -234,6 +234,7 @@ Per-mechanism details live where they apply (§5 cache, §7 sessions and abuse c
   - **Prompt injection** into MT and extraction (affidavit PDFs and curator text are adversarial inputs) is mitigated by escaping, a fixed extraction schema, visible provenance labels and the flag correction path. No further machinery.
   - **Sessions:** 1-hour sliding idle timeout for every role; no session revocation on role change and no login notifications for staff — the short timeout carries the weight.
   - **A merge to `main` is a production deploy.** CI deploys as `root` over key-only SSH with the host key pinned (§14.4); the ruleset requires a PR and the `test` check but zero approvals, and repository admins can bypass it. So a malicious or mistaken change that passes the tests reaches production, and anyone holding the `production` environment's SSH key holds the box. A `docker`-group deploy user would be root-equivalent anyway, so there is no pretended privilege boundary; the controls are who can merge and key custody. Fork PRs get no secrets (`pull_request`, never `pull_request_target`); actions are pinned by SHA.
+  - **Dependency updates:** Dependabot (`.github/dependabot.yml`) opens weekly version-update PRs for npm, GitHub Actions, the Dockerfile base images and the Compose images (Postgres major bumps are ignored: they need a data migration). Nothing auto-merges; each PR must pass the `test` check and be merged by a person, because a merge deploys production. Run `npm audit --omit=dev` before a release.
 
 ## 14. Deployment (Hostinger VPS)
 

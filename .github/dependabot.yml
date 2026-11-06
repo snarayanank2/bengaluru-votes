@@ -1,0 +1,50 @@
+# Dependabot version updates. Security updates are a separate repository
+# setting (Settings > Advanced Security) and are not configured here.
+#
+# A merge to main deploys production (docs/architecture.md section 14.4), so
+# nothing here auto-merges: every Dependabot PR must pass the `test` check and
+# be merged by a person. Minor and patch bumps are grouped to keep the PR count
+# low; major bumps arrive one per PR so each can be reviewed on its own.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/gate
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Kolkata
+    groups:
+      actions:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Kolkata
+
+  - package-ecosystem: docker-compose
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Kolkata
+    ignore:
+      # A Postgres major bump needs a dump/restore or pg_upgrade of the data
+      # volume, never a plain image change.
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
