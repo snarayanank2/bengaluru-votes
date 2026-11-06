@@ -10,6 +10,8 @@ needs, and the handful of admin actions that only make sense against a live
 deployment (rollback). Exact
 commands, not prose — copy-paste, adjusting the bracketed placeholders.
 
+**Reaching the box:** `ssh bengaluruvotes-vps` (an alias in your `~/.ssh/config`; it carries the user, key and pinned host key). Use it for every command below that runs on the VPS.
+
 **Production is the only environment.** Staging was retired on 2026-09-18 and
 removed from the repo on 2026-10-13 (`docs/architecture.md` §14.2). The
 "Current state" record at the end still describes the 2026-08-13 cutover,
