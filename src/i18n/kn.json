@@ -852,7 +852,17 @@
     "flag.modal.rateLimitedHours": "33f5a76c8d26876468e1ba93545813cafee3fd051c87bd7456d2b841c4a93dd2",
     "curator.fix.otherDismissOnly": "0834cced0e35f080bcb15822e5f273d5a2291476b72de1f15248d3b443d1b7f7",
     "curator.fix.otherEditorLink": "82efe2e5abda9b0096a5e3c886b423d426e57477d87805b49ca905c3d4576296",
-    "compare.flagError.label": "c3b39cd08c74d981706f7a37dc78dae3459420be383f39ed2b0bdef60c2aa36f"
+    "compare.flagError.label": "c3b39cd08c74d981706f7a37dc78dae3459420be383f39ed2b0bdef60c2aa36f",
+    "admin.users.add.passwordLabel": "d92ff592d396d57192a524cd36aa708775474608ea72bd722ff66a54b344129b",
+    "admin.users.password.heading": "4e4116871bf1515d643c959c9984ad02bb0ea7d06768aad6557d0b706aaec3c9",
+    "admin.users.password.label": "e8570d1531cd2ca8d5262b9ee4c759cb7659c6348a01d464631cf458032180c5",
+    "admin.users.password.confirmLabel": "1dd95bee7e41ce5b9b5bfe7e6b4aa123ca067fdacaea06100858088475012258",
+    "admin.users.password.submit": "4e4116871bf1515d643c959c9984ad02bb0ea7d06768aad6557d0b706aaec3c9",
+    "admin.users.results.noPassword": "56b9e00d72e779e66311462d30513256774c11d00121d045b1cce5eec993c770",
+    "admin.users.error.passwordTooShort": "38a458a56627def9f828b269536e0b639ad3d0e30f651029e4f5aaece0a019d2",
+    "admin.users.error.passwordTooLong": "655dbc621f07a5bc214b0b3ff1e409a1df76d6cc397641df5665ace945ade680",
+    "admin.users.error.userNotActive": "3c5834d82d98b623967cc453efead01f423ef83e601198c8026e0ec788dfe31b",
+    "admin.users.notice.passwordSet": "c0ac793e8f291383e3c3eb0c02573fcabdab6ddbd724551a120b8b0f187106a9"
   },
   "legal.courtesyNote": "ಇದು ಸೌಜನ್ಯ ಅನುವಾದವಾಗಿದೆ. ಈ ಪುಟದ ಇಂಗ್ಲಿಷ್ ಆವೃತ್ತಿಯು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಯಂತ್ರಿಸುವ ಪಠ್ಯವಾಗಿದೆ.",
   "error.notFound.title": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
@@ -1434,5 +1444,15 @@
   "flag.modal.rateLimitedHours": "ಈ ಬ್ರೌಸರ್‌ನಿಂದ ವರದಿ ಮಾಡುವ ಮಿತಿಯನ್ನು ತಲುಪಿದ್ದೀರಿ. ದಯವಿಟ್ಟು ಸುಮಾರು {n} ಗಂಟೆಗಳ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
   "curator.fix.otherDismissOnly": "ಈ ವರದಿಯು ವರದಿ ಪತ್ರದ ಎಂಟು ವಿವರಗಳಲ್ಲಿ ಒಂದಲ್ಲದ ಬೇರೆ ವಿಷಯದ ಬಗ್ಗೆ ಇದೆ, ಆದ್ದರಿಂದ ಸರತಿಯಿಂದ ಸರಿಪಡಿಸುವುದು ಏನೂ ಇಲ್ಲ. ಕಾರಣದೊಂದಿಗೆ ತಿರಸ್ಕರಿಸಿ, ಅಥವಾ ದುರುಪಯೋಗದ ವರದಿಗಳನ್ನು ಅನಗತ್ಯವೆಂದು ಗುರುತಿಸಿ.",
   "curator.fix.otherEditorLink": "ಮಾಹಿತಿ ಬದಲಿಸಲು ಅಭ್ಯರ್ಥಿ ಸಂಪಾದಕವನ್ನು ತೆರೆಯಿರಿ",
-  "compare.flagError.label": "{name} ಕುರಿತು ತಪ್ಪು ವರದಿ ಮಾಡಿ"
+  "compare.flagError.label": "{name} ಕುರಿತು ತಪ್ಪು ವರದಿ ಮಾಡಿ",
+  "admin.users.add.passwordLabel": "ಪಾಸ್‌ವರ್ಡ್ (ಐಚ್ಛಿಕ, ಕನಿಷ್ಠ 16 ಅಕ್ಷರಗಳು)",
+  "admin.users.password.heading": "ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ",
+  "admin.users.password.label": "ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ (ಕನಿಷ್ಠ 16 ಅಕ್ಷರಗಳು)",
+  "admin.users.password.confirmLabel": "{user} ಅವರಿಗೆ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ. ಇದು ಅವರನ್ನು ಎಲ್ಲೆಡೆಯಿಂದ ಸೈನ್ ಔಟ್ ಮಾಡುತ್ತದೆ.",
+  "admin.users.password.submit": "ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ",
+  "admin.users.results.noPassword": "ಪಾಸ್‌ವರ್ಡ್ ಇಲ್ಲ",
+  "admin.users.error.passwordTooShort": "ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ 16 ಅಕ್ಷರಗಳಿರಬೇಕು.",
+  "admin.users.error.passwordTooLong": "ಪಾಸ್‌ವರ್ಡ್ ಗರಿಷ್ಠ 256 ಅಕ್ಷರಗಳಿರಬೇಕು.",
+  "admin.users.error.userNotActive": "ಸಕ್ರಿಯ ಖಾತೆಗೆ ಮಾತ್ರ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಬಹುದು.",
+  "admin.users.notice.passwordSet": "{user} ಅವರಿಗೆ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಲಾಗಿದೆ. ಅದನ್ನು ಅವರೊಂದಿಗೆ ಖಾಸಗಿಯಾಗಿ ಹಂಚಿಕೊಳ್ಳಿ."
 }

@@ -17,6 +17,7 @@
     "seed:wards": "tsx scripts/seed-wards.ts",
     "update:ward-facts": "tsx scripts/update-ward-facts.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
+    "set-password": "tsx scripts/set-password.ts",
     "seed:dev": "tsx scripts/seed-dev.ts",
     "seed:e2e": "tsx scripts/seed-e2e.ts",
     "translate": "tsx scripts/translate.ts",

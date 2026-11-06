@@ -290,11 +290,11 @@ describe('src/lib/erasure.ts (Task 45)', () => {
       expect(rows.some((r) => r.id === searchByEmailId)).toBe(true);
     });
 
-    it('each row carries only id, email, status, role and createdAt', async () => {
+    it('each row carries only id, email, status, role, hasSecret and createdAt', async () => {
       // Same scoping rationale as the "matches by exact numeric id" test above.
       const rows = (await listUsers({ query: String(searchByEmailId) })).rows;
       const row = rows.find((r) => r.id === searchByEmailId);
-      expect(Object.keys(row!).sort()).toEqual(['createdAt', 'email', 'id', 'role', 'status']);
+      expect(Object.keys(row!).sort()).toEqual(['createdAt', 'email', 'hasSecret', 'id', 'role', 'status']);
     });
 
     it('returns [] for no match', async () => {

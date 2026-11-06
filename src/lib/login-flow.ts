@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client';
 import { users } from '../db/schema';
 import { isSameOriginRelative } from './authz';
-import { loginWithMasterPassword, normalizeEmail } from './master-login';
+import { loginWithPassword, normalizeEmail } from './staff-login';
 
 export interface LoginRenderState {
   /** Already-validated (isSameOriginRelative) same-origin relative path. */
@@ -54,7 +54,7 @@ export async function handleLoginPost(form: FormData): Promise<LoginPostOutcome>
   const next = isSameOriginRelative(form.get('next'));
   const destination = String(form.get('destination') ?? '').trim();
   const password = String(form.get('password') ?? '');
-  const result = await loginWithMasterPassword(destination, password);
+  const result = await loginWithPassword(destination, password);
   if (result.ok) {
     return { kind: 'redirect', location: await landingFor(destination, next), setCookie: result.setCookie };
   }

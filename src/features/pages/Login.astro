@@ -8,9 +8,8 @@
  * src/pages/kn/login.astro) — a redirect on success can only happen at the
  * page level (see src/pages/ward/[id].astro's header comment for why).
  *
- * The password is the shared `MASTER_PASSWORD` (src/lib/master-login.ts).
- * With it unset the form still renders, and every attempt fails with the
- * same generic error.
+ * The password is the account's own (src/lib/staff-login.ts), set by an admin.
+ * An account without one, like any wrong pair, fails with the same generic error.
  *
  * noindex: true belt-and-braces (src/middleware.ts already sends
  * X-Robots-Tag: noindex for every /login response).

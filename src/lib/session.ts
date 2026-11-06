@@ -1,7 +1,7 @@
 /**
  * Signed sliding sessions (architecture.md §7 "API surface & auth", §13
  * "Security") — the single session mechanism behind staff sign-in
- * (src/lib/master-login.ts) and the role middleware (Task 26), for the
+ * (src/lib/staff-login.ts) and the role middleware (Task 26), for the
  * three staff roles (transcriber, curator, admin). Anonymous read paths
  * never touch this module.
  *
@@ -128,7 +128,7 @@ function parseCookieValue(cookieValue: string): { id: string; hmac: string } | n
 /**
  * Creates a new session row for `userId` with a fresh 1-hour expiry.
  *
- * Return shape (documented precisely — src/lib/master-login.ts and
+ * Return shape (documented precisely — src/lib/staff-login.ts and
  * Task 26's middleware both depend on it):
  *   - `id`: the raw session id (the `sessions.id` DB primary key) — 32
  *     random bytes, hex. Exposed mainly for tests/introspection; callers

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -730,15 +730,4 @@ describe('src/middleware.ts', () => {
     });
   });
 
-  describe('MASTER_PASSWORD configuration', () => {
-    afterEach(() => {
-      delete process.env.MASTER_PASSWORD;
-    });
-
-    it('a too-short MASTER_PASSWORD rejects every request, public pages included', async () => {
-      process.env.MASTER_PASSWORD = 'too-short';
-      const ctx = makeContext({ path: '/' });
-      await expect(run(ctx, nextStub())).rejects.toThrow('MASTER_PASSWORD must be at least 16 characters');
-    });
-  });
 });

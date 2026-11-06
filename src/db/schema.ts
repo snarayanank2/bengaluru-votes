@@ -170,6 +170,8 @@ export const users = pgTable('users', {
   language: langEnum('language').notNull().default('en'),
   role: roleEnum('role').notNull(),
   status: userStatusEnum('status').notNull().default('active'),
+  passwordHash: text('password_hash'),                  // scrypt (src/lib/password.ts); null = cannot sign in yet
+  passwordChangedAt: timestamp('password_changed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 

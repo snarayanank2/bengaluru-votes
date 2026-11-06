@@ -6,6 +6,9 @@
  * from /admin/users.
  *
  * Usage: npm run seed:admin -- <email>
+ * An admin with no sign-in password yet is given a generated one, printed
+ * once (re-running never replaces an existing one; `npm run set-password`
+ * does that).
  * Running twice with the same email updates the same row (unique on email)
  * and leaves role='admin' — idempotent.
  */
@@ -16,6 +19,7 @@ import * as schema from '../src/db/schema';
 import type { Db } from '../src/db/client';
 
 import { isValidEmail } from '../src/lib/email';
+import { ensurePassword } from './set-password';
 
 export { isValidEmail };
 
@@ -60,6 +64,8 @@ async function main() {
   try {
     const id = await seedAdmin(db, email);
     console.log(`seed-admin: user id ${id} is now admin (${email.trim().toLowerCase()})`);
+    const generated = await ensurePassword(db, email);
+    if (generated) console.log(`seed-admin: generated password (shown once): ${generated}`);
   } finally {
     await client.end();
   }

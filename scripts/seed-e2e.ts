@@ -53,6 +53,8 @@ import * as schema from '../src/db/schema';
 import type { Db } from '../src/db/client';
 import { storedFieldData } from '../src/lib/affidavit-form';
 import { publishAffidavitFields } from '../src/lib/affidavit-publish';
+import { hashPassword } from '../src/lib/password';
+import { E2E_STAFF_PASSWORD } from '../tests/e2e/support/staff-credential';
 import { seedWards } from './seed-wards';
 import { seedDev, assertNotProduction } from './seed-dev';
 
@@ -121,12 +123,13 @@ async function ensureFlaggableAge(db: Db, candidateId: number): Promise<void> {
 }
 
 async function ensureCurator(db: Db): Promise<void> {
+  const passwordHash = await hashPassword(E2E_STAFF_PASSWORD);
   await db
     .insert(schema.users)
-    .values({ email: E2E_CURATOR_EMAIL, role: 'curator', status: 'active' })
+    .values({ email: E2E_CURATOR_EMAIL, role: 'curator', status: 'active', passwordHash })
     .onConflictDoUpdate({
       target: schema.users.email,
-      set: { role: 'curator', status: 'active' },
+      set: { role: 'curator', status: 'active', passwordHash },
     });
 }
 

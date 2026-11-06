@@ -120,6 +120,7 @@ export async function eraseUser(actor: AdminActor, targetUserId: number): Promis
       .update(users)
       .set({
         email: null,
+        passwordHash: null,
         status: 'erased',
       })
       .where(eq(users.id, targetUserId));
@@ -186,6 +187,8 @@ export interface UserSearchRow {
   email: string | null;
   status: string;
   role: string;
+  /** Whether a sign-in secret is set; the hash itself never leaves the database. */
+  hasSecret: boolean;
   createdAt: Date;
 }
 
@@ -247,6 +250,7 @@ export async function listUsers(options: UserListOptions): Promise<UserList> {
       email: users.email,
       status: users.status,
       role: users.role,
+      hasSecret: sql<boolean>`${users.passwordHash} IS NOT NULL`,
       createdAt: users.createdAt,
     })
     .from(users)

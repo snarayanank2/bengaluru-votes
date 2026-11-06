@@ -36,7 +36,7 @@ Single test file / single test:
 
 ```sh
 npx vitest run tests/routes/ward.test.ts
-npx vitest run tests/unit/master-login.test.ts -t 'name of the case'
+npx vitest run tests/unit/staff-password.test.ts -t 'name of the case'
 ```
 
 Seeds (order matters — `seed:dev` depends on wards existing):
@@ -76,7 +76,7 @@ docker compose -f deploy/compose.local.yml run --rm --no-deps --build \
   -e SITE_ORIGIN=https://bengaluruvotes.opencity.in \
   app sh -c '
     export DATABASE_URL="${DATABASE_URL%/gba}/bv_test"
-    unset MASTER_PASSWORD ALLOW_INSECURE_LOCAL_RECAPTCHA \
+    unset ALLOW_INSECURE_LOCAL_RECAPTCHA \
       RECAPTCHA_SITE_KEY RECAPTCHA_SECRET_KEY MAPS_ENABLED GOOGLE_MAPS_BROWSER_KEY \
       GOOGLE_MAPS_MAP_ID GOOGLE_GEOCODING_API_KEY
     case "$DATABASE_URL" in */bv_test) npm test ;; *) echo "not bv_test; refusing"; exit 2 ;; esac'
@@ -87,7 +87,6 @@ For a single test file or test case, replace `npm test` with the relevant `npx v
 The suite expects a clean environment, and the local image is not one. Every override above is there because a test fails without it:
 
 - `SITE_ORIGIN` set to production: the candidate JSON-LD tests.
-- `MASTER_PASSWORD` unset: the sign-in tests set their own value and expect it absent otherwise.
 - The vendor keys from `deploy/.env.local` unset (reCAPTCHA, Maps, geocoding): the app service loads that file, and a reCAPTCHA site key adds a script tag to the ward page that the ward route test counts. They are unset as a group so a key added to that file later cannot leak into a run. `ALLOW_INSECURE_LOCAL_RECAPTCHA` is a local-only switch and goes with them.
 
 If a run fails only in these areas, check the environment before the code. A variable added to `compose.local.yml` or `deploy/.env.local` belongs in the `unset` list too.
@@ -193,7 +192,7 @@ Anonymous citizen (no account; all citizen traffic) · Transcriber · Data curat
 
 ## Fixed decisions (don't relitigate without asking)
 
-- **Auth:** only staff (admin, curator, transcriber) sign in; citizens are anonymous and never register. No 2FA, no sign-in links, no OTP, email or WhatsApp. **`/login` is a shared-password form**: an existing active staff account's email plus `MASTER_PASSWORD` (unset means nobody can sign in); staff sign-in is being reworked to per-staff passwords in a separate change (`docs/architecture.md` §4, §7). Sessions are a 1-hour sliding idle timeout for every role (`src/lib/session.ts`). `npm run seed:admin` bootstraps the first admin.
+- **Auth:** only staff (admin, curator, transcriber) sign in; citizens are anonymous and never register. No 2FA, no sign-in links, no OTP, email or WhatsApp. **`/login` takes an active staff account's email plus that account's own password** (scrypt hash in `users.password_hash`; at least 16 characters; no `MASTER_PASSWORD` exists any more). Only an admin sets or replaces a password (`/admin/users`, `setStaffPassword`); there is no self-service reset, and an account with none cannot sign in. Setting one ends that person's sessions. Sessions are a 1-hour sliding idle timeout for every role (`src/lib/session.ts`). `npm run seed:admin -- <email>` bootstraps the first admin and prints a generated password once; `npm run set-password -- <email>` sets or resets one from the server (`STAFF_PASSWORD` env to choose it). Never write a real staff password in the repo; seeds print generated ones.
 - **Curator publish:** trusted; immediate, no approval gate.
 - **Bilingual:** EN at root, KN under `/kn/`, each with its own URL.
 - **Deployment:** one Hostinger VPS (Mumbai, 4 vCPU / 16 GB) runs production Compose, from `/root/src/bengaluru-votes-production`. The staging site/stack was retired on 2026-09-18 and removed from the repo on 2026-10-13; production is the only environment. **There is no registry**: images are built on the box. CI/CD returned 2026-11-04: PRs must pass the `test` check, and every push to `main` deploys to production automatically (`.github/workflows/deploy.yml`, secrets from the GitHub `production` environment). “Deploy” means production; there is no staging step. `deploy/runbook.md` ("Deploying") is the procedure, and `.claude/skills/deploy-vps/SKILL.md` is a step-by-step version any agent can read; `architecture.md` §14.3/§14.4 is the design. Moved off the never-provisioned DigitalOcean Droplet on 2026-08-13.

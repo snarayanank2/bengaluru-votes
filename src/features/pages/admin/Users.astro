@@ -37,6 +37,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Card from '../../../components/Card.astro';
 import Banner from '../../../components/Banner.astro';
+import Badge from '../../../components/Badge.astro';
 import Button from '../../../components/Button.astro';
 import FormField from '../../../components/FormField.astro';
 import { t, type Lang } from '../../../i18n';
@@ -159,6 +160,12 @@ function roleChoices(row: UserSearchRow): { value: string; label: string }[] {
               ))}
             </select>
           </div>
+          <div class="form-field">
+            <label class="form-label" for="add-secret">
+              {t(lang, 'admin.users.add.passwordLabel')}
+            </label>
+            <input id="add-secret" class="form-input" name="initialSecret" type="password" autocomplete="new-password" minlength="16" maxlength="256" />
+          </div>
           <Button type="submit" variant="primary" lang={lang}>
             {t(lang, 'admin.users.add.submit')}
           </Button>
@@ -231,6 +238,7 @@ function roleChoices(row: UserSearchRow): { value: string; label: string }[] {
                       </span>
                       <span>
                         <span class={`tag tag--${row.status}`}>{t(lang, `admin.users.status.${row.status}`)}</span>
+                        {row.status === 'active' && !row.hasSecret && <Badge variant="flag-pending" lang={lang}>{t(lang, 'admin.users.results.noPassword')}</Badge>}
                       </span>
                       <span class="user-added">
                         <span class="user-added-label">{t(lang, 'admin.users.list.colAdded')} </span>
@@ -240,9 +248,36 @@ function roleChoices(row: UserSearchRow): { value: string; label: string }[] {
                     </summary>
 
                     <div class="user-panel">
-                      {row.id === selfId ? (
-                        <p class="self-note">{t(lang, 'admin.users.list.selfNote')}</p>
-                      ) : (
+                      {row.id === selfId && <p class="self-note">{t(lang, 'admin.users.list.selfNote')}</p>}
+                      {row.status === 'active' && (
+                        <div class="action-grid">
+                          <section class="action">
+                            <h3>{t(lang, 'admin.users.password.heading')}</h3>
+                            <form method="post" action="/admin/users" class="action-form">
+                              <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                              <input type="hidden" name="formAction" value="setSecret" />
+                              <input type="hidden" name="targetUserId" value={row.id} />
+                              <input type="hidden" name="q" value={query} />
+                              {hasExplicitRoleFilter && <input type="hidden" name="filterRole" value={roleFilter} />}
+                              <input type="hidden" name="filterStatus" value={statusFilter} />
+                              <div class="form-field">
+                                <label class="form-label" for={`secret-${row.id}`}>
+                                  {t(lang, 'admin.users.password.label')}
+                                </label>
+                                <input id={`secret-${row.id}`} class="form-input" name="newSecret" type="password" autocomplete="new-password" minlength="16" maxlength="256" required />
+                              </div>
+                              <label class="checkbox">
+                                <input type="checkbox" name="confirm" required />
+                                {t(lang, 'admin.users.password.confirmLabel', { user: userIdentifier(row) })}
+                              </label>
+                              <Button type="submit" variant="secondary" lang={lang}>
+                                {t(lang, 'admin.users.password.submit')}
+                              </Button>
+                            </form>
+                          </section>
+                        </div>
+                      )}
+                      {row.id !== selfId && (
                         row.status !== 'erased' && (
                           <div class="action-grid">
                             <section class="action">

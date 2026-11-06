@@ -32,6 +32,7 @@ import type { Db } from '../src/db/client';
 import type { AffidavitExtraction } from '../src/lib/affidavit-extraction';
 import { fieldsFromExtraction, formatInr, publishAffidavitFields, type AffidavitFieldKey } from '../src/lib/affidavit-publish';
 import type { MatchReason } from '../src/lib/affidavit-queue';
+import { ensurePassword } from './set-password';
 
 const DEMO_PARTIES = [
   { en: 'Demo Party A (FICTIONAL)', kn: 'ಡೆಮೊ ಪಕ್ಷ ಎ (ಕಾಲ್ಪನಿಕ)' },
@@ -110,6 +111,25 @@ export function assertNotProduction(env: NodeJS.ProcessEnv = process.env): void 
       'seed-dev: refusing to run with NODE_ENV=production — this seeds fictional demo data, never for prod',
     );
   }
+}
+
+/** The local demo staff: one per role. Emails only; passwords are generated per database and printed once. */
+export const DEMO_STAFF = [
+  { email: 'tarball@gmail.com', role: 'admin' },
+  { email: 'tarball+c1@gmail.com', role: 'curator' },
+  { email: 'tarball+t1@gmail.com', role: 'transcriber' },
+] as const;
+
+/** Upserts the demo staff and returns a generated password for each account that had none. */
+export async function seedDemoStaff(db: Db): Promise<{ email: string; role: string; password: string }[]> {
+  assertNotProduction();
+  const created: { email: string; role: string; password: string }[] = [];
+  for (const staff of DEMO_STAFF) {
+    await db.insert(schema.users).values({ email: staff.email, role: staff.role }).onConflictDoNothing({ target: schema.users.email });
+    const password = await ensurePassword(db, staff.email);
+    if (password) created.push({ ...staff, password });
+  }
+  return created;
 }
 
 export type SeedDevResult = {
@@ -420,6 +440,9 @@ async function main() {
         `ensured ${result.issueCount} ward issues across wards ${result.wardIds.join(', ')}; ` +
         `${result.flagItemIds.length} pending demo flags, ${result.waitingAffidavitIds.length} affidavits waiting to be matched`,
     );
+    const staff = await seedDemoStaff(db);
+    for (const s of staff) console.log(`seed-dev: ${s.role} ${s.email} generated password (shown once): ${s.password}`);
+    if (staff.length === 0) console.log('seed-dev: demo staff already have passwords (npm run set-password -- <email> to replace one)');
   } finally {
     await client.end();
   }

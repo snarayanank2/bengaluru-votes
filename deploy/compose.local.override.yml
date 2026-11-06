@@ -11,7 +11,7 @@
 #
 # `environment:` entries in compose.local.yml take precedence over `env_file`,
 # so nothing here can override the local stack's safety settings
-# (SESSION_SECRET, DATABASE_URL, MASTER_PASSWORD) even by accident.
+# (SESSION_SECRET, DATABASE_URL) even by accident.
 
 services:
   app:

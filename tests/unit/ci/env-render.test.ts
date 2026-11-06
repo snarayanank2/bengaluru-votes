@@ -102,7 +102,7 @@ describe('deploy/env.production.manifest', () => {
     const { readFileSync } = await import('node:fs');
     const real = parseManifest(readFileSync(new URL('../../../deploy/env.production.manifest', import.meta.url), 'utf8'));
     const names = real.map((e) => e.name);
-    for (const k of ['ANTHROPIC_API_KEY', 'DATABASE_URL', 'FLAGS_ABUSE_SECRET', 'GA_MEASUREMENT_ID', 'GEOCODE_DAILY_BUDGET', 'GOOGLE_GEOCODING_API_KEY', 'GOOGLE_MAPS_BROWSER_KEY', 'GOOGLE_MAPS_MAP_ID', 'MAPS_ENABLED', 'MASTER_PASSWORD', 'NODE_ENV', 'POSTGRES_DB', 'POSTGRES_PASSWORD', 'POSTGRES_USER', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_SITE_KEY', 'SESSION_SECRET', 'SITE_ORIGIN']) {
+    for (const k of ['ANTHROPIC_API_KEY', 'DATABASE_URL', 'FLAGS_ABUSE_SECRET', 'GA_MEASUREMENT_ID', 'GEOCODE_DAILY_BUDGET', 'GOOGLE_GEOCODING_API_KEY', 'GOOGLE_MAPS_BROWSER_KEY', 'GOOGLE_MAPS_MAP_ID', 'MAPS_ENABLED', 'NODE_ENV', 'POSTGRES_DB', 'POSTGRES_PASSWORD', 'POSTGRES_USER', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_SITE_KEY', 'SESSION_SECRET', 'SITE_ORIGIN']) {
       expect(names).toContain(k);
     }
     for (const k of FORBIDDEN) expect(names).not.toContain(k);

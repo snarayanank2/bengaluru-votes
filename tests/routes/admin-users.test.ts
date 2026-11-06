@@ -384,11 +384,12 @@ describe('/admin/users (Task 45)', () => {
       expect(html).toContain(`name="targetUserId" value="${transcriberId}"`);
     });
 
-    it("the caller's OWN row offers no role, ban or erase form, and says why", async () => {
+    it("the caller's OWN row offers no role, ban or erase form (only set-password), and says why", async () => {
       const res = await run(UsersRoute, '/admin/users?role=admin', { cookieValue: adminAuth.cookieValue });
       const html = normalize(await res.text());
       expect(html).toContain(EMAILS.admin);
-      expect(html).not.toContain(`name="targetUserId" value="${adminId}"`);
+      expect(html).toMatch(new RegExp(`name="formAction" value="setSecret"[^>]*>\\s*<input[^>]*name="targetUserId" value="${adminId}"`));
+      expect(html).not.toMatch(new RegExp(`name="formAction" value="(role|ban|erase|reactivate)"[^>]*>\\s*<input[^>]*name="targetUserId" value="${adminId}"`));
       expect(html).toContain('This is your own account.');
     });
   });

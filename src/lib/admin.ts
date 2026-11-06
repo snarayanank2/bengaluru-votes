@@ -24,6 +24,7 @@ import { db, type Tx } from '../db/client';
 import { sessions, transcriptionAssignments, users } from '../db/schema';
 import { isUniqueViolation } from './db-errors';
 import { isValidEmail } from './email';
+import { hashPassword, passwordProblem } from './password';
 
 /** The actor shape every mutator below requires — same session shape `src/middleware.ts` puts on `locals.session`, narrowed to admin. */
 export type AdminActor = { userId: number; role: 'admin' };
@@ -112,7 +113,7 @@ async function assertNotSelfOrLastAdmin(
  * changes an existing account's role; that stays the explicit change-role
  * action on the same page (`grantRole`).
  */
-export async function addUser(actor: AdminActor, emailRaw: string, role: StaffRole): Promise<number> {
+export async function addUser(actor: AdminActor, emailRaw: string, role: StaffRole, initial?: string): Promise<number> {
   assertAdmin(actor);
 
   const email = emailRaw.trim().toLowerCase();
@@ -120,13 +121,44 @@ export async function addUser(actor: AdminActor, emailRaw: string, role: StaffRo
     throw new Error('invalid_email');
   }
 
+  // Optional: an account added without one cannot sign in until an admin sets it.
+  let credential: { passwordHash: string; passwordChangedAt: Date } | undefined;
+  if (initial !== undefined) {
+    const problem = passwordProblem(initial);
+    if (problem) throw new Error(problem);
+    credential = { passwordHash: await hashPassword(initial), passwordChangedAt: new Date() };
+  }
+
   try {
-    const [row] = await db.insert(users).values({ email, role }).returning({ id: users.id });
+    const [row] = await db.insert(users).values({ email, role, ...credential }).returning({ id: users.id });
     return row!.id;
   } catch (err) {
     if (isUniqueViolation(err)) throw new Error('user_exists');
     throw err;
   }
+}
+
+/**
+ * Sets (or replaces) a staff member's sign-in password. Admin-only; an admin
+ * sets their own through the same call. Every live session of the target is
+ * deleted, so a changed password also signs the person out everywhere.
+ *
+ * Throws 'password_too_short' / 'password_too_long' (src/lib/password.ts),
+ * 'user_not_found', or 'user_not_active' for a banned or erased account.
+ */
+export async function setStaffPassword(actor: AdminActor, targetUserId: number, next: string): Promise<void> {
+  assertAdmin(actor);
+  const problem = passwordProblem(next);
+  if (problem) throw new Error(problem);
+  const passwordHash = await hashPassword(next);
+
+  await db.transaction(async (tx) => {
+    const [existing] = await tx.select({ status: users.status }).from(users).where(eq(users.id, targetUserId));
+    if (!existing) throw new Error('user_not_found');
+    if (existing.status !== 'active') throw new Error('user_not_active');
+    await tx.update(users).set({ passwordHash, passwordChangedAt: new Date() }).where(eq(users.id, targetUserId));
+    await tx.delete(sessions).where(eq(sessions.userId, targetUserId));
+  });
 }
 
 /**

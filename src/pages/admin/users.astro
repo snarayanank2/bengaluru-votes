@@ -2,8 +2,8 @@
 /**
  * `/admin/users` — see src/features/pages/admin/Users.astro for the
  * presentational side. This route twin owns the HTTP concerns: the
- * `?q=`/`?role=`/`?status=` GET listing, dispatching the five POST form
- * actions (`add`, `role`, `ban`, `reactivate`, `erase`) — `add` and `role`
+ * `?q=`/`?role=`/`?status=` GET listing, dispatching the six POST form
+ * actions (`add`, `role`, `setSecret`, `ban`, `reactivate`, `erase`) — `add`, `role` and `setSecret`
  * to src/lib/admin.ts, the other three to src/lib/erasure.ts — and
  * no-store on every response.
  *
@@ -19,11 +19,11 @@
  * in place with a 400 + friendly error AND the same listing recomputed, so
  * a rejected action (e.g. a lockout guard) doesn't lose the admin's place.
  * The notice is looked up from a fixed list and the user re-read by id, so
- * a hand-edited URL can only ever show one of these six sentences about a
+ * a hand-edited URL can only ever show one of these seven sentences about a
  * real account.
  */
 import Users from '../../features/pages/admin/Users.astro';
-import { addUser, findUserById, grantRole, isStaffRole, revokeRole, type AdminActor, type StaffRole } from '../../lib/admin';
+import { addUser, findUserById, grantRole, isStaffRole, revokeRole, setStaffPassword, type AdminActor, type StaffRole } from '../../lib/admin';
 import {
   banUser,
   eraseUser,
@@ -39,7 +39,7 @@ import { loadCuratorLang } from '../../lib/curator';
 const session = Astro.locals.session!;
 const actor: AdminActor = { userId: session.userId, role: 'admin' };
 
-const NOTICE_KINDS = ['added', 'roleChanged', 'roleRemoved', 'banned', 'reactivated', 'erased'] as const;
+const NOTICE_KINDS = ['added', 'roleChanged', 'roleRemoved', 'banned', 'reactivated', 'erased', 'passwordSet'] as const;
 type NoticeKind = (typeof NOTICE_KINDS)[number];
 
 const ROLE_LABEL_KEYS: Record<string, string> = {
@@ -72,6 +72,9 @@ function errorKey(err: unknown, fallbackKey: string): string {
   if (msg === 'cannot_revoke_last_admin') return 'admin.users.error.cannotRevokeLastAdmin';
   if (msg === 'invalid_email') return 'admin.users.error.invalidEmail';
   if (msg === 'user_exists') return 'admin.users.error.userExists';
+  if (msg === 'password_too_short') return 'admin.users.error.passwordTooShort';
+  if (msg === 'password_too_long') return 'admin.users.error.passwordTooLong';
+  if (msg === 'user_not_active') return 'admin.users.error.userNotActive';
   return fallbackKey;
 }
 
@@ -142,7 +145,8 @@ if (Astro.request.method === 'POST') {
     } else {
       try {
         // @ts-ignore TS6133: Astro's checker drops the expression of a top-level `return` in frontmatter, so a local used only there looks unread.
-        const newUserId = await addUser(actor, addEmail, addRole);
+        const initialSecret = String(form.get('initialSecret') ?? '');
+        const newUserId = await addUser(actor, addEmail, addRole, initialSecret === '' ? undefined : initialSecret);
         // The new account is staff, so the unfiltered staff list shows it.
         query = '';
         roleFilter = undefined;
@@ -153,7 +157,7 @@ if (Astro.request.method === 'POST') {
         // anything else (database down, ...) is rethrown so the middleware
         // reports it instead of blaming the email address.
         const msg = err instanceof Error ? err.message : '';
-        if (msg !== 'invalid_email' && msg !== 'user_exists') throw err;
+        if (!['invalid_email', 'user_exists', 'password_too_short', 'password_too_long'].includes(msg)) throw err;
         message = { kind: 'error', key: errorKey(err, 'admin.users.error.invalidEmail') };
         responseStatus = 400;
       }
@@ -161,7 +165,7 @@ if (Astro.request.method === 'POST') {
   } else {
     const targetUserId = Number(form.get('targetUserId'));
     if (!Number.isInteger(targetUserId)) return badRequest();
-    if (!['role', 'ban', 'reactivate', 'erase'].includes(formAction)) return badRequest();
+    if (!['role', 'ban', 'reactivate', 'erase', 'setSecret'].includes(formAction)) return badRequest();
 
     // `role` is a staff role to set, or 'remove' to delete the account.
     const roleRaw = String(form.get('role') ?? '');
@@ -179,6 +183,10 @@ if (Astro.request.method === 'POST') {
           }
           await revokeRole(actor, targetUserId);
           return redirectWithNotice('roleRemoved', targetUserId);
+        }
+        if (formAction === 'setSecret') {
+          await setStaffPassword(actor, targetUserId, String(form.get('newSecret') ?? ''));
+          return redirectWithNotice('passwordSet', targetUserId);
         }
         if (formAction === 'ban') {
           const reason = String(form.get('reason') ?? '').trim();

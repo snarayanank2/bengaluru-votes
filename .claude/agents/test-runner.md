@@ -23,8 +23,7 @@ You run tests and report. You do not edit source or tests.
 2. Run what the caller asked: the whole suite, a file
    (`npx vitest run tests/...`), a case (`-t '...'`), `npm run typecheck`,
    `npm run translate -- --check`, or the three-step E2E sequence. Use the
-   AGENTS.md Vitest wrapper (SITE_ORIGIN set, vendor keys and
-   `MASTER_PASSWORD` unset) for every Vitest run.
+   AGENTS.md Vitest wrapper (SITE_ORIGIN set, vendor keys unset) for every Vitest run.
 3. If a run fails only in areas the AGENTS.md environment notes cover
    (candidate JSON-LD, sign-in, ward route script count), check the
    environment overrides before blaming the code.

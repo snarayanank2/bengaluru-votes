@@ -1,9 +1,9 @@
 /**
- * `/login`, `/kn/login` — staff sign-in with the shared MASTER_PASSWORD.
+ * `/login`, `/kn/login` — staff sign-in with a per-account credential.
  * Exercises the real page twins (src/pages/login.astro,
  * src/pages/kn/login.astro) against a real Postgres DB.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
@@ -12,6 +12,7 @@ import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { localePath, t, type Lang } from '../../src/i18n';
 import { SESSION_COOKIE } from '../../src/lib/session';
+import { hashPassword } from '../../src/lib/password';
 import LoginEn from '../../src/pages/login.astro';
 import LoginKn from '../../src/pages/kn/login.astro';
 
@@ -23,7 +24,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
-const PASSWORD = 'route-test-master-password-0001';
+const PASSWORD = 'route-test-own-credential-0001';
+let HASH: string;
 
 const client = postgres(process.env.DATABASE_URL, { max: 1 });
 const db = drizzle(client, { schema });
@@ -90,6 +92,7 @@ async function resetFixtures(): Promise<void> {
 describe('/login, /kn/login', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
+    HASH = await hashPassword(PASSWORD);
   });
 
   afterAll(async () => {
@@ -98,12 +101,7 @@ describe('/login, /kn/login', () => {
   });
 
   beforeEach(async () => {
-    process.env.MASTER_PASSWORD = PASSWORD;
     await resetFixtures();
-  });
-
-  afterEach(() => {
-    delete process.env.MASTER_PASSWORD;
   });
 
   it.each(['en', 'kn'] as const)('%s: GET renders the email + password form, status 200, noindex', async (lang) => {
@@ -120,7 +118,7 @@ describe('/login, /kn/login', () => {
   });
 
   it('right password for a staff user -> 302 to next with a session cookie, no-store', async () => {
-    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active' });
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active', passwordHash: HASH });
     const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/admin/users' });
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/admin/users');
@@ -129,27 +127,27 @@ describe('/login, /kn/login', () => {
   });
 
   it('a transcriber with nowhere particular to go lands on /transcribe', async () => {
-    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'transcriber', status: 'active' });
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'transcriber', status: 'active', passwordHash: HASH });
     const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/' });
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/transcribe');
   });
 
   it.each([['curator', '/curator'], ['admin', '/admin']] as const)('a %s with nowhere particular to go lands on %s', async (role, landing) => {
-    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role, status: 'active' });
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role, status: 'active', passwordHash: HASH });
     const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/' });
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe(landing);
   });
 
   it('a transcriber who asked for a page still gets that page', async () => {
-    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'transcriber', status: 'active' });
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'transcriber', status: 'active', passwordHash: HASH });
     const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/transcribe/guide' });
     expect(res.headers.get('location')).toBe('/transcribe/guide');
   });
 
   it('wrong password -> re-renders with the error, keeps the email, sets no cookie', async () => {
-    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active' });
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active', passwordHash: HASH });
     const res = await post('en', { destination: KNOWN_EMAIL, password: 'wrong-password-wrong-password', next: '/' });
     expect(res.status).toBe(200);
     expect(res.headers.get('set-cookie')).toBeNull();
@@ -173,9 +171,15 @@ describe('/login, /kn/login', () => {
     expect(normalize(await res.text())).toContain(t('en', 'auth.password.error.invalid'));
   });
 
-  it('with MASTER_PASSWORD unset, nobody can sign in', async () => {
-    delete process.env.MASTER_PASSWORD;
+  it('an account with no password set cannot sign in', async () => {
     await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'admin', status: 'active' });
+    const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
+  it("another account's credential does not work", async () => {
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'admin', status: 'active', passwordHash: await hashPassword('someone-elses-credential-99') });
     const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next: '/' });
     expect(res.status).toBe(200);
     expect(res.headers.get('set-cookie')).toBeNull();
@@ -189,7 +193,7 @@ describe('/login, /kn/login', () => {
     });
 
     it.each(['https://evil.example/x', '//evil.example/x'])('a hostile next (%s) collapses to the staff default, never off-site', async (next) => {
-      await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active' });
+      await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active', passwordHash: HASH });
       const res = await post('en', { destination: KNOWN_EMAIL, password: PASSWORD, next });
       expect(res.status).toBe(302);
       expect(res.headers.get('location')).toBe('/curator');

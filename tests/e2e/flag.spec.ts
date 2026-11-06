@@ -30,7 +30,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { and, desc, eq } from 'drizzle-orm';
 import { seedFixtures } from './support/fixtures';
-import { E2E_MASTER_PASSWORD } from './support/master-password';
+import { E2E_STAFF_PASSWORD } from './support/staff-credential';
 import { db } from './support/db';
 import { candidateFields, flagItems } from '../../src/db/schema';
 
@@ -125,10 +125,10 @@ test('citizen flags a candidate field, curator accepts + publishes, correction g
 
   await curatorPage.goto('/curator/queue');
   // No session yet -> middleware redirects to /login?next=... ; sign in
-  // as the seeded curator with the shared staff password.
+  // as the seeded curator with its own password.
   await expect(curatorPage).toHaveURL(/\/login/);
   await curatorPage.locator('main input[name="destination"]').fill(seedFixtures.curatorEmail);
-  await curatorPage.locator('main input[name="password"]').fill(E2E_MASTER_PASSWORD);
+  await curatorPage.locator('main input[name="password"]').fill(E2E_STAFF_PASSWORD);
   await curatorPage.locator('main button[type="submit"]').click();
   await expect(curatorPage).toHaveURL(/\/curator\/queue$/);
 

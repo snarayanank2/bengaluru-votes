@@ -57,7 +57,6 @@ import { readSession, SESSION_COOKIE, type Role } from './lib/session';
 import { issueCsrfToken, checkCsrfToken, CSRF_FIELD_NAME } from './lib/csrf';
 import { isSameOriginRelative } from './lib/authz';
 import { buildCsp } from './lib/csp';
-import { assertMasterPasswordConfig } from './lib/master-login';
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 
@@ -188,11 +187,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return respond(new Response(null, { status: 301, headers: { Location: canonicalPath + url.search } }));
     }
   }
-
-  // Evaluated on EVERY request so a too-short MASTER_PASSWORD
-  // (src/lib/master-login.ts) throws at once, health check included,
-  // instead of running with a guessable password.
-  assertMasterPasswordConfig();
 
   // --- unsafe-method Origin/Sec-Fetch-Site check --------------------------
   if (UNSAFE_METHODS.has(method)) {

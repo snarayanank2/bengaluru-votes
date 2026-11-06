@@ -73,9 +73,6 @@ services:
       # Fixed, public, local-only. Rotating it just logs out your local
       # sessions. `openssl rand -hex 32` for anything that isn't this.
       SESSION_SECRET: local_dev_only_not_a_secret_0000000000000000000000000000000000
-      # Shared staff sign-in password (src/lib/master-login.ts). Local-only
-      # value: /login takes any seeded staff account's email plus this.
-      MASTER_PASSWORD: local-dev-only-master-password
       # Explicitly scoped to a loopback SITE_ORIGIN by recaptcha.ts; lets the
       # production-mode local container exercise anonymous forms without a key.
       ALLOW_INSECURE_LOCAL_RECAPTCHA: 'true'
