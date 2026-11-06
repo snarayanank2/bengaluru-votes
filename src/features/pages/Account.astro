@@ -1,0 +1,181 @@
+---
+/**
+ * `/account` — the signed-in staff member's own account, for any role. No
+ * `/kn/` twin: staff screens render in the language the person has saved
+ * (`users.language`, src/lib/curator.ts#loadCuratorLang), and this page is
+ * where that is changed. Shows the email, the role and the language, and
+ * carries the Sign out control (also in every staff bar).
+ *
+ * The page sits in the layout of the person's own role so the bar, and the
+ * links in it, are the ones they already know.
+ */
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import CuratorLayout from '../../layouts/CuratorLayout.astro';
+import TranscriberLayout from '../../layouts/TranscriberLayout.astro';
+import Banner from '../../components/Banner.astro';
+import Button from '../../components/Button.astro';
+import Card from '../../components/Card.astro';
+import { t, type Lang } from '../../i18n';
+import { CSRF_FIELD_NAME } from '../../lib/csrf';
+import type { AccountView } from '../../lib/account';
+
+interface Props {
+  lang: Lang;
+  csrfToken: string;
+  account: AccountView;
+  message?: { kind: 'notice' | 'error'; key: string };
+}
+
+const { lang, csrfToken, account, message } = Astro.props;
+
+const Layout = account.role === 'admin' ? AdminLayout : account.role === 'curator' ? CuratorLayout : TranscriberLayout;
+const ROLE_KEYS = {
+  transcriber: 'admin.users.results.roleTranscriber',
+  curator: 'admin.users.results.roleCurator',
+  admin: 'admin.users.results.roleAdmin',
+} as const;
+const LANGUAGES = ['en', 'kn'] as const;
+---
+
+<Layout lang={lang} title={t(lang, 'account.meta.title')} description={t(lang, 'account.meta.description')}>
+  <div class="account-page">
+    <h1>{t(lang, 'account.heading')}</h1>
+
+    {
+      message && (
+        <Banner kind={message.kind} lang={lang}>
+          {t(lang, message.key)}
+        </Banner>
+      )
+    }
+
+    <Card>
+      <dl class="facts">
+        <div>
+          <dt>{t(lang, 'account.email')}</dt>
+          <dd>{account.email}</dd>
+        </div>
+        <div>
+          <dt>{t(lang, 'account.role')}</dt>
+          <dd>{t(lang, ROLE_KEYS[account.role])}</dd>
+        </div>
+      </dl>
+    </Card>
+
+    <Card>
+      <form method="post" class="language-form">
+        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+        <input type="hidden" name="formAction" value="language" />
+        <fieldset>
+          <legend>{t(lang, 'account.language')}</legend>
+          <p class="help">{t(lang, 'account.language.help')}</p>
+          {
+            LANGUAGES.map((code) => (
+              <label class="choice">
+                <input type="radio" name="language" value={code} checked={account.language === code} />
+                <span>{t(lang, `account.language.${code}`)}</span>
+              </label>
+            ))
+          }
+        </fieldset>
+        <div>
+          <Button type="submit" variant="secondary" lang={lang}>{t(lang, 'account.language.save')}</Button>
+        </div>
+      </form>
+    </Card>
+
+    <Card>
+      <form method="post" action="/logout" class="signout-form">
+        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+        <Button type="submit" variant="primary" lang={lang}>{t(lang, 'staff.layout.signOut')}</Button>
+        <span class="help">{t(lang, 'account.signOut.help')}</span>
+      </form>
+    </Card>
+  </div>
+</Layout>
+
+<style>
+  .account-page {
+    max-width: 44rem;
+    margin-inline: auto;
+    padding-block: var(--space-8);
+    padding-inline: var(--container-pad-x);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: 0;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+  }
+
+  .facts dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .facts dd {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .language-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  legend {
+    padding: 0;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: var(--text-lg);
+  }
+
+  .help {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 44px;
+    cursor: pointer;
+  }
+
+  .choice input {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    accent-color: var(--color-primary);
+  }
+
+  .signout-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+</style>

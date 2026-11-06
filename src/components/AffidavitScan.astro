@@ -10,12 +10,14 @@ interface Props {
   lang: Lang;
   pdfUrl: string;
   collapse?: boolean;
+  /** Lets a toggle elsewhere on the page point at this panel (`aria-controls`). */
+  id?: string;
 }
 
-const { lang, pdfUrl, collapse = false } = Astro.props;
+const { lang, pdfUrl, collapse = false, id } = Astro.props;
 ---
 
-<section class:list={['scan', { 'scan--collapse': collapse }]} aria-label={t(lang, 'transcribe.reading.pdfTitle')}>
+<section id={id} class:list={['scan', { 'scan--collapse': collapse }]} aria-label={t(lang, 'transcribe.reading.pdfTitle')}>
   <p class="scan-bar">
     <a href={pdfUrl} target="_blank" rel="noopener noreferrer">{t(lang, 'transcribe.reading.openPdf')}</a>
   </p>

@@ -38,7 +38,7 @@ One Compose project (`deploy/compose.production.yml`), five long-running service
 | Service | Role |
 |---|---|
 | `nginx` | TLS termination; serves `/_astro/*` and `/data/gba.geojson` from the static volume; micro-cache for anonymous HTML and `/media/`; `limit_req` zones; static security headers (§13). Only service on the `front` network |
-| `app` | Astro SSR (Node). All routes: public pages, `/api/*`, `/curator/*`, `/admin/*`, `/transcribe/*`, `/login`, `/media/*` |
+| `app` | Astro SSR (Node). All routes: public pages, `/api/*`, `/curator/*`, `/admin/*`, `/transcribe/*`, `/account`, `/logout`, `/login`, `/media/*` |
 | `postgres` | The single database (`pg_data_prod` volume) |
 | `jobs` | `supercronic` running `deploy/crontab` (§10) |
 | `extract-worker` | `jobs/extract-affidavits.ts`: claims queued affidavits and reads them with Claude (§6). Exits at once without `ANTHROPIC_API_KEY`; `restart: on-failure:5` |
@@ -53,14 +53,14 @@ No Redis, no queue, no separate API service. Nothing the platform serves lives o
 - **Public routes:** `/`, `/ward/{id}`, `/ward/{id}/candidates`, `/ward/{id}/compare`, `/ward/{id}/boundary.json`, `/candidate/{slug}`, `/about`, `/about-election`, `/voter-faqs`, `/privacy`, `/terms`, `/llms.txt`, `/robots.txt`, `/healthz`.
 - **Candidate pages show the stored affidavit PDF beside the report card** on wider screens, framed from `/media/` (CSP: §13).
 - **Language:** every public page exists twice — `/ward/57` and `/kn/ward/57` — via Astro i18n routing. The app-bar toggle links to the same page in the other language. Every page emits `hreflang` alternates and `x-default`. There is no server-side language variant.
-- Curator, admin and transcriber screens are server-rendered forms with standard POSTs in the same app — no SPA. Staff sign in at `/login`; staff sign-in is being reworked to per-staff passwords in a separate change.
+- Curator, admin and transcriber screens are server-rendered forms with standard POSTs in the same app — no SPA. Staff sign in at `/login` and out with `POST /logout` (any role; CSRF-protected; it deletes the session row and clears the cookie in the handler, since the middleware never touches cookies); `/account` shows the signed-in person's email, role and saved screen language, which they can change. Staff sign-in is being reworked to per-staff passwords in a separate change.
 - Modals are progressive enhancements over real routes.
 
 ## 5. Caching & the election-day spike
 
 nginx `proxy_cache` on anonymous-shaped GET HTML (`deploy/nginx/conf.d/site.conf`):
 
-- Public pages: **60 s TTL**. `/media/`: 30 days. `/api/*`, `/curator/*`, `/admin/*`, `/transcribe/*`, `/login`: never cached. Issue-vote results are fetched from an uncached API only after the browser has voted.
+- Public pages: **60 s TTL**. `/media/`: 30 days. `/api/*`, `/curator/*`, `/admin/*`, `/transcribe/*`, `/account`, `/logout`, `/login`: never cached. Issue-vote results are fetched from an uncached API only after the browser has voted.
 - **Invariant: public page HTML never varies by session.** A signed-in staff member receives the same cached anonymous markup; anything per-visitor comes from an uncached API (`GET /api/issue-votes` with its opaque HttpOnly receipt cookie). **nginx strips the `Cookie` header** before proxying public routes and ignores upstream `Set-Cookie`, so only uncached APIs see a cookie. Each URL has exactly one cached variant per language. Guarded by `tests/routes/cache-invariant.test.ts`.
 - **The cache key ignores the query string** (`$scheme$host$uri`) — unknown params can neither fragment the cache nor bust it into a DoS on the origin.
 - Worst-case origin load is every public URL rendered once per TTL — about 4,000 renders/minute at the ceiling (369 wards × ~5 pages × 2 languages), well within one Node process. The spike lands on nginx.

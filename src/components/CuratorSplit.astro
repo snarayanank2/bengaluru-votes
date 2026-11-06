@@ -3,28 +3,58 @@
  * The curator's working layout: the affidavit on the left, staying in view,
  * and what is being decided on the right. On a narrow screen the two stack
  * and the scan collapses to a link. With no affidavit there is one column.
+ *
+ * `collapsible` (wide screens only) adds a "Hide affidavit" toggle and an
+ * "Open in new tab" link at the top of the work panel, so the curator can give
+ * the form the full width and still reach the document. The toggle is
+ * rendered hidden and revealed by src/islands/AffidavitToggle.ts: without
+ * the script the affidavit simply stays open.
  */
 import AffidavitScan from './AffidavitScan.astro';
-import type { Lang } from '../i18n';
+import Button from './Button.astro';
+import { t, type Lang } from '../i18n';
 
 interface Props {
   lang: Lang;
   pdfUrl: string | null;
+  collapsible?: boolean;
 }
 
-const { lang, pdfUrl } = Astro.props;
+const { lang, pdfUrl, collapsible = false } = Astro.props;
+const scanId = 'affidavit-scan';
 ---
 
 <div class:list={['split', { 'split--single': !pdfUrl }]}>
-  {pdfUrl && <AffidavitScan lang={lang} pdfUrl={pdfUrl} collapse />}
+  {pdfUrl && <AffidavitScan lang={lang} pdfUrl={pdfUrl} collapse id={scanId} />}
   <section class="split-panel">
+    {
+      collapsible && pdfUrl && (
+        <div class="split-tools" data-affidavit-tools hidden>
+          <div class="split-tools-row">
+            <Button
+              variant="secondary"
+              lang={lang}
+              data-affidavit-toggle
+              data-controls={scanId}
+              data-hide-label={t(lang, 'flag.review.affidavit.hide')}
+              data-show-label={t(lang, 'flag.review.affidavit.show')}
+            >
+              {t(lang, 'flag.review.affidavit.hide')}
+            </Button>
+            <a class="body-link" href={pdfUrl} target="_blank" rel="noopener noreferrer">{t(lang, 'transcribe.reading.openPdf')}</a>
+          </div>
+        </div>
+      )
+    }
     <slot />
   </section>
 </div>
 
 <script>
   import { initAffidavitFields } from '../islands/AffidavitFields';
+  import { initAffidavitToggle } from '../islands/AffidavitToggle';
   initAffidavitFields();
+  initAffidavitToggle();
 </script>
 
 <style>
@@ -34,6 +64,20 @@ const { lang, pdfUrl } = Astro.props;
     gap: var(--space-4);
     min-width: 0;
     padding: var(--space-6) var(--container-pad-x) var(--space-8);
+  }
+
+  .split-tools-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  /* Below the side-by-side breakpoint the scan is already only a link. */
+  @media (max-width: 899px) {
+    .split-tools {
+      display: none;
+    }
   }
 
   .split--single .split-panel {
@@ -54,6 +98,21 @@ const { lang, pdfUrl } = Astro.props;
       min-height: 0;
       overflow-y: auto;
       padding-inline: var(--space-6);
+    }
+
+    /* Affidavit hidden: the work panel takes the width, kept to a readable measure. */
+    .split.split--scan-hidden {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .split--scan-hidden :global(.scan) {
+      display: none;
+    }
+
+    .split--scan-hidden .split-panel {
+      width: 100%;
+      max-width: calc(var(--container-prose) + 2 * var(--space-6));
+      margin-inline: auto;
     }
   }
 </style>

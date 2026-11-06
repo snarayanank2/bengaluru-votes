@@ -35,7 +35,9 @@ describe('the candidate editor on structured fields', () => {
     expect(html).toContain(`src="${c.pdfUrl}#navpanes=0&#38;view=FitH"`);
     expect(html).toContain('name="formAction" value="fields"');
     expect(html.match(/name="confirmPublish"/g)).toHaveLength(1);
-    expect(html.match(/type="submit"/g)).toHaveLength(1);
+    // One Save and publish for the editor; the other submit is the Sign out in the bar.
+    expect(html.match(/type="submit"/g)).toHaveLength(2);
+    expect(html.match(/<form[^>]*action="\/logout"/g)).toHaveLength(1);
     expect(html).toContain('name="age" value="52"');
     expect(html).not.toContain('track_record');
     expect(html).not.toContain('name="nameEn"');

@@ -17,8 +17,10 @@
  * nothing the transcriber typed is lost.
  *
  * Works without JavaScript. src/islands/TranscribeForm.ts adds the running
- * assets total, greys out inputs when the answer is not a value, counts
- * down the hold and returns to Start on expiry.
+ * assets total, greys out inputs when the answer is not a value, disables
+ * Save until the confirmation is ticked (the server re-checks the tick, and
+ * without the script the button stays usable so nobody is locked out),
+ * counts down the hold and returns to Start on expiry.
  */
 import TranscriberLayout from '../../../layouts/TranscriberLayout.astro';
 import Banner from '../../../components/Banner.astro';
@@ -125,12 +127,15 @@ const fields = view.fields.map((field) => {
 
         <div class="save-bar">
           <label class="tick">
-            <input type="checkbox" name="confirmChecked" checked={raw?.confirmed ?? false} required />
+            <input type="checkbox" name="confirmChecked" checked={raw?.confirmed ?? false} required data-confirm-tick />
             <span>{t(lang, 'transcribe.reading.tick')}</span>
           </label>
-          <Button type="submit" variant="primary" lang={lang}>
-            {t(lang, 'transcribe.reading.save')}
-          </Button>
+          <div class="save-row">
+            <Button type="submit" variant="primary" lang={lang} data-save-button>
+              {t(lang, 'transcribe.reading.save')}
+            </Button>
+            <span class="help" data-save-hint hidden>{t(lang, 'transcribe.reading.saveNeedsTick')}</span>
+          </div>
         </div>
       </form>
 
@@ -335,20 +340,38 @@ const fields = view.fields.map((field) => {
     overflow-wrap: anywhere;
   }
 
+  /* The whole row is the target: a 26px box and a label at least 48px tall
+     and as wide as the form, so a click anywhere on it toggles the box. */
   .tick {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    min-height: 44px;
+    gap: var(--space-3);
+    align-self: stretch;
+    min-height: 48px;
     font-weight: 700;
     cursor: pointer;
   }
 
   .tick input {
-    width: 20px;
-    height: 20px;
+    width: 26px;
+    height: 26px;
     flex: none;
+    margin: 0;
+    cursor: pointer;
     accent-color: var(--color-primary);
+  }
+
+  .tick:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .save-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
   }
 
   /* Stays reachable however long the form is. */

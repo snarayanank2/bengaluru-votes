@@ -223,3 +223,14 @@ h6 {
     scroll-behavior: auto !important;
   }
 }
+
+/* Body link on a row of its own (design-system §7.4): forest, underlined,
+   44px target. Page CSS positions it; it never restyles it. */
+.body-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

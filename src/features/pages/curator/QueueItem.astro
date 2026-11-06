@@ -1,9 +1,12 @@
 ---
 /**
  * `/curator/queue/{id}` — one flag, seen against the affidavit. The stored
- * PDF is on the left and stays in view (`CuratorSplit`); on the right, top
- * to bottom: what was flagged, what each citizen said, what is published
- * now, the fix, and the dismissal.
+ * PDF is on the left and stays in view (`CuratorSplit`, which lets the
+ * curator hide it); on the right, top to bottom: what was flagged, what is
+ * published now, what each citizen said (numbered by position, never by
+ * database id, each with its own "Mark as spam" tick), the fix, the
+ * dismissal, and last the spam action for the ticked reports. The spam
+ * button is enabled only while at least one report is ticked.
  *
  * THE FIX depends on the flagged field (`item.fix`): one of the seven
  * affidavit fields gets that field's structured inputs, the ward gets a
@@ -63,12 +66,10 @@ const BADGE_VARIANT: Record<QueueItemDetail['status'], BadgeVariant> = {
 const WEB_ADDRESS = /^https?:\/\//i;
 
 const { candidate, fix } = item;
-// Group identical submissions within this bounded page, retaining individual IDs.
-const groupedSubmissions = new Map<string, typeof item.submissions>();
-for (const row of item.submissions) {
-  const key = JSON.stringify([row.detail.trim().replace(/\s+/gu,' '),row.suggestedValue,row.sourceUrl,row.isSpam]);
-  groupedSubmissions.set(key,[...(groupedSubmissions.get(key) ?? []),row]);
-}
+// Reports are numbered by position in the whole list (20 to a page), never by database id.
+const REPORTS_PER_PAGE = 20;
+const firstReportNumber = (item.page - 1) * REPORTS_PER_PAGE + 1;
+const hasSpamTargets = item.submissions.some((row) => !row.isSpam);
 const isPending = item.status === 'pending';
 const confirmPath = `/ward/${item.wardId}`;
 const editorPath = candidate ? `/curator/candidate/${candidate.id}` : null;
@@ -90,22 +91,17 @@ const publishedText = field
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.queueItem.meta.title')} description={t(lang, 'curator.queueItem.meta.description')}>
-  <CuratorSplit lang={lang} pdfUrl={candidate?.pdfUrl ?? null}>
-    <p class="back"><a href="/curator/queue">{t(lang, 'curator.queueItem.backToQueue')}</a></p>
-    <h1>{t(lang, 'curator.queueItem.heading', { ward: lang === 'kn' ? item.wardNameKn : item.wardNameEn })}</h1>
-
-    <p class="target-line">
-      <Badge variant={BADGE_VARIANT[item.status]} lang={lang} />
-      {candidate && <span>{t(lang, 'curator.queueItem.candidateLine', { name: candidate.nameEn, ward: candidateWard! })}</span>}
-      <strong class="target-field">{fieldLabel}</strong>
-    </p>
-    {
-      editorPath && (
-        <p class="back">
-          <a href={editorPath}>{t(lang, 'curator.queueItem.editCandidate')}</a>
-        </p>
-      )
-    }
+  <CuratorSplit lang={lang} pdfUrl={candidate?.pdfUrl ?? null} collapsible>
+    <header class="context">
+      <a class="body-link" href="/curator/queue">{t(lang, 'curator.queueItem.backToQueue')}</a>
+      <h1>{t(lang, 'curator.queueItem.heading', { ward: lang === 'kn' ? item.wardNameKn : item.wardNameEn })}</h1>
+      <p class="target-line">
+        <Badge variant={BADGE_VARIANT[item.status]} lang={lang} />
+        {candidate && <span>{t(lang, 'curator.queueItem.candidateLine', { name: candidate.nameEn, ward: candidateWard! })}</span>}
+        <strong class="target-field">{fieldLabel}</strong>
+      </p>
+      {editorPath && <a class="body-link" href={editorPath}>{t(lang, 'curator.queueItem.editCandidate')}</a>}
+    </header>
 
     {
       messageText && (
@@ -123,52 +119,6 @@ const publishedText = field
       )
     }
 
-    <Card>
-      <h2>{t(lang, 'curator.queueItem.submissions.heading')}</h2>
-      {isPending && <form id="flag-spam-form" method="post">
-        <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-        <input type="hidden" name="formAction" value="spam" />
-        <div class="form-field"><label for="spam-reason" class="form-label">{t(lang,'flag.review.spamReason')}</label>
-        <input id="spam-reason" class="form-input" name="reason" required maxlength="1000" /></div>
-        <Button type="submit" variant="destructive" lang={lang}>{t(lang,'flag.review.markSpam')}</Button>
-      </form>}
-      <ul class="submissions-list">
-        {[...groupedSubmissions.values()].map((group) => { const submission=group[0]!; return (
-          <li class="submission-card">
-            <p class="meta">{t(lang,'flag.review.groupCount',{count:group.length})}</p>
-            {group.map(row => <p class="meta">{row.isSpam ? t(lang,'flag.review.spam') : isPending ? <label><input type="checkbox" name="submissionId" value={row.id} form="flag-spam-form" /> {t(lang,'flag.review.selectReport',{id:row.id})}</label> : null}</p>)}
-            <p class="detail">{submission.detail}</p>
-            {submission.suggestedValue && (
-              <p class="meta">
-                {t(lang, 'curator.queueItem.submissions.suggestedValueLabel')}: {submission.suggestedValue}
-              </p>
-            )}
-            {submission.sourceUrl && (
-              <p class="meta">
-                {t(lang, 'curator.queueItem.submissions.sourceLabel')}:{' '}
-                {WEB_ADDRESS.test(submission.sourceUrl) ? (
-                  <a href={submission.sourceUrl} target="_blank" rel="noopener noreferrer">
-                    {submission.sourceUrl}
-                  </a>
-                ) : (
-                  submission.sourceUrl
-                )}
-              </p>
-            )}
-            <p class="meta">{formatDateTime(lang, submission.createdAt)}</p>
-          </li>
-        ); })}
-      </ul>
-      <nav class="report-pages" aria-label={t(lang,'flag.review.pages')}>
-        {item.page>1 && <a href={`?page=${item.page-1}`}>{t(lang,'flag.review.previous')}</a>}
-        {item.hasMore && <a href={`?page=${item.page+1}`}>{t(lang,'flag.review.next')}</a>}
-      </nav>
-    </Card>
-    {(item.priorResolutions ?? []).length>0 && <Card>
-      <h2>{t(lang,'flag.review.previousResolutions')}</h2>
-      <ul>{item.priorResolutions.map(previous => <li><a href={`/curator/queue/${previous.id}`}>{t(lang,previous.status==='accepted' ? 'common.badge.flagAccepted' : 'common.badge.flagRejected')} · {previous.resolvedAt?.toISOString().slice(0,10)}</a></li>)}</ul>
-    </Card>}
-
     {
       field && (
         <Card>
@@ -181,6 +131,73 @@ const publishedText = field
       )
     }
 
+    <Card>
+      <h2>{t(lang, 'flag.review.reports.heading')}</h2>
+      {isPending && hasSpamTargets && <p class="meta">{t(lang, 'flag.review.reports.help')}</p>}
+      <ul class="submissions-list">
+        {item.submissions.map((submission, index) => (
+          <li class="submission-card">
+            <p class="report-head">
+              <strong>{t(lang, 'flag.review.reportPosition', { n: firstReportNumber + index, total: item.totalSubmissions })}</strong>
+              <span class="meta-inline">{formatDateTime(lang, submission.createdAt)}</span>
+            </p>
+            <p class="detail">{submission.detail}</p>
+            {submission.suggestedValue && (
+              <p class="meta">
+                {t(lang, 'curator.queueItem.submissions.suggestedValueLabel')}: {submission.suggestedValue}
+              </p>
+            )}
+            {submission.sourceUrl && (
+              <p class="meta">
+                {t(lang, 'curator.queueItem.submissions.sourceLabel')}:{' '}
+                {WEB_ADDRESS.test(submission.sourceUrl) ? (
+                  <a class="body-link" href={submission.sourceUrl} target="_blank" rel="noopener noreferrer">
+                    {submission.sourceUrl}
+                  </a>
+                ) : (
+                  submission.sourceUrl
+                )}
+              </p>
+            )}
+            {submission.isSpam ? (
+              <p class="meta">{t(lang, 'flag.review.spam')}</p>
+            ) : (
+              isPending && (
+                <label class="spam-tick">
+                  <input type="checkbox" name="submissionId" value={submission.id} form="flag-spam-form" data-spam-tick />
+                  <span>{t(lang, 'flag.review.markReportSpam')}</span>
+                </label>
+              )
+            )}
+          </li>
+        ))}
+      </ul>
+      {
+        (item.page > 1 || item.hasMore) && (
+          <nav class="report-pages" aria-label={t(lang, 'flag.review.pages')}>
+            {item.page > 1 && <a class="body-link" href={`?page=${item.page - 1}`}>{t(lang, 'flag.review.previous')}</a>}
+            {item.hasMore && <a class="body-link" href={`?page=${item.page + 1}`}>{t(lang, 'flag.review.next')}</a>}
+          </nav>
+        )
+      }
+    </Card>
+
+    {
+      (item.priorResolutions ?? []).length > 0 && (
+        <Card>
+          <h2>{t(lang, 'flag.review.previousResolutions')}</h2>
+          <ul class="prior-list">
+            {item.priorResolutions.map((previous) => (
+              <li>
+                <a class="body-link" href={`/curator/queue/${previous.id}`}>
+                  {t(lang, previous.status === 'accepted' ? 'common.badge.flagAccepted' : 'common.badge.flagRejected')} · {previous.resolvedAt?.toISOString().slice(0, 10)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )
+    }
     {
       isPending && fix.kind === 'field' && (
         <Card>
@@ -224,14 +241,14 @@ const publishedText = field
             <>
               <p class="note">{t(lang, 'curator.fix.affidavitWaiting')}</p>
               <p class="note">
-                <a href={`/curator/matching/${candidate.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
+                <a class="body-link" href={`/curator/matching/${candidate.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
               </p>
             </>
           ) : candidate && candidate.pdfUrl === null ? (
             <>
               <p class="note">{t(lang, 'curator.fix.noAffidavit')}</p>
               <p class="note">
-                <a href={editorPath}>{t(lang, 'curator.fix.noAffidavitLink')}</a>
+                <a class="body-link" href={editorPath}>{t(lang, 'curator.fix.noAffidavitLink')}</a>
               </p>
             </>
           ) : (
@@ -263,12 +280,37 @@ const publishedText = field
         </Card>
       )
     }
+
+    {
+      isPending && hasSpamTargets && (
+        <Card>
+          <h2>{t(lang, 'flag.review.spamSection.heading')}</h2>
+          <form id="flag-spam-form" class="spam-form" method="post" data-spam-form>
+            <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+            <input type="hidden" name="formAction" value="spam" />
+            <p class="meta">{t(lang, 'flag.review.spamSection.help')}</p>
+            <div class="form-field">
+              <label for="spam-reason" class="form-label">{t(lang, 'flag.review.spamReason')}</label>
+              <input id="spam-reason" class="form-input" name="reason" required maxlength="1000" />
+            </div>
+            <div class="spam-action">
+              <Button type="submit" variant="destructive" lang={lang} data-spam-submit>{t(lang, 'flag.review.markSpam')}</Button>
+              <span class="meta" data-spam-hint hidden>{t(lang, 'flag.review.spamSection.needsSelection')}</span>
+            </div>
+          </form>
+        </Card>
+      )
+    }
   </CuratorSplit>
+
+  <script>
+    import { initSpamSelection } from '../../../islands/SpamSelection';
+    initSpamSelection();
+  </script>
 </CuratorLayout>
 
 <style>
-  #flag-spam-form { display:grid; gap:var(--space-3); margin-bottom:var(--space-4); }
-  .report-pages { display:flex; gap:var(--space-4); margin-top:var(--space-4); }
+  .report-pages { display: flex; gap: var(--space-4); margin-top: var(--space-4); }
   /* The page's column, its width and its scrolling belong to CuratorSplit;
      these are the pieces this page puts inside it. */
   h1 {
@@ -282,8 +324,62 @@ const publishedText = field
     margin: 0 0 var(--space-3);
   }
 
-  .back {
+  .context {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .prior-list {
     margin: 0;
+    padding-left: var(--space-4);
+  }
+
+  .report-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-2);
+  }
+
+  .meta-inline {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* The whole row is the target (design-system §10). */
+  .spam-tick {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 44px;
+    margin-top: var(--space-2);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .spam-tick input {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    margin: 0;
+    accent-color: var(--color-primary);
+  }
+
+  .spam-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 32rem;
+  }
+
+  .spam-action {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
   }
 
   .target-line {

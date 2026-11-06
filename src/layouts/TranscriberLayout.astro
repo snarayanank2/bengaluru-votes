@@ -15,6 +15,7 @@
  */
 import '../styles/global.css';
 import SkipLink from '../components/SkipLink.astro';
+import StaffAccountLinks from '../components/StaffAccountLinks.astro';
 import { t, type Lang } from '../i18n';
 
 interface Props {
@@ -46,8 +47,8 @@ const { lang, title, description } = Astro.props;
       <a class="wordmark" href="/transcribe">{t(lang, 'transcribe.layout.wordmark')}</a>
       <nav class="bar-links">
         <a href="/transcribe/guide">{t(lang, 'transcribe.layout.guide')}</a>
-        <a href="/account">{t(lang, 'transcribe.layout.account')}</a>
       </nav>
+      <StaffAccountLinks lang={lang} />
     </header>
     <main id="main-content">
       <slot />
@@ -60,7 +61,6 @@ const { lang, title, description } = Astro.props;
     height: 56px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: var(--space-4);
     padding-inline: var(--container-pad-x);
     background: var(--color-bg);
@@ -78,6 +78,14 @@ const { lang, title, description } = Astro.props;
   .bar-links {
     display: flex;
     gap: var(--space-4);
+    margin-inline-start: var(--space-4);
     font-size: var(--text-sm);
+  }
+
+  .bar-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-primary);
   }
 </style>

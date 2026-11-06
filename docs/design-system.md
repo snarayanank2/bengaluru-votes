@@ -299,6 +299,8 @@ Use a native `button` for an action and an anchor for navigation (`Button.astro`
 | Loading | Label stays in layout and accessible name (hidden visually); spinner plus localized sr-only status text; `aria-busy`. Loading alone does not disable submission |
 | Disabled | Gray surface, muted text, no lift or shadow, unavailable semantics; explain the reason where it is not obvious |
 
+**Gated submit:** where a form needs one explicit confirmation (§7.13), the submit button is disabled until that checkbox is ticked and a short muted hint beside it says why. The script owns the toggle and the server re-checks the confirmation; with no script the button stays usable, so nobody is locked out.
+
 `aria-disabled` on an anchor does not prevent navigation; callers must handle unavailable links deliberately.
 
 **Light variant:** `variant="light"`: white fill/border, `--color-hero-button-text`, 48px minimum height, 6px radius, 0.95rem/600 in the language-aware heading font. Enabled hover uses `--hero-button-hover`, `--shadow-hero-button-hover`, and a 1px lift over 180ms. Reduced motion removes the lift and transition. Page CSS owns placement and width only.
@@ -313,7 +315,7 @@ Language segments (§7.1), social icon links (§7.2), section navigation, and di
 
 ### 7.4 Links
 
-Body links use forest and an underline. Navigation and identity links may omit the underline at rest, restoring it on hover/focus. Match focus styling to the surface. External destinations need an understandable cue: the labeled external-link glyph (`ExternalLinkOut.astro`) or a recognizable social mark. Use button styling for navigation only when its prominence warrants it; retain anchor semantics.
+Body links use forest and an underline. Shared class `.body-link` (`global.css`): forest, underlined, 44px tall, for a link on a row of its own or in a list; page CSS only positions it. Navigation and identity links may omit the underline at rest, restoring it on hover/focus. Match focus styling to the surface. External destinations need an understandable cue: the labeled external-link glyph (`ExternalLinkOut.astro`) or a recognizable social mark. Use button styling for navigation only when its prominence warrants it; retain anchor semantics.
 
 **Guided link-out (`ExternalLinkOut.astro`):** a primary-styled anchor to an official external process, always `target="_blank" rel="noopener noreferrer"` with the labeled glyph. When the URL setting is empty, it renders a disabled-looking placeholder and a visible “(official link pending)” note rather than inventing a URL.
 
@@ -433,7 +435,11 @@ Staff layouts (`CuratorLayout`, `AdminLayout`, `TranscriberLayout`) share the to
 
 **Confirmation:** destructive and publishing actions require a confirmation that states scope and effect — a required checkbox in the same form naming the public path the change appears on (or the user affected), checked again server-side. This is a no-JS confirmation step, not an editorial approval gate. Irreversible actions say so.
 
+**Account controls:** every staff bar ends with `StaffAccountLinks.astro`: a link to the person's account page and a tertiary Sign out button in a POST form carrying the CSRF token (it works without script). The account page shows the email, role and saved screen language (a labeled radio group) and repeats Sign out as a primary button. On narrow screens a bar may wrap its section links onto a second row so these controls always fit.
+
 **Working layouts:** curator screens that decide against a source document use `CuratorSplit.astro` (§7.17).
+
+**Per-item selection with a bulk action:** when a list of records can be acted on together (for example marking reports as spam), put a labeled checkbox on each record (the whole row at least 44px tall), name the records by position (“Report 2 of 5”), never by database id, and put the bulk action in its own section after the decisions it is not part of, with a button disabled until at least one record is ticked and a hint saying so.
 
 ### 7.15 Section navigation, breadcrumbs, and disclosures
 
@@ -460,6 +466,8 @@ Shows structured fields next to the source PDF they come from. `AffidavitScan.as
 
 The embedded viewer is the browser's own PDF viewer, so its load-error text cannot be localized; the localized “open PDF” link above it (a body link, §7.4, with a 44px target) is the fallback and stays visible whenever the panel does. Never hide that link.
 
+**Collapsible document:** `CuratorSplit` with `collapsible` adds, from 900px, a secondary “Hide affidavit” / “Show affidavit” toggle (`aria-expanded`, `aria-controls`) and an “open in a new tab” link at the top of the work panel. Hiding gives the panel the full width at a readable measure. The toggle is rendered hidden and revealed by script, so without script the document simply stays open.
+
 Both columns must be shrinkable (`minmax(0, …)`) and let long values wrap. Without a document, keep the single-column layout.
 
 ## 8. Iconography and imagery
@@ -484,7 +492,7 @@ Motion explains state: modal/toast transitions around 150–200ms, disclosure ch
 
 - Target WCAG AA contrast for text and interactive boundaries; verify actual pairs.
 - Visible keyboard focus, logical focus order, native semantics, meaningful accessible names.
-- Targets at least 44×44px; distinct actions normally 8px apart. A smaller glyph (for example the 16px verification icon) keeps its look but extends an invisible 44×44px hit area around it. Inline body links and the wordmark link also reach 44px height (`min-height` with `inline-flex`). Native radios and checkboxes may stay small only when the whole label row is the target and at least 44px tall.
+- Targets at least 44×44px; distinct actions normally 8px apart. A smaller glyph (for example the 16px verification icon) keeps its look but extends an invisible 44×44px hit area around it. Inline body links and the wordmark link also reach 44px height (`min-height` with `inline-flex`). Native radios and checkboxes may stay small only when the whole label row is the target and at least 44px tall. A confirmation checkbox that gates a primary action is enlarged (26px) in a label row at least 48px tall and as wide as its form, with a visible focus outline on the row.
 - Vendor-rendered controls (the reCAPTCHA badge, Google Maps attribution, the browser PDF viewer) are exempt from the target size, but must not cover page content or controls at any width, and the page must offer its own localized fallback beside them.
 - Never use color, icons, position, hover, or motion as the only carrier of meaning.
 - Every layout renders `SkipLink.astro` first (a “Skip to main content” link to `#main-content`, visible on focus), plus landmarks, hierarchical headings, correct document language, and equivalent bilingual navigation.
@@ -575,8 +583,10 @@ All files in `src/components/` plus the shared islands in `src/islands/`. “Unu
 | `IssueBars.astro` | Server-rendered ranked result bars. Unused (`IssueVote.ts` renders its own bars) | `results`, `showCounts` | §7.11 |
 | `FlagModal.astro` + `FlagModal.ts` | Anonymous “flag an error” dialog with field picker, CAPTCHA, success toast | `lang` | §7.9 |
 | `ModalShell.ts` | `ModalController`: shared dialog behavior | `open(trigger)`, `close()` | §7.9 |
-| `AffidavitScan.astro` | Document panel: open-PDF link and embedded viewer | `pdfUrl`, `collapse` | §7.17 |
-| `CuratorSplit.astro` | Staff document-beside-work layout; loads `AffidavitFields.ts` | `pdfUrl` (nullable), slot | §7.17 |
+| `AffidavitScan.astro` | Document panel: open-PDF link and embedded viewer | `pdfUrl`, `collapse`, `id` | §7.17 |
+| `CuratorSplit.astro` + `AffidavitToggle.ts` | Staff document-beside-work layout; loads `AffidavitFields.ts`; optional hide/show toggle | `pdfUrl` (nullable), `collapsible`, slot | §7.17 |
+| `StaffAccountLinks.astro` | Account link and Sign out form at the end of every staff bar | `lang` | §7.13 |
+| `SpamSelection.ts` | Keeps a bulk-action button disabled until a record checkbox is ticked | — | §7.13 |
 | `AffidavitFieldInputs.astro` + `AffidavitFields.ts` | One affidavit field: three-way status and inputs | `fieldKey`, `status`, `inputs`, `error` | §7.10 |
 | `CuratorFieldForm.astro` | Curator correction of one field with publish confirmation | `field`, `label`, `confirmPath`, `submitLabel`, `embedded`, `raw`, `error` | §7.13 |
 | `CuratorWardForm.astro` | Curator move of a candidate to another ward with confirmation | `wards`, `wardId`, `confirmPath`, `submitLabel` | §7.13 |
@@ -584,4 +594,4 @@ All files in `src/components/` plus the shared islands in `src/islands/`. “Unu
 | `WardMap.ts` | Ward boundary on Google Maps | — | §8.1 |
 | `WardSectionNav.ts` | Current-section tracking for section navigation | — | §7.15 |
 | `CompareScrollHint.ts` | Shows the comparison scroll hint only while the table overflows | — | §7.11 |
-| `TranscribeForm.ts` | Transcriber screen: disables inputs per status, assets total, hold countdown | — | §7.10 |
+| `TranscribeForm.ts` | Transcriber screen: disables inputs per status, assets total, Save gated on the confirmation, hold countdown | — | §7.10 |

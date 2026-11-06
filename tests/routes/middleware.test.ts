@@ -634,7 +634,7 @@ describe('src/middleware.ts', () => {
   });
 
   describe('X-Robots-Tag: noindex', () => {
-    it.each(['/curator', '/admin', '/transcribe', '/login', '/curator/queue/12'])(
+    it.each(['/curator', '/admin', '/transcribe', '/login', '/account', '/logout', '/curator/queue/12'])(
       '%s carries X-Robots-Tag: noindex',
       async (path) => {
         const ctx = makeContext({ path });

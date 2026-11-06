@@ -259,6 +259,9 @@ describe('/transcribe/{assignment-id}', () => {
     expect(html).toMatch(/name="movableInr"[^>]*value="10210000"/);
     expect(html).toContain('IPC 420 and 468');
     expect(html).toContain('name="confirmChecked"');
+    // Save is gated on the tick by the island; the server renders the hooks it needs and still re-checks the tick.
+    expect(html).toContain('data-confirm-tick');
+    expect(html).toContain('data-save-button');
     expect(html.match(/type="checkbox"/g)).toHaveLength(1);
     expect(html).not.toMatch(/name="confirmChecked"[^>]*checked/);
     expect(html).not.toMatch(/name="wardId"/);

@@ -1,0 +1,39 @@
+---
+/**
+ * `/account` — see src/features/pages/Account.astro. No `/kn/` twin: staff
+ * pages render in the signed-in user's saved language, which this page
+ * changes. src/middleware.ts has already required a session (any staff
+ * role; none -> /login) and, on the POST, the same-origin check and CSRF
+ * token. The one form action is `language`. No-store on every response.
+ */
+import Account from '../features/pages/Account.astro';
+import { loadAccount, parseLanguage, saveLanguage } from '../lib/account';
+
+const session = Astro.locals.session!;
+
+let account = await loadAccount(session.userId);
+if (!account) {
+  return new Response(null, { status: 302, headers: { Location: '/login', 'cache-control': 'no-store' } });
+}
+
+let message: { kind: 'notice' | 'error'; key: string } | undefined;
+let status = 200;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const language = String(form.get('formAction') ?? '') === 'language' ? parseLanguage(form.get('language')) : null;
+  if (language) {
+    await saveLanguage(session.userId, language);
+    account = { ...account, language };
+    message = { kind: 'notice', key: 'account.language.saved' };
+  } else {
+    message = { kind: 'error', key: 'account.language.invalid' };
+    status = 400;
+  }
+}
+
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.status = status;
+---
+
+<Account lang={account.language} csrfToken={Astro.locals.csrfToken} account={account} message={message} />

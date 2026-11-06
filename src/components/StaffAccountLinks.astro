@@ -1,0 +1,49 @@
+---
+/**
+ * StaffAccountLinks — the account area at the end of every staff bar
+ * (design-system.md §7.13): a link to `/account` and the Sign out control.
+ * Sign out is a real POST form carrying the synchronizer CSRF token
+ * (src/lib/csrf.ts), so it works without JavaScript and cannot be forged
+ * cross-site; `POST /logout` (src/pages/logout.ts) ends the session.
+ */
+import Button from './Button.astro';
+import { t, type Lang } from '../i18n';
+import { CSRF_FIELD_NAME } from '../lib/csrf';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const csrfToken = Astro.locals.csrfToken ?? '';
+---
+
+<div class="staff-account" role="group" aria-label={t(lang, 'staff.layout.actions.label')}>
+  <a class="account-link" href="/account">{t(lang, 'staff.layout.account')}</a>
+  <form method="post" action="/logout">
+    <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+    <Button type="submit" variant="tertiary" lang={lang}>{t(lang, 'staff.layout.signOut')}</Button>
+  </form>
+</div>
+
+<style>
+  .staff-account {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-inline-start: auto;
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+
+  .account-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-primary);
+  }
+
+  form {
+    margin: 0;
+  }
+</style>

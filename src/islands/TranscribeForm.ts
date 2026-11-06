@@ -6,6 +6,8 @@
  *   - choosing "Not declared" or "Cannot read" greys out that field's
  *     inputs, since no value goes with those answers;
  *   - the assets total is recomputed as the two parts are typed;
+ *   - Save is disabled until the form-wide confirmation is ticked (the
+ *     server still refuses an unticked save);
  *   - the time left on the hold counts down.
  *
  * A plain bundled module imported from the page's own `<script>` tag, like
@@ -34,6 +36,19 @@ function startCountdown(): void {
   window.setInterval(tick, 1000);
 }
 
+function syncSaveButton(form: HTMLFormElement): void {
+  const tick = form.querySelector<HTMLInputElement>('[data-confirm-tick]');
+  const save = form.querySelector<HTMLButtonElement>('[data-save-button]');
+  const hint = form.querySelector<HTMLElement>('[data-save-hint]');
+  if (!tick || !save) return;
+  const sync = () => {
+    save.disabled = !tick.checked;
+    if (hint) hint.hidden = tick.checked;
+  };
+  tick.addEventListener('change', sync);
+  sync();
+}
+
 export function initTranscribeForm(): void {
   const form = document.querySelector<HTMLFormElement>('[data-transcribe-form]');
   if (!form) return;
@@ -47,6 +62,7 @@ export function initTranscribeForm(): void {
     });
   });
 
+  syncSaveButton(form);
   form.addEventListener('input', () => syncTotal(form));
   syncTotal(form);
   startCountdown();

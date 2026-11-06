@@ -22,6 +22,7 @@
  */
 import '../styles/global.css';
 import SkipLink from '../components/SkipLink.astro';
+import StaffAccountLinks from '../components/StaffAccountLinks.astro';
 import { t, type Lang } from '../i18n';
 
 interface Props {
@@ -56,6 +57,7 @@ const { lang, title, description } = Astro.props;
         <a href="/curator/matching">{t(lang, 'curator.layout.nav.matching')}</a>
         <a href="/curator/guide">{t(lang, 'curator.layout.nav.guide')}</a>
       </nav>
+      <StaffAccountLinks lang={lang} />
     </header>
     <main id="main-content">
       <slot />
@@ -64,11 +66,11 @@ const { lang, title, description } = Astro.props;
 </html>
 
 <style>
-  /* Exactly 56px, on one row at every width: CuratorSplit sizes itself
-     against this height. On a narrow screen the wordmark gives way (it
-     shortens with an ellipsis) so the three section links always fit. */
+  /* Exactly 56px from 600px up: CuratorSplit sizes itself against this height
+     (it only does so from 900px). Below 600px the bar wraps to a second row
+     for the section links, so the account controls always fit. */
   .curator-bar {
-    height: 56px;
+    min-height: 56px;
     display: flex;
     align-items: center;
     gap: var(--space-6);
@@ -89,6 +91,7 @@ const { lang, title, description } = Astro.props;
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+    color: var(--color-primary);
   }
 
   .wordmark {
@@ -106,15 +109,25 @@ const { lang, title, description } = Astro.props;
 
   @media (max-width: 599px) {
     .curator-bar {
-      gap: var(--space-3);
+      flex-wrap: wrap;
+      gap: 0 var(--space-3);
+    }
+
+    .wordmark {
+      flex: 1 1 0;
     }
 
     .curator-nav {
+      order: 3;
+      flex: 1 0 100%;
       gap: var(--space-3);
     }
 
     .wordmark {
       font-size: var(--text-base);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
     }
   }
 </style>

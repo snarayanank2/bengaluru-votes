@@ -28,6 +28,10 @@
  *    additionally require a valid synchronizer CSRF token (src/lib/csrf.ts).
  *    There is no per-ward scope: curators and admins are both city-wide
  *    (decided 2026-08-15), so the role check here is the whole answer.
+ *  - /account and /logout: signed-in staff of ANY role (transcriber, curator,
+ *    admin). No session -> redirect to `/login?next=`. Same CSRF rule as the
+ *    form routes above. `/logout` is POST-only and clears the cookie itself
+ *    (this module never touches cookies).
  *  - /api/*: Origin/Sec-Fetch-Site check applies; no
  *    synchronizer token requirement (JSON APIs rely on Origin check +
  *    SameSite cookies + their own session check, not a form-embedded
@@ -76,8 +80,10 @@ function stripLocalePrefix(pathname: string): string {
   return pathname.replace(/^\/kn(?=\/|$)/, '') || '/';
 }
 
-const AUTH_FORM_PREFIXES = ['/curator', '/admin', '/transcribe'];
-const NOINDEX_PREFIXES = ['/curator', '/admin', '/transcribe', '/login'];
+/** Any signed-in staff role may use these; none needs a particular one. */
+const STAFF_ANY_PREFIXES = ['/account', '/logout'];
+const AUTH_FORM_PREFIXES = ['/curator', '/admin', '/transcribe', ...STAFF_ANY_PREFIXES];
+const NOINDEX_PREFIXES = ['/curator', '/admin', '/transcribe', '/login', ...STAFF_ANY_PREFIXES];
 
 function forbidden(): Response {
   return new Response('Forbidden', { status: 403 });
@@ -208,6 +214,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (isUnder(guardPath, '/transcribe')) {
     if (!session) return respond(redirectToLogin(pathname + url.search));
     if (role !== 'transcriber' && role !== 'admin') return respond(forbidden());
+  }
+
+  if (isUnderAny(guardPath, STAFF_ANY_PREFIXES)) {
+    if (!session) return respond(redirectToLogin(pathname + url.search));
   }
 
   // --- synchronizer CSRF token: unsafe methods on authenticated form routes

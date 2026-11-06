@@ -190,6 +190,8 @@ export interface QueueItemDetail {
   resolutionReason: string | null;
   createdAt: Date;
   submissions: FlagSubmissionRow[];
+  /** Every report on this flag, not only this page's: the "of M" in "Report N of M". */
+  totalSubmissions: number;
   page: number;
   hasMore: boolean;
   priorResolutions: { id: number; status: FlagStatus; reason: string | null; resolvedAt: Date | null }[];
@@ -238,6 +240,8 @@ export async function loadQueueItem(id: number, page = 1): Promise<QueueItemDeta
     .where(eq(flagSubmissions.flagItemId, id))
     .orderBy(flagSubmissions.createdAt,flagSubmissions.id).limit(21).offset((page-1)*20);
 
+  const [{ count: totalSubmissions }] = await db.select({ count: sql<number>`count(*)::int` }).from(flagSubmissions).where(eq(flagSubmissions.flagItemId, id));
+
   let candidate: FixCandidate | null = null;
   let fieldKey: string | null = null;
   let fix: QueueItemDetail['fix'] = { kind: 'none' };
@@ -255,7 +259,7 @@ export async function loadQueueItem(id: number, page = 1): Promise<QueueItemDeta
 
   const priorResolutions = await db.select({ id:flagItems.id,status:flagItems.status,reason:flagItems.resolutionReason,resolvedAt:flagItems.resolvedAt }).from(flagItems)
     .where(and(eq(flagItems.targetRef,item.targetRef),sql`${flagItems.status}<>'pending'`,sql`${flagItems.id}<>${id}`)).orderBy(desc(flagItems.resolvedAt)).limit(5);
-  return { ...item, submissions:submissions.slice(0,20), page,hasMore:submissions.length>20,priorResolutions,candidate,fieldKey,fix };
+  return { ...item, submissions:submissions.slice(0,20), totalSubmissions, page,hasMore:submissions.length>20,priorResolutions,candidate,fieldKey,fix };
 }
 
 // ---------------------------------------------------------------------------
