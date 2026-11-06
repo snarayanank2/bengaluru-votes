@@ -32,7 +32,7 @@
     "@googlemaps/js-api-loader": "^2.1.1",
     "@turf/boolean-point-in-polygon": "^7.3.5",
     "@turf/helpers": "^7.3.5",
-    "astro": "^5.18.2",
+    "astro": "^7.4.5",
     "drizzle-orm": "^0.45.2",
     "gray-matter": "^4.0.3",
     "marked": "^18.0.6",
