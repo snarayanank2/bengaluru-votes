@@ -230,7 +230,135 @@ h6 {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  min-width: 44px;
   color: var(--color-primary);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* Link group (design-system §7.15): a short row of sibling links that change
+   how one list is shown (sort order) or move through it (pager). Each link
+   is a 44px target; the current one carries `aria-current="true"` and is
+   also visibly marked, so state never rests on the attribute alone. */
+.link-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.link-group a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.link-group a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-group a[aria-current='true'] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-surface);
+  font-weight: 700;
+}
+
+/* Staff data table (design-system §7.13): 14px text, 8px cell padding, gray
+   zebra stripes, column headings that stay in view, and numeric columns
+   (`.num`) right-aligned in tabular figures with their heading aligned too. */
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.staff-table th,
+.staff-table td {
+  text-align: start;
+  vertical-align: top;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.staff-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg);
+  z-index: 1;
+}
+
+.staff-table tbody tr:nth-child(odd) {
+  background: var(--color-surface);
+}
+
+.staff-table .num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Disclosure (design-system §7.15): a native details/summary in a light
+   bordered box, with a 44px-tall summary, a trailing chevron that rotates
+   when open (decorative; the element itself exposes the open state) and its
+   content in `.disclosure-body`. Page CSS positions it and never restyles it. */
+.disclosure {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure > summary::after {
+  content: '';
+  flex: none;
+  box-sizing: content-box;
+  width: 10px;
+  height: 10px;
+  margin: 0 var(--space-1);
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: translateY(-3px) rotate(45deg);
+  transition: transform 0.18s;
+}
+
+.disclosure[open] > summary::after {
+  transform: translateY(3px) rotate(-135deg);
+}
+
+.disclosure-body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+/* Visually hidden, still read by assistive technology (a column heading for
+   an icon-free action column, a live region). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

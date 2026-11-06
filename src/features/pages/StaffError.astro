@@ -1,0 +1,70 @@
+---
+/**
+ * The staff 403 and 404 pages (design-system.md §7.13, "Staff errors"). A
+ * signed-in curator, transcriber or admin who lands somewhere they cannot
+ * use, or on an item that does not exist, stays inside their own staff
+ * shell: the bar with its navigation and account controls, a document title,
+ * an H1, one sentence on what happened and a link back to their area's home.
+ * Never the public shell (no language toggle, footer or "Back to home"), and
+ * in the language the person saved (`users.language`), since staff routes
+ * have no `/kn/` twin.
+ *
+ * The HTTP status is set by the route that renders this, not here: the 403
+ * page (src/pages/account/forbidden.astro, reached through
+ * src/middleware.ts) and the 404 catch-alls and item shims
+ * (src/pages/{curator,transcribe,admin}/[...rest].astro).
+ *
+ * `area` picks the layout: the staff area the request was for (404) or the
+ * person's own role (403).
+ */
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import CuratorLayout from '../../layouts/CuratorLayout.astro';
+import TranscriberLayout from '../../layouts/TranscriberLayout.astro';
+import Button from '../../components/Button.astro';
+import { t, type Lang } from '../../i18n';
+
+export type StaffArea = 'curator' | 'transcribe' | 'admin';
+
+interface Props {
+  lang: Lang;
+  status: 403 | 404;
+  area: StaffArea;
+}
+
+const { lang, status, area } = Astro.props;
+
+const Layout = area === 'admin' ? AdminLayout : area === 'curator' ? CuratorLayout : TranscriberLayout;
+const HOME: Record<StaffArea, string> = { curator: '/curator', transcribe: '/transcribe', admin: '/admin' };
+const heading = t(lang, `staff.error.${status}.heading`);
+---
+
+<Layout lang={lang} title={t(lang, `staff.error.${status}.title`)} description={t(lang, `staff.error.${status}.body`)}>
+  <div class="staff-error">
+    <h1>{heading}</h1>
+    <p>{t(lang, `staff.error.${status}.body`)}</p>
+    <Button variant="primary" href={HOME[area]} lang={lang}>{t(lang, `staff.error.back.${area}`)}</Button>
+  </div>
+</Layout>
+
+<style>
+  .staff-error {
+    max-width: 44rem;
+    margin-inline: auto;
+    padding-block: var(--space-8);
+    padding-inline: var(--container-pad-x);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .staff-error h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+    margin: 0;
+  }
+
+  .staff-error p {
+    margin: 0;
+  }
+</style>

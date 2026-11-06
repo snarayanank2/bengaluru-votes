@@ -1,0 +1,44 @@
+---
+/**
+ * ScrollRegion — a table (or other wide content) in its own horizontal
+ * scroller, so a phone scrolls the table and the page does not
+ * (design-system.md §7.13). The scroller is a focusable named region, so a
+ * keyboard user can scroll it, and it is described by a hint that
+ * src/islands/ScrollHint.ts reveals only while the content overflows.
+ * `label` is the already-translated accessible name; `id` must be unique on
+ * the page. Page CSS sets the content's `min-width`.
+ */
+import { t, type Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  label: string;
+  id: string;
+}
+
+const { lang, label, id } = Astro.props;
+---
+
+<p class="scroll-hint" id={`${id}-hint`} data-scroll-hint hidden>{t(lang, 'staff.table.scrollHint')}</p>
+<div class="scroll-region" role="region" aria-label={label} aria-describedby={`${id}-hint`} tabindex="0" data-scroll-region>
+  <slot />
+</div>
+
+<script>
+  import { initScrollHint } from '../islands/ScrollHint';
+  initScrollHint();
+</script>
+
+<style>
+  .scroll-hint {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-sm);
+  }
+
+  .scroll-region {
+    min-width: 0;
+    overflow-x: auto;
+  }
+</style>

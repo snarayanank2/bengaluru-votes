@@ -22,6 +22,8 @@ interface Props {
   /** Anchor-only (ignored without `href`) — e.g. `"noopener noreferrer"` for external links. */
   rel?: string;
   disabled?: boolean;
+  /** Button-only: the id of a form elsewhere on the page this submit belongs to. */
+  form?: string;
   loading?: boolean;
   lang: Lang;
   /** Icon-only controls require a localized accessible label. */
@@ -43,6 +45,7 @@ const {
   target,
   rel,
   disabled = false,
+  form,
   loading = false,
   iconOnly = false,
   label,
@@ -79,7 +82,7 @@ const className = `btn btn--${variant} btn-shared${iconOnly ? ' btn--icon' : ''}
       </span>
     </a>
   ) : (
-    <button class={className} type={type} aria-label={label} disabled={disabled} aria-busy={loading ? 'true' : undefined} {...rest}>
+    <button class={className} type={type} form={form} aria-label={label} disabled={disabled} aria-busy={loading ? 'true' : undefined} {...rest}>
       <span class="btn-content">
         <span class="btn-label" aria-hidden={iconOnly ? 'true' : undefined} style={loading ? 'opacity:0' : undefined}>
           <slot />

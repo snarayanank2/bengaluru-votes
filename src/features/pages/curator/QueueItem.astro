@@ -33,10 +33,12 @@ import Button from '../../../components/Button.astro';
 import CuratorSplit from '../../../components/CuratorSplit.astro';
 import CuratorFieldForm from '../../../components/CuratorFieldForm.astro';
 import CuratorWardForm from '../../../components/CuratorWardForm.astro';
+import VerificationLabel from '../../../components/VerificationLabel.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
 import { formatDateTime } from '../../../lib/format-datetime';
 import { profileLabelKey } from '../../../lib/candidate-profile';
+import { wardLabel } from '../../../lib/ward-label';
 import type { FieldError, RawField } from '../../../lib/affidavit-form';
 import type { QueueItemDetail } from '../../../lib/curator';
 import type { WardOption } from '../../../lib/curator-fix';
@@ -73,11 +75,10 @@ const hasSpamTargets = item.submissions.some((row) => !row.isSpam);
 const isPending = item.status === 'pending';
 const confirmPath = `/ward/${item.wardId}`;
 const editorPath = candidate ? `/curator/candidate/${candidate.id}` : null;
-// Ward names are stored with their number in front ("11 - Old Baiyappanahalli"); the line shows the name alone.
-const candidateWard = candidate ? (lang === 'kn' ? candidate.wardNameKn : candidate.wardNameEn).replace(/^\d+\s*-\s*/, '') : null;
-// Rows older than the eight-field rule name something that has no label: show the reference as stored.
+const candidateWard = candidate ? wardLabel(lang, { id: candidate.wardId, nameEn: candidate.wardNameEn, nameKn: candidate.wardNameKn }) : null;
+// A key with no label (a flag on "Other", or a row older than the eight-field rule) reads "Other", never the stored reference.
 const labelKey = profileLabelKey(item.fieldKey);
-const fieldLabel = labelKey ? t(lang, labelKey) : item.targetRef;
+const fieldLabel = labelKey ? t(lang, labelKey) : t(lang, 'curator.queue.fieldOther');
 
 const field = fix.kind === 'field' ? fix.field : null;
 const publishedText = field
@@ -94,7 +95,7 @@ const publishedText = field
   <CuratorSplit lang={lang} pdfUrl={candidate?.pdfUrl ?? null} collapsible>
     <header class="context">
       <a class="body-link" href="/curator/queue">{t(lang, 'curator.queueItem.backToQueue')}</a>
-      <h1>{t(lang, 'curator.queueItem.heading', { ward: lang === 'kn' ? item.wardNameKn : item.wardNameEn })}</h1>
+      <h1>{t(lang, 'curator.queueItem.heading', { ward: wardLabel(lang, { id: item.wardId, nameEn: item.wardNameEn, nameKn: item.wardNameKn }) })}</h1>
       <p class="target-line">
         <Badge variant={BADGE_VARIANT[item.status]} lang={lang} />
         {candidate && <span>{t(lang, 'curator.queueItem.candidateLine', { name: candidate.nameEn, ward: candidateWard! })}</span>}
@@ -124,9 +125,7 @@ const publishedText = field
         <Card>
           <h2>{t(lang, 'curator.queueItem.published.heading')}</h2>
           <p class="published">{publishedText}</p>
-          {(field.aiExtracted || field.checked) && (
-            <p class="meta">{t(lang, field.checked ? 'curator.fix.badge.checked' : 'curator.fix.badge.ai')}</p>
-          )}
+          {(field.aiExtracted || field.checked) && <VerificationLabel lang={lang} aiExtracted={!field.checked} presentation="text" />}
         </Card>
       )
     }
@@ -174,9 +173,9 @@ const publishedText = field
       </ul>
       {
         (item.page > 1 || item.hasMore) && (
-          <nav class="report-pages" aria-label={t(lang, 'flag.review.pages')}>
-            {item.page > 1 && <a class="body-link" href={`?page=${item.page - 1}`}>{t(lang, 'flag.review.previous')}</a>}
-            {item.hasMore && <a class="body-link" href={`?page=${item.page + 1}`}>{t(lang, 'flag.review.next')}</a>}
+          <nav class="link-group report-pages" aria-label={t(lang, 'flag.review.pages')}>
+            {item.page > 1 && <a href={`?page=${item.page - 1}`}>{t(lang, 'flag.review.previous')}</a>}
+            {item.hasMore && <a href={`?page=${item.page + 1}`}>{t(lang, 'flag.review.next')}</a>}
           </nav>
         )
       }
@@ -310,7 +309,7 @@ const publishedText = field
 </CuratorLayout>
 
 <style>
-  .report-pages { display: flex; gap: var(--space-4); margin-top: var(--space-4); }
+  .report-pages { margin-top: var(--space-4); }
   /* The page's column, its width and its scrolling belong to CuratorSplit;
      these are the pieces this page puts inside it. */
   h1 {

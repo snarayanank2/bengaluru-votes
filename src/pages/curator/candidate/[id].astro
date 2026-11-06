@@ -19,6 +19,7 @@ import {
   loadCuratorLang,
   type EditFixOutcome,
 } from '../../../lib/curator';
+import StaffError from '../../../features/pages/StaffError.astro';
 import type { FieldError, RawField } from '../../../lib/affidavit-form';
 import { loadFixCandidate, saveCandidateChanges, type CandidateBatchRefusal, loadWardOptions } from '../../../lib/curator-fix';
 import { AFFIDAVIT_FIELD_KEYS, type AffidavitFieldKey } from '../../../lib/affidavit-publish';
@@ -28,14 +29,8 @@ const actor = { userId: session.userId, role: session.role as 'curator' | 'admin
 
 const idParam = Astro.params.id;
 const candidateId = Number(idParam);
-if (!idParam || !Number.isInteger(candidateId)) {
-  return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
-}
-
-let candidate = await loadCandidateForEdit(candidateId);
-if (!candidate) {
-  return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
-}
+// An id that is not an integer or names no candidate renders the staff-shell not-found page, with a 404.
+let candidate = idParam && Number.isInteger(candidateId) ? await loadCandidateForEdit(candidateId) : null;
 
 const lang = await loadCuratorLang(session.userId);
 
@@ -45,7 +40,7 @@ let batchRefused: CandidateBatchRefusal | undefined;
 /** Which form was refused, and what was typed into it. */
 let refused: { formAction: string; error?: FieldError; raw?: RawField } | undefined;
 
-if (Astro.request.method === 'POST') {
+if (candidate && Astro.request.method === 'POST') {
   Astro.response.headers.set('cache-control', 'no-store');
   const form = await Astro.request.formData();
   const formAction = String(form.get('formAction') ?? '');
@@ -88,21 +83,27 @@ if (Astro.request.method === 'POST') {
 }
 
 
-const wards = !candidate.pdfUrl ? [] : await loadWardOptions();
+const wards = !candidate?.pdfUrl ? [] : await loadWardOptions();
 
 Astro.response.headers.set('cache-control', 'no-store');
-Astro.response.status = responseStatus;
+Astro.response.status = candidate ? responseStatus : 404;
 ---
 
-<CandidateEdit
-  lang={lang}
-  csrfToken={Astro.locals.csrfToken}
-  wardId={candidate.wardId}
-  wardNameEn={candidate.wardNameEn}
-  wardNameKn={candidate.wardNameKn}
-  candidate={candidate}
-  wards={wards}
-  message={message}
-  refused={refused}
-  batchRefused={batchRefused}
-/>
+{
+  candidate ? (
+    <CandidateEdit
+      lang={lang}
+      csrfToken={Astro.locals.csrfToken}
+      wardId={candidate.wardId}
+      wardNameEn={candidate.wardNameEn}
+      wardNameKn={candidate.wardNameKn}
+      candidate={candidate}
+      wards={wards}
+      message={message}
+      refused={refused}
+      batchRefused={batchRefused}
+    />
+  ) : (
+    <StaffError lang={lang} status={404} area="curator" />
+  )
+}

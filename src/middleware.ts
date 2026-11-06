@@ -23,8 +23,12 @@
  *  - PUBLIC: everything NOT under /curator, /admin, /transcribe, /api,
  *    /login, /media. Never blocked here; no guard, no CSRF check.
  *  - /curator/*, /admin/*, /transcribe/*: authenticated staff form routes. GET (and
- *    every other method) requires a session; wrong role -> 403; no session
- *    -> redirect to `/login?next=<validated relative path>`. Unsafe methods
+ *    every other method) requires a session; wrong role -> 403 (a GET renders
+ *    the staff-shell 403 page, `/account/forbidden`, via `next()`; the status
+ *    is set here, and any other method gets the bare text); no session
+ *    -> redirect to `/login?next=<validated relative path>`. These routes have
+ *    no `/kn/` twin (the language is the user's saved one), so a signed-in GET
+ *    of a `/kn/` path is redirected to its English path. Unsafe methods
  *    additionally require a valid synchronizer CSRF token (src/lib/csrf.ts).
  *    There is no per-ward scope: curators and admins are both city-wide
  *    (decided 2026-08-15), so the role check here is the whole answer.
@@ -88,6 +92,9 @@ const NOINDEX_PREFIXES = ['/curator', '/admin', '/transcribe', '/login', ...STAF
 function forbidden(): Response {
   return new Response('Forbidden', { status: 403 });
 }
+
+/** The staff-shell 403 page. It lives under `/account` so it is behind the same session guard as the account page and never public. */
+const FORBIDDEN_PAGE = '/account/forbidden';
 
 function redirectToLogin(currentPathAndQuery: string): Response {
   const next = isSameOriginRelative(currentPathAndQuery);
@@ -199,13 +206,25 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // twins, via guardPath) ---------------------------------------------------
   const role: Role | undefined = session?.role;
 
+  // A wrong role gets the staff-shell 403 page on a page request (the same
+  // body and a 403 status set here, so the status never depends on the
+  // page), and the bare text for anything else.
+  const denyRole = async (): Promise<Response> => {
+    if (method !== 'GET' && method !== 'HEAD') return respond(forbidden());
+    const page = await next(FORBIDDEN_PAGE);
+    const headers = new Headers(page.headers);
+    headers.delete('content-length');
+    headers.set('cache-control', 'no-store');
+    return respond(new Response(page.body, { status: 403, headers }));
+  };
+
   if (isUnder(guardPath, '/curator')) {
     if (!session) return respond(redirectToLogin(pathname + url.search));
-    if (role !== 'curator' && role !== 'admin') return respond(forbidden());
+    if (role !== 'curator' && role !== 'admin') return denyRole();
   }
   if (isUnder(guardPath, '/admin')) {
     if (!session) return respond(redirectToLogin(pathname + url.search));
-    if (role !== 'admin') return respond(forbidden());
+    if (role !== 'admin') return denyRole();
   }
   // Transcribers and admins only: curators correct flagged values and do not
   // read the queue. The role admits the caller to
@@ -213,11 +232,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // src/lib/transcribe.ts — an open assignment that is theirs — not here.
   if (isUnder(guardPath, '/transcribe')) {
     if (!session) return respond(redirectToLogin(pathname + url.search));
-    if (role !== 'transcriber' && role !== 'admin') return respond(forbidden());
+    if (role !== 'transcriber' && role !== 'admin') return denyRole();
   }
 
   if (isUnderAny(guardPath, STAFF_ANY_PREFIXES)) {
     if (!session) return respond(redirectToLogin(pathname + url.search));
+  }
+
+  // Staff screens have no Kannada twin: a signed-in GET of `/kn/<staff path>`
+  // goes to the real path instead of a public 404 inside the staff area.
+  if (guardPath !== pathname && (method === 'GET' || method === 'HEAD') && isUnderAny(guardPath, AUTH_FORM_PREFIXES) && !isUnder(guardPath, '/logout')) {
+    return respond(new Response(null, { status: 302, headers: { Location: guardPath + url.search, 'cache-control': 'no-store' } }));
   }
 
   // --- synchronizer CSRF token: unsafe methods on authenticated form routes

@@ -7,13 +7,14 @@
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
 import Banner from '../../../components/Banner.astro';
-import Button from '../../../components/Button.astro';
+import PublishConfirm from '../../../components/PublishConfirm.astro';
 import CuratorSplit from '../../../components/CuratorSplit.astro';
 import CuratorFieldForm from '../../../components/CuratorFieldForm.astro';
 import type { CandidateBatchRefusal } from '../../../lib/curator-fix';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
 import { CANDIDATE_PROFILE_LABEL_KEYS } from '../../../lib/candidate-profile';
+import { wardLabel } from '../../../lib/ward-label';
 import type { FieldError, RawField } from '../../../lib/affidavit-form';
 import type { CandidateEditData } from '../../../lib/curator';
 import type { WardOption } from '../../../lib/curator-fix';
@@ -34,7 +35,7 @@ interface Props {
 }
 
 const { lang, csrfToken, wardId, wardNameEn, wardNameKn, candidate, wards = [], message, refused, batchRefused } = Astro.props;
-const wardName = lang === 'kn' ? wardNameKn : wardNameEn;
+const wardName = wardLabel(lang, { id: wardId, nameEn: wardNameEn, nameKn: wardNameKn });
 const messageText = message ? t(lang, message.key) : undefined;
 
 const confirmPath = `/ward/${wardId}`;
@@ -45,10 +46,10 @@ const pageDescription = t(lang, 'curator.candidateEdit.meta.description');
 ---
 
 <CuratorLayout lang={lang} title={pageTitle} description={pageDescription}>
-  <CuratorSplit lang={lang} pdfUrl={candidate.pdfUrl}>
-    <p><a href="/curator">{t(lang, 'curator.candidateEdit.backToDashboard')}</a></p>
+  <CuratorSplit lang={lang} pdfUrl={candidate.pdfUrl} collapsible>
+    <p><a class="body-link" href="/curator">{t(lang, 'curator.candidateEdit.backToDashboard')}</a></p>
     <h1>{pageHeading}</h1>
-    <p class="ward-line">{t(lang, 'curator.candidateEdit.wardLine', { ward: wardName })}</p>
+    <p class="ward-line">{wardName}</p>
 
     {
       messageText && (
@@ -90,15 +91,16 @@ const pageDescription = t(lang, 'curator.candidateEdit.meta.description');
                   {wards.map((ward) => <option value={ward.id} selected={String(ward.id) === (batchRefused?.wardId ?? String(candidate.wardId))}>{ward.label}</option>)}
                 </select>
               </div>
-              <label class="batch-confirm">
-                <input type="checkbox" name="confirmPublish" required />
-                <span>{t(lang, 'curator.candidateEdit.confirmChanges')}</span>
-              </label>
-              <Button type="submit" variant="primary" lang={lang}>{t(lang, 'curator.candidateEdit.field.submit')}</Button>
+              <PublishConfirm
+                lang={lang}
+                label={t(lang, 'curator.candidateEdit.confirmChanges')}
+                hint={t(lang, 'curator.confirm.needsTick')}
+                submitLabel={t(lang, 'curator.candidateEdit.field.submit')}
+              />
             </form>
           ) : candidate.waitingAffidavitId !== null ? (
             <p class="placeholder-note">
-              {t(lang, 'curator.fix.affidavitWaiting')} <a href={`/curator/matching/${candidate.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
+              {t(lang, 'curator.fix.affidavitWaiting')} <a class="body-link" href={`/curator/matching/${candidate.waitingAffidavitId}`}>{t(lang, 'curator.fix.affidavitWaitingLink')}</a>
             </p>
           ) : (
             <p class="placeholder-note">{t(lang, 'curator.candidateEdit.fields.needAffidavit')}</p>
@@ -111,9 +113,6 @@ const pageDescription = t(lang, 'curator.candidateEdit.meta.description');
 </CuratorLayout>
 
 <style>
-  .batch-confirm { display: flex; align-items: flex-start; gap: var(--space-2); font-weight: 700; cursor: pointer; }
-  .batch-confirm input { width: 20px; height: 20px; flex: none; accent-color: var(--color-primary); }
-
   h1 {
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);

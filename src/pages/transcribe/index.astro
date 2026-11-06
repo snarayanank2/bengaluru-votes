@@ -9,7 +9,7 @@
  * and checked the CSRF token.
  */
 import Start from '../../features/pages/transcribe/Start.astro';
-import { countSubmittedToday, countWaiting, currentAssignment, drawAssignment } from '../../lib/transcribe';
+import { countSubmittedToday, countWaiting, currentAssignment, drawAssignment, recentNotices } from '../../lib/transcribe';
 import { loadCuratorLang } from '../../lib/curator';
 
 const session = Astro.locals.session!;
@@ -30,14 +30,17 @@ if (Astro.request.method === 'POST') {
 }
 
 const NOTICES = ['saved', 'released', 'reported', 'expired', 'empty'] as const;
-const notice = NOTICES.find((kind) => Astro.url.searchParams.get(kind) === '1');
+const asked = NOTICES.find((kind) => Astro.url.searchParams.get(kind) === '1');
 
-const [lang, openAssignmentId, waiting, doneToday] = await Promise.all([
+const [lang, openAssignmentId, waiting, doneToday, honest] = await Promise.all([
   loadCuratorLang(session.userId),
   currentAssignment(session.userId),
   countWaiting(),
   countSubmittedToday(session.userId),
+  recentNotices(session.userId),
 ]);
+// A typed or bookmarked query string must not claim an outcome that did not just happen.
+const notice = asked === 'empty' ? (waiting === 0 ? asked : undefined) : asked && honest.has(asked) ? asked : undefined;
 
 Astro.response.headers.set('cache-control', 'no-store');
 ---

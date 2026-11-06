@@ -28,6 +28,7 @@ interface Props {
 
 const { lang, state } = Astro.props;
 const errorText = state.error ? t(lang, state.error) : undefined;
+const noticeText = !errorText && state.notice ? t(lang, state.notice) : undefined;
 ---
 
 <Base
@@ -45,6 +46,16 @@ const errorText = state.error ? t(lang, state.error) : undefined;
         <div class="login-banner">
           <Banner kind="error" lang={lang}>
             {errorText}
+          </Banner>
+        </div>
+      )
+    }
+
+    {
+      noticeText && (
+        <div class="login-banner">
+          <Banner kind="notice" lang={lang}>
+            {noticeText}
           </Banner>
         </div>
       )

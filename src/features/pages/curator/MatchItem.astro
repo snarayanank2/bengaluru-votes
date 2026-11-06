@@ -22,11 +22,13 @@
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Card from '../../../components/Card.astro';
+import Badge from '../../../components/Badge.astro';
 import Banner from '../../../components/Banner.astro';
-import Button from '../../../components/Button.astro';
+import PublishConfirm from '../../../components/PublishConfirm.astro';
 import CuratorSplit from '../../../components/CuratorSplit.astro';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
+import { GENDERS } from '../../../lib/affidavit-extraction';
 import type { MatchRow } from '../../../lib/affidavit-queue';
 import type { WardOption } from '../../../lib/curator-fix';
 
@@ -52,10 +54,10 @@ const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ??
 ---
 
 <CuratorLayout lang={lang} title={t(lang, 'curator.matching.item.meta.title')} description={t(lang, 'curator.matching.meta.description')}>
-  <CuratorSplit lang={lang} pdfUrl={row.pdfUrl}>
-    <p class="back"><a href="/curator/matching">{t(lang, 'curator.matching.item.back')}</a></p>
-    <h1>{t(lang, 'curator.matching.item.heading', { id: row.id })}</h1>
-    <p class="reason">{t(lang, `curator.matching.reason.${row.reason}`)}</p>
+  <CuratorSplit lang={lang} pdfUrl={row.pdfUrl} collapsible>
+    <p class="back"><a class="body-link" href="/curator/matching">{t(lang, 'curator.matching.item.back')}</a></p>
+    <h1>{row.nameRead ? t(lang, 'curator.matching.item.headingNamed', { name: row.nameRead }) : t(lang, 'curator.matching.item.heading')}</h1>
+    <p class="reason"><Badge variant="flag-pending" lang={lang}>{t(lang, `curator.matching.reason.${row.reason}`)}</Badge></p>
 
     {
       message && (
@@ -82,7 +84,7 @@ const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ??
         </div>
         <div>
           <dt>{t(lang, 'admin.affidavits.match.gender')}</dt>
-          <dd>{row.gender ?? '—'}</dd>
+          <dd>{row.gender === null ? '—' : (GENDERS as readonly string[]).includes(row.gender) ? t(lang, `transcribe.reading.gender.${row.gender}`) : row.gender}</dd>
         </div>
         <div>
           <dt>{t(lang, 'admin.affidavits.match.confidence')}</dt>
@@ -101,7 +103,7 @@ const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ??
           )}
           <p class="note">{t(lang, 'admin.affidavits.match.stillPublished')}</p>
           <p class="note">
-            <a href={`/curator/candidate/${row.candidateId}`}>{t(lang, 'curator.matching.item.candidateLink')}</a>
+            <a class="body-link" href={`/curator/candidate/${row.candidateId}`}>{t(lang, 'curator.matching.item.candidateLink')}</a>
           </p>
         </Card>
       )
@@ -142,15 +144,12 @@ const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ??
             </div>
           )
         }
-        <label class="confirm">
-          <input type="checkbox" name="confirmPublish" required />
-          <span>{t(lang, 'curator.matching.item.confirm')}</span>
-        </label>
-        <div class="actions">
-          <Button type="submit" variant="primary" lang={lang}>
-            {t(lang, isCorrection ? 'admin.affidavits.match.submitCorrection' : 'admin.affidavits.match.submit')}
-          </Button>
-        </div>
+        <PublishConfirm
+          lang={lang}
+          label={t(lang, 'curator.matching.item.confirm')}
+          hint={t(lang, 'curator.confirm.needsTick')}
+          submitLabel={t(lang, isCorrection ? 'admin.affidavits.match.submitCorrection' : 'admin.affidavits.match.submit')}
+        />
       </form>
     </Card>
 
@@ -177,24 +176,22 @@ const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ??
     margin: 0;
   }
 
-  .reason {
-    font-weight: 700;
-  }
-
+  /* Label above value, 4px apart, sharing a left edge (design-system §7.16). */
   .read {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-3);
     margin: 0;
   }
 
   .read div {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    flex-direction: column;
+    gap: var(--space-1);
   }
 
   .read dt {
+    font-size: var(--text-xs);
     color: var(--color-text-muted);
   }
 
@@ -248,23 +245,6 @@ const wardLabel = (id: number) => wards.find((ward) => ward.id === id)?.label ??
     outline: 2px solid var(--color-primary);
     outline-offset: 1px;
     border-color: var(--color-primary);
-  }
-
-  .confirm {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-    font-weight: 700;
-    cursor: pointer;
-    overflow-wrap: anywhere;
-  }
-
-  .confirm input {
-    width: 20px;
-    height: 20px;
-    flex: none;
-    margin-top: 2px;
-    accent-color: var(--color-primary);
   }
 
   .unusable {

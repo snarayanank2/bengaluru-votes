@@ -6,7 +6,7 @@
  * hidden field). The middleware never touches cookies, so this handler does
  * both halves itself: it deletes the `sessions` row server-side (the cookie
  * alone ending would leave a stolen copy valid for up to an hour) and
- * answers with the cookie-clearing header, then sends the person to /login.
+ * answers with the cookie-clearing header, then sends the person to /login, which says they are signed out.
  *
  * POST only: a GET (a link, a prefetch, an image tag) must never sign anyone
  * out. There is no /kn/ twin; staff routes have none.
@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ cookies }) => {
   if (cookieValue) await destroySession(cookieValue);
   return new Response(null, {
     status: 303,
-    headers: { Location: '/login', 'Set-Cookie': clearSessionCookie(), 'cache-control': 'no-store' },
+    headers: { Location: '/login?signedOut=1', 'Set-Cookie': clearSessionCookie(), 'cache-control': 'no-store' },
   });
 };
 

@@ -6,12 +6,16 @@
  * affidavit's own page (MatchItem.astro), where it is compared with the PDF
  * and confirmed.
  *
- * The table sits in its own horizontally scrolling wrapper, so on a phone
- * the table scrolls and the page does not. See Dashboard.astro's docstring
+ * The table sits in its own focusable, named, horizontally scrolling region
+ * (`ScrollRegion`), with a hint while it overflows, so on a phone the table
+ * scrolls and the page does not. See Dashboard.astro's docstring
  * for the language and noindex rationale shared by every curator page.
  */
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
+import Badge from '../../../components/Badge.astro';
 import Banner from '../../../components/Banner.astro';
+import EmptyState from '../../../components/EmptyState.astro';
+import ScrollRegion from '../../../components/ScrollRegion.astro';
 import { t, type Lang } from '../../../i18n';
 import type { MatchRow } from '../../../lib/affidavit-queue';
 
@@ -39,37 +43,38 @@ const { lang, rows, message } = Astro.props;
 
     {
       rows.length === 0 ? (
-        <p>{t(lang, 'curator.matching.none')}</p>
+        <EmptyState fact={t(lang, 'curator.matching.none')} />
       ) : (
-        <div class="table-scroll">
-          <table class="match-table">
+        <ScrollRegion lang={lang} id="match-scroll" label={t(lang, 'curator.matching.table.label')}>
+          <table class="staff-table match-table">
+            <caption class="sr-only">{t(lang, 'curator.matching.table.label')}</caption>
             <thead>
               <tr>
-                <th>{t(lang, 'curator.matching.colReason')}</th>
-                <th>{t(lang, 'curator.matching.colName')}</th>
-                <th>{t(lang, 'curator.matching.colWard')}</th>
-                <th>{t(lang, 'curator.matching.colConfidence')}</th>
+                <th scope="col">{t(lang, 'curator.matching.colReason')}</th>
+                <th scope="col">{t(lang, 'curator.matching.colName')}</th>
+                <th scope="col">{t(lang, 'curator.matching.colWard')}</th>
+                <th scope="col" class="num">{t(lang, 'curator.matching.colConfidence')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr>
                   <td>
-                    {t(lang, `curator.matching.reason.${row.reason}`)}
+                    <Badge variant="flag-pending" lang={lang}>{t(lang, `curator.matching.reason.${row.reason}`)}</Badge>
                     {row.note && (
                       <p class="row-note">
                         <strong>{t(lang, 'admin.affidavits.match.transcriberNote')}</strong> {row.note}
                       </p>
                     )}
                   </td>
-                  <td><a href={`/curator/matching/${row.id}`}>{row.nameRead ?? '—'}</a></td>
+                  <td><a class="body-link" href={`/curator/matching/${row.id}`}>{row.nameRead ?? '—'}</a></td>
                   <td>{row.wardRead ?? t(lang, 'admin.affidavits.match.wardNotRead')}</td>
-                  <td>{row.confidence === null ? '—' : `${row.confidence}%`}</td>
+                  <td class="num">{row.confidence === null ? '—' : `${row.confidence}%`}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )
     }
   </div>
@@ -97,31 +102,8 @@ const { lang, rows, message } = Astro.props;
     max-width: var(--container-prose);
   }
 
-  .table-scroll {
-    overflow-x: auto;
-  }
-
   .match-table {
-    width: 100%;
     min-width: 36rem;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-  }
-
-  .match-table th,
-  .match-table td {
-    text-align: left;
-    vertical-align: top;
-    padding: var(--space-2);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .match-table tbody tr:nth-child(odd) {
-    background: var(--color-surface);
-  }
-
-  .match-table td:last-child {
-    white-space: nowrap;
   }
 
   .row-note {

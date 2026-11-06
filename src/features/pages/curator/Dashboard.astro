@@ -16,6 +16,8 @@
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import Button from '../../../components/Button.astro';
 import Card from '../../../components/Card.astro';
+import EmptyState from '../../../components/EmptyState.astro';
+import { wardLabel } from '../../../lib/ward-label';
 import { t, type Lang } from '../../../i18n';
 import { SEARCH_CAP, type DashboardData, type CuratorSearch } from '../../../lib/curator';
 
@@ -29,8 +31,6 @@ interface Props {
 }
 
 const { lang, data, q, search } = Astro.props;
-/** "014 - Name" -> "Name" (the number is shown separately by the page). */
-const bareWard = (name: string) => name.replace(/^\d+\s*-\s*/, '');
 const { queueCount, matchCount } = data;
 ---
 
@@ -41,13 +41,13 @@ const { queueCount, matchCount } = data;
     <Card>
       <h2>{t(lang, 'curator.dashboard.queueHeading')}</h2>
       <p class="queue-count">{t(lang, 'curator.dashboard.queueCount', { count: queueCount })}</p>
-      <a href="/curator/queue">{t(lang, 'curator.dashboard.queueLink')}</a>
+      <a class="body-link" href="/curator/queue">{t(lang, 'curator.dashboard.queueLink')}</a>
     </Card>
 
     <Card>
       <h2>{t(lang, 'curator.dashboard.matchHeading')}</h2>
       <p class="queue-count">{t(lang, 'curator.dashboard.matchCount', { count: matchCount })}</p>
-      <a href="/curator/matching">{t(lang, 'curator.dashboard.matchLink')}</a>
+      <a class="body-link" href="/curator/matching">{t(lang, 'curator.dashboard.matchLink')}</a>
     </Card>
 
     <Card>
@@ -61,7 +61,7 @@ const { queueCount, matchCount } = data;
       </form>
 
       {search === null && <p class="search-note">{t(lang, 'curator.dashboard.search.tooShort')}</p>}
-      {search && search.candidates.length === 0 && <p class="search-note">{t(lang, 'curator.dashboard.search.none', { q: q.trim() })}</p>}
+      {search && search.candidates.length === 0 && <EmptyState fact={t(lang, 'curator.dashboard.search.none', { q: q.trim() })} />}
       {
         search && search.candidates.length > 0 && (
           <section class="search-results">
@@ -69,11 +69,11 @@ const { queueCount, matchCount } = data;
             <ul>
               {search.candidates.map((c) => (
                 <li>
-                  <a href={`/curator/candidate/${c.id}`}>{c.nameEn}</a>
+                  <a class="body-link" href={`/curator/candidate/${c.id}`}>{c.nameEn}</a>
                   <span class="search-note">
                     {t(lang, 'curator.dashboard.search.candidateLine', {
                       party: c.partyEn,
-                      ward: bareWard(lang === 'kn' ? c.wardNameKn : c.wardNameEn),
+                      ward: wardLabel(lang, { id: c.wardId, nameEn: c.wardNameEn, nameKn: c.wardNameKn }),
                       status: t(lang, `curator.candidateEdit.core.status.${c.status}`),
                     })}
                   </span>
@@ -86,7 +86,7 @@ const { queueCount, matchCount } = data;
       }
     </Card>
 
-    <p><a href="/curator/guide">{t(lang, 'curator.dashboard.guideLink')}</a></p>
+    <p><a class="body-link" href="/curator/guide">{t(lang, 'curator.dashboard.guideLink')}</a></p>
   </div>
 </CuratorLayout>
 

@@ -3,14 +3,17 @@
  * `/transcribe/{assignment-id}` — see
  * src/features/pages/transcribe/Reading.astro. This route twin owns:
  *   - the 404 for anything that is not the caller's own open, unexpired
- *     assignment. It is a 404 and not a 403, for an admin too, so an
- *     assignment id never confirms that someone else's work exists;
+ *     assignment, rendered as the staff-shell not-found page
+ *     (src/features/pages/StaffError.astro). It is a 404 and not a 403, for an
+ *     admin too, so an assignment id never confirms that someone else's work
+ *     exists;
  *   - the three form actions (`save`, `release`, `report`), all handled by
  *     src/lib/transcribe.ts, and the redirect back to `/transcribe`;
  *   - the 400 re-render that keeps what the transcriber typed;
  *   - no-store on every response.
  */
 import Reading from '../../features/pages/transcribe/Reading.astro';
+import StaffError from '../../features/pages/StaffError.astro';
 import {
   loadAssignment,
   releaseAssignment,
@@ -26,18 +29,13 @@ import { loadCuratorLang } from '../../lib/curator';
 const session = Astro.locals.session!;
 
 // @ts-ignore TS6133: Astro's checker drops the expression of a top-level `return` in frontmatter, so a local used only there looks unread.
-function notFound(): Response {
-  return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
-}
-
-// @ts-ignore TS6133: Astro's checker drops the expression of a top-level `return` in frontmatter, so a local used only there looks unread.
 function redirect(location: string): Response {
   return new Response(null, { status: 302, headers: { Location: location, 'cache-control': 'no-store' } });
 }
 
 const idParam = Astro.params.id ?? '';
-if (!/^[1-9]\d{0,9}$/.test(idParam)) return notFound();
-const assignmentId = Number(idParam);
+const validId = /^[1-9]\d{0,9}$/.test(idParam);
+const assignmentId = validId ? Number(idParam) : 0;
 
 let raw: RawForm | undefined;
 let errors: Partial<Record<AffidavitFieldKey, FieldError>> = {};
@@ -45,7 +43,7 @@ let formErrorKey: string | undefined;
 let reportNote = '';
 let responseStatus = 200;
 
-if (Astro.request.method === 'POST') {
+if (validId && Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const formAction = String(form.get('formAction') ?? '');
 
@@ -72,21 +70,26 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const view: AssignmentView | null = await loadAssignment(session.userId, assignmentId);
-if (!view) return notFound();
+const view: AssignmentView | null = validId ? await loadAssignment(session.userId, assignmentId) : null;
 
 const lang = await loadCuratorLang(session.userId);
 
 Astro.response.headers.set('cache-control', 'no-store');
-Astro.response.status = responseStatus;
+Astro.response.status = view ? responseStatus : 404;
 ---
 
-<Reading
-  lang={lang}
-  csrfToken={Astro.locals.csrfToken}
-  view={view}
-  raw={raw}
-  errors={errors}
-  formErrorKey={formErrorKey}
-  reportNote={reportNote}
-/>
+{
+  view ? (
+    <Reading
+      lang={lang}
+      csrfToken={Astro.locals.csrfToken}
+      view={view}
+      raw={raw}
+      errors={errors}
+      formErrorKey={formErrorKey}
+      reportNote={reportNote}
+    />
+  ) : (
+    <StaffError lang={lang} status={404} area="transcribe" />
+  )
+}

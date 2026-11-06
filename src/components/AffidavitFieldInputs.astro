@@ -20,6 +20,9 @@ interface Props {
 
 const { lang, fieldKey, status, inputs, error } = Astro.props;
 const value = (name: string) => inputs[name] ?? '';
+const errorId = `${fieldKey}-error`;
+/** Set on every control of a refused field: the error text names the field, not one control. */
+const invalid = error ? { 'aria-invalid': 'true' as const, 'aria-describedby': errorId } : {};
 
 /** The total shown before the island takes over; blank unless both parts are plain whole numbers. */
 function assetsTotal(movable: string, immovable: string): string {
@@ -38,18 +41,18 @@ function assetsTotal(movable: string, immovable: string): string {
   ))}
 </div>
 
-<div class="inputs" data-inputs>
+<div class:list={['inputs', { 'inputs--invalid': error }]} data-inputs>
   {(fieldKey === 'full_name' || fieldKey === 'party') && (
     <label class="input">
       <span>{t(lang, `transcribe.reading.input.${fieldKey === 'full_name' ? 'name' : 'party'}`)}</span>
-      <input type="text" name={fieldKey === 'full_name' ? 'name' : 'party'} value={value(fieldKey === 'full_name' ? 'name' : 'party')} autocomplete="off" />
+      <input type="text" name={fieldKey === 'full_name' ? 'name' : 'party'} value={value(fieldKey === 'full_name' ? 'name' : 'party')} autocomplete="off" {...invalid} />
     </label>
   )}
 
   {fieldKey === 'gender' && (
-    <label class="input input--short">
+    <label class="input">
       <span>{t(lang, 'transcribe.reading.input.gender')}</span>
-      <select name="gender">
+      <select name="gender" {...invalid}>
         <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
         {GENDERS.map((gender) => (
           <option value={gender} selected={value('gender') === gender}>
@@ -61,17 +64,17 @@ function assetsTotal(movable: string, immovable: string): string {
   )}
 
   {fieldKey === 'age' && (
-    <label class="input input--short">
+    <label class="input">
       <span>{t(lang, 'transcribe.reading.input.age')}</span>
-      <input type="text" inputmode="numeric" name="age" value={value('age')} autocomplete="off" />
+      <input type="text" inputmode="numeric" name="age" value={value('age')} autocomplete="off" {...invalid} />
     </label>
   )}
 
   {fieldKey === 'education' && (
-    <div class="input-row">
-      <label class="input input--short">
+    <div class="input-row input-row--stack">
+      <label class="input">
         <span>{t(lang, 'transcribe.reading.input.educationLevel')}</span>
-        <select name="educationLevel">
+        <select name="educationLevel" {...invalid}>
           <option value="">{t(lang, 'transcribe.reading.input.genderChoose')}</option>
           {EDUCATION_LEVELS.map((level) => (
             <option value={level} selected={value('educationLevel') === level}>
@@ -82,7 +85,7 @@ function assetsTotal(movable: string, immovable: string): string {
       </label>
       <label class="input">
         <span>{t(lang, 'transcribe.reading.input.educationStated')}</span>
-        <input type="text" name="educationStated" value={value('educationStated')} autocomplete="off" />
+        <input type="text" name="educationStated" value={value('educationStated')} autocomplete="off" {...invalid} />
       </label>
     </div>
   )}
@@ -92,11 +95,11 @@ function assetsTotal(movable: string, immovable: string): string {
       <div class="input-row">
         <label class="input">
           <span>{t(lang, 'transcribe.reading.input.movableInr')}</span>
-          <input type="text" inputmode="numeric" name="movableInr" value={value('movableInr')} autocomplete="off" data-assets-part />
+          <input type="text" inputmode="numeric" name="movableInr" value={value('movableInr')} autocomplete="off" data-assets-part {...invalid} />
         </label>
         <label class="input">
           <span>{t(lang, 'transcribe.reading.input.immovableInr')}</span>
-          <input type="text" inputmode="numeric" name="immovableInr" value={value('immovableInr')} autocomplete="off" data-assets-part />
+          <input type="text" inputmode="numeric" name="immovableInr" value={value('immovableInr')} autocomplete="off" data-assets-part {...invalid} />
         </label>
       </div>
       <p class="total">
@@ -110,13 +113,13 @@ function assetsTotal(movable: string, immovable: string): string {
   {fieldKey === 'cases' && (
     <>
       <div class="input-row">
-        <label class="input input--short">
+        <label class="input">
           <span>{t(lang, 'transcribe.reading.input.pending')}</span>
-          <input type="text" inputmode="numeric" name="pending" value={value('pending')} autocomplete="off" />
+          <input type="text" inputmode="numeric" name="pending" value={value('pending')} autocomplete="off" {...invalid} />
         </label>
-        <label class="input input--short">
+        <label class="input">
           <span>{t(lang, 'transcribe.reading.input.convictions')}</span>
-          <input type="text" inputmode="numeric" name="convictions" value={value('convictions')} autocomplete="off" />
+          <input type="text" inputmode="numeric" name="convictions" value={value('convictions')} autocomplete="off" {...invalid} />
         </label>
       </div>
       <p class="help">{t(lang, 'transcribe.reading.casesHelp')}</p>
@@ -124,7 +127,7 @@ function assetsTotal(movable: string, immovable: string): string {
   )}
 </div>
 <slot />
-{error && <p class="field-error">{t(lang, `transcribe.error.${error}`)}</p>}
+{error && <p class="field-error" id={errorId}>{t(lang, `transcribe.error.${error}`)}</p>}
 
 <style>
   .status {
@@ -137,19 +140,12 @@ function assetsTotal(movable: string, immovable: string): string {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    min-height: 36px;
-    padding: var(--space-1) var(--space-3);
+    min-height: 44px;
+    padding: var(--space-1) var(--space-2);
     border: 1.5px solid var(--color-border);
     border-radius: 999px;
     font-size: var(--text-sm);
     cursor: pointer;
-  }
-
-  /* Where the panes stack (a phone or small tablet) the pills are touch targets. */
-  @media (max-width: 899px) {
-    .status-option {
-      min-height: 44px;
-    }
   }
 
   .status-option:has(input:checked) {
@@ -176,15 +172,16 @@ function assetsTotal(movable: string, immovable: string): string {
     align-items: end;
   }
 
+  /* A long value ("qualification as written") keeps the full width. */
+  .input-row--stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .input {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
     min-width: 0;
-  }
-
-  .input--short {
-    max-width: 14rem;
   }
 
   .input > span {
@@ -212,6 +209,12 @@ function assetsTotal(movable: string, immovable: string): string {
     outline: 2px solid var(--color-primary);
     outline-offset: 1px;
     border-color: var(--color-primary);
+  }
+
+  /* Invalid (design-system §7.10): brick border on the control as well as the text. */
+  .inputs--invalid .input input:not(:disabled),
+  .inputs--invalid .input select:not(:disabled) {
+    border-color: var(--color-danger);
   }
 
   .input input:disabled,

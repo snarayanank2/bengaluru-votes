@@ -5,7 +5,7 @@
  * immediately" tick, and the button. `formAction` tells the route twin
  * which form was posted.
  */
-import Button from './Button.astro';
+import PublishConfirm from './PublishConfirm.astro';
 import { t, type Lang } from '../i18n';
 import { CSRF_FIELD_NAME } from '../lib/csrf';
 import type { WardOption } from '../lib/curator-fix';
@@ -34,13 +34,12 @@ const { lang, csrfToken, formAction, wards, wardId, confirmPath, submitLabel } =
       {wards.map((ward) => <option value={ward.id} selected={ward.id === wardId}>{ward.label}</option>)}
     </select>
   </div>
-  <label class="confirm">
-    <input type="checkbox" name="confirmPublish" required />
-    <span>{t(lang, 'curator.fix.confirm', { path: confirmPath })}</span>
-  </label>
-  <div class="actions">
-    <Button type="submit" variant="primary" lang={lang}>{submitLabel}</Button>
-  </div>
+  <PublishConfirm
+    lang={lang}
+    label={t(lang, 'curator.fix.confirm', { path: confirmPath })}
+    hint={t(lang, 'curator.confirm.needsTick')}
+    submitLabel={submitLabel}
+  />
 </form>
 
 <style>
@@ -80,22 +79,5 @@ const { lang, csrfToken, formAction, wards, wardId, confirmPath, submitLabel } =
     outline: 2px solid var(--color-primary);
     outline-offset: 1px;
     border-color: var(--color-primary);
-  }
-
-  .confirm {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-    font-weight: 700;
-    cursor: pointer;
-    overflow-wrap: anywhere;
-  }
-
-  .confirm input {
-    width: 20px;
-    height: 20px;
-    flex: none;
-    margin-top: 2px;
-    accent-color: var(--color-primary);
   }
 </style>

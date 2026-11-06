@@ -15,7 +15,7 @@
  * is open, unexpired and theirs. Anything else behaves as if the assignment
  * did not exist, for an admin too.
  */
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { candidateAffidavits, candidateFields, candidates, media, transcriptionAssignments, wards } from '../db/schema';
 import { type AffidavitExtraction } from './affidavit-extraction';
@@ -357,6 +357,45 @@ export async function countSubmittedToday(transcriberId: number): Promise<number
       ),
     );
   return row?.n ?? 0;
+}
+
+export type TranscribeNotice = 'saved' | 'released' | 'reported' | 'expired';
+
+/**
+ * Which outcome notices `/transcribe?<kind>=1` may honestly show. The
+ * redirect after a save, release, report or expiry carries its outcome in
+ * the query string, and a query string can be typed or kept in a bookmark,
+ * so a notice is shown only when the caller's latest assignment really ended
+ * that way just now: submitted or abandoned within the last two minutes, or
+ * held and run out within the last quarter hour (a hold within ten seconds of
+ * ending counts as run out: the browser's clock reaches zero a moment before
+ * the server's, and its redirect must still find the notice). No cookie and no
+ * new state.
+ * Known limits: a release and a report both end `abandoned`, so within the two
+ * minutes either notice is accepted after either; and a hold that a new draw
+ * sweeps to `abandoned` before its expiry redirect lands shows no expiry notice.
+ */
+export async function recentNotices(transcriberId: number): Promise<Set<TranscribeNotice>> {
+  const [row] = await db
+    .select({
+      state: transcriptionAssignments.state,
+      justClosed: sql<boolean>`${transcriptionAssignments.closedAt} > now() - interval '2 minutes'`,
+      justExpired: sql<boolean>`${transcriptionAssignments.expiresAt} <= now() + interval '10 seconds' AND ${transcriptionAssignments.expiresAt} > now() - interval '15 minutes'`,
+    })
+    .from(transcriptionAssignments)
+    .where(eq(transcriptionAssignments.transcriberId, transcriberId))
+    .orderBy(desc(transcriptionAssignments.id))
+    .limit(1);
+
+  const notices = new Set<TranscribeNotice>();
+  if (!row) return notices;
+  if (row.state === 'submitted' && row.justClosed) notices.add('saved');
+  if (row.state === 'abandoned' && row.justClosed) {
+    notices.add('released');
+    notices.add('reported');
+  }
+  if (row.state === 'open' && row.justExpired) notices.add('expired');
+  return notices;
 }
 
 /** The caller's open assignment, if they hold one, without drawing. */

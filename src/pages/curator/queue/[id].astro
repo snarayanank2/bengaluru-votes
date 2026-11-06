@@ -11,6 +11,7 @@
  */
 import { markFlagSpam } from '../../../lib/flags';
 import QueueItem from '../../../features/pages/curator/QueueItem.astro';
+import StaffError from '../../../features/pages/StaffError.astro';
 import { handleFlagFix, handleReject, loadCuratorLang, loadQueueItem } from '../../../lib/curator';
 import { loadWardOptions, type WardOption } from '../../../lib/curator-fix';
 import type { FieldError, RawField } from '../../../lib/affidavit-form';
@@ -20,15 +21,10 @@ const actor = { userId: session.userId, role: session.role as 'curator' | 'admin
 
 const idParam = Astro.params.id;
 const itemId = Number(idParam);
-if (!idParam || !Number.isInteger(itemId)) {
-  return new Response(null, { status: 404 });
-}
 
 const page = Math.max(1,Math.min(10000,Math.trunc(Number(Astro.url.searchParams.get('page')))||1));
-let item = await loadQueueItem(itemId,page);
-if (!item) {
-  return new Response(null, { status: 404 });
-}
+// An id that is not an integer or names no flag renders the staff-shell not-found page, with a 404.
+let item = idParam && Number.isInteger(itemId) ? await loadQueueItem(itemId, page) : null;
 
 const lang = await loadCuratorLang(session.userId);
 
@@ -37,7 +33,7 @@ let fixError: FieldError | undefined;
 let fixRaw: RawField | undefined;
 let status = 200;
 
-if (Astro.request.method === 'POST') {
+if (item && Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const formAction = String(form.get('formAction') ?? '');
   if (formAction === 'spam') {
@@ -79,10 +75,16 @@ if (Astro.request.method === 'POST') {
 }
 
 // Every ward is listed only where it is chosen from: a pending flag on the ward.
-const wards: WardOption[] = item.status === 'pending' && item.fix.kind === 'ward' ? await loadWardOptions() : [];
+const wards: WardOption[] = item && item.status === 'pending' && item.fix.kind === 'ward' ? await loadWardOptions() : [];
 
 Astro.response.headers.set('cache-control', 'no-store');
-Astro.response.status = status;
+Astro.response.status = item ? status : 404;
 ---
 
-<QueueItem lang={lang} csrfToken={Astro.locals.csrfToken} item={item} wards={wards} message={message} fixError={fixError} fixRaw={fixRaw} />
+{
+  item ? (
+    <QueueItem lang={lang} csrfToken={Astro.locals.csrfToken} item={item} wards={wards} message={message} fixError={fixError} fixRaw={fixRaw} />
+  ) : (
+    <StaffError lang={lang} status={404} area="curator" />
+  )
+}

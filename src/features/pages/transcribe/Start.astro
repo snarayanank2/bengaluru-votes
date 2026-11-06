@@ -41,7 +41,7 @@ const waitingText =
 
     {
       notice && (
-        <Banner kind={notice === 'expired' ? 'error' : 'notice'} lang={lang}>
+        <Banner kind="notice" lang={lang}>
           {t(lang, `transcribe.notice.${notice}`)}
         </Banner>
       )
@@ -73,7 +73,7 @@ const waitingText =
     </Card>
 
     <p class="guide-link">
-      <a href="/transcribe/guide">{t(lang, 'transcribe.start.guideLink')}</a>
+      <a class="body-link" href="/transcribe/guide">{t(lang, 'transcribe.start.guideLink')}</a>
     </p>
   </div>
 </TranscriberLayout>
@@ -127,6 +127,5 @@ const waitingText =
 
   .guide-link {
     margin: 0;
-    font-size: var(--text-sm);
   }
 </style>

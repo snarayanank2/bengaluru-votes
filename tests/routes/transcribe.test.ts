@@ -261,7 +261,13 @@ describe('/transcribe/{assignment-id}', () => {
     expect(html).toContain('name="confirmChecked"');
     // Save is gated on the tick by the island; the server renders the hooks it needs and still re-checks the tick.
     expect(html).toContain('data-confirm-tick');
-    expect(html).toContain('data-save-button');
+    expect(html).toContain('data-gated-submit');
+    // The hold is a labelled timer with a warning region and a polite announcer, and a keyboard user can skip the PDF viewer.
+    expect(html).toContain('role="timer"');
+    expect(html).toContain('data-timer-warning');
+    expect(html).toMatch(/role="status"[^>]*data-timer-announce/);
+    expect(html).toContain('href="#work-panel"');
+    expect(html).toContain('id="work-panel"');
     expect(html.match(/type="checkbox"/g)).toHaveLength(1);
     expect(html).not.toMatch(/name="confirmChecked"[^>]*checked/);
     expect(html).not.toMatch(/name="wardId"/);
@@ -300,6 +306,37 @@ describe('/transcribe/{assignment-id}', () => {
     expect(after).toContain('Saved. Your checked values are live');
     expect(after).toContain('Next affidavit');
     expect((await reading(id, me)).status).toBe(404);
+  });
+
+  it('shows an outcome notice only when that outcome really just happened', async () => {
+    const me = await person('transcriber');
+    for (const kind of ['saved', 'released', 'reported', 'expired']) {
+      const html = await (await run(StartRoute, `/transcribe?${kind}=1`, { auth: me })).text();
+      expect(html).not.toContain(`transcribe.notice.${kind}`);
+      expect(html).not.toContain('Saved. Your checked values are live');
+      expect(html).not.toContain('Released. Someone else');
+      expect(html).not.toContain('Reported. An admin');
+      expect(html).not.toContain('ran out before you saved');
+    }
+
+    await published();
+    const id = await draw(me);
+    await reading(id, me, tokenForm(me, { formAction: 'release' }));
+    const released = await (await run(StartRoute, '/transcribe?released=1', { auth: me })).text();
+    expect(released).toContain('Released. Someone else');
+    // Released is not saved: the other claim stays refused.
+    expect(await (await run(StartRoute, '/transcribe?saved=1', { auth: me })).text()).not.toContain('Saved. Your checked values are live');
+  });
+
+  it("shows the expiry notice when the browser's clock reaches zero a few seconds before the server's", async () => {
+    await published();
+    const me = await person('transcriber');
+    const id = await draw(me);
+    await db.execute(sql`UPDATE transcription_assignments SET expires_at = now() + interval '4 seconds' WHERE id = ${id}`);
+    expect(await (await run(StartRoute, '/transcribe?expired=1', { auth: me })).text()).toContain('ran out before you saved');
+    // A hold with minutes left does not count as run out.
+    await db.execute(sql`UPDATE transcription_assignments SET expires_at = now() + interval '5 minutes' WHERE id = ${id}`);
+    expect(await (await run(StartRoute, '/transcribe?expired=1', { auth: me })).text()).not.toContain('ran out before you saved');
   });
 
   it('refuses an invalid value with a 400 and keeps everything that was typed', async () => {

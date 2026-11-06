@@ -65,7 +65,7 @@ describe('POST /logout', () => {
     expect(await sessionAlive(who)).toBe(true);
     const res = await logout(who);
     expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('/login');
+    expect(res.headers.get('location')).toBe('/login?signedOut=1');
     expect(res.headers.get('set-cookie')).toMatch(/^bv_session=; .*Max-Age=0/);
     expect(res.headers.get('cache-control')).toBe('no-store');
     expect(await sessionAlive(who)).toBe(false);

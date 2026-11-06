@@ -214,6 +214,27 @@ describe('src/middleware.ts', () => {
       expect(res.status).toBe(403);
     });
 
+    it('a wrong-role GET renders the staff 403 page through next(), with a 403 status, no-store and the CSP header', async () => {
+      const { cookieValue } = await sessionFor(curatorId);
+      const next = nextStub(200);
+      const ctx = makeContext({ path: '/transcribe', cookieValue });
+      const res = await run(ctx, next);
+      expect(next).toHaveBeenCalledWith('/account/forbidden');
+      expect(res.status).toBe(403);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(res.headers.get('content-security-policy')).toContain(ctx.locals.cspNonce);
+      expect(res.headers.get('x-robots-tag')).toBe('noindex');
+    });
+
+    it('a wrong-role POST gets the bare 403 and the route never runs', async () => {
+      const { cookieValue } = await sessionFor(transcriberId);
+      const next = nextStub(200);
+      const res = await run(makeContext({ method: 'POST', path: '/curator/queue/1', cookieValue, headers: { 'sec-fetch-site': 'same-origin' } }), next);
+      expect(res.status).toBe(403);
+      expect(next).not.toHaveBeenCalled();
+      expect(await res.text()).toBe('Forbidden');
+    });
+
     it('unauthenticated GET /transcribe -> redirect to /login', async () => {
       const res = await run(makeContext({ path: '/transcribe' }), nextStub());
       expect(res.status).toBe(302);
@@ -541,13 +562,13 @@ describe('src/middleware.ts', () => {
       );
     });
 
-    it('authenticated GET /kn/curator passes through for a curator (guard recognizes the session)', async () => {
+    it('authenticated GET /kn/curator is sent to /curator (staff screens have no Kannada twin)', async () => {
       const { cookieValue } = await sessionFor(curatorId);
       const next = nextStub(200);
-      const ctx = makeContext({ path: '/kn/curator', cookieValue });
-      const res = await run(ctx, next);
-      expect(next).toHaveBeenCalled();
-      expect(res.status).toBe(200);
+      const res = await run(makeContext({ path: '/kn/curator/queue?sort=ward', cookieValue }), next);
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('/curator/queue?sort=ward');
     });
 
     it('unauthenticated GET /kn/curator -> redirect to /login (no /kn/curator page exists, but the prefix match must still fire — defense in depth)', async () => {

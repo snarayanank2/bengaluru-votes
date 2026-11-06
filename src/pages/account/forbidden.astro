@@ -1,0 +1,21 @@
+---
+/**
+ * The staff 403 page, rendered by src/middleware.ts (through `next()`) when a
+ * signed-in person asks for a staff area their role does not include. It sits
+ * under `/account` so the middleware's session guard already applies to it
+ * (no session -> sign-in) and nginx treats it as an authenticated, uncached
+ * route; the middleware sets the 403 status, and it is set here too so a
+ * direct visit says the same. The page shows the person's own area.
+ */
+import StaffError, { type StaffArea } from '../../features/pages/StaffError.astro';
+import { loadCuratorLang } from '../../lib/curator';
+
+const session = Astro.locals.session!;
+const area: StaffArea = session.role === 'admin' ? 'admin' : session.role === 'curator' ? 'curator' : 'transcribe';
+const lang = await loadCuratorLang(session.userId);
+
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.status = 403;
+---
+
+<StaffError lang={lang} status={403} area={area} />

@@ -3,7 +3,11 @@
  * The affidavit beside the form that is being filled from it: a link that
  * opens the PDF on its own, and the PDF itself. With `collapse`, a narrow
  * screen gets only the link (a phone cannot show a scan and a form at once).
+ *
+ * The embedded viewer is vendor UI with many tab stops, so with `skipTo` (the
+ * id of the form panel) a keyboard user gets a link past it (design-system §10).
  */
+import SkipLink from './SkipLink.astro';
 import { t, type Lang } from '../i18n';
 
 interface Props {
@@ -12,15 +16,18 @@ interface Props {
   collapse?: boolean;
   /** Lets a toggle elsewhere on the page point at this panel (`aria-controls`). */
   id?: string;
+  /** Id of the panel holding the form; adds a skip link past the viewer. */
+  skipTo?: string;
 }
 
-const { lang, pdfUrl, collapse = false, id } = Astro.props;
+const { lang, pdfUrl, collapse = false, id, skipTo } = Astro.props;
 ---
 
 <section id={id} class:list={['scan', { 'scan--collapse': collapse }]} aria-label={t(lang, 'transcribe.reading.pdfTitle')}>
   <p class="scan-bar">
     <a href={pdfUrl} target="_blank" rel="noopener noreferrer">{t(lang, 'transcribe.reading.openPdf')}</a>
   </p>
+  {skipTo && <SkipLink lang={lang} href={`#${skipTo}`} label={t(lang, 'a11y.skipPastDocument')} />}
   <iframe class="scan-frame" src={`${pdfUrl}#navpanes=0&view=FitH`} title={t(lang, 'transcribe.reading.pdfTitle')}></iframe>
 </section>
 

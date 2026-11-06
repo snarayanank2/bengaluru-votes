@@ -22,11 +22,12 @@ interface Props {
 
 const { lang, pdfUrl, collapsible = false } = Astro.props;
 const scanId = 'affidavit-scan';
+const panelId = 'work-panel';
 ---
 
 <div class:list={['split', { 'split--single': !pdfUrl }]}>
-  {pdfUrl && <AffidavitScan lang={lang} pdfUrl={pdfUrl} collapse id={scanId} />}
-  <section class="split-panel">
+  {pdfUrl && <AffidavitScan lang={lang} pdfUrl={pdfUrl} collapse id={scanId} skipTo={panelId} />}
+  <section class="split-panel" id={panelId} tabindex="-1">
     {
       collapsible && pdfUrl && (
         <div class="split-tools" data-affidavit-tools hidden>
@@ -64,6 +65,11 @@ const scanId = 'affidavit-scan';
     gap: var(--space-4);
     min-width: 0;
     padding: var(--space-6) var(--container-pad-x) var(--space-8);
+  }
+
+  /* A skip-link target: it takes focus so the next Tab lands on the first field. */
+  .split-panel:focus {
+    outline: none;
   }
 
   .split-tools-row {

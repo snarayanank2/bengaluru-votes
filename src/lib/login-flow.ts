@@ -21,6 +21,8 @@ export interface LoginRenderState {
   destination?: string;
   /** An i18n key (src/i18n/en.json), not literal text — Login.astro resolves it via t(). */
   error?: string;
+  /** An i18n key for a neutral message above the form ("you have been signed out"). */
+  notice?: string;
 }
 
 export type LoginPostOutcome =
@@ -28,8 +30,8 @@ export type LoginPostOutcome =
   | { kind: 'render'; state: LoginRenderState };
 
 /** GET /login. */
-export function initialLoginState(nextRaw: unknown, error?: string): LoginRenderState {
-  return { next: isSameOriginRelative(nextRaw), error };
+export function initialLoginState(nextRaw: unknown, error?: string, signedOut = false): LoginRenderState {
+  return { next: isSameOriginRelative(nextRaw), error, notice: signedOut ? 'auth.password.signedOut' : undefined };
 }
 
 /**

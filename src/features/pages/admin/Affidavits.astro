@@ -18,6 +18,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Card from '../../../components/Card.astro';
 import Banner from '../../../components/Banner.astro';
 import Button from '../../../components/Button.astro';
+import { GENDERS } from '../../../lib/affidavit-extraction';
 import { t, type Lang } from '../../../i18n';
 import { CSRF_FIELD_NAME } from '../../../lib/csrf';
 import type { AffidavitAdminData, AffidavitState } from '../../../lib/affidavit-queue';
@@ -39,6 +40,7 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
   // `name_en` already starts with the ward number ("11 - Old Baiyappanahalli").
   return `${corporation} ${ward.id % 1000} · ${ward.nameEn.replace(/^\d+\s*-\s*/, '')}`;
 }
+const wardById = new Map(wards.map((ward) => [ward.id, wardLabel(ward)]));
 ---
 
 <AdminLayout lang={lang} title={t(lang, 'admin.affidavits.meta.title')} description={t(lang, 'admin.affidavits.meta.description')}>
@@ -96,7 +98,7 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
                 <div class="work-facts">
                   <p class="work-title">
                     <a href={row.pdfUrl} target="_blank" rel="noopener noreferrer">
-                      {t(lang, 'admin.affidavits.viewPdf', { id: row.id })}
+                      {row.nameRead ? t(lang, 'admin.affidavits.viewPdfRead', { name: row.nameRead }) : t(lang, 'admin.affidavits.viewPdfOpen')}
                     </a>
                     <span class={`tag tag--${row.reason}`}>{t(lang, `admin.affidavits.reason.${row.reason}`)}</span>
                   </p>
@@ -107,7 +109,7 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
                     </div>
                     <div>
                       <dt>{t(lang, 'admin.affidavits.match.gender')}</dt>
-                      <dd>{row.gender ?? '—'}</dd>
+                      <dd>{row.gender === null ? '—' : (GENDERS as readonly string[]).includes(row.gender) ? t(lang, `transcribe.reading.gender.${row.gender}`) : row.gender}</dd>
                     </div>
                     <div>
                       <dt>{t(lang, 'admin.affidavits.match.confidence')}</dt>
@@ -149,7 +151,7 @@ function wardLabel(ward: { id: number; nameEn: string; corporation: string }): s
                       <select id={`attach-${row.id}`} class="form-input" name="attachToCandidateId">
                         <option value="">{t(lang, 'admin.affidavits.match.attachNew')}</option>
                         {row.sameName.map((c) => (
-                          <option value={c.id}>{t(lang, 'admin.affidavits.match.attachExisting', { name: c.nameEn, id: c.id })}</option>
+                          <option value={c.id}>{t(lang, 'admin.affidavits.match.attachExisting', { name: c.nameEn, ward: wardById.get(c.wardId) ?? String(c.wardId % 1000) })}</option>
                         ))}
                       </select>
                     </div>

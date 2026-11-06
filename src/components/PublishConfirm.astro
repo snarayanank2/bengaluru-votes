@@ -1,0 +1,117 @@
+---
+/**
+ * PublishConfirm — the required confirmation and the submit it gates
+ * (design-system.md §7.3 "Gated submit", §7.13 "Confirmation"). One
+ * checkbox in an enlarged row (26px box, row at least 48px tall and as wide
+ * as the form) followed by the primary button and a muted hint saying why
+ * it is disabled. src/islands/GatedSubmit.ts disables the button until the
+ * box is ticked; the checkbox stays `required` and the route re-checks the
+ * tick on the server, and without the script the button stays usable, so
+ * nobody is locked out. Render it inside the `<form>` it confirms. `label`,
+ * `hint` and `submitLabel` are already-translated strings.
+ */
+import Button from './Button.astro';
+import type { Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  label: string;
+  hint: string;
+  submitLabel: string;
+  /** Field name posted with the tick. */
+  name?: string;
+  checked?: boolean;
+  /** Tick and button side by side, for a bar that stays on screen. */
+  compact?: boolean;
+  /** Id of the form this belongs to when it is rendered outside that form's element. */
+  form?: string;
+}
+
+const { lang, label, hint, submitLabel, name = 'confirmPublish', checked = false, compact = false, form } = Astro.props;
+---
+
+<div class:list={['confirm-unit', { 'confirm-unit--compact': compact }]}>
+<label class="confirm-tick">
+  <input type="checkbox" name={name} checked={checked} required form={form} data-confirm-tick />
+  <span>{label}</span>
+</label>
+<div class="confirm-actions">
+  <Button type="submit" variant="primary" lang={lang} form={form} data-gated-submit>{submitLabel}</Button>
+</div>
+<span class="confirm-hint" data-gated-hint hidden>{hint}</span>
+</div>
+
+<script>
+  import { initGatedSubmit } from '../islands/GatedSubmit';
+  initGatedSubmit();
+</script>
+
+<style>
+  /* The whole row is the target: a click anywhere on it toggles the box. */
+  .confirm-tick {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    align-self: stretch;
+    min-height: 48px;
+    font-weight: 700;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+
+  .confirm-tick input {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+  }
+
+  .confirm-tick:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .confirm-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  /* One row, for a bar across a wide screen: the tick, the button, then the
+     hint; they wrap only when the width runs out. */
+  .confirm-unit--compact {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-4);
+  }
+
+  .confirm-unit--compact .confirm-tick {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .confirm-unit--compact .confirm-actions {
+    flex: none;
+  }
+
+  .confirm-unit--compact .confirm-hint {
+    flex: 1 1 12rem;
+  }
+
+  .confirm-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .confirm-hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+</style>

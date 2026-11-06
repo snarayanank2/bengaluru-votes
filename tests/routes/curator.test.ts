@@ -197,6 +197,8 @@ async function insertPendingItem(
 
 /** How the queue names a flag on a fixture candidate's cases: "{candidate} — {field label}". */
 const CASES_LABEL = `Curator Route Test Candidate — ${t('en', 'candidate.field.cases')}`;
+/** A ward as staff screens name it: its public number and name, never the stored "N - name" form or the route id. */
+const wardCell = (ward: { id: number; nameEn: string }) => `Ward ${ward.id % 1000} ${ward.nameEn}`;
 
 let curatorId: number;
 let transcriberId: number;
@@ -292,13 +294,16 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34)', () => {
       const html = normalize(await queueRes.text());
 
       // Each row names the candidate and the flagged field, under the candidate's ward.
-      expect(html).toContain(`<td>${WARD_B.nameEn}</td><td>${CASES_LABEL}</td><td>1 · 0 spam</td>`);
+      expect(html).toContain(`<td>${wardCell(WARD_B)}</td><td>${CASES_LABEL}<span class="queue-when">`);
+      expect(html).toContain('<td class="num">1<span class="queue-spam"><span class="queue-sep">·</span>0 spam</span></td>');
 
       // Including the dedupe count.
-      expect(html).toContain(`<td>${WARD_A.nameEn}</td><td>${CASES_LABEL}</td><td>2 · 0 spam</td>`);
+      expect(html).toContain(`<td>${wardCell(WARD_A)}</td><td>${CASES_LABEL}<span class="queue-when">`);
+      expect(html).toContain('<td class="num">2<span class="queue-spam"><span class="queue-sep">·</span>0 spam</span></td>');
 
-      // A row older than the fixed field set has no label: its reference is shown as stored.
-      expect(html).toContain(`<td>${itemCsrf.targetRef}</td>`);
+      // A row older than the fixed field set has no label: it reads "Other", never the stored reference.
+      expect(html).toContain('Curator Route Test Candidate — Other');
+      expect(html).not.toContain(itemCsrf.targetRef);
 
       const itemRes = await run(QueueItemRoute, `/curator/queue/${itemWardB.id}`, {
         cookieValue: curatorAuth.cookieValue,
@@ -442,7 +447,7 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34)', () => {
       expect(queueRes.status).toBe(200);
       const html = normalize(await queueRes.text());
 
-      expect(html).toContain(`<td>${WARD_B.nameEn}</td><td>${CASES_LABEL}</td>`);
+      expect(html).toContain(`<td>${wardCell(WARD_B)}</td><td>${CASES_LABEL}`);
       expect(html).toContain(WARD_A.nameEn);
 
       const itemRes = await run(QueueItemRoute, `/curator/queue/${itemWardB.id}`, {
@@ -467,7 +472,7 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34)', () => {
       expect(res.headers.get('cache-control')).toBe('no-store');
       const html = await res.text();
       expect(html).toContain(t('en', 'curator.guide.heading'));
-      expect(html).toContain(t('en', 'curator.guide.never.heading'));
+      expect(html).toContain(t('en', 'staff.entry.never.heading'));
       expect(html).toContain(t('en', 'curator.guide.matching.heading'));
       expect(html).toContain('<meta name="robots" content="noindex"');
     });

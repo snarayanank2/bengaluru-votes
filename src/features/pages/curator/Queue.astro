@@ -8,8 +8,10 @@
 import CuratorLayout from '../../../layouts/CuratorLayout.astro';
 import { t, type Lang } from '../../../i18n';
 import Banner from '../../../components/Banner.astro';
+import EmptyState from '../../../components/EmptyState.astro';
 import { formatDateTime } from '../../../lib/format-datetime';
 import { profileLabelKey } from '../../../lib/candidate-profile';
+import { wardLabel } from '../../../lib/ward-label';
 import type { QueueListItem, QueueSort } from '../../../lib/curator';
 
 interface Props {
@@ -23,10 +25,15 @@ interface Props {
 
 const { lang, items, sort, page = 1, resolved } = Astro.props;
 
-/** "{candidate} — {field}" for a flag on a candidate's field; the reference as stored for anything older or orphaned. */
+/**
+ * "{candidate} — {field}" for a flag on a candidate's field. A key with no
+ * label (a flag on "Other", or a row older than the eight-field rule) is
+ * shown as "Other", never as the stored reference.
+ */
 function targetLabel(item: QueueListItem): string {
   const labelKey = profileLabelKey(item.fieldKey);
-  return item.candidateNameEn && labelKey ? `${item.candidateNameEn} — ${t(lang, labelKey)}` : item.targetRef;
+  const field = labelKey ? t(lang, labelKey) : t(lang, 'curator.queue.fieldOther');
+  return item.candidateNameEn ? `${item.candidateNameEn} — ${field}` : field;
 }
 ---
 
@@ -40,9 +47,9 @@ function targetLabel(item: QueueListItem): string {
         </Banner>
       )
     }
-    <p><a href="/curator">{t(lang, 'curator.queue.backToDashboard')}</a></p>
+    <p><a class="body-link" href="/curator">{t(lang, 'curator.queue.backToDashboard')}</a></p>
 
-    <nav class="sort-nav" aria-label={t(lang, 'curator.queue.sort.label')}>
+    <nav class="link-group" aria-label={t(lang, 'curator.queue.sort.label')}>
       <a href="?sort=recent" aria-current={sort === 'recent' ? 'true' : undefined}>
         {t(lang, 'curator.queue.sort.recent')}
       </a>
@@ -53,27 +60,31 @@ function targetLabel(item: QueueListItem): string {
 
     {
       items.length === 0 ? (
-        <p>{t(lang, 'curator.queue.empty')}</p>
+        <EmptyState fact={t(lang, 'curator.queue.empty')} />
       ) : (
-        <table class="queue-table">
+        <table class="staff-table queue-table">
+          <caption class="sr-only">{t(lang, 'curator.queue.table.label')}</caption>
           <thead>
             <tr>
-              <th>{t(lang, 'curator.queue.colWard')}</th>
-              <th>{t(lang, 'curator.queue.colTarget')}</th>
-              <th>{t(lang, 'curator.queue.colCount')}</th>
-              <th>{t(lang, 'curator.queue.colCreated')}</th>
-              <th />
+              <th scope="col">{t(lang, 'curator.queue.colWard')}</th>
+              <th scope="col">{t(lang, 'curator.queue.colTarget')}</th>
+              <th scope="col" class="num">{t(lang, 'curator.queue.colCount')}</th>
+              <th scope="col">{t(lang, 'curator.queue.colCreated')}</th>
+              <th scope="col"><span class="sr-only">{t(lang, 'curator.queue.colAction')}</span></th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
               <tr>
-                <td>{lang === 'kn' ? item.wardNameKn : item.wardNameEn}</td>
-                <td>{targetLabel(item)}</td>
-                <td>{item.submissionCount} · {t(lang, 'flag.review.spamCount', {count:item.spamCount ?? 0})}</td>
+                <td>{wardLabel(lang, { id: item.wardId, nameEn: item.wardNameEn, nameKn: item.wardNameKn })}</td>
+                <td>
+                  {targetLabel(item)}
+                  <span class="queue-when">{formatDateTime(lang, item.createdAt)}</span>
+                </td>
+                <td class="num">{item.submissionCount}<span class="queue-spam"><span class="queue-sep"> · </span>{t(lang, 'flag.review.spamCount', { count: item.spamCount ?? 0 })}</span></td>
                 <td>{formatDateTime(lang, item.createdAt)}</td>
                 <td>
-                  <a href={`/curator/queue/${item.id}`}>{t(lang, 'curator.queue.viewLink')}</a>
+                  <a class="body-link" href={`/curator/queue/${item.id}`}>{t(lang, 'curator.queue.viewLink')}</a>
                 </td>
               </tr>
             ))}
@@ -81,10 +92,14 @@ function targetLabel(item: QueueListItem): string {
         </table>
       )
     }
-    <nav class="sort-nav" aria-label={t(lang,'flag.review.pages')}>
-      {page>1 && <a href={`?sort=${sort}&page=${page-1}`}>{t(lang,'flag.review.previous')}</a>}
-      {items.length===50 && <a href={`?sort=${sort}&page=${page+1}`}>{t(lang,'flag.review.next')}</a>}
-    </nav>
+    {
+      (page > 1 || items.length === 50) && (
+        <nav class="link-group" aria-label={t(lang, 'flag.review.pages')}>
+          {page > 1 && <a href={`?sort=${sort}&page=${page - 1}`}>{t(lang, 'flag.review.previous')}</a>}
+          {items.length === 50 && <a href={`?sort=${sort}&page=${page + 1}`}>{t(lang, 'flag.review.next')}</a>}
+        </nav>
+      )
+    }
   </div>
 </CuratorLayout>
 
@@ -105,39 +120,59 @@ function targetLabel(item: QueueListItem): string {
     margin: 0;
   }
 
-  .sort-nav {
-    display: flex;
-    gap: var(--space-4);
-  }
-
-  .queue-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-  }
-
-  .queue-table th,
-  .queue-table td {
-    text-align: left;
-    padding: var(--space-2);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .queue-table tbody tr:nth-child(odd) {
-    background: var(--color-surface);
-  }
-
-  /* A raw target reference ("candidate:12:some_key") has no spaces to wrap at. */
   .queue-table td:nth-child(2) {
     overflow-wrap: anywhere;
   }
 
-  /* On a phone the table is wider than the screen with the timestamp in it;
-     the list is already in the chosen order, so that column is dropped. */
+  /* On a phone the timestamp column is dropped to save width and the date
+     moves under the flagged item instead, so no information is lost. */
+  .queue-when {
+    display: none;
+  }
+
+  /* Narrow screens: the table fits the viewport (Kannada labels are longer),
+     every cell wraps, and the action column keeps a 44px target. */
   @media (max-width: 599px) {
+    .queue-table {
+      table-layout: fixed;
+    }
+
+    .queue-table td,
+    .queue-table th {
+      overflow-wrap: anywhere;
+      padding-inline: var(--space-1);
+    }
+
+    .queue-table th:nth-child(3),
+    .queue-table td:nth-child(3) {
+      width: 6rem;
+      white-space: normal;
+    }
+
+    /* The spam label drops under the count and wraps inside its cell, without the separator. */
+    .queue-sep {
+      display: none;
+    }
+
+    .queue-spam {
+      display: block;
+      color: var(--color-text-muted);
+      font-weight: 400;
+    }
+
+    .queue-table th:nth-child(5),
+    .queue-table td:nth-child(5) {
+      width: 4rem;
+    }
+
     .queue-table th:nth-child(4),
     .queue-table td:nth-child(4) {
       display: none;
+    }
+
+    .queue-when {
+      display: block;
+      color: var(--color-text-muted);
     }
   }
 </style>

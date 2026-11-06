@@ -1,11 +1,15 @@
 ---
 /**
  * `/transcribe/guide` — what a transcriber is asked to do and the standard
- * they work to.
- * Short on purpose: it is read once before the first shift and again when
- * a case is unclear.
+ * they work to. Read once before the first shift and again when a case is
+ * unclear. Sections are short and listed in a contents list at the top; the
+ * rules for entering a value (`FieldEntryRules`) and the account notes
+ * (`StaffGuideBasics`) are shared with the curator guide so they cannot drift.
  */
 import TranscriberLayout from '../../../layouts/TranscriberLayout.astro';
+import FieldEntryRules from '../../../components/FieldEntryRules.astro';
+import GuideContents from '../../../components/GuideContents.astro';
+import StaffGuideBasics from '../../../components/StaffGuideBasics.astro';
 import { t, type Lang } from '../../../i18n';
 
 interface Props {
@@ -13,36 +17,50 @@ interface Props {
 }
 
 const { lang } = Astro.props;
-const STEPS = ['1', '2', '3', '4', '5'];
-const RULES = ['value', 'notDeclared', 'unreadable'];
+const STEPS = ['1', '2', '3', '4', '5', '6', '7'];
+const contents = [
+  { id: 'steps', label: t(lang, 'transcribe.guide.steps.heading') },
+  { id: 'entering', label: t(lang, 'staff.entry.heading') },
+  { id: 'release', label: t(lang, 'transcribe.guide.release.heading') },
+  { id: 'wrong', label: t(lang, 'transcribe.guide.wrong.heading') },
+  { id: 'after', label: t(lang, 'transcribe.guide.after.heading') },
+  { id: 'basics', label: t(lang, 'staff.basics.heading') },
+];
 ---
 
 <TranscriberLayout lang={lang} title={t(lang, 'transcribe.guide.meta.title')} description={t(lang, 'transcribe.guide.meta.description')}>
   <article class="guide">
-    <p><a href="/transcribe">{t(lang, 'transcribe.guide.back')}</a></p>
+    <p><a class="body-link" href="/transcribe">{t(lang, 'transcribe.guide.back')}</a></p>
     <h1>{t(lang, 'transcribe.guide.heading')}</h1>
     <p class="lead">{t(lang, 'transcribe.guide.lead')}</p>
 
-    <h2>{t(lang, 'transcribe.guide.steps.heading')}</h2>
-    <ol>
-      {STEPS.map((step) => <li>{t(lang, `transcribe.guide.steps.${step}`)}</li>)}
-    </ol>
+    <GuideContents lang={lang} items={contents} />
 
-    <h2>{t(lang, 'transcribe.guide.rules.heading')}</h2>
-    <ul>
-      {RULES.map((rule) => <li>{t(lang, `transcribe.guide.rules.${rule}`)}</li>)}
-    </ul>
-
-    <section class="never">
-      <h2>{t(lang, 'transcribe.guide.never.heading')}</h2>
-      <p>{t(lang, 'transcribe.guide.never.body')}</p>
+    <section id="steps">
+      <h2>{t(lang, 'transcribe.guide.steps.heading')}</h2>
+      <ol>
+        {STEPS.map((step) => <li>{t(lang, `transcribe.guide.steps.${step}`)}</li>)}
+      </ol>
     </section>
 
-    <h2>{t(lang, 'transcribe.guide.assets.heading')}</h2>
-    <p>{t(lang, 'transcribe.guide.assets.body')}</p>
+    <FieldEntryRules lang={lang} />
 
-    <h2>{t(lang, 'transcribe.guide.wrong.heading')}</h2>
-    <p>{t(lang, 'transcribe.guide.wrong.body')}</p>
+    <section id="release">
+      <h2>{t(lang, 'transcribe.guide.release.heading')}</h2>
+      <p>{t(lang, 'transcribe.guide.release.body')}</p>
+    </section>
+
+    <section id="wrong">
+      <h2>{t(lang, 'transcribe.guide.wrong.heading')}</h2>
+      <p>{t(lang, 'transcribe.guide.wrong.body')}</p>
+    </section>
+
+    <section id="after">
+      <h2>{t(lang, 'transcribe.guide.after.heading')}</h2>
+      <p>{t(lang, 'transcribe.guide.after.body')}</p>
+    </section>
+
+    <StaffGuideBasics lang={lang} role="transcriber" />
   </article>
 </TranscriberLayout>
 
@@ -60,9 +78,10 @@ const RULES = ['value', 'notDeclared', 'unreadable'];
     margin: var(--space-2) 0 0;
   }
 
-  .guide h2 {
+  .guide :global(h2) {
     font-size: var(--text-lg);
     margin: var(--space-8) 0 var(--space-2);
+    scroll-margin-top: var(--space-4);
   }
 
   .lead {
@@ -71,23 +90,7 @@ const RULES = ['value', 'notDeclared', 'unreadable'];
     line-height: var(--leading-lg);
   }
 
-  .guide li + li {
+  .guide :global(li + li) {
     margin-top: var(--space-2);
-  }
-
-  .never {
-    margin-top: var(--space-8);
-    padding: var(--space-4);
-    background: var(--color-accent-surface);
-    border-left: 4px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-  }
-
-  .never h2 {
-    margin-top: 0;
-  }
-
-  .never p {
-    margin: 0;
   }
 </style>

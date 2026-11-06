@@ -23,7 +23,7 @@ const rendered = (text: string) => text.replaceAll("'", '&#39;');
 /** `text` as the whole content of one `tag` element, whatever attributes Astro's scoped styles add to it. */
 const cell = (tag: 'dd' | 'td', text: string) => new RegExp(`<${tag}[^>]*>${text.replace(/[()]/g, '\\$&')}</${tag}>`);
 /** `text` as the whole content of the link to one waiting affidavit, itself the whole content of a list cell. */
-const nameLink = (affidavitId: number, text: string) => new RegExp(`<td[^>]*><a href="/curator/matching/${affidavitId}"[^>]*>${text.replace(/[()]/g, '\\$&')}</a></td>`);
+const nameLink = (affidavitId: number, text: string) => new RegExp(`<td[^>]*><a [^>]*href="/curator/matching/${affidavitId}"[^>]*>${text.replace(/[()]/g, '\\$&')}</a></td>`);
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: './drizzle' });

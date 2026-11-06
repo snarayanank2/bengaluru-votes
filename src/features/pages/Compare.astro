@@ -190,8 +190,8 @@ const compareJsonLd = ward
             ) : (
               <>
 
-                <p class="scroll-hint" id="compare-scroll-hint" data-compare-scroll-hint hidden>{t(lang, 'compare.scrollHint')}</p>
-                <div class="compare-scroll" role="region" aria-label={t(lang, 'compare.table.caption')} aria-describedby="compare-scroll-hint" tabindex="0" data-compare-scroll>
+                <p class="scroll-hint" id="compare-scroll-hint" data-scroll-hint hidden>{t(lang, 'compare.scrollHint')}</p>
+                <div class="compare-scroll" role="region" aria-label={t(lang, 'compare.table.caption')} aria-describedby="compare-scroll-hint" tabindex="0" data-scroll-region>
                   <table class="compare-table">
                     <caption class="sr-only">{t(lang, 'compare.table.caption')}</caption>
                     <thead>
@@ -251,8 +251,8 @@ const compareJsonLd = ward
     )
   }
   <script>
-    import { initCompareScrollHint } from '../../islands/CompareScrollHint';
-    initCompareScrollHint();
+    import { initScrollHint } from '../../islands/ScrollHint';
+    initScrollHint();
   </script>
 </Base>
 

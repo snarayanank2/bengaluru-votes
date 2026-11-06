@@ -12,6 +12,7 @@
  *   - no-store on every response.
  */
 import MatchItem from '../../../features/pages/curator/MatchItem.astro';
+import StaffError from '../../../features/pages/StaffError.astro';
 import { loadMatchItem } from '../../../lib/affidavit-queue';
 import { loadCuratorLang } from '../../../lib/curator';
 import { loadWardOptions } from '../../../lib/curator-fix';
@@ -22,20 +23,14 @@ const actor = { userId: session.userId, role: session.role as 'curator' | 'admin
 
 const idParam = Astro.params.id;
 const affidavitId = Number(idParam);
-if (!idParam || !Number.isInteger(affidavitId)) {
-  return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
-}
-
-const row = await loadMatchItem(affidavitId);
-if (!row) {
-  return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } });
-}
+// An id that is not an integer or names no waiting affidavit renders the staff-shell not-found page, with a 404.
+const row = idParam && Number.isInteger(affidavitId) ? await loadMatchItem(affidavitId) : null;
 
 let message: { kind: 'notice' | 'error'; key: string } | undefined;
 let posted: { name: string; party: string; wardId: string; attachToCandidateId: string } | undefined;
 let status = 200;
 
-if (Astro.request.method === 'POST') {
+if (row && Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   if (String(form.get('formAction') ?? '') !== 'match') {
     return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
@@ -55,10 +50,16 @@ if (Astro.request.method === 'POST') {
   posted = { name: typed('name'), party: typed('party'), wardId: typed('wardId'), attachToCandidateId: typed('attachToCandidateId') };
 }
 
-const [lang, wards] = await Promise.all([loadCuratorLang(session.userId), loadWardOptions()]);
+const [lang, wards] = await Promise.all([loadCuratorLang(session.userId), row ? loadWardOptions() : Promise.resolve([])]);
 
 Astro.response.headers.set('cache-control', 'no-store');
-Astro.response.status = status;
+Astro.response.status = row ? status : 404;
 ---
 
-<MatchItem lang={lang} csrfToken={Astro.locals.csrfToken} row={row} wards={wards} message={message} posted={posted} />
+{
+  row ? (
+    <MatchItem lang={lang} csrfToken={Astro.locals.csrfToken} row={row} wards={wards} message={message} posted={posted} />
+  ) : (
+    <StaffError lang={lang} status={404} area="curator" />
+  )
+}

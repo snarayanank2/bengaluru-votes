@@ -11,6 +11,11 @@ describe('formatDateTime', () => {
     expect(text).not.toMatch(/T\d|Z$/);
   });
 
+  it('prints Kannada times on the 24-hour clock, with no Latin AM/PM', () => {
+    expect(formatDateTime('kn', moment)).not.toMatch(/\b[AP]M\b/i);
+    expect(formatDateTime('kn', moment)).toMatch(/18:46/);
+  });
+
   it('uses the Kannada locale for kn', () => {
     expect(formatDateTime('kn', moment)).not.toBe(formatDateTime('en', moment));
   });

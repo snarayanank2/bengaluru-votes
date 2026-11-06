@@ -6,7 +6,7 @@
 import Login from '../../features/pages/Login.astro';
 import { handleLoginPost, initialLoginState, type LoginRenderState } from '../../lib/login-flow';
 
-let state: LoginRenderState = initialLoginState(Astro.url.searchParams.get('next'));
+let state: LoginRenderState = initialLoginState(Astro.url.searchParams.get('next'), undefined, Astro.url.searchParams.get('signedOut') === '1');
 
 if (Astro.request.method === 'POST') {
   Astro.response.headers.set('cache-control', 'no-store');

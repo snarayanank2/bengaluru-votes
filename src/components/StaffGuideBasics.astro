@@ -1,0 +1,25 @@
+---
+/**
+ * StaffGuideBasics — the account and error-page notes every staff member
+ * needs, shown in the curator and the transcriber guide alike (section id
+ * `basics`): the saved language and Sign out, the one-hour idle sign-out, what
+ * the 403 and 404 pages mean, and the skip link past the PDF viewer.
+ */
+import { t, type Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  /** Picks the example under the 404 note that fits this guide's reader. */
+  role: 'curator' | 'transcriber';
+}
+
+const { lang, role } = Astro.props;
+const NOTES = ['account', 'idle', `errors.${role}`, 'keyboard'];
+---
+
+<section id="basics">
+  <h2>{t(lang, 'staff.basics.heading')}</h2>
+  <ul>
+    {NOTES.map((key) => <li>{t(lang, `staff.basics.${key}`)}</li>)}
+  </ul>
+</section>

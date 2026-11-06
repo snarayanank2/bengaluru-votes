@@ -1,0 +1,64 @@
+---
+/**
+ * FieldEntryRules — the rules for entering an affidavit value, written once
+ * and shown in both staff guides (the transcriber's and the curator's), since
+ * both use the same form (design-system.md §7.10, "Affidavit field group").
+ * Renders the section with id `entering`, ending in the "Never guess" callout.
+ * Education levels come from the same list the form offers.
+ */
+import Banner from './Banner.astro';
+import { t, type Lang } from '../i18n';
+import { EDUCATION_LEVELS } from '../lib/affidavit-extraction';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const ANSWERS = ['value', 'notDeclared', 'unreadable', 'partial'];
+const FIELDS = ['nameParty', 'lists'];
+---
+
+<section id="entering" class="entry">
+  <h2>{t(lang, 'staff.entry.heading')}</h2>
+  <p>{t(lang, 'staff.entry.intro')}</p>
+
+  <h3>{t(lang, 'staff.entry.answers.heading')}</h3>
+  <ul>
+    {ANSWERS.map((key) => <li>{t(lang, `staff.entry.answers.${key}`)}</li>)}
+  </ul>
+
+  <h3>{t(lang, 'staff.entry.fields.heading')}</h3>
+  <ul>
+    {FIELDS.map((key) => <li>{t(lang, `staff.entry.fields.${key}`)}</li>)}
+    <li>{t(lang, 'staff.entry.fields.education', { levels: EDUCATION_LEVELS.join(', ') })}</li>
+    <li>{t(lang, 'staff.entry.fields.assets')}</li>
+    <li>{t(lang, 'staff.entry.fields.cases')}</li>
+  </ul>
+
+  <div class="never-callout">
+    <Banner kind="notice" lang={lang}>
+      <h3>{t(lang, 'staff.entry.never.heading')}</h3>
+      <p>{t(lang, 'staff.entry.never.body')}</p>
+    </Banner>
+  </div>
+</section>
+
+<style>
+  .entry h3 {
+    font-size: var(--text-base);
+    margin: var(--space-4) 0 var(--space-2);
+  }
+
+  .never-callout {
+    margin-top: var(--space-4);
+  }
+
+  .never-callout h3 {
+    margin-top: 0;
+  }
+
+  .never-callout p {
+    margin: 0;
+  }
+</style>

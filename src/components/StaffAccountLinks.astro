@@ -16,10 +16,11 @@ interface Props {
 
 const { lang } = Astro.props;
 const csrfToken = Astro.locals.csrfToken ?? '';
+const onAccount = Astro.url.pathname === '/account';
 ---
 
 <div class="staff-account" role="group" aria-label={t(lang, 'staff.layout.actions.label')}>
-  <a class="account-link" href="/account">{t(lang, 'staff.layout.account')}</a>
+  <a class="account-link" href="/account" aria-current={onAccount ? 'page' : undefined}>{t(lang, 'staff.layout.account')}</a>
   <form method="post" action="/logout">
     <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
     <Button type="submit" variant="tertiary" lang={lang}>{t(lang, 'staff.layout.signOut')}</Button>
@@ -41,6 +42,14 @@ const csrfToken = Astro.locals.csrfToken ?? '';
     align-items: center;
     min-height: 44px;
     color: var(--color-primary);
+  }
+
+  /* The current page: bold with a 4px underline, never color alone (§7.15). */
+  .account-link[aria-current='page'] {
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 4px;
+    text-underline-offset: 6px;
   }
 
   form {

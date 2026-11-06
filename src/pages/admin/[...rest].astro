@@ -1,0 +1,18 @@
+---
+/**
+ * Any `/admin/...` address that no page answers: a 404 inside the staff shell
+ * (src/features/pages/StaffError.astro) instead of the public not-found page.
+ * The item pages render the same page themselves when their id names nothing.
+ * src/middleware.ts has already required a session and the right role. The
+ * status lives here, in the route.
+ */
+import StaffError from '../../features/pages/StaffError.astro';
+import { loadCuratorLang } from '../../lib/curator';
+
+const lang = await loadCuratorLang(Astro.locals.session!.userId);
+
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.status = 404;
+---
+
+<StaffError lang={lang} status={404} area="admin" />

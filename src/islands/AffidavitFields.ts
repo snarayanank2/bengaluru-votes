@@ -30,6 +30,16 @@ export function syncTotal(root: ParentNode): void {
   total.textContent = parts.length === 2 && parts.every((part) => part !== null) ? formatInr(parts[0]! + parts[1]!) : '—';
 }
 
+/**
+ * After a refused save the page comes back with the error summary at the top
+ * and the offending fields far below it, so focus goes to the first control
+ * marked invalid (design-system §7.10): a keyboard or screen-reader user lands
+ * where the problem is and hears its error through `aria-describedby`.
+ */
+export function focusFirstInvalid(): void {
+  document.querySelector<HTMLElement>('[aria-invalid="true"]:not(:disabled)')?.focus();
+}
+
 export function initAffidavitFields(): void {
   document.querySelectorAll<HTMLFieldSetElement>('fieldset[data-field]').forEach((field) => {
     syncStatus(field);
@@ -39,4 +49,5 @@ export function initAffidavitFields(): void {
     });
     field.addEventListener('input', () => syncTotal(field));
   });
+  focusFirstInvalid();
 }

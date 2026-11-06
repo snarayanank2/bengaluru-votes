@@ -3,18 +3,23 @@
  * SkipLink — design-system.md §10 (a11y floor): a "Skip to main content"
  * anchor to #main-content, visually hidden until it receives focus so
  * keyboard/screen-reader users can bypass the app bar without disrupting
- * mouse users.
+ * mouse users. With `href` and `label` it is a second, local skip link (for
+ * example past an embedded PDF viewer, design-system §10).
  */
 import { t, type Lang } from '../i18n';
 
 interface Props {
   lang: Lang;
+  /** In-page target; defaults to `#main-content`. */
+  href?: string;
+  /** Already-translated link text; defaults to "Skip to main content". */
+  label?: string;
 }
 
-const { lang } = Astro.props;
+const { lang, href = '#main-content', label } = Astro.props;
 ---
 
-<a class="skip-link" href="#main-content">{t(lang, 'a11y.skipToContent')}</a>
+<a class="skip-link" href={href}>{label ?? t(lang, 'a11y.skipToContent')}</a>
 
 <style>
   .skip-link {
@@ -22,6 +27,9 @@ const { lang } = Astro.props;
     top: 0;
     left: 0;
     z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     padding: var(--space-2) var(--space-4);
     background: var(--color-bg);
     color: var(--color-primary);

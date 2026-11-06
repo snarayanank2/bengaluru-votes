@@ -18,13 +18,16 @@
  *
  * Works without JavaScript. src/islands/TranscribeForm.ts adds the running
  * assets total, greys out inputs when the answer is not a value, disables
- * Save until the confirmation is ticked (the server re-checks the tick, and
- * without the script the button stays usable so nobody is locked out),
- * counts down the hold and returns to Start on expiry.
+ * Save until the confirmation is ticked (src/islands/GatedSubmit.ts; the
+ * server re-checks the tick, and without the script the button stays usable
+ * so nobody is locked out), counts down the hold with a warning at five
+ * minutes and returns to Start on expiry.
  */
 import TranscriberLayout from '../../../layouts/TranscriberLayout.astro';
 import Banner from '../../../components/Banner.astro';
 import Button from '../../../components/Button.astro';
+import PublishConfirm from '../../../components/PublishConfirm.astro';
+import VerificationLabel from '../../../components/VerificationLabel.astro';
 import AffidavitFieldInputs from '../../../components/AffidavitFieldInputs.astro';
 import AffidavitScan from '../../../components/AffidavitScan.astro';
 import { t, type Lang } from '../../../i18n';
@@ -68,9 +71,9 @@ const fields = view.fields.map((field) => {
 
 <TranscriberLayout lang={lang} title={t(lang, 'transcribe.reading.meta.title')} description={t(lang, 'transcribe.reading.meta.description')}>
   <div class="reading">
-    <AffidavitScan lang={lang} pdfUrl={view.pdfUrl} />
+    <AffidavitScan lang={lang} pdfUrl={view.pdfUrl} skipTo="work-panel" />
 
-    <section class="panel">
+    <section class="panel" id="work-panel" tabindex="-1">
       <h1>{t(lang, 'transcribe.reading.heading')}</h1>
 
       <dl class="facts">
@@ -83,12 +86,14 @@ const fields = view.fields.map((field) => {
           <dd>{view.confidence === null ? t(lang, 'transcribe.reading.confidenceUnknown') : `${view.confidence}%`}</dd>
         </div>
         <div>
-          <dt>{t(lang, 'transcribe.reading.timeLeft')}</dt>
-          <dd data-expires-at={view.expiresAt.toISOString()} data-minutes-template={t(lang, 'transcribe.reading.minutes', { minutes: '{minutes}' })}>
+          <dt id="time-left-label">{t(lang, 'transcribe.reading.timeLeft')}</dt>
+          <dd role="timer" aria-labelledby="time-left-label" data-expires-at={view.expiresAt.toISOString()} data-minutes-template={t(lang, 'transcribe.reading.minutes', { minutes: '{minutes}' })}>
             {t(lang, 'transcribe.reading.minutes', { minutes: minutesLeft })}
           </dd>
         </div>
       </dl>
+      <p class="timer-warning" data-timer-warning data-warning-template={t(lang, 'transcribe.reading.timerWarning', { minutes: '{minutes}' })} hidden></p>
+      <div class="sr-only" role="status" data-timer-announce></div>
 
       <p class="instructions">{t(lang, 'transcribe.reading.instructions')}</p>
 
@@ -100,7 +105,7 @@ const fields = view.fields.map((field) => {
         )
       }
 
-      <form method="post" action={action} class="fields" data-transcribe-form novalidate>
+      <form method="post" action={action} class="fields" id="transcribe-form" data-transcribe-form novalidate>
         <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
         <input type="hidden" name="formAction" value="save" />
 
@@ -109,9 +114,7 @@ const fields = view.fields.map((field) => {
             <fieldset class:list={['field', { 'field--error': field.error }]} data-field={field.key}>
               <legend>
                 <span class="field-name">{field.label}</span>
-                <span class:list={['badge', field.checked ? 'badge--checked' : 'badge--ai']}>
-                  {t(lang, field.checked ? 'transcribe.reading.badge.checked' : 'transcribe.reading.badge.ai')}
-                </span>
+                <VerificationLabel lang={lang} aiExtracted={!field.checked} presentation="text" />
               </legend>
 
               <AffidavitFieldInputs lang={lang} fieldKey={field.key} status={field.status} inputs={field.inputs} error={field.error}>
@@ -125,18 +128,6 @@ const fields = view.fields.map((field) => {
           ))
         }
 
-        <div class="save-bar">
-          <label class="tick">
-            <input type="checkbox" name="confirmChecked" checked={raw?.confirmed ?? false} required data-confirm-tick />
-            <span>{t(lang, 'transcribe.reading.tick')}</span>
-          </label>
-          <div class="save-row">
-            <Button type="submit" variant="primary" lang={lang} data-save-button>
-              {t(lang, 'transcribe.reading.save')}
-            </Button>
-            <span class="help" data-save-hint hidden>{t(lang, 'transcribe.reading.saveNeedsTick')}</span>
-          </div>
-        </div>
       </form>
 
       <div class="other-actions">
@@ -149,8 +140,9 @@ const fields = view.fields.map((field) => {
           <span class="help">{t(lang, 'transcribe.reading.releaseHelp')}</span>
         </form>
 
-        <details class="report" open={reportNote !== '' || formErrorKey === 'transcribe.error.noteRequired'}>
+        <details class="disclosure report" open={reportNote !== '' || formErrorKey === 'transcribe.error.noteRequired'}>
           <summary>{t(lang, 'transcribe.reading.report.summary')}</summary>
+          <div class="disclosure-body">
           <p class="help">{t(lang, 'transcribe.reading.report.help')}</p>
           <form method="post" action={action} class="report-form">
             <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
@@ -163,9 +155,22 @@ const fields = view.fields.map((field) => {
               {t(lang, 'transcribe.reading.report.submit')}
             </Button>
           </form>
+          </div>
         </details>
       </div>
     </section>
+    <div class="save-bar">
+      <PublishConfirm
+        form="transcribe-form"
+        lang={lang}
+        compact
+        name="confirmChecked"
+        checked={raw?.confirmed ?? false}
+        label={t(lang, 'transcribe.reading.tick')}
+        hint={t(lang, 'transcribe.reading.saveNeedsTick')}
+        submitLabel={t(lang, 'transcribe.reading.save')}
+      />
+    </div>
   </div>
 
   <script>
@@ -182,11 +187,13 @@ const fields = view.fields.map((field) => {
   .reading {
     display: grid;
     grid-template-columns: minmax(0, 58fr) minmax(26rem, 42fr);
+    /* The save bar spans both columns beneath them. */
+    grid-template-rows: minmax(0, 1fr) auto;
     height: calc(100vh - 56px);
   }
 
   .panel {
-    padding: var(--space-6) var(--space-6) 0;
+    padding: var(--space-4) var(--space-4) 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -195,10 +202,15 @@ const fields = view.fields.map((field) => {
     overflow-y: auto;
   }
 
+  /* A skip-link target: it takes focus so the next Tab lands on the first field. */
+  .panel:focus {
+    outline: none;
+  }
+
   .panel h1 {
     margin: 0;
-    font-size: var(--text-xl);
-    line-height: var(--leading-xl);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
   }
 
   .facts {
@@ -213,6 +225,15 @@ const fields = view.fields.map((field) => {
     padding: var(--space-2) var(--space-3);
     background: var(--color-surface);
     border-radius: var(--radius-sm);
+  }
+
+  .timer-warning {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-surface);
+    font-size: var(--text-sm);
+    font-weight: 700;
   }
 
   .facts dt {
@@ -265,24 +286,6 @@ const fields = view.fields.map((field) => {
     font-family: var(--font-heading);
     font-weight: 700;
     font-size: var(--text-lg);
-  }
-
-  .badge {
-    padding: 2px var(--space-2);
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    white-space: nowrap;
-  }
-
-  .badge--ai {
-    background: var(--color-accent-surface);
-    color: var(--color-text);
-  }
-
-  .badge--checked {
-    background: var(--color-primary-surface);
-    color: var(--color-primary);
   }
 
   .input {
@@ -340,49 +343,12 @@ const fields = view.fields.map((field) => {
     overflow-wrap: anywhere;
   }
 
-  /* The whole row is the target: a 26px box and a label at least 48px tall
-     and as wide as the form, so a click anywhere on it toggles the box. */
-  .tick {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    align-self: stretch;
-    min-height: 48px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .tick input {
-    width: 26px;
-    height: 26px;
-    flex: none;
-    margin: 0;
-    cursor: pointer;
-    accent-color: var(--color-primary);
-  }
-
-  .tick:has(input:focus-visible) {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
-  }
-
-  .save-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  /* Stays reachable however long the form is. */
+  /* Stays in view however long the form is. */
+  /* A bar across the whole screen under the scan and the form, so the
+     confirmation and Save share one row even where the form column is narrow. */
   .save-bar {
-    position: sticky;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-    padding-block: var(--space-3);
+    grid-column: 1 / -1;
+    padding: var(--space-1) var(--space-4);
     background: var(--color-bg);
     border-top: 1px solid var(--color-border);
   }
@@ -399,11 +365,6 @@ const fields = view.fields.map((field) => {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-  }
-
-  .report summary {
-    cursor: pointer;
-    font-weight: 700;
   }
 
   .report .help {
