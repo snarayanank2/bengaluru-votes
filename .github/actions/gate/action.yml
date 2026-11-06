@@ -3,8 +3,7 @@ description: >
   The checks every change must pass before it can merge or deploy: typecheck,
   Kannada translation staleness (with the one accepted exception), a production
   build, the Vitest suite, and the Playwright smoke suite. Budget: the whole
-  job stays under 2 minutes (typecheck runs alongside Vitest; the only build is
-  the e2e one; the Chromium download is cached). The calling job supplies the Postgres service
+  job stays under 2 minutes (the only build is the e2e one; the Chromium download is cached). The calling job supplies the Postgres service
   (composite actions cannot declare one) and DATABASE_URL / SITE_ORIGIN.
 
 runs:
@@ -20,17 +19,12 @@ runs:
     - name: Translation staleness
       shell: bash
       run: npx tsx scripts/ci/translate-gate.ts
-    # Typecheck is one busy core and Vitest (single fork) another, so they run
-    # side by side on the 2-vCPU runner. Typecheck output is held and printed after.
-    - name: Typecheck and unit/route tests
+    - name: Typecheck
       shell: bash
-      run: |
-        npm run typecheck > "$RUNNER_TEMP/typecheck.log" 2>&1 &
-        tc=$!
-        rc=0
-        npm test || rc=$?
-        wait $tc || { echo "::group::typecheck failed"; cat "$RUNNER_TEMP/typecheck.log"; echo "::endgroup::"; rc=1; }
-        exit $rc
+      run: npm run typecheck
+    - name: Unit and route tests
+      shell: bash
+      run: npm test
     - name: Playwright version
       id: pw
       shell: bash
