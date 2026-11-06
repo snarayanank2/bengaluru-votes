@@ -57,12 +57,6 @@ const KEY_AREA = {
   nameKn: 'ಪರೀಕ್ಷಾ ಲೇಔಟ್',
 };
 
-const QUESTIONS = [1, 2, 3, 4, 5].map((position) => ({
-  wardId: WARD.id,
-  position,
-  questionEn: `English candidate question ${position}`,
-  questionKn: `ಕನ್ನಡ ಅಭ್ಯರ್ಥಿ ಪ್ರಶ್ನೆ ${position}`,
-}));
 const CITY_ISSUES = Array.from({ length: 20 }, (_, index) => ({
   wardId: WARD.id,
   catalogKey: `ward-page-test-${index + 1}`,
@@ -148,16 +142,6 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     await db.insert(schema.wards).values(WARD).onConflictDoUpdate({ target: schema.wards.id, set: WARD });
-    await db
-      .insert(schema.wardCandidateQuestions)
-      .values(QUESTIONS)
-      .onConflictDoUpdate({
-        target: [schema.wardCandidateQuestions.wardId, schema.wardCandidateQuestions.position],
-        set: {
-          questionEn: sql`excluded.question_en`,
-          questionKn: sql`excluded.question_kn`,
-        },
-      });
     await db.insert(schema.wardIssues).values(CITY_ISSUES).onConflictDoNothing();
     await db.insert(schema.wardOldWardOverlaps).values(OLD_WARD).onConflictDoUpdate({
       target: [schema.wardOldWardOverlaps.wardId, schema.wardOldWardOverlaps.position],
@@ -195,31 +179,31 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
       expect(html).toContain(`href="#ward-overview"`);
       expect(html).toContain(`href="#ward-candidates"`);
       expect(html).toContain(`href="#ward-issues"`);
-      expect(html).toContain(`href="#ward-questions"`);
       expect(html).toContain('data-ward-section-nav');
       expect(html).toContain('data-ward-section-tab="ward-overview"');
       expect(html).toContain('aria-current="page"');
       expect(html).toContain(t(lang, 'ward.nav.overview'));
       expect(html).toContain(t(lang, 'ward.nav.candidates'));
       expect(html).toContain(t(lang, 'ward.nav.issues'));
-      expect(html).toContain(t(lang, 'ward.nav.questions'));
+      expect(html).not.toContain('ward-questions');
     });
 
     it('omits navigation links when their optional sections have no content', async () => {
       await db.delete(schema.wardIssues).where(eq(schema.wardIssues.wardId, WARD.id));
-      await db.delete(schema.wardCandidateQuestions).where(eq(schema.wardCandidateQuestions.wardId, WARD.id));
       try {
         const html = normalize(await (await renderWard('en', WARD.id)).text());
         expect(html).not.toContain('href="#ward-issues"');
-        expect(html).not.toContain('href="#ward-questions"');
         expect(html).not.toContain('id="ward-issues"');
-        expect(html).not.toContain('id="ward-questions"');
         expect(html).toContain('href="#ward-overview"');
         expect(html).toContain('href="#ward-candidates"');
       } finally {
         await db.insert(schema.wardIssues).values(CITY_ISSUES);
-        await db.insert(schema.wardCandidateQuestions).values(QUESTIONS);
       }
+    });
+
+    it('has dropped the removed ward_candidate_questions table (migration 0019)', async () => {
+      const rows = await db.execute(sql`select to_regclass('public.ward_candidate_questions') as t`);
+      expect(rows[0].t).toBeNull();
     });
 
     it.each(['en', 'kn'] as const)('%s: renders ward name, number, corporation label; status 200', async (lang) => {
@@ -312,28 +296,12 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
     });
   });
 
-  describe('questions to ask candidates', () => {
-    it.each(['en', 'kn'] as const)('%s: renders five localized question cards below issue voting', async (lang) => {
-      const html = normalize(await (await renderWard(lang, WARD.id)).text());
-      const questionsStart = html.indexOf('id="ward-questions"');
-
-      expect(questionsStart).toBeGreaterThan(html.indexOf('data-issue-vote-zone'));
-      expect(html).toContain(t(lang, 'ward.questions.heading'));
-      for (const question of QUESTIONS) {
-        expect(html).toContain(lang === 'kn' ? question.questionKn : question.questionEn);
-      }
-
-      const questionsHtml = html.slice(questionsStart, html.indexOf('</section>', questionsStart));
-      expect(questionsHtml.match(/<li>/g)).toHaveLength(5);
-    });
-  });
-
   describe('anonymous top-three issue vote', () => {
-    it.each(['en', 'kn'] as const)('%s: appears above candidate questions with 20 bilingual choices and hidden results', async (lang) => {
+    it.each(['en', 'kn'] as const)('%s: shows 20 bilingual choices and hidden results', async (lang) => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
-      expect(html.indexOf('data-issue-vote-zone')).toBeLessThan(html.indexOf('id="ward-questions"'));
+      expect(html).not.toContain('id="ward-questions"');
       expect(html).toContain(t(lang, 'vote.modal.submitTemplate').replace('{n}', '0'));
-      const votingHtml = html.slice(html.indexOf('id="ward-issues"'), html.indexOf('id="ward-questions"'));
+      const votingHtml = html.slice(html.indexOf('id="ward-issues"'));
       expect(votingHtml.match(/type="checkbox"/g)).toHaveLength(20);
       expect(html).not.toContain('data-vote-modal');
       expect(html).toContain(t(lang, 'ward.vote.showResults'));

@@ -268,5 +268,5 @@ export async function moveCandidateWard(tx: Tx, candidateId: number, wardId: num
   await tx
     .update(flagItems)
     .set({ wardId })
-    .where(and(eq(flagItems.status, 'pending'), eq(flagItems.targetType, 'candidate_field'), like(flagItems.targetRef, `candidate:${candidateId}:%`)));
+    .where(and(eq(flagItems.status, 'pending'), like(flagItems.targetRef, `candidate:${candidateId}:%`)));
 }

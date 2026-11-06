@@ -16,7 +16,7 @@ export const translationStatusEnum = pgEnum('translation_status', ['pending', 'd
 export const assignmentStateEnum = pgEnum('assignment_state', ['open', 'submitted', 'abandoned']);
 export const affidavitStateEnum = pgEnum('affidavit_state', ['queued', 'extracting', 'needs_matching', 'published', 'failed']);
 export const flagStatusEnum = pgEnum('flag_status', ['pending', 'accepted', 'rejected']);
-export const flagTargetEnum = pgEnum('flag_target', ['candidate_field']);
+export const flagTargetEnum = pgEnum('flag_target', ['candidate_field', 'candidate_other']);
 export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'epic_lookup', 'anonymous_vote']);
 
 export const wards = pgTable('wards', {
@@ -63,18 +63,6 @@ export const wardKeyAreas = pgTable('ward_key_areas', {
   uniqueIndex('ward_key_areas_ward_position_uq').on(t.wardId, t.position),
   index('ward_key_areas_ward_idx').on(t.wardId),
   check('ward_key_areas_position_check', sql`${t.position} > 0`),
-]);
-
-export const wardCandidateQuestions = pgTable('ward_candidate_questions', {
-  id: serial('id').primaryKey(),
-  wardId: integer('ward_id').notNull().references(() => wards.id, { onDelete: 'cascade' }),
-  position: integer('position').notNull(),
-  questionEn: text('question_en').notNull(),
-  questionKn: text('question_kn').notNull(),
-}, (t) => [
-  uniqueIndex('ward_candidate_questions_ward_position_uq').on(t.wardId, t.position),
-  index('ward_candidate_questions_ward_idx').on(t.wardId),
-  check('ward_candidate_questions_position_check', sql`${t.position} between 1 and 5`),
 ]);
 
 export const media = pgTable('media', {

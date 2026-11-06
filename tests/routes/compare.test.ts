@@ -311,6 +311,42 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
     });
   });
 
+  describe('Flag an error on each candidate (cache-safe)', () => {
+    it.each(['en', 'kn'] as const)('%s: one named Flag button per candidate carrying that candidate\'s targets, and the modal is on the page', async (lang) => {
+      const html = normalize(await (await renderCompare(lang, WARD.id)).text());
+      const ids = (await db.select({ id: schema.candidates.id, slug: schema.candidates.slug }).from(schema.candidates).where(eq(schema.candidates.wardId, WARD.id)))
+        .filter((c) => ['compare-test-arjun', 'compare-test-bhavana', 'compare-test-zainab'].includes(c.slug));
+      expect(ids).toHaveLength(3);
+      expect(html.match(/data-flag-action/g)).toHaveLength(3);
+      for (const c of ids) {
+        expect(html).toContain(`candidate:${c.id}:age`);
+        expect(html).toContain(`candidate:${c.id}:other`);
+      }
+      expect(html).toContain(`data-ward-id="${WARD.id}"`);
+      expect(html).toContain(t(lang, 'common.flagError'));
+      // Distinct accessible names, one per candidate.
+      const names = [...html.matchAll(/aria-label="([^"]*)" data-flag-action|data-flag-action[^>]*aria-label="([^"]*)"/g)].map((m) => m[1] ?? m[2]);
+      expect(new Set(names).size).toBe(3);
+      expect(html).toContain('data-flag-modal');
+    });
+
+    it('loads the reCAPTCHA script when a site key is configured', async () => {
+      const before = process.env.RECAPTCHA_SITE_KEY;
+      process.env.RECAPTCHA_SITE_KEY = 'test-site-key';
+      try {
+        expect(await (await renderCompare('en', WARD.id)).text()).toContain('recaptcha/api.js?render=test-site-key');
+      } finally {
+        if (before === undefined) delete process.env.RECAPTCHA_SITE_KEY; else process.env.RECAPTCHA_SITE_KEY = before;
+      }
+    });
+
+    it('markup is byte-identical with or without a session cookie', async () => {
+      const a = normalize(await (await renderCompare('en', WARD.id)).text());
+      const b = normalize(await (await renderCompare('en', WARD.id, { cookie: 'session=some-signed-in-users-session-id' })).text());
+      expect(b).toBe(a);
+    });
+  });
+
   describe('WITHDRAWN/REJECTED EXCLUDED (load-bearing)', () => {
     it('withdrawn and rejected candidate names/values do NOT appear anywhere in the compare grid', async () => {
       const html = normalize(await (await renderCompare('en', WARD.id)).text());

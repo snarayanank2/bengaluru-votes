@@ -37,16 +37,22 @@ describe('anonymous flag admission', () => {
     const results = await Promise.all(Array.from({ length: 6 }, () => flags.submitPublicFlag(who, input(ref))));
     expect(results.filter(r => r.state === 'accepted')).toHaveLength(1);
   });
-  it('atomically allows only three new reports in ten minutes', async () => {
-    const refs = await Promise.all(Array.from({ length: 6 }, target)), who = reporter();
-    const results = await Promise.allSettled(refs.map(ref => flags.submitPublicFlag(who, input(ref))));
-    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(3);
-    expect(results.filter(r => r.status === 'rejected' && r.reason.message === 'flag_rate_limited')).toHaveLength(3);
+  it('atomically allows only ten new reports in ten minutes', async () => {
+    process.env.FLAGS_REPORTER_DAILY_LIMIT = '50';
+    try {
+      const refs = await Promise.all(Array.from({ length: 14 }, target)), who = reporter();
+      const results = await Promise.allSettled(refs.map(ref => flags.submitPublicFlag(who, input(ref))));
+      expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(10);
+      expect(results.filter(r => r.status === 'rejected' && r.reason.message === 'flag_rate_limited')).toHaveLength(4);
+    } finally { delete process.env.FLAGS_REPORTER_DAILY_LIMIT; }
   });
   it('changing networks cannot escape a browser burst limit', async () => {
-    const refs = await Promise.all(Array.from({ length: 4 }, target)), browserHash = randomUUID();
-    for (const ref of refs.slice(0, 3)) await flags.submitPublicFlag(reporter({ browserHash }), input(ref));
-    await expect(flags.submitPublicFlag(reporter({ browserHash }), input(refs[3]!))).rejects.toThrow('flag_rate_limited');
+    process.env.FLAGS_REPORTER_DAILY_LIMIT = '50';
+    try {
+      const refs = await Promise.all(Array.from({ length: 11 }, target)), browserHash = randomUUID();
+      for (const ref of refs.slice(0, 10)) await flags.submitPublicFlag(reporter({ browserHash }), input(ref));
+      await expect(flags.submitPublicFlag(reporter({ browserHash }), input(refs[10]!))).rejects.toThrow('flag_rate_limited');
+    } finally { delete process.env.FLAGS_REPORTER_DAILY_LIMIT; }
   });
   it('suppresses exact resolved repeats without adding a reporter to private history', async () => {
     const ref = await target();
@@ -63,6 +69,56 @@ describe('anonymous flag admission', () => {
     await flags.resolveFlag({ userId: admin, role: 'admin' }, first.flagItemId!, { accept: false, reason: 'checked' });
     await db.insert(s.candidateFields).values({ candidateId: Number(ref.split(':')[1]), fieldKey: 'age', valueEn: 'Different value', valueKn: 'ಬದಲಾವಣೆ', sourceUrl: 'https://example.com' });
     expect((await flags.submitPublicFlag(reporter(), input(ref))).state).toBe('accepted');
+  });
+});
+
+describe('multi-target admission', () => {
+  async function candidate() {
+    const [c] = await db.insert(s.candidates).values({ slug: randomUUID(), wardId, nameEn: 'Demo (FICTIONAL)', partyEn: 'Demo Party A' }).returning();
+    return c!.id;
+  }
+  const field = (id: number, key: string, detail = `The ${key} is wrong`) => ({ targetType: 'candidate_field' as const, targetRef: `candidate:${id}:${key}`, detail });
+
+  it('files one submission per target under a single admission, partial duplicates reported per target', async () => {
+    const id = await candidate(), who = reporter();
+    await flags.submitPublicFlags(who, [field(id, 'age')]);
+    const out = await flags.submitPublicFlags(who, [field(id, 'age'), field(id, 'party'), { targetType: 'candidate_other', targetRef: `candidate:${id}:other`, detail: 'Wrong person' }]);
+    expect(out.map(o => o.state)).toEqual(['duplicate', 'accepted', 'accepted']);
+    const [n] = await db.execute(sql`select count(*)::int as n from flag_admissions where browser_hash=${who.browserHash}`);
+    expect(n!.n).toBe(2);
+  });
+  it('writes nothing when the limit is hit, and carries a retry hint', async () => {
+    const id = await candidate(), who = reporter();
+    await db.execute(sql`insert into flag_admissions(browser_hash,network_hash,created_at) select ${who.browserHash},${who.networkHash},now()-interval '9 minutes' from generate_series(1,10)`);
+    process.env.FLAGS_REPORTER_DAILY_LIMIT = '50';
+    try {
+      const err = await flags.submitPublicFlags(who, [field(id, 'age'), field(id, 'party')]).catch(e => e);
+      expect(err.message).toBe('flag_rate_limited');
+      expect(err.retryAfterSeconds).toBeGreaterThan(30); expect(err.retryAfterSeconds).toBeLessThanOrEqual(60);
+    } finally { delete process.env.FLAGS_REPORTER_DAILY_LIMIT; }
+    expect(await db.select().from(s.flagItems).where(sql`target_ref like ${`candidate:${id}:%`}`)).toHaveLength(0);
+  });
+  it('the daily limit governs when it is the later to clear', async () => {
+    const id = await candidate(), who = reporter();
+    await db.execute(sql`insert into flag_admissions(browser_hash,network_hash,created_at) select ${who.browserHash},${who.networkHash},now()-interval '23 hours' from generate_series(1,10)`);
+    const err = await flags.submitPublicFlags(who, [field(id, 'age')]).catch(e => e);
+    expect(err.retryAfterSeconds).toBeGreaterThan(3000); expect(err.retryAfterSeconds).toBeLessThanOrEqual(3600);
+  });
+  it('rejects targets of different candidates, repeats, and an other-kind field ref', async () => {
+    const a = await candidate(), b = await candidate(), who = reporter();
+    await expect(flags.submitPublicFlags(who, [field(a, 'age'), field(b, 'age')])).rejects.toThrow('invalid_flag_target');
+    await expect(flags.submitPublicFlags(who, [field(a, 'age'), field(a, 'age')])).rejects.toThrow('invalid_flag_target');
+    await expect(flags.submitPublicFlags(who, [{ targetType: 'candidate_other', targetRef: `candidate:${a}:age`, detail: 'x' }])).rejects.toThrow('invalid_flag_target');
+  });
+  it('an Other flag can be dismissed and shows no fix in the queue item', async () => {
+    const id = await candidate(), who = reporter();
+    const [out] = await flags.submitPublicFlags(who, [{ targetType: 'candidate_other', targetRef: `candidate:${id}:other`, detail: 'The scan is unreadable' }]);
+    const { loadQueueItem, loadQueueList } = await import('../../src/lib/curator');
+    const item = await loadQueueItem(out!.flagItemId!);
+    expect(item!.targetType).toBe('candidate_other'); expect(item!.fieldKey).toBe('other'); expect(item!.fix).toEqual({ kind: 'none' });
+    expect((await loadQueueList('recent', 1)).find(i => i.id === out!.flagItemId)?.fieldKey).toBe('other');
+    await flags.resolveFlag({ userId: admin, role: 'admin' }, out!.flagItemId!, { accept: false, reason: 'Not a data error' });
+    expect((await loadQueueItem(out!.flagItemId!))!.status).toBe('rejected');
   });
 });
 

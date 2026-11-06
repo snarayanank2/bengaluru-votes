@@ -11,6 +11,8 @@ import EmptyState from '../../components/EmptyState.astro';
 import CandidateRow from '../../components/CandidateRow.astro';
 import type { CandidateRowCandidate } from '../../components/CandidateRow.astro';
 import VerificationLabel from '../../components/VerificationLabel.astro';
+import Button from '../../components/Button.astro';
+import { flagTargetsJson } from '../../lib/flag-targets';
 import { t, localePath, type Lang } from '../../i18n';
 import { breadcrumbLd } from '../../lib/seo';
 import { db } from '../../db/client';
@@ -232,6 +234,20 @@ const compareJsonLd = ward
                                       )}
                                     </>
                                   )}
+                                  {key === 'ec_affidavit' && (
+                                    <Button
+                                      variant="tertiary"
+                                      type="button"
+                                      lang={lang}
+                                      label={t(lang, 'compare.flagError.label', { name: lang === 'kn' ? (candidate.nameKn ?? candidate.nameEn) : candidate.nameEn })}
+                                      data-flag-action
+                                      data-ward-id={wardId}
+                                      data-flag-targets={flagTargetsJson(lang, candidate.id)}
+                                      data-candidate-name={lang === 'kn' ? (candidate.nameKn ?? candidate.nameEn) : candidate.nameEn}
+                                    >
+                                      {t(lang, 'common.flagError')}
+                                    </Button>
+                                  )}
                                 </div>
                               </td>
                             );
@@ -384,6 +400,11 @@ const compareJsonLd = ward
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  /* The flag button keeps its natural width and the column's start edge. */
+  .cell-value > :global([data-flag-action]) {
+    align-self: flex-start;
   }
 
   .field-value {

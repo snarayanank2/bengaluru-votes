@@ -1,7 +1,8 @@
 /** HTTP boundary: bounded stream parsing and explicit, deployment-owned proxy trust. */
 import { isIP } from 'node:net';
 import { flagHash } from './flag-abuse';
-export const FLAG_BODY_BYTES = 32 * 1024;
+/** Nine targets at the schema maxima (Kannada text is 3 bytes a character) fit; keep in step with nginx's `client_max_body_size` on the flag locations. */
+export const FLAG_BODY_BYTES = 128 * 1024;
 export class FlagBodyError extends Error { constructor(public status: number) { super('invalid_flag_body'); } }
 export async function readFlagBody(request: Request): Promise<unknown> {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) throw new FlagBodyError(400);
@@ -33,4 +34,4 @@ export function flagNetworkHash(request: Request, clientAddress: string): string
   if (isIP(address) === 6) address = new URL(`http://[${address}]/`).hostname.slice(1,-1);
   return flagHash('network', address);
 }
-export const flagJson = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...(status === 429 || status === 503 ? { 'retry-after': '60' } : {}) } });
+export const flagJson = (body: unknown, status = 200, retryAfterSeconds = 60) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...(status === 429 || status === 503 ? { 'retry-after': String(retryAfterSeconds) } : {}) } });

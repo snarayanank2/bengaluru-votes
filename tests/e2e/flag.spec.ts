@@ -107,11 +107,11 @@ test('citizen flags a candidate field, curator accepts + publishes, correction g
   const flagDialog = citizenPage.locator('[data-flag-modal]');
   await expect(flagDialog).toBeVisible();
 
-  // The eight flaggable fields render as a radio list (Candidate.astro,
-  // FLAGGABLE_FIELD_KEYS order) with the first pre-checked; pick the age.
+  // The eight flaggable fields and "Other" render as checkboxes (Candidate.astro);
+  // ticking the age reveals its own correction block.
   await flagDialog.locator(`input[name="targetRef"][value="${targetRef}"]`).check();
-  await flagDialog.locator('textarea[name="detail"]').fill(FLAG_DETAIL);
-  await flagDialog.locator('input[name="suggestedValue"]').fill(String(correctedAge));
+  await flagDialog.locator('[data-flag-block]:not([hidden]) textarea[name="detail"]').fill(FLAG_DETAIL);
+  await flagDialog.locator('[data-flag-block]:not([hidden]) input[name="suggestedValue"]').fill(String(correctedAge));
   await flagDialog.locator('[data-flag-submit]').click();
 
   await expect(citizenPage.locator('[data-flag-success-toast]')).toBeVisible();

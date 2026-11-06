@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
-import { seedWards, loadCityIssueRows, loadWardCandidateQuestionRows, loadWardFactRows, loadWardRows } from '../../scripts/seed-wards';
+import { seedWards, loadCityIssueRows, loadWardFactRows, loadWardRows } from '../../scripts/seed-wards';
 import { seedAdmin, isValidEmail } from '../../scripts/seed-admin';
 import { seedDev, assertNotProduction, type SeedDevResult } from '../../scripts/seed-dev';
 import { AFFIDAVIT_FIELD_KEYS } from '../../src/lib/affidavit-publish';
@@ -63,18 +63,6 @@ describe('seed-wards', () => {
     expect(overlaps.every((row) => row.publishedOverlapBasisPoints >= 0 && row.publishedOverlapBasisPoints <= 10_000)).toBe(true);
   });
 
-  it('maps five bilingual candidate questions to every ward', () => {
-    const rows = loadWardCandidateQuestionRows();
-    expect(rows).toHaveLength(369 * 5);
-    expect(new Set(rows.map((row) => row.wardId)).size).toBe(369);
-    for (const row of rows) {
-      expect(row.position).toBeGreaterThanOrEqual(1);
-      expect(row.position).toBeLessThanOrEqual(5);
-      expect(row.questionEn).toBeTruthy();
-      expect(row.questionKn).toBeTruthy();
-    }
-  });
-
   it('maps the same 20 bilingual catalog issues to every ward', () => {
     const rows = loadCityIssueRows();
     expect(rows).toHaveLength(369 * 20);
@@ -103,11 +91,6 @@ describe('seed-wards', () => {
       expect(row.nameKn.length).toBeGreaterThan(0);
     }
 
-    const questionRows = await db
-      .select()
-      .from(schema.wardCandidateQuestions)
-      .where(inArray(schema.wardCandidateQuestions.wardId, seeded.map((row) => row.id)));
-    expect(questionRows).toHaveLength(369 * 5);
     const issueRows = await db.select().from(schema.wardIssues).where(inArray(schema.wardIssues.wardId, seeded.map((row) => row.id)));
     expect(issueRows.filter((row) => row.catalogKey !== null)).toHaveLength(369 * 20);
     const overlapRows = await db.select().from(schema.wardOldWardOverlaps)

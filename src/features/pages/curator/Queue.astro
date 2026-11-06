@@ -31,7 +31,7 @@ const { lang, items, sort, page = 1, resolved } = Astro.props;
  * shown as "Other", never as the stored reference.
  */
 function targetLabel(item: QueueListItem): string {
-  const labelKey = profileLabelKey(item.fieldKey);
+  const labelKey = item.targetType === 'candidate_other' ? 'flag.modal.otherLabel' : profileLabelKey(item.fieldKey);
   const field = labelKey ? t(lang, labelKey) : t(lang, 'curator.queue.fieldOther');
   return item.candidateNameEn ? `${item.candidateNameEn} — ${field}` : field;
 }

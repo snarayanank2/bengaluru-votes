@@ -48,6 +48,11 @@ function isMediaPath(pathname: string): boolean {
   return /^\/media\/[^/]+\/[^/]+$/.test(pathname);
 }
 
+/** `/ward/{id}/compare` opens the flag modal, which needs reCAPTCHA like the candidate page. */
+function isWardComparePath(pathname: string): boolean {
+  return /^\/ward\/\d+\/compare$/.test(stripTrailingSlash(stripLocalePrefix(pathname)));
+}
+
 function isWardDetailPath(pathname: string): boolean {
   return /^\/ward\/\d+$/.test(stripTrailingSlash(stripLocalePrefix(pathname)));
 }
@@ -136,7 +141,7 @@ export function buildCsp(nonce: string, pathname: string): string {
   let frameSrc = "'none'";
 
   const isCandidate = /^\/candidate\/[^/]+$/.test(stripTrailingSlash(stripLocalePrefix(pathname)));
-  const needsCaptcha = isWardDetailPath(pathname) || isCandidate;
+  const needsCaptcha = isWardDetailPath(pathname) || isWardComparePath(pathname) || isCandidate;
   if (needsCaptcha) {
     scriptSrcHosts.push('https://www.google.com', 'https://www.gstatic.com');
     frameSrc = 'https://www.google.com';
@@ -146,7 +151,7 @@ export function buildCsp(nonce: string, pathname: string): string {
   // screens frame the affidavit, so those screens may frame this site's own
   // pages and a stored file may be framed by them. Both stay same-origin: no
   // other site can frame anything here, and no page here can frame another
-  // site (reCAPTCHA frames on ward and candidate pages are the exception).
+  // site (reCAPTCHA frames on ward, comparison and candidate pages are the exception).
   if (isTranscribeReadingPath(pathname) || isCuratorAffidavitPath(pathname)) frameSrc = "'self'";
   // Public report cards embed their stored PDF alongside reCAPTCHA.
   if (isCandidate) frameSrc += " 'self'";

@@ -80,7 +80,7 @@ export function parseCandidateFieldTargetRef(targetRef: string): { candidateId: 
 
 /** What a queue row is about, in words: the candidate's field for today's flags, the raw reference for rows older than the eight-field rule. */
 export function flagFieldKey(targetType: FlagTargetType, targetRef: string): string | null {
-  return targetType === 'candidate_field' ? (parseCandidateFieldTargetRef(targetRef)?.fieldKey ?? null) : null;
+  return targetType === 'candidate_field' || targetType === 'candidate_other' ? (parseCandidateFieldTargetRef(targetRef)?.fieldKey ?? null) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -148,7 +148,7 @@ export async function loadQueueList(sort: QueueSort = 'recent', page = 1): Promi
     .orderBy(sort === 'ward' ? wards.nameEn : desc(flagItems.createdAt),desc(flagItems.id)).limit(50).offset((Math.max(1,Math.min(10000,Math.trunc(page)||1))-1)*50);
 
   // The candidate is named only inside `target_ref`, so the names come from a second query.
-  const targets = rows.map((row) => (row.targetType === 'candidate_field' ? parseCandidateFieldTargetRef(row.targetRef) : null));
+  const targets = rows.map((row) => (row.targetType === 'candidate_field' || row.targetType === 'candidate_other' ? parseCandidateFieldTargetRef(row.targetRef) : null));
   const candidateIds = [...new Set(targets.flatMap((target) => (target ? [target.candidateId] : [])))];
   const named = candidateIds.length
     ? await db.select({ id: candidates.id, nameEn: candidates.nameEn }).from(candidates).where(inArray(candidates.id, candidateIds))
@@ -245,7 +245,7 @@ export async function loadQueueItem(id: number, page = 1): Promise<QueueItemDeta
   let candidate: FixCandidate | null = null;
   let fieldKey: string | null = null;
   let fix: QueueItemDetail['fix'] = { kind: 'none' };
-  const parsed = item.targetType === 'candidate_field' ? parseCandidateFieldTargetRef(item.targetRef) : null;
+  const parsed = item.targetType === 'candidate_field' || item.targetType === 'candidate_other' ? parseCandidateFieldTargetRef(item.targetRef) : null;
   if (parsed) {
     candidate = await loadFixCandidate(parsed.candidateId);
     fieldKey = parsed.fieldKey;

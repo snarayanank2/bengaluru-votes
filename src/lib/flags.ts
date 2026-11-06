@@ -42,7 +42,19 @@ import { translateFieldSoon } from './translate-runtime';
 import { createHash } from 'node:crypto';
 import { flagLock, lockReporter, checkFlagAllowance, recordFlagAdmission, reportFingerprint, metric, type FlagReporter } from './flag-abuse';
 
-export type FlagTargetType = 'candidate_field';
+/**
+ * `candidate_field`: `candidate:<id>:<fieldKey>`, a FLAGGABLE_FIELD_KEYS field.
+ * `candidate_other`: `candidate:<id>:other`, something that is not a field
+ * (wrong person's affidavit, unreadable scan, an unsummarised detail). Curators
+ * can only dismiss it or mark reports as spam; there is nothing to fix.
+ */
+export type FlagTargetType = 'candidate_field' | 'candidate_other';
+
+/** The fieldKey segment of a `candidate_other` targetRef. */
+export const OTHER_TARGET_KEY = 'other';
+
+/** The most targets one citizen submission may carry: the eight fields plus "Other". */
+export const MAX_FLAG_TARGETS = FLAGGABLE_FIELD_KEYS.length + 1;
 
 export interface SubmitFlagInput {
   /**
@@ -78,16 +90,19 @@ export class InvalidFlagTargetError extends Error {
  * the TARGET's real ward so the correct (scoped) curator sees and can act on
  * it.
  *
- * The one remaining case is `candidate_field` (`candidate:<id>:<fieldKey>`):
- * the candidate's own `wardId`, provided `<fieldKey>` is one of
- * {@link FLAGGABLE_FIELD_KEYS} and the candidate exists. Anything else — the
+ * Two cases, both the candidate's own `wardId` provided the candidate exists:
+ * `candidate_field` (`candidate:<id>:<fieldKey>`, `<fieldKey>` one of
+ * {@link FLAGGABLE_FIELD_KEYS}) and `candidate_other` (`candidate:<id>:other`).
+ * Anything else — the
  * affidavit document, an unknown field, a malformed ref — throws
  * {@link InvalidFlagTargetError}.
  */
 export async function deriveTargetWardId(targetType: FlagTargetType, targetRef: string): Promise<number> {
-  if (targetType !== 'candidate_field') throw new InvalidFlagTargetError();
+  if (targetType !== 'candidate_field' && targetType !== 'candidate_other') throw new InvalidFlagTargetError();
   const match = /^candidate:(\d+):(.+)$/.exec(targetRef);
-  if (!match || !(FLAGGABLE_FIELD_KEYS as readonly string[]).includes(match[2]!)) throw new InvalidFlagTargetError();
+  if (!match) throw new InvalidFlagTargetError();
+  const keyOk = targetType === 'candidate_other' ? match[2] === OTHER_TARGET_KEY : (FLAGGABLE_FIELD_KEYS as readonly string[]).includes(match[2]!);
+  if (!keyOk) throw new InvalidFlagTargetError();
   const candidateId = Number(match[1]);
   if (!Number.isSafeInteger(candidateId) || candidateId < 1 || candidateId > 2147483647 || String(candidateId) !== match[1]) throw new InvalidFlagTargetError();
   const [row] = await db.select({ wardId: candidates.wardId }).from(candidates).where(eq(candidates.id, Number(match[1])));
@@ -160,30 +175,68 @@ export async function flagValueHash(tx: Tx, targetRef: string): Promise<string> 
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-/** Public admission. Locks target and all reporter budgets before checking/inserting. */
-export async function submitPublicFlag(who: FlagReporter, input: SubmitFlagInput): Promise<FlagResult> {
-  const wardId = await deriveTargetWardId(input.targetType, input.targetRef);
-  const fingerprint = reportFingerprint(input);
+/** One target's outcome in a (possibly multi-target) submission. */
+export interface FlagOutcome extends FlagResult { targetRef: string }
+
+/**
+ * Public admission of one citizen submission carrying one or more targets
+ * (architecture §7). Everything runs in ONE transaction that locks every
+ * target (in sorted order) and then the reporter budgets.
+ *
+ * - Duplicate suppression is per target: a target the browser already
+ *   reported (`duplicate` / `already_reported`) or that was just reviewed
+ *   (`already_reviewed`) is reported back and skipped; the rest are accepted.
+ * - The whole submission is ONE admission against the per-browser and
+ *   per-network limits, however many targets it creates, and only when at
+ *   least one target is new (all-duplicate submissions cost nothing).
+ * - A limit hit throws `FlagRateLimitError` and nothing is written.
+ * - All targets must belong to one candidate.
+ */
+export async function submitPublicFlags(who: FlagReporter, inputs: SubmitFlagInput[]): Promise<FlagOutcome[]> {
+  if (inputs.length < 1 || inputs.length > MAX_FLAG_TARGETS) throw new InvalidFlagTargetError();
+  const refs = new Set(inputs.map(i => i.targetRef));
+  if (refs.size !== inputs.length) throw new InvalidFlagTargetError();
+  const wardIds = await Promise.all(inputs.map(i => deriveTargetWardId(i.targetType, i.targetRef)));
+  if (new Set(inputs.map(i => i.targetRef.split(':')[1])).size !== 1) throw new InvalidFlagTargetError();
   return db.transaction(async tx => {
-    await flagLock(tx, `target:${input.targetRef}`);
+    for (const ref of [...refs].sort()) await flagLock(tx, `target:${ref}`);
     await lockReporter(tx, who);
-    const valueHash = await flagValueHash(tx, input.targetRef);
-    const reviewed = await tx.execute(sql`select i.id from flag_items i join flag_submissions s on s.flag_item_id=i.id
-      where i.target_ref=${input.targetRef} and i.status<>'pending' and i.resolved_at>now()-interval '7 days'
-      and i.resolved_value_hash=${valueHash} and s.fingerprint=${fingerprint} limit 1`);
-    if (reviewed.length) { await metric('duplicate', tx); return { state: 'already_reviewed' }; }
-    const pending = await selectPending(tx, input.targetRef);
-    if (pending) {
-      const [prior] = await tx.select().from(flagSubmissions).where(and(eq(flagSubmissions.flagItemId,pending.id),
-        eq(flagSubmissions.browserHash,who.browserHash), sql`${flagSubmissions.createdAt}>now()-interval '30 days'`)).limit(1);
-      if (prior) { await metric('duplicate', tx); return { state: prior.fingerprint === fingerprint ? 'duplicate' : 'already_reported', flagItemId: pending.id }; }
+    const outcomes: (FlagOutcome | null)[] = [];
+    const fresh: { index: number; pendingId?: number; fingerprint: string }[] = [];
+    for (const [index, input] of inputs.entries()) {
+      const fingerprint = reportFingerprint(input);
+      const valueHash = await flagValueHash(tx, input.targetRef);
+      const reviewed = await tx.execute(sql`select i.id from flag_items i join flag_submissions s on s.flag_item_id=i.id
+        where i.target_ref=${input.targetRef} and i.status<>'pending' and i.resolved_at>now()-interval '7 days'
+        and i.resolved_value_hash=${valueHash} and s.fingerprint=${fingerprint} limit 1`);
+      if (reviewed.length) { await metric('duplicate', tx); outcomes.push({ targetRef: input.targetRef, state: 'already_reviewed' }); continue; }
+      const pending = await selectPending(tx, input.targetRef);
+      if (pending) {
+        const [prior] = await tx.select().from(flagSubmissions).where(and(eq(flagSubmissions.flagItemId,pending.id),
+          eq(flagSubmissions.browserHash,who.browserHash), sql`${flagSubmissions.createdAt}>now()-interval '30 days'`)).limit(1);
+        if (prior) { await metric('duplicate', tx); outcomes.push({ targetRef: input.targetRef, state: prior.fingerprint === fingerprint ? 'duplicate' : 'already_reported', flagItemId: pending.id }); continue; }
+      }
+      fresh.push({ index, pendingId: pending?.id, fingerprint });
+      outcomes.push(null);
     }
-    await checkFlagAllowance(tx, who);
-    const id = pending?.id ?? await findOrCreatePendingItem(tx,input,wardId);
-    await tx.insert(flagSubmissions).values({ flagItemId: id, browserHash: who.browserHash, fingerprint, detail: input.detail, suggestedValue: input.suggestedValue ?? null, sourceUrl: input.sourceUrl ?? null });
-    await recordFlagAdmission(tx,who);
-    return { state: 'accepted', flagItemId: id };
+    if (fresh.length) {
+      await checkFlagAllowance(tx, who);
+      for (const f of fresh) {
+        const input = inputs[f.index]!;
+        const id = f.pendingId ?? await findOrCreatePendingItem(tx, input, wardIds[f.index]!);
+        await tx.insert(flagSubmissions).values({ flagItemId: id, browserHash: who.browserHash, fingerprint: f.fingerprint, detail: input.detail, suggestedValue: input.suggestedValue ?? null, sourceUrl: input.sourceUrl ?? null });
+        outcomes[f.index] = { targetRef: input.targetRef, state: 'accepted', flagItemId: id };
+      }
+      await recordFlagAdmission(tx, who);
+    }
+    return outcomes as FlagOutcome[];
   });
+}
+
+/** Single-target admission; see {@link submitPublicFlags}. */
+export async function submitPublicFlag(who: FlagReporter, input: SubmitFlagInput): Promise<FlagResult> {
+  const [{ targetRef: _ref, ...result }] = await submitPublicFlags(who, [input]) as [FlagOutcome];
+  return result;
 }
 
 /**

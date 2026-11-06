@@ -251,6 +251,15 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
       }
       expect(html).toContain(t(lang, 'candidate.header.sourceEcNomination'));
     });
+
+    it.each(['en', 'kn'] as const)('%s: offers a "Back to ward" text link (not a button) to the ward twin', async (lang) => {
+      const html = normalize(await (await renderCandidate(lang, MAIN_SLUG)).text());
+      const match = html.match(/<a class="back-link[^"]*"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/);
+      expect(match, 'expected a .back-link anchor').toBeTruthy();
+      expect(match![1]).toBe(localePath(lang, `/ward/${WARD.id}`));
+      expect(match![2]).toContain(t(lang, 'candidate.links.backToWard'));
+      expect(match![0]).not.toContain('btn');
+    });
   });
 
   describe('unknown slug -> real 404 (route twin)', () => {
@@ -406,6 +415,9 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
       expect(html).toContain(`candidate:${mainCandidateId}:cases`);
       expect(html).toContain(`candidate:${mainCandidateId}:ward`);
       expect(html).not.toContain(`candidate:${mainCandidateId}:ec_affidavit`);
+      // "Other" is a target too, with its own kind.
+      expect(html).toContain(`candidate:${mainCandidateId}:other`);
+      expect(html).toContain('candidate_other');
     });
 
     it('cache-safety: markup is byte-identical whether or not the request carries a session cookie', async () => {

@@ -11,6 +11,7 @@ import { submitPublicFlag } from '../../src/lib/flags';
 import { anonReporter } from '../support/reporter';
 import { t } from '../../src/i18n';
 import QueueItemRoute from '../../src/pages/curator/queue/[id].astro';
+import QueueIndexRoute from '../../src/pages/curator/queue/index.astro';
 
 // This suite owns ward ids 99411 and 99412.
 const WARD_A = ward(99411, 'Flag Fix Test Ward A');
@@ -232,6 +233,39 @@ describe('flags that cannot be fixed here', () => {
     expect(res.status).toBe(400);
     expect(await fieldRow(candidateId, 'age')).toBeUndefined();
     expect((await item(id, curator, tokenForm(curator, { formAction: 'reject', reason: 'No affidavit on file yet' }))).status).toBe(302);
+    expect((await flagRow(id)).status).toBe('rejected');
+  });
+});
+
+describe('an "Other" flag', () => {
+  const other = async (candidateId: number) =>
+    (await submitPublicFlag(anonReporter(), { targetType: 'candidate_other', targetRef: `candidate:${candidateId}:other`, detail: 'This affidavit is of a different person' })).flagItemId!;
+
+  it('is listed with the candidate and the Other label', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    const id = await other(c.candidateId);
+    const html = await (await run(QueueIndexRoute, '/curator/queue', { auth: curator })).text();
+    expect(html).toContain(`href="/curator/queue/${id}"`);
+    expect(html).toContain(t('en', 'flag.modal.otherLabel'));
+  });
+
+  it('shows the report and the affidavit but no fix form, and points to the candidate editor', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    const html = await (await item(await other(c.candidateId), curator)).text();
+    expect(html).toContain('This affidavit is of a different person');
+    expect(html).toContain(t('en', 'flag.modal.otherLabel'));
+    expect(html).toContain(t('en', 'curator.fix.otherDismissOnly'));
+    expect(html).toContain(`href="/curator/candidate/${c.candidateId}"`);
+    expect(html).toContain(t('en', 'curator.fix.otherEditorLink'));
+    expect(html).not.toContain('value="fix"');
+    expect(html).toContain('value="reject"');
+  });
+
+  it('refuses a fix posted anyway, and can be dismissed', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    const id = await other(c.candidateId);
+    expect((await item(id, curator, fix({ 'status.age': 'value', age: '41' }))).status).toBe(400);
+    expect((await item(id, curator, tokenForm(curator, { formAction: 'reject', reason: 'Checked: same person' }))).status).toBe(302);
     expect((await flagRow(id)).status).toBe('rejected');
   });
 });

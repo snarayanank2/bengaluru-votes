@@ -539,6 +539,31 @@ describe('ModalController', () => {
   });
 });
 
+describe('ModalController closeOnScrim: false', () => {
+  it('ignores a scrim click but still closes on Escape and the close button', () => {
+    const dialog = new FakeDialog();
+    const controller = new ModalController(dialog as unknown as ConstructorParameters<typeof ModalController>[0], { closeOnScrim: false });
+    controller.open({ focus: vi.fn() });
+
+    const click = new Event('click');
+    Object.defineProperty(click, 'target', { value: dialog });
+    dialog.dispatchEvent(click);
+    expect(dialog.open).toBe(true);
+
+    const closeButton = new Event('click');
+    Object.defineProperty(closeButton, 'target', { value: { closest: (selector: string) => (selector === '[data-modal-close]' ? {} : null) } });
+    dialog.dispatchEvent(closeButton);
+    expect(dialog.open).toBe(false);
+
+    controller.open({ focus: vi.fn() });
+    const escapeEvent = new Event('keydown') as Event & { key: string; shiftKey: boolean };
+    escapeEvent.key = 'Escape';
+    escapeEvent.shiftKey = false;
+    dialog.dispatchEvent(escapeEvent);
+    expect(dialog.open).toBe(false);
+  });
+});
+
 describe('computeTabTrapTarget (pure)', () => {
   it('wraps Shift+Tab from the first element to the last', () => {
     const first = {} as HTMLElement;

@@ -76,8 +76,9 @@ const isPending = item.status === 'pending';
 const confirmPath = `/ward/${item.wardId}`;
 const editorPath = candidate ? `/curator/candidate/${candidate.id}` : null;
 const candidateWard = candidate ? wardLabel(lang, { id: candidate.wardId, nameEn: candidate.wardNameEn, nameKn: candidate.wardNameKn }) : null;
-// A key with no label (a flag on "Other", or a row older than the eight-field rule) reads "Other", never the stored reference.
-const labelKey = profileLabelKey(item.fieldKey);
+// A flag on "Other" reads with its own label; a key with no label (a row older than the eight-field rule) reads "Other", never the stored reference.
+const isOther = item.targetType === 'candidate_other';
+const labelKey = isOther ? 'flag.modal.otherLabel' : profileLabelKey(item.fieldKey);
 const fieldLabel = labelKey ? t(lang, labelKey) : t(lang, 'curator.queue.fieldOther');
 
 const field = fix.kind === 'field' ? fix.field : null;
@@ -236,7 +237,16 @@ const publishedText = field
     {
       isPending && fix.kind === 'none' && (
         <Card>
-          {candidate && candidate.waitingAffidavitId !== null ? (
+          {isOther ? (
+            <>
+              <p class="note">{t(lang, 'curator.fix.otherDismissOnly')}</p>
+              {editorPath && (
+                <p class="note">
+                  <a class="body-link" href={editorPath}>{t(lang, 'curator.fix.otherEditorLink')}</a>
+                </p>
+              )}
+            </>
+          ) : candidate && candidate.waitingAffidavitId !== null ? (
             <>
               <p class="note">{t(lang, 'curator.fix.affidavitWaiting')}</p>
               <p class="note">

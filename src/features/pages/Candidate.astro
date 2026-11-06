@@ -22,11 +22,11 @@ import { desc, eq } from 'drizzle-orm';
 import {
   CANDIDATE_PROFILE_FIELD_KEYS,
   CANDIDATE_PROFILE_LABEL_KEYS,
-  FLAGGABLE_FIELD_KEYS,
   pickCandidateValue,
 } from '../../lib/candidate-profile';
 import { personLd, breadcrumbLd } from '../../lib/seo';
 import { isTestCandidate } from '../../lib/demo-data';
+import { flagTargetsJson } from '../../lib/flag-targets';
 
 interface Props {
   lang: Lang;
@@ -115,19 +115,11 @@ const description = row
   ? t(lang, 'candidate.meta.description', { name: candidateName, party: partyName, wardName })
   : t(lang, 'candidate.notFound.fact');
 
-// Flag misinformation — eight of the nine profile fields are flaggable targets;
-// the affidavit document is not. The
+// Flag misinformation — eight of the nine profile fields are flaggable targets
+// (the affidavit document is not), plus "Other". The
 // same anonymous-safe markup renders for every visitor; the client island
 // applies the authentication gate when the action is used.
-const flagTargets = row
-  ? JSON.stringify(
-      FLAGGABLE_FIELD_KEYS.map((key) => ({
-        targetType: 'candidate_field',
-        targetRef: `candidate:${row.id}:${key}`,
-        label: t(lang, CANDIDATE_PROFILE_LABEL_KEYS[key]),
-      })),
-    )
-  : '[]';
+const flagTargets = row ? flagTargetsJson(lang, row.id) : '[]';
 
 // Person + Breadcrumb JSON-LD (architecture §8/§13, Task 56) — built from
 // data this page already loaded, via the shared src/lib/seo.ts builders.
@@ -179,6 +171,10 @@ const candidateJsonLd = row
         </header>
 
         <div class="candidate-container candidate-body">
+        <a class="back-link" href={localePath(lang, `/ward/${row.wardId}`)}>
+          <span class="back-link-chevron" aria-hidden="true">‹</span>
+          {t(lang, 'candidate.links.backToWard')}
+        </a>
         <div class="candidate-actions">
           <Button variant="secondary" href={localePath(lang, `/ward/${row.wardId}/compare`)} lang={lang}>
             {t(lang, 'candidate.links.compare')}
@@ -190,6 +186,7 @@ const candidateJsonLd = row
             data-flag-action
             data-ward-id={row.wardId}
             data-flag-targets={flagTargets}
+            data-candidate-name={candidateName}
           >
             {t(lang, 'common.flagError')}
           </Button>
@@ -260,6 +257,24 @@ const candidateJsonLd = row
     flex-direction: column;
     gap: var(--space-6);
     padding-block: var(--space-8);
+  }
+
+  /* Return link (design-system §7.4): body link, forest with underline. */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: var(--space-2);
+    min-height: 44px;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+  }
+
+  .back-link-chevron {
+    font-size: var(--text-lg);
+    line-height: 1;
   }
 
   .candidate-actions {
