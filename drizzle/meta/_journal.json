@@ -141,6 +141,13 @@
       "when": 1794000000000,
       "tag": "0019_remove_ward_candidate_questions",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794100000000,
+      "tag": "0020_flag_other_target",
+      "breakpoints": true
     }
   ]
 }

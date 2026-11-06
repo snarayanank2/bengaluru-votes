@@ -10,9 +10,11 @@
  *     with the same cleanup path as every other close route, rather than
  *     relying only on the browser's native Escape -> 'cancel' -> 'close'
  *     sequence)
- *   - scrim-tap closes: a click whose target is the <dialog> element
+ *   - scrim-tap closes (default): a click whose target is the <dialog> element
  *     itself (not a descendant) is a backdrop click — the standard way to
- *     detect it without a separate overlay element
+ *     detect it without a separate overlay element. A modal that contains a
+ *     form passes `{ closeOnScrim: false }` so typed text is never lost to a
+ *     stray click; it then closes only via the Close button and Escape
  *   - an explicit close button: any element inside the dialog marked
  *     `data-modal-close` closes it on click
  *   - focus trap: Tab/Shift+Tab cycle within the dialog's focusable
@@ -82,15 +84,22 @@ export interface FocusTarget {
   focus(): void;
 }
 
+export interface ModalOptions {
+  /** Whether a click on the scrim closes the dialog. Default true; forms pass false (design-system §7.9). */
+  closeOnScrim?: boolean;
+}
+
 export class ModalController {
   private dialog: ModalDialogLike;
+  private readonly closeOnScrim: boolean;
   private opener: FocusTarget | null = null;
   private readonly boundKeydown = (e: Event) => this.handleKeydown(e as KeyboardEvent);
   private readonly boundClick = (e: Event) => this.handleClick(e as MouseEvent);
   private readonly boundClose = () => this.handleClose();
 
-  constructor(dialog: ModalDialogLike) {
+  constructor(dialog: ModalDialogLike, options: ModalOptions = {}) {
     this.dialog = dialog;
+    this.closeOnScrim = options.closeOnScrim ?? true;
   }
 
   /** Opens the dialog. `opener` is who focus returns to on close; defaults to the current document.activeElement. */
@@ -141,7 +150,7 @@ export class ModalController {
 
     // Scrim tap: click landed on the <dialog> element itself, not a descendant.
     if (e.target === (this.dialog as unknown as EventTarget)) {
-      this.close();
+      if (this.closeOnScrim) this.close();
       return;
     }
 

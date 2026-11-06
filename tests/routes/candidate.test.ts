@@ -415,6 +415,9 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
       expect(html).toContain(`candidate:${mainCandidateId}:cases`);
       expect(html).toContain(`candidate:${mainCandidateId}:ward`);
       expect(html).not.toContain(`candidate:${mainCandidateId}:ec_affidavit`);
+      // "Other" is a target too, with its own kind.
+      expect(html).toContain(`candidate:${mainCandidateId}:other`);
+      expect(html).toContain('candidate_other');
     });
 
     it('cache-safety: markup is byte-identical whether or not the request carries a session cookie', async () => {

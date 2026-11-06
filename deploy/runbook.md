@@ -772,12 +772,12 @@ Production Compose sets `FLAGS_TRUST_PROXY=true`. nginx overwrites `X-Flag-Clien
 | Variable | Default | Meaning |
 |---|---|---|
 | `FLAGS_SUBMISSIONS_PAUSED` | unset | Exactly `true` rejects new report/receipt requests with 503; curator work and reading continue. |
-| `FLAGS_REPORTER_BURST_LIMIT` | 3 | New accepted reports per browser and account in rolling 10 minutes. |
-| `FLAGS_REPORTER_DAILY_LIMIT` | 10 | New accepted reports per browser and account in rolling 24 hours. |
+| `FLAGS_REPORTER_BURST_LIMIT` | 10 | Accepted submissions per browser in rolling 10 minutes. One submission (however many fields it reports) counts once. At or above the daily limit, the daily limit governs. |
+| `FLAGS_REPORTER_DAILY_LIMIT` | 10 | Accepted submissions per browser in rolling 24 hours. |
 | `FLAGS_NETWORK_DAILY_LIMIT` | 100 | New accepted reports per hashed network address in rolling 24 hours. |
 | `FLAGS_CAPTCHA_MIN_SCORE` | 0.5 | Server-verified minimum score (0–1). |
 
-nginx independently limits receipt initialization and submission together to 10 requests/minute/IP with burst 5 and a 32 KiB request body. The application also limits these requests to 15 per minute bucket before CAPTCHA. Shared mobile/apartment networks can hit these limits; monitor refusals and adjust using observed legitimate traffic. Do not impose a small global report cap or automatically rank candidates by complaints.
+nginx independently limits receipt initialization and submission together to 10 requests/minute/IP with burst 5 and a 128 KiB request body. The application also limits these requests to 15 per minute bucket before CAPTCHA. Shared mobile/apartment networks can hit these limits; monitor refusals and adjust using observed legitimate traffic. Do not impose a small global report cap or automatically rank candidates by complaints.
 
 Siva/admin should inspect the `/admin` report counters and oldest pending report during rollout; curators inspect grouped reports and prior reviews. A warning appears when the current UTC hour has at least 20 accepted reports and exceeds three times the preceding hour's count. This is a local dashboard warning, not an outbound alert. Counters exclude submitted text, links and identifiers.
 

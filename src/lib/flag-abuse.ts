@@ -7,7 +7,10 @@ export const FLAG_COOKIE = 'bv_flag_browser';
 export const FLAG_COOKIE_SECONDS = 30 * 24 * 3600;
 export type FlagMetric = 'accepted' | 'duplicate' | 'captcha_failed' | 'captcha_error' | 'rate_limited' | 'spam';
 export interface FlagReporter { browserHash: string; networkHash: string }
-export class FlagRateLimitError extends Error { constructor() { super('flag_rate_limited'); } }
+export class FlagRateLimitError extends Error {
+  /** Seconds until the oldest counted admission leaves its window and the reporter may submit again (at least 1). */
+  constructor(public retryAfterSeconds = 60) { super('flag_rate_limited'); }
+}
 function secret(): string {
   const value = process.env.FLAGS_ABUSE_SECRET;
   if (value && value.length >= 32) return value;
@@ -55,13 +58,26 @@ export async function lockReporter(tx: Tx, who: FlagReporter): Promise<void> {
   const keys = [`browser:${who.browserHash}`, `network:${who.networkHash}`];
   for (const key of keys.sort()) await flagLock(tx, key);
 }
+/** Seconds until the admission that must expire for a count of `count` to drop below `limit` leaves a window of `windowSeconds`. */
+async function secondsUntilBelow(tx: Tx, column: 'browser_hash' | 'network_hash', value: string, windowSeconds: number, count: number, limit: number): Promise<number> {
+  const [r] = await tx.execute(sql`select greatest(1, ceil(extract(epoch from (created_at + make_interval(secs => ${windowSeconds}) - now()))))::int as wait
+    from flag_admissions where ${column === 'browser_hash' ? sql`browser_hash` : sql`network_hash`}=${value} and created_at>now()-make_interval(secs => ${windowSeconds})
+    order by created_at asc offset ${Math.max(0, count - limit)} limit 1`);
+  return Number(r?.wait ?? 60);
+}
+/** One admission is one whole citizen submission, however many fields it reports. */
 export async function checkFlagAllowance(tx: Tx, who: FlagReporter): Promise<void> {
-  {
-    const [r] = await tx.execute(sql`select count(*)::int as daily, count(*) filter(where created_at>now()-interval '10 minutes')::int as burst from flag_admissions where browser_hash=${who.browserHash} and created_at>now()-interval '24 hours'`);
-    if (Number(r!.daily) >= flagLimit('FLAGS_REPORTER_DAILY_LIMIT', 10) || Number(r!.burst) >= flagLimit('FLAGS_REPORTER_BURST_LIMIT', 3)) throw new FlagRateLimitError();
-  }
-  const [r] = await tx.execute(sql`select count(*)::int as n from flag_admissions where network_hash=${who.networkHash} and created_at>now()-interval '24 hours'`);
-  if (Number(r!.n) >= flagLimit('FLAGS_NETWORK_DAILY_LIMIT', 100)) throw new FlagRateLimitError();
+  const dailyLimit = flagLimit('FLAGS_REPORTER_DAILY_LIMIT', 10), burstLimit = flagLimit('FLAGS_REPORTER_BURST_LIMIT', 10);
+  const [r] = await tx.execute(sql`select count(*)::int as daily, count(*) filter(where created_at>now()-interval '10 minutes')::int as burst from flag_admissions where browser_hash=${who.browserHash} and created_at>now()-interval '24 hours'`);
+  const daily = Number(r!.daily), burst = Number(r!.burst);
+  // To submit again every exceeded limit must clear, so wait for the slowest.
+  const waits: number[] = [];
+  if (daily >= dailyLimit) waits.push(await secondsUntilBelow(tx, 'browser_hash', who.browserHash, 24 * 3600, daily, dailyLimit));
+  if (burst >= burstLimit) waits.push(await secondsUntilBelow(tx, 'browser_hash', who.browserHash, 600, burst, burstLimit));
+  if (waits.length) throw new FlagRateLimitError(Math.max(...waits));
+  const [n] = await tx.execute(sql`select count(*)::int as n from flag_admissions where network_hash=${who.networkHash} and created_at>now()-interval '24 hours'`);
+  const networkLimit = flagLimit('FLAGS_NETWORK_DAILY_LIMIT', 100);
+  if (Number(n!.n) >= networkLimit) throw new FlagRateLimitError(await secondsUntilBelow(tx, 'network_hash', who.networkHash, 24 * 3600, Number(n!.n), networkLimit));
 }
 export async function recordFlagAdmission(tx: Tx, who: FlagReporter): Promise<void> {
   await tx.execute(sql`insert into flag_admissions(browser_hash,network_hash) values(${who.browserHash},${who.networkHash})`);

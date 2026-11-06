@@ -16,7 +16,7 @@ export const translationStatusEnum = pgEnum('translation_status', ['pending', 'd
 export const assignmentStateEnum = pgEnum('assignment_state', ['open', 'submitted', 'abandoned']);
 export const affidavitStateEnum = pgEnum('affidavit_state', ['queued', 'extracting', 'needs_matching', 'published', 'failed']);
 export const flagStatusEnum = pgEnum('flag_status', ['pending', 'accepted', 'rejected']);
-export const flagTargetEnum = pgEnum('flag_target', ['candidate_field']);
+export const flagTargetEnum = pgEnum('flag_target', ['candidate_field', 'candidate_other']);
 export const budgetKindEnum = pgEnum('budget_kind', ['geocode', 'epic_lookup', 'anonymous_vote']);
 
 export const wards = pgTable('wards', {

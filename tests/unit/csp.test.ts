@@ -110,7 +110,7 @@ describe('src/lib/csp.ts#buildCsp', () => {
       expect(frame).toBe("frame-src https://www.google.com 'self'");
     });
 
-    it.each(['/ward/57', '/kn/ward/57', '/ward/57/', '/candidate/some-slug', '/kn/candidate/some-slug/'])('%s permits the reCAPTCHA script and frame', (pathname) => {
+    it.each(['/ward/57', '/kn/ward/57', '/ward/57/', '/ward/57/compare', '/kn/ward/57/compare/', '/candidate/some-slug', '/kn/candidate/some-slug/'])('%s permits the reCAPTCHA script and frame', (pathname) => {
       const csp = buildCsp(NONCE, pathname);
       expect(csp).toContain('https://www.google.com');
       expect(csp).toContain('https://www.gstatic.com');

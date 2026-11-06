@@ -8,15 +8,19 @@
  * the client island `src/islands/FlagModal.ts`, which finds this exact
  * markup via `[data-flag-modal]` and its `data-flag-*`/`data-msg-*` hooks.
  *
- * The field/claim PICKER is entirely built client-side (the island injects
- * radio inputs — or a single pre-selected hidden input, when there's only
- * one target — into `[data-flag-target-options]`) because the set of
- * flaggable targets differs per page/ward and isn't known until the
- * "Flag an error" button that opened this modal is clicked (its
- * `data-flag-targets` JSON attribute).
+ * The field PICKER is built client-side (the island injects one checkbox per
+ * target — or just a label when there is only one, pre-selected — into
+ * `[data-flag-target-options]`) because the set of flaggable targets differs
+ * per page and isn't known until the "Flag an error" button that opened this
+ * modal is clicked (its `data-flag-targets` JSON attribute). Each ticked
+ * target shows its own correction block, cloned from the
+ * `<template data-flag-block-template>` below (so its labels are rendered
+ * and translated here, not in script). "Other" is a target like any other
+ * that has no suggested-value input.
  *
- * Modal shell (Close button, scrim-tap, Escape, focus trap/return, URL
- * never changes) comes from `ModalController` (src/islands/ModalShell.ts).
+ * Modal shell (Close button, Escape, focus trap/return, URL never changes)
+ * comes from `ModalController` (src/islands/ModalShell.ts). This modal
+ * holds a form, so it does NOT close on a scrim click.
  */
 import { t, type Lang } from '../i18n';
 import Button from './Button.astro';
@@ -27,7 +31,8 @@ interface Props {
 
 const { lang } = Astro.props;
 const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY ?? '';
-const isCandidate = /^\/(kn\/)?candidate\//.test(Astro.url.pathname);
+// The pages that open the modal: a candidate's page and a ward's comparison.
+const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.pathname);
 ---
 
 <dialog class="flag-modal" data-flag-modal data-recaptcha-site-key={recaptchaSiteKey} aria-labelledby="flag-modal-title">
@@ -37,28 +42,15 @@ const isCandidate = /^\/(kn\/)?candidate\//.test(Astro.url.pathname);
     </Button>
     <h2 id="flag-modal-title">{t(lang, 'flag.modal.title')}</h2>
 
+    <p class="flag-candidate" data-flag-candidate hidden></p>
     <p>{t(lang, 'flag.modal.explanation')}</p>
     <form data-flag-form>
-      <div class="form-field">
-        <p class="form-label" id="flag-target-label">{t(lang, 'flag.modal.targetLabel')}</p>
-        <div data-flag-target-options role="radiogroup" aria-labelledby="flag-target-label"></div>
-      </div>
+      <fieldset class="form-field flag-picker">
+        <legend class="form-label">{t(lang, 'flag.modal.targetLabel')}</legend>
+        <div data-flag-target-options></div>
+      </fieldset>
 
-      <div class="form-field">
-        <label class="form-label" for="flag-detail">{t(lang, 'flag.modal.detailLabel')}</label>
-        <textarea id="flag-detail" class="form-input" name="detail" rows="3" maxlength="2000" required></textarea>
-      </div>
-
-      <div class="form-field">
-        <label class="form-label" for="flag-source">{t(lang, 'flag.modal.sourceLabel')}</label>
-        <input id="flag-source" class="form-input" name="sourceUrl" type="url" maxlength="2048" />
-        <p class="form-error" data-flag-source-error hidden></p>
-      </div>
-
-      <div class="form-field">
-        <label class="form-label" for="flag-suggested">{t(lang, 'flag.modal.suggestedLabel')}</label>
-        <input id="flag-suggested" class="form-input" name="suggestedValue" type="text" maxlength="1000" />
-      </div>
+      <div class="flag-blocks" data-flag-blocks></div>
 
       <p class="form-error" data-flag-rate-limit-error role="alert" hidden></p>
       <p class="form-error" data-flag-generic-error role="alert" hidden></p>
@@ -69,14 +61,38 @@ const isCandidate = /^\/(kn\/)?candidate\//.test(Astro.url.pathname);
     </form>
   </div>
 
+  <template data-flag-block-template>
+    <fieldset class="flag-block" data-flag-block>
+      <legend class="form-label" data-flag-block-title></legend>
+      <p class="flag-block-help" data-flag-block-help hidden>{t(lang, 'flag.modal.otherHelp')}</p>
+      <div class="form-field">
+        <label class="form-label" data-flag-detail-label data-label-default={t(lang, 'flag.modal.detailLabel')} data-label-other={t(lang, 'flag.modal.otherDetailLabel')}></label>
+        <textarea class="form-input" name="detail" rows="3" maxlength="2000" required></textarea>
+      </div>
+      <div class="form-field">
+        <label class="form-label" data-flag-source-label>{t(lang, 'flag.modal.sourceLabel')}</label>
+        <input class="form-input" name="sourceUrl" type="url" maxlength="2048" />
+        <p class="form-error" data-flag-source-error hidden></p>
+      </div>
+      <div class="form-field" data-flag-suggested-field>
+        <label class="form-label" data-flag-suggested-label>{t(lang, 'flag.modal.suggestedLabel')}</label>
+        <input class="form-input" name="suggestedValue" type="text" maxlength="1000" />
+      </div>
+    </fieldset>
+  </template>
+
   <span hidden data-msg-rate-limit>{t(lang, 'flag.modal.rateLimited')}</span>
   <span hidden data-msg-source-invalid>{t(lang, 'flag.modal.sourceInvalid')}</span>
   <span hidden data-msg-generic-error>{t(lang, 'flag.modal.genericError')}</span>
   <span hidden data-msg-success>{t(lang, 'flag.modal.success')}</span>
   <span hidden data-msg-verification>{t(lang, 'flag.modal.verification')}</span>
   <span hidden data-msg-paused>{t(lang, 'flag.modal.paused')}</span>
-  <span hidden data-msg-already-reported>{t(lang, 'flag.modal.alreadyReported')}</span>
-  <span hidden data-msg-already-reviewed>{t(lang, 'flag.modal.alreadyReviewed')}</span>
+  <span hidden data-msg-select-one>{t(lang, 'flag.modal.selectAtLeastOne')}</span>
+  <span hidden data-msg-not-added>{t(lang, 'flag.modal.notAdded')}</span>
+  <span hidden data-msg-rate-limit-minute>{t(lang, 'flag.modal.rateLimitedMinute')}</span>
+  <span hidden data-msg-rate-limit-minutes>{t(lang, 'flag.modal.rateLimitedMinutes')}</span>
+  <span hidden data-msg-rate-limit-hour>{t(lang, 'flag.modal.rateLimitedHour')}</span>
+  <span hidden data-msg-rate-limit-hours>{t(lang, 'flag.modal.rateLimitedHours')}</span>
 </dialog>
 {isCandidate && recaptchaSiteKey && <script is:inline src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(recaptchaSiteKey)}`} async defer></script>}
 
@@ -113,6 +129,12 @@ const isCandidate = /^\/(kn\/)?candidate\//.test(Astro.url.pathname);
     position: absolute;
     top: var(--space-4);
     right: var(--space-4);
+  }
+
+  .flag-candidate {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
   }
 
   .flag-modal form {
@@ -156,22 +178,38 @@ const isCandidate = /^\/(kn\/)?candidate\//.test(Astro.url.pathname);
     color: var(--color-danger);
   }
 
+  .flag-picker {
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+
   :global([data-flag-target-options]) {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    margin-top: var(--space-2);
   }
 
   :global(.flag-target-option) {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    min-height: 44px;
+    min-height: 48px;
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     font-size: var(--text-base);
     cursor: pointer;
+  }
+
+  :global(.flag-target-option input) {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    margin: 0;
+    accent-color: var(--color-primary);
   }
 
   :global(.flag-target-option:has(input:checked)) {
@@ -182,6 +220,37 @@ const isCandidate = /^\/(kn\/)?candidate\//.test(Astro.url.pathname);
   :global(.flag-target-option:has(input:focus-visible)) {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+  }
+
+  .flag-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  :global(.flag-block) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  :global(.flag-block[hidden]) {
+    display: none;
+  }
+
+  :global(.flag-block legend) {
+    padding-inline: var(--space-1);
+  }
+
+  :global(.flag-block-help) {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   :global(.flag-target-single) {

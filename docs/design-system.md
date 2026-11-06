@@ -370,11 +370,11 @@ Removed: sign-in-gated public actions (no public action requires sign-in). See �
 
 ### 7.9 Modals
 
-`ModalShell.ts` (`ModalController`) provides shared behavior over native `<dialog>`: explicit Close (`data-modal-close`), Escape, scrim-tap dismissal, focus trap, focus return to the trigger, and no URL change. Each modal component owns its markup and CSS.
+`ModalShell.ts` (`ModalController`) provides shared behavior over native `<dialog>`: explicit Close (`data-modal-close`), Escape, focus trap, focus return to the trigger, and no URL change. Scrim-tap dismissal is on by default and off with `{ closeOnScrim: false }`. Each modal component owns its markup and CSS.
 
 Visual shell: white, 8px radius, `--shadow-modal`, `rgba(26,26,26,0.5)` scrim. Below 768px, a full-width bottom sheet with rounded top corners. Title in 24px. Close is a tertiary icon-only button (§7.3). Content and actions follow §7.10.
 
-Provide an accessible title. Scrim dismissal must not lose important work; preserve form input on every failed submission. A multi-step form keeps one title and context across steps, asks for a **single input per step**, and preserves input when users move back.
+Provide an accessible title. A modal that contains a form must not dismiss on a scrim tap (`closeOnScrim: false`): it closes only through the Close button and Escape, so typed text is never lost to a stray click. Preserve form input on every failed submission. When a modal lets the user tick several options (checkboxes in a `fieldset` with a `legend`), each ticked option reveals its own labelled group of inputs; unticked groups are hidden and disabled so they neither validate nor submit, and they keep what was typed if the box is ticked again. Messages about partial outcomes name the items affected and stay in the modal when nothing succeeded. A multi-step form keeps one title and context across steps, asks for a **single input per step**, and preserves input when users move back.
 
 ### 7.10 Form fields and form layouts
 

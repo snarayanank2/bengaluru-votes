@@ -25,7 +25,7 @@ const { lang, items, sort, page = 1, resolved } = Astro.props;
 
 /** "{candidate} — {field}" for a flag on a candidate's field; the reference as stored for anything older or orphaned. */
 function targetLabel(item: QueueListItem): string {
-  const labelKey = profileLabelKey(item.fieldKey);
+  const labelKey = item.targetType === 'candidate_other' ? 'flag.modal.otherLabel' : profileLabelKey(item.fieldKey);
   return item.candidateNameEn && labelKey ? `${item.candidateNameEn} — ${t(lang, labelKey)}` : item.targetRef;
 }
 ---
