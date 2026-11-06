@@ -36,13 +36,18 @@ const {
   const addGeoJsonMock = vi.fn();
   const setStyleMock = vi.fn();
   const fitBoundsMock = vi.fn();
-  const MapMock = vi.fn().mockImplementation(() => ({
-    data: { addGeoJson: addGeoJsonMock, setStyle: setStyleMock },
-    fitBounds: fitBoundsMock,
-  }));
+  const MapMock = vi.fn().mockImplementation(function () {
+    // A `function`, not an arrow: Vitest 4+ will not `new` an arrow implementation.
+    return {
+      data: { addGeoJson: addGeoJsonMock, setStyle: setStyleMock },
+      fitBounds: fitBoundsMock,
+    };
+  });
   // Returning an object from a constructor makes it the instance, so this
   // records the corners it was built from in a directly assertable shape.
-  const LatLngBoundsMock = vi.fn().mockImplementation((sw: unknown, ne: unknown) => ({ sw, ne }));
+  const LatLngBoundsMock = vi.fn().mockImplementation(function (sw: unknown, ne: unknown) {
+    return { sw, ne };
+  });
   const importLibraryMock = vi.fn();
   // `setOptions` configures the API process-wide and is called at most once
   // per module lifetime, so its call history has to outlive the per-test

@@ -7,7 +7,7 @@ import { FLAG_COOKIE, flagBrowserHash, admitFlagRequest, metric, FlagRateLimitEr
 import { readFlagBody, FlagBodyError, flagJson, flagNetworkHash } from '../../lib/flag-http';
 import { verifyRecaptcha } from '../../lib/recaptcha';
 import { logEvent } from '../../lib/log';
-const webUrl = z.string().trim().min(1).max(2048).url().refine(v => /^https?:\/\//i.test(v));
+const webUrl = z.string().trim().min(1).max(2048).pipe(z.url()).refine(v => /^https?:\/\//i.test(v));
 const target = z.object({
   targetType:z.enum(['candidate_field','candidate_other']), targetRef:z.string().trim().min(1).max(128),
   detail:z.string().trim().min(1).max(2000), suggestedValue:z.string().trim().min(1).max(1000).nullable().optional(), sourceUrl:webUrl.nullable().optional(),

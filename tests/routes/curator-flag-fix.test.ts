@@ -51,8 +51,8 @@ describe('a flag on an affidavit field', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('no-store');
     const html = await res.text();
-    // Astro escapes the ampersand in an attribute as `&#38;`.
-    expect(html).toContain(`src="${c.pdfUrl}#navpanes=0&#38;view=FitH"`);
+    // Astro escapes the ampersand in an attribute as `&amp;`.
+    expect(html).toContain(`src="${c.pdfUrl}#navpanes=0&amp;view=FitH"`);
     expect(html).toContain('name="movableInr" value="10210000"');
     expect(html).toContain('name="immovableInr" value="35000000"');
     expect(html).not.toContain('name="age"');

@@ -47,7 +47,7 @@ it('rejects forged forwarding identity through the actual Astro adapter in direc
   const { Socket } = await import('node:net');
   const raw = new IncomingMessage(new Socket());
   raw.method='GET'; raw.url='/api/flags'; raw.headers={host:'localhost','x-forwarded-for':'203.0.113.99'};
-  const request=NodeApp.createRequest(raw);
+  const request=NodeApp.createRequest(raw, { allowedDomains: [{ hostname: 'localhost' }] });  // production configures allowedDomains, so the adapter trusts the header there
   const symbol=Object.getOwnPropertySymbols(request).find(key=>String(key).includes('clientAddress'))!;
   const address=Reflect.get(request,symbol) as string;
   expect(address).toBe('203.0.113.99'); // The adapter really accepts this header.

@@ -23,7 +23,7 @@ describe('candidate editor restrictions', () => {
     const html = await (await page()).text();
     expect(html).not.toContain('name="status"');
     expect(html).not.toContain('name="affidavitFile"');
-    expect(html).toContain(c.pdfUrl.replace(/&/g, '&#38;'));
+    expect(html).toContain(c.pdfUrl.replace(/&/g, '&amp;'));
     const before = await db.select({ n: sql<number>`count(*)::int` }).from(schema.media);
     for (const action of ['core', 'affidavit']) {
       const form = tokenForm(auth, { formAction: action, status: 'withdrawn' });

@@ -32,7 +32,7 @@ describe('the candidate editor on structured fields', () => {
   it('shows the affidavit beside all seven fields and the ward, pre-filled', async () => {
     const c = await fx.candidateWithAffidavit(WARD_A.id);
     const html = await (await page(c.candidateId)).text();
-    expect(html).toContain(`src="${c.pdfUrl}#navpanes=0&#38;view=FitH"`);
+    expect(html).toContain(`src="${c.pdfUrl}#navpanes=0&amp;view=FitH"`);
     expect(html).toContain('name="formAction" value="fields"');
     expect(html.match(/name="confirmPublish"/g)).toHaveLength(1);
     // One Save and publish for the editor; the other submit is the Sign out in the bar.

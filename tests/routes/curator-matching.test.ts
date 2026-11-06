@@ -83,7 +83,7 @@ describe('one waiting affidavit', () => {
     const res = await item(a.affidavitId);
     expect(res.headers.get('cache-control')).toBe('no-store');
     const html = await res.text();
-    expect(html).toContain(`src="${a.pdfUrl}#navpanes=0&#38;view=FitH"`);
+    expect(html).toContain(`src="${a.pdfUrl}#navpanes=0&amp;view=FitH"`);
     expect(html).toContain(`value="${a.extraction.identity.name.text}"`);
     expect(html).toContain('name="wardId"');
   });
