@@ -209,3 +209,14 @@ say "Running migrations"
 remote "$COMPOSE run --rm $APP_SERVICE npm run migrate" 2>&1 | { grep -v '^npm notice' || true; } | tail -5
 
 restart_and_verify
+
+# Housekeeping, only after a verified deploy. Every deploy leaves the previous
+# :latest behind as an untagged ~1 GB image plus build cache; unpruned they
+# filled tens of GB (2026-11-06). Dangling-only: `docker image prune` without
+# -a never touches a tagged image, so :latest and :previous (the rollback
+# anchor, §14.3) and anything a container uses are safe. Build cache newer than
+# a week is kept so the next build stays fast. Never fatal: the deploy has
+# already been verified and a failed prune must not trigger a rollback.
+say "Pruning old images and build cache"
+remote "docker image prune -f; docker builder prune -f --filter until=168h" 2>&1 | grep -i 'reclaimed' || true
+remote "df -h / | tail -1" || true

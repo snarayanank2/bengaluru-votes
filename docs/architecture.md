@@ -195,7 +195,7 @@ Never machine-translated: official bilingual data (ward names) and UI strings.
 
 - **Logs:** structured JSON to stdout (pino, `src/lib/logger.ts`), Compose `json-file` driver capped at 10 MB × 5 files per service. `/healthz` backs the nginx container healthcheck.
 - **Monitoring: none external.** No uptime check, no SSL-expiry alert, no disk alert, no error reporting, and the geocode/EPIC/vote budgets only refuse — they alarm nobody. A silently failed certbot renewal surfaces as an outage on expiry day; the daily `nginx -s reload` (§14.5) picks up *successful* renewals only. Nothing watches disk; exhaustion taking Postgres down mid-spike is a live risk.
-- **Disk.** One 193 GB disk carries Postgres (including affidavit PDFs, §6), the nginx cache, rotated logs and locally built images. Pruning old images is manual and careful: `:previous` is the only rollback path (§14.3), so never `docker image prune` blindly.
+- **Disk.** One 193 GB disk carries Postgres (including affidavit PDFs, §6), the nginx cache, rotated logs and locally built images. Each verified deploy prunes dangling images and build cache older than a week (`deploy/deploy.sh`); beyond that, pruning is manual and careful: `:previous` is the only rollback path (§14.3), so never `docker image prune -a` or `docker system prune -a`.
 
 ## 11. Error handling
 
@@ -258,7 +258,7 @@ Consequences:
 
 Costs: builds compete with live traffic for CPU; two builds of one commit are not guaranteed byte-identical; nothing outside the box can pull the image.
 
-Before each deploy the running image is tagged `:previous`, so the last-known-good survives the new build overwriting `:latest`. Docker's image cache is the only store, so `docker image prune` is not safe to run blindly.
+Before each deploy the running image is tagged `:previous`, so the last-known-good survives the new build overwriting `:latest`. Docker's image cache is the only store, so `docker image prune -a` is never safe to run. The plain dangling-only prune at the end of each verified deploy cannot touch a tagged image.
 
 **One checkout, detached on the release tag** — `git log -1` there answers "what is running":
 

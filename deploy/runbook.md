@@ -403,8 +403,8 @@ image is currently `:latest` (by then the new stack's own build) as
 `:previous`, and from that point on the tag means the new stack's rollback
 anchor, not the interim stack's. Telling the two apart reliably costs more
 than it saves — one small leftover image is nothing on a 193 GB disk, so
-leave it. **Never `docker image prune` here either, or casually at any
-later point** — `:previous` is the only rollback anchor either new stack
+leave it. **Never `docker image prune -a` here either, or casually at any
+later point** (plain `docker image prune`, dangling images only, runs at the end of every deploy and is safe) — `:previous` is the only rollback anchor either new stack
 has (there is no registry — architecture §14.3), and pruning "unused"
 images is exactly how a rollback stops being possible.
 
@@ -560,6 +560,15 @@ curl -sS -X POST https://<host>/api/ward-lookup \
   -d '{"address":"MG Road, Bengaluru"}'   # 403 here means rebuild
 ```
 
+9. **Prune, after a verified deploy only.** `docker image prune -f` (dangling
+   images only, so `:latest`, `:previous` and anything a container uses are
+   never touched) and `docker builder prune -f --filter until=168h` (build
+   cache older than a week). Without this each deploy leaves ~1 GB of
+   untagged image and the build cache grew to 24 GB (cleaned 2026-11-06). A
+   failed prune never fails or rolls back the deploy. The box also hosts other
+   stacks; the prune is Docker-wide but dangling-only, and their volumes are
+   never pruned.
+
 ---
 
 ## k6 election-day load test (architecture §12; Task 65)
@@ -702,8 +711,8 @@ $C stop extract-worker         # stops claiming, lets calls in flight finish
   restart, re-run `static-init`) and then re-verifies with a real POST —
   prefer it over the by-hand commands above. Either path depends on
   `:previous` still existing **on the box** — there is no registry to fall
-  back on (architecture §14.3). Tag it before every deploy, and don't `docker image
-  prune` without checking what you're about to delete.
+  back on (architecture §14.3). Tag it before every deploy, and never run
+  `docker image prune -a` or `docker system prune -a`.
 
 ---
 
