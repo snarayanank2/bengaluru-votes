@@ -2,7 +2,7 @@ name: gate
 description: >
   The checks every change must pass before it can merge or deploy: typecheck,
   Kannada translation staleness (with the one accepted exception), a production
-  build, the Vitest suite, and the Playwright smoke suite. Budget: the whole
+  build, English readability, the Vitest suite, and the Playwright smoke suite. Budget: the whole
   job stays under 2 minutes (the only build is the e2e one; the Chromium download is cached). The calling job supplies the Postgres service
   (composite actions cannot declare one) and DATABASE_URL / SITE_ORIGIN.
 
@@ -16,6 +16,19 @@ runs:
     - name: Install
       shell: bash
       run: npm ci
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: tests/readability/requirements.txt
+    - name: English readability
+      shell: bash
+      env:
+        NLTK_DATA: ${{ runner.temp }}/readability-nltk
+      run: |
+        python -m pip install -r tests/readability/requirements.txt
+        python tests/readability/setup_dictionary.py
+        python -m unittest discover -s tests/readability -v
     - name: Translation staleness
       shell: bash
       run: npx tsx scripts/ci/translate-gate.ts

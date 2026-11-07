@@ -212,7 +212,7 @@ Never machine-translated: official bilingual data (ward names) and UI strings.
 - `tests/load/k6-election-day.js` proves the micro-cache holds election-day read volume on the real VM and that legitimate-shaped traffic through the CGNAT-sized limits (§7) sees no 429s.
 - `tests/routes/cache-invariant.test.ts` asserts public GETs set no cookies and carry no session-dependent bytes — the guard on §5.
 - `tests/unit/media.test.ts` rejects over-size and off-allowlist uploads.
-- **The CI gate** (`.github/actions/gate/action.yml`, run by `ci.yml` on every PR and by `deploy.yml` before deploying an untested tree): typecheck, translation staleness (§9), Vitest against a Postgres service, and the Playwright smoke suite over the e2e build (the only build in the gate). The gate runs only when `scripts/ci/changed-paths.mjs` finds a change to code, tests or CI; a docs-only PR still reports `test` (it is a required check) but does nothing. The required status check is `test` (§14.4).
+- **The CI gate** (`.github/actions/gate/action.yml`, run by `ci.yml` on every PR and by `deploy.yml` before deploying an untested tree): typecheck, translation staleness (§9), English reading passages above Flesch 65 (`tests/readability/README.md`), Vitest against a Postgres service, and the Playwright smoke suite over the e2e build (the only build in the gate). The gate runs only when `scripts/ci/changed-paths.mjs` finds a change to code, tests or CI; a docs-only PR still reports `test` (it is a required check) but does nothing. The required status check is `test` (§14.4).
 
 ## 13. Security
 

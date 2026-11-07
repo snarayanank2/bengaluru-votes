@@ -1,0 +1,15 @@
+beautifulsoup4==4.15.0
+click==8.5.1
+cloudpickle==3.1.2
+defusedxml==0.7.1
+joblib==1.6.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
+nltk==3.10.4
+pyphen==0.18.1
+regex==2026.11.7
+setuptools==84.2.1
+soupsieve==4.0.1
+textstat==0.7.13
+tqdm==4.70.1
+typing_extensions==4.16.0
