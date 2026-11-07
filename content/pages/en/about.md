@@ -1,64 +1,39 @@
 ---
 title: About Bengaluru Votes
-description: Why Bengaluru Votes exists, what it does, how its data is sourced, and how it protects your data.
+description: What Bengaluru Votes does, who runs it, and where the information comes from.
 ---
 
-## Why this app?
+## What is Bengaluru Votes?
 
-Bengaluru is heading into its first ward-level (GBA / corporator) elections in roughly a decade. Citizen interviews showed people are willing to vote but blocked by a few specific gaps: they don't know which ward they now belong to, they can't find trustworthy information about local candidates, and existing sources feel biased or unreliable. These gaps are widest for first-time voters — an unusually large group this election: after a decade without ward polls, nearly everyone under thirty, plus anyone who has moved to Bengaluru since, has never voted for a corporator.
+Bengaluru Votes helps you find your ward, learn about candidates and prepare for the GBA ward election. It is available in English and Kannada.
 
-The platform makes trustworthy, ward-level election information easy to find, compare, and act on — and gives citizens a voice in which local issues matter.
+You can:
 
-## What does this app do?
+- Find your ward using an address or your current location.
+- Look up your polling booth using your voter ID (EPIC) number.
+- Read candidate details from affidavits and compare candidates side by side.
+- Choose the three local issues that matter most to you, then see the ward's issue-voting results.
+- Check how to register, update your voter details and prepare for voting day.
+- See your ward's election result once it is published here.
 
-This platform presents ward-level candidate information during GBA elections, along with useful and relevant civic information for Bengaluru. It allows users to:
+## Who runs it?
 
-- Find their new GBA ward, by typed address or from their device's location.
-- Find their polling booth, using their voter ID (EPIC) number.
-- See the key issues in their ward, the questions worth asking any candidate, and vote on the top issues that matter to them.
-- Read neutral, sourced candidate report cards — track record, criminal cases, assets, education, party — and compare candidates side by side.
-- Handle the logistics: check registration, issue or update a voter ID, and learn how to vote — presented as an ordered checklist a first-time voter can follow end to end.
-- See their ward's result once it is declared.
+Bengaluru Votes is a joint project of Janaagraha and Oorvani Foundation, built with help from volunteers. Oorvani Foundation operates the site.
 
-## Who is behind this initiative?
+## Where does candidate information come from?
 
-This app is an outcome of a joint partnership between Janaagraha and Oorvani Foundation, to advance citizen engagement in local decision-making, improve public understanding of urban issues, and promote accountability through accessible, real-time civic data systems.
+Candidate report cards use sworn affidavits filed for the election. They show the candidate's name, age, gender, party, education, assets and criminal cases. Each field links to its source.
 
-The civic tech components of this partnership have been developed by Janaagraha, Oorvani Foundation and volunteers.
+AI reads the affidavits first. Fields are labelled **AI-extracted** until a person checks them against the document. Transcribers check the readings. Curators correct reported errors and match affidavits to candidates and wards. Curators work across the city, and saved corrections go live immediately. Public pages may take a few minutes to update.
 
-## How is data sourced and verified?
+If you find an error, report it from the candidate's page. No account is needed. Reports are private; a curator checks them before changing the page.
 
-Candidate information — criminal record, assets, education, ward track record — is drawn primarily from candidates' own sworn affidavits filed with the Election Commission, which are public record. Where affidavit data is extracted or summarised with AI assistance, it's marked as AI-extracted until a trained data curator has reviewed and confirmed it.
+## Do you support any party or candidate?
 
-Affidavits have the following information:
+No. We are not affiliated with a candidate, party or government body. We use the same fields and source requirements for every candidate.
 
-- Body type, district, taluk, ward/constituency number, voter roll part & serial no.; candidate name; father/husband name; age; residence
-- Voter roll enrolment details (part no., serial no.)
-- Phone, email, social media accounts (up to 3)
-- PAN + income tax filing status (candidate, spouse, dependents)
-- Pending criminal cases
-- Cases of conviction
-- Assets — movable and immovable, self / spouse / dependents
-- NEW (2026 amendment): declaration of disqualification under any statutory or local authority order — (a) Act & case under which disqualified, (b) authority that issued it, (c) case number, (d) date of disqualification order
-- Liabilities
-- Educational qualification
+Every ward has the same list of local issues to vote on. Results appear after you submit your three choices. This is a poll of site users, not an official election or a representative survey.
 
-Ref: Order SECK/ULB/OTHR/1/2026-ULB dated 22/04/2026, e-Gazette Part III, No. 324
+## What happens to my data?
 
-Every field you see on a candidate's page carries a visible source — so you can always tell whether something comes from an official affidavit or from curator-compiled context, and where to find the original document. Curators are trusted volunteers with local knowledge, scoped to specific wards or a zone; their edits go live immediately.
-
-If you spot something wrong, you can flag it from any candidate page — flagging is open to everyone, in any ward, and no account is needed.
-
-Much of Bengaluru's open civic data resides in the Karnataka Geographic Information System (KGIS), the state's public spatial-data platform run by the Karnataka State Remote Sensing Applications Centre (KSRSAC). This app uses the following datasets:
-
-TBD
-
-## Our neutrality stance
-
-We are not affiliated with any candidate, party, or government body. This platform exists to give Bengaluru citizens neutral, sourced, ward-level information ahead of the GBA Ward Elections.
-
-We don't endorse or oppose any candidate, party, or position. Candidates are presented side by side, with the same fields and the same sourcing standard applied to everyone. Every ward votes on the same list of civic issues, and issue-voting results are shown to everyone, not just the people who voted.
-
-## What do you do with my data?
-
-In short: we don't sell it, and we don't hand it to anyone except the handful of service providers that keep the platform running — under contract, on our behalf, never for their own purposes. We don't ask citizens for contact details: there are no citizen accounts, and voting and reporting are anonymous. The full breakdown of what's collected, who processes it, and your rights over it lives on our [privacy policy](/privacy).
+Citizens do not need an account or contact details to vote on issues or report errors. We do not sell visitor data. Our [privacy policy](/privacy) explains what we collect, why we keep it and which service providers process it.

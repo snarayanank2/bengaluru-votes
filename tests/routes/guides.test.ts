@@ -265,9 +265,9 @@ describe('Guide & explainer pages (Task 21)', () => {
   describe('VoterFaqs checklist (/voter-faqs)', () => {
     it('renders a distinctive sentence from the EN content, in both languages', async () => {
       const en = await renderPage(VoterFaqs, 'en', '/voter-faqs');
-      expect(en.html).toContain('Work through these steps before election day');
+      expect(en.html).toContain('Apply before the deadline.');
       const kn = await renderPage(VoterFaqs, 'kn', '/voter-faqs');
-      expect(kn.html).toContain('ಚುನಾವಣೆಯ ದಿನದ ಮೊದಲು ಈ ಹಂತಗಳನ್ನು ಪೂರೈಸಿ');
+      expect(kn.html).toContain('ಗಡುವಿನ ಮೊದಲು ಅರ್ಜಿ ಸಲ್ಲಿಸಿ.');
     });
 
     it('never leaks the "roll-deadline countdown" authoring comment into the rendered HTML', async () => {

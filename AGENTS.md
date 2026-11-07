@@ -156,7 +156,7 @@ For editorial or UI translation work, the coding agent authors the Kannada trans
 
 Curator edits **go live immediately** — no approval gate. Every field carries a visible source, distinguishing official/affidavit data from curator-compiled context. Curators edit through the same structured inputs as transcribers, beside the stored affidavit: there is no free-text field editor. `src/lib/curator-fix.ts` parses and saves a fix (a flag at `/curator/queue/{id}`, or the candidate editor at `/curator/candidate/{id}`), and every publish of a field value or ward move carries a required `confirmPublish` tick, re-checked on the server. The candidate editor uses one bottom confirmation and one atomic save for changed fields and the ward; unchanged fields keep their review status. `src/lib/publish.ts` keeps what is not an affidavit field: creating a candidate, its status, and `decideTranslationStatus` (manual-override vs source-change MT regeneration).
 
-**Flags are accepted only on the eight fields in `FLAGGABLE_FIELD_KEYS`** (`src/lib/candidate-profile.ts`: the seven affidavit fields and the ward). Ward-targeted flags (`ward_field`, `ward_issue`) were removed on 2026-11-05 (migration `0018`); ward pages carry no flag control, and curators have no ward screens.
+**Field-specific flags use the eight fields in `FLAGGABLE_FIELD_KEYS`** (`src/lib/candidate-profile.ts`: the seven affidavit fields and the ward). Citizens can also report “Something else” (`candidate_other`); the queue cannot fix these directly and links to the candidate editor (architecture §7). Ward-targeted flags (`ward_field`, `ward_issue`) were removed on 2026-11-05 (migration `0018`); ward pages carry no flag control, and curators have no ward screens.
 
 The curator routes are `/curator` (dashboard and search), `/curator/queue`, `/curator/candidate/{id}`, `/curator/matching` (the affidavits waiting for a candidate or ward) and `/curator/guide` (the onboarding page). They have no `/kn/` twin: the language is the signed-in user's saved one (`loadCuratorLang`).
 
@@ -224,6 +224,8 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 **One source of truth:** State each rule once, in the file that owns it, and point to it from elsewhere instead of restating it (for example, production-verification policy lives in this file and the `ui-verifier` definition refers to it; the visual standard lives in `docs/design-system.md`).
 
 **Eyebrow and footer styling:** Eyebrow text should always be caps (uppercase for scripts with case; Kannada keeps normal letter spacing). Use one shared eyebrow treatment. The last full-width section of the ward page must meet the footer directly, with no blank gap. Ward section links should scroll smoothly beneath the sticky header, while respecting reduced-motion preferences.
+
+**User-facing documentation:** Keep public information pages, staff guides and help text simple. Use short sentences, familiar words and direct instructions. Remove AI-sounding phrases, promotional filler and unsupported promises. Preserve essential rules and keep English and Kannada in step.
 
 **Reusable design-system documentation:** The design system should describe generic foundations, section patterns, and components, including form fields, buttons, cards, and their states. It should not mention specific pages except as example usage; do not organize its rules as individual page specifications.
 

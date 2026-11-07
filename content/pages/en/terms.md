@@ -1,31 +1,31 @@
 ---
 title: Terms and conditions
-description: Terms for using Bengaluru Votes, submitting anonymous contributions and accessing election information.
+description: Rules for using Bengaluru Votes and submitting votes or reports.
 ---
 
-*Last updated: 2 November 2026*
+*Last updated: 7 November 2026*
 
 Bengaluru Votes is operated by **Oorvani Foundation**. By using this site, you agree to these terms. Our [Privacy policy](/privacy) explains how information is handled.
 
 ## Using the site
 
-The site provides ward and candidate information to help citizens understand Bengaluru's local elections. It is not an election authority. Citizens do not need an account to browse, vote on ward issues or report candidate-data errors. Login is reserved for authorised staff.
+This site provides information about Bengaluru’s wards, candidates and local elections. It is not an election authority. You do not need an account to browse, vote on issues or report errors. Only authorised staff sign in.
 
-Use the site lawfully. Do not knowingly submit false or misleading information, impersonate others, harass people, submit spam, interfere with the service, or bypass security controls and submission limits. Do not include private contact details or other unnecessary personal information in reports.
+Use the site lawfully. Do not submit information you know is false or misleading, impersonate or harass others, or send spam. Do not disrupt the service or bypass its security and submission limits. Keep private contact details and unnecessary personal information out of reports.
 
 ## Issue voting
 
-Choose exactly three issues in one ward. A browser receipt limits repeat voting and reveals results after submission. A submitted ballot cannot be changed. Results describe participation on this site, not a representative survey, a verified count of individual residents or an official election result. Issue voting does not register you to vote or cast an electoral vote.
+Choose exactly three issues in one ward. A receipt stored in your browser prevents repeat voting and lets you see the results. You cannot change a submitted ballot. Results show votes on this site. They are not a representative survey, a verified count of residents or an official election result. Voting on issues does not register you for an election or cast an election vote.
 
 ## Reporting errors
 
-Reports are private submissions for curator review. Curators may dismiss a report or use it to correct published information; submission does not guarantee a change or a personal reply.
+Reports are private. Curators may reject a report or use it to correct the page. A report does not guarantee a change or a reply.
 
-You give Oorvani Foundation a non-exclusive permission to store and review your submission, use it to make and publish corrections, and include issue votes in aggregate results for this platform. This does not give us permission to publish your private report as a public comment. Submit only material you are entitled to share.
+You give Oorvani Foundation non-exclusive permission to store and review your submission, publish corrections based on it, and include issue votes in the site’s totals. This does not allow us to publish your private report as a public comment. Submit only material you have the right to share.
 
 ## Accuracy and availability
 
-Candidate information is drawn from affidavits and other cited sources. Some information is extracted or translated using AI, and may contain errors. We work to correct errors but cannot guarantee that all information is complete, current or accurate, or that the site will always be available.
+Candidate information comes from affidavits and other cited sources. AI reads or translates some of it and can make mistakes. We correct errors, but cannot guarantee complete, current or accurate information, or uninterrupted access to the site.
 
 For voter registration, polling locations, eligibility, election dates and official results, check the relevant election authority's records and announcements. External links and embedded services have their own terms and privacy policies.
 
@@ -33,7 +33,7 @@ To the extent permitted by applicable law, Oorvani Foundation is not liable for 
 
 ## Protecting the service
 
-We may reject abusive submissions or restrict access to protect the site and its users. Staff must use only their authorised access and protect their credentials; access may be suspended or withdrawn for misuse.
+We may reject abusive submissions or restrict access to protect users and the site. Staff must keep login details secure and use only their permitted access. Misuse may lead to suspension or removal of access.
 
 ## Changes, language and contact
 

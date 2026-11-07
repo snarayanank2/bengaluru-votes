@@ -195,7 +195,7 @@ describe('Trust & legal pages (Task 22)', () => {
       }
       expect(html).not.toContain('SendGrid');
       expect(html).not.toContain('Twilio');
-      expect(html).toContain('Login is for authorised staff only');
+      expect(html).toContain('Only authorised staff sign in');
       expect(html).toContain('sivaramakrishnan.n@oorvani.in');
     });
 

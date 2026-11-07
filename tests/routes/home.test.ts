@@ -115,7 +115,7 @@ describe('Home page (/, /kn/)', () => {
       const html = await renderHome('en');
       expect(html).toContain('class="home-hero"');
       expect(html).toContain('MAKE AN INFORMED CHOICE');
-      expect(html).toContain('Before you vote, understand your neighbourhood');
+      expect(html).toContain('Find your ward, read about the candidates, and prepare to vote.');
       expect(html).toContain('class="hero-form"');
       expect(html).toContain('placeholder="Your address"');
       expect(html).toContain('Find Your Ward');
@@ -123,14 +123,14 @@ describe('Home page (/, /kn/)', () => {
       expect(html).toContain('placeholder="Voter ID / EPIC number"');
       expect(html).not.toContain('The number on your voter ID card');
       expect(html).toContain('class="why-vote-section"');
-      expect(html).toContain('Why your vote in the ward election matters.');
-      expect(html).toContain('Voting strengthens democracy and empowers citizens to hold local leaders accountable');
+      expect(html).toContain('Why vote in the ward election?');
+      expect(html).toContain('Your vote chooses who represents your ward');
       expect(html).not.toContain('whyVoteToggle');
       expect(html).toContain('class="basics-section"');
-      expect(html).toContain('Three things worth understanding.');
+      expect(html).toContain('Know your local government');
       expect(html).toContain('What is the Greater Bengaluru Authority?');
       expect(html).toContain('What is a ward');
-      expect(html).toContain('Every ward elects one councillor');
+      expect(html).toContain('Each ward elects one councillor');
       expect(html).toContain('What is a ward councillor?');
       // The shared disclosure (44px summary, chevron, padded body), not a local look-alike.
       expect((html.match(/<details class="disclosure basics-item" open/g) ?? []).length).toBe(1);
