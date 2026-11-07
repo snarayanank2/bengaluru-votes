@@ -124,7 +124,7 @@ describe('Home page (/, /kn/)', () => {
       expect(html).not.toContain('The number on your voter ID card');
       expect(html).toContain('class="why-vote-section"');
       expect(html).toContain('Why vote in the ward election?');
-      expect(html).toContain('Your vote chooses who represents your ward');
+      expect(html).toContain('Your vote chooses who speaks for your ward');
       expect(html).not.toContain('whyVoteToggle');
       expect(html).toContain('class="basics-section"');
       expect(html).toContain('Know your local government');

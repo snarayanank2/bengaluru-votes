@@ -7,22 +7,24 @@ description: What the GBA ward election is and what a corporator does.
 
 ## What is the GBA election?
 
-Bengaluru has five city corporations under the **Greater Bengaluru Authority (GBA)**: North, South, East, West and Central. Voters elect one **corporator** for each of the 369 wards.
+Bengaluru has five city corporations. They work under the **Greater Bengaluru Authority (GBA)**. They are North, South, East, West and Central.
 
-Ward boundaries, names and numbers have changed. [Find your current ward](/) before checking its candidates.
+The city has 369 wards. Each ward elects one **corporator**, who speaks for it in the council.
+
+Ward borders, names and numbers have changed. [Find your current ward](/), then see who is standing there.
 
 ## What does a corporator do?
 
-A corporator represents one ward in the corporation council. They:
+Your corporator speaks for your ward in the city council. They:
 
-- Raise residents' concerns about roads, drains, waste collection, streetlights and parks.
-- Vote on local civic matters in the council.
-- Follow up on civic works and services in the ward.
+- Raise concerns about roads, drains, waste, streetlights and parks.
+- Vote on local issues in the council.
+- Check on civic works and services in the ward.
 
-A corporator, an MLA and an MP represent different areas and have different responsibilities. Your ward boundary may differ from your assembly or parliamentary constituency.
+A corporator, an MLA and an MP have different roles. They also serve different areas. Your ward may not share the borders of your assembly or parliamentary seat.
 
 ## Why does this election matter?
 
-Your vote chooses who speaks for your ward in the council and raises the problems you face in your neighbourhood.
+Your vote chooses who speaks for your ward. That person raises the problems you face where you live.
 
-Start by [finding your ward](/). Then read the [Voter FAQs](/voter-faqs) to check your registration and prepare for voting day.
+Start by [finding your ward](/). Then read the [Voter FAQs](/voter-faqs). Check that your name is on the roll and get ready to vote.
