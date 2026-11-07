@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const HTML = `
-<section data-issue-vote-zone data-ward-id="57" data-vote-issues='[{"id":1,"title":"Roads"},{"id":2,"title":"Water"},{"id":3,"title":"Waste"},{"id":4,"title":"Lighting"}]' data-recaptcha-site-key="" data-msg-voted-elsewhere="Already voted in {ward}.">
+<section data-issue-vote-zone data-ward-id="57" data-vote-issues='[{"id":1,"title":"Roads"},{"id":2,"title":"Water"},{"id":3,"title":"Waste"},{"id":4,"title":"Lighting"}]' data-recaptcha-site-key="" data-msg-voted-elsewhere="Already voted in {ward}." data-msg-ward-template="Ward {wardNumber} {wardName}">
   <p data-vote-instructions>Choose exactly three issues.</p><p data-vote-results-intro hidden>You have voted.</p>
   <div data-vote-personal hidden><h3>You voted for</h3><ul data-vote-selections></ul></div>
   <h3 data-vote-results-heading hidden>Overall top issues</h3>
@@ -56,10 +56,14 @@ describe('anonymous inline voting island', () => {
     const { fetchMock } = await setup({ status: 'voted_here' });
     await vi.waitFor(() => expect((document.querySelector('[data-vote-results]') as HTMLElement).hidden).toBe(false));
     const results = document.querySelector('[data-vote-results]')!;
-    expect(results.textContent).toContain('Roads80%');
+    expect(results.textContent).toContain('1Roads80%');
+    expect(results.textContent).toContain('2Water40%');
     expect(results.textContent).not.toContain('8 votes');
     expect(results.textContent).not.toContain('Waste');
     expect(results.querySelectorAll('.issue-result')).toHaveLength(2);
+    // Rank is a visible number (design-system §7.11), and part of each bar's accessible name.
+    expect([...results.querySelectorAll('.issue-result-rank')].map((node) => node.textContent)).toEqual(['1', '2']);
+    expect(results.querySelector('.issue-result')!.getAttribute('aria-label')).toBe('1. Roads: 80%');
     expect((results.querySelector('.issue-result-fill') as HTMLElement).style.width).toBe('80%');
     expect(fetchMock).toHaveBeenLastCalledWith('/api/issue-votes?wardId=57&results=1');
   });
@@ -91,10 +95,11 @@ describe('anonymous inline voting island', () => {
   });
 
   it('hides voting and results when the receipt belongs to another ward', async () => {
-    await setup({ status: 'voted_elsewhere', wardNameEn: 'Demo ward' });
+    await setup({ status: 'voted_elsewhere', wardId: 1005, wardNameEn: '5 - Demo ward', wardNameKn: '5 - ಡೆಮೊ ವಾರ್ಡ್' });
     expect((document.querySelector('[data-vote-form-wrap]') as HTMLElement).hidden).toBe(true);
     expect((document.querySelector('[data-show-results-wrap]') as HTMLElement).hidden).toBe(true);
-    expect(document.querySelector('[data-voted-elsewhere]')?.textContent).toBe('Already voted in Demo ward.');
+    // The public place label, built from the stored name and the ward id.
+    expect(document.querySelector('[data-voted-elsewhere]')?.textContent).toBe('Already voted in Ward 5 Demo ward.');
   });
 
   it('keeps the ballot saved and offers a results retry after a loading failure', async () => {

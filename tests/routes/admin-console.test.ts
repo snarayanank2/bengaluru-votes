@@ -162,6 +162,17 @@ describe('/admin, retired /admin/roles (Task 44)', () => {
       expect(html).not.toContain('Partners');
       expect(html).not.toContain('href="/admin/roles"');
     });
+
+    it('the area links are body links, and the key/value lists put the label above the value', async () => {
+      const res = await run(ConsoleRoute, '/admin', { cookieValue: adminAuth.cookieValue });
+      const html = normalize(await res.text());
+      expect(html).toContain('<a class="body-link" href="/admin/users">');
+      expect(html).toContain('<a class="body-link" href="/admin/affidavits">');
+      expect(html).toContain('<dl class="kv-list">');
+      expect(html).not.toContain('stat-list');
+      // No raw database timestamp ("2026-11-05 10:53:39.380282") anywhere on the page.
+      expect(html).not.toMatch(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\.\d+/);
+    });
   });
 
   describe('retired roles page', () => {

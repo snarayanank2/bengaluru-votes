@@ -25,7 +25,7 @@ Astro.response.status = 500;
 ---
 
 <Base lang="en" title={title} description={body} path="/500" noindex={true}>
-  <EmptyState fact={title} nextStep={body}>
+  <EmptyState fact={title} nextStep={body} headingLevel={1}>
     <div class="links">
       <Button variant="primary" href={localePath('en', '/')} lang="en">
         {t('en', 'error.backHome')}

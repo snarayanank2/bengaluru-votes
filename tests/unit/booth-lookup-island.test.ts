@@ -8,7 +8,7 @@
  * into the DOM and must do nothing else with it — see the island's header.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { initBoothLookup } from '../../src/islands/BoothLookup';
+import { initBoothLookup, LOOKUP_TIMEOUT_MS } from '../../src/islands/BoothLookup';
 import { t } from '../../src/i18n';
 
 const VOTER = { epic: 'ZZZ0000001', nameEn: 'Demo Voter (FICTIONAL)', nameKn: 'ಡೆಮೊ ಮತದಾರ (ಕಾಲ್ಪನಿಕ)' };
@@ -25,14 +25,17 @@ const FOUND = { result: 'booth', voter: VOTER, ward: WARD, booth: BOOTH };
 
 function formMarkup(lang: 'en' | 'kn'): string {
   return `
-    <form data-booth-lookup data-lang="${lang}" method="post" action="/voting-guide/find-booth"
+    <form data-booth-lookup data-lang="${lang}" method="post"
       data-msg-registered-as="${t(lang, 'findBooth.result.registeredAs')}"
       data-msg-ward-label="${t(lang, 'findBooth.result.wardLabel')}"
+      data-msg-ward-template="${t(lang, 'nav.ward')}"
       data-msg-booth-label="${t(lang, 'findBooth.result.boothLabel')}"
       data-msg-serial-no="${t(lang, 'findBooth.result.serialNo')}"
       data-msg-ward-unknown="${t(lang, 'findBooth.result.wardUnknown')}"
       data-msg-not-found="${t(lang, 'findBooth.result.notFound')}"
       data-msg-unavailable="${t(lang, 'findBooth.result.unavailable')}"
+      data-msg-invalid="${t(lang, 'findBooth.result.invalid')}"
+      data-msg-searching="${t(lang, 'findBooth.result.searching')}"
       data-msg-directions="${t(lang, 'findBooth.result.directions')}"
       data-msg-directions-aria="${t(lang, 'findBooth.result.directionsAriaLabel')}">
       <input name="epic" required />
@@ -102,8 +105,10 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
     expect(JSON.parse(init.body)).toEqual({ epic: 'ZZZ0000001' });
   });
 
-  it('does not fetch and leaves the event un-prevented for an empty input (native `required` handles it)', () => {
-    const { form, input } = buildForm();
+  // A truly empty field never reaches here (native `required`); spaces do.
+  // The native submit is cancelled either way: this form has no action to go to.
+  it('does not fetch for a blank input, cancels the submit and says the number is not valid', () => {
+    const { form, input, result } = buildForm();
     initBoothLookup();
     input.value = '   ';
 
@@ -111,11 +116,56 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
     form.dispatchEvent(event);
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(event.defaultPrevented).toBe(false);
+    expect(event.defaultPrevented).toBe(true);
+    expect(result.textContent).toBe(t('en', 'findBooth.result.invalid'));
   });
 
-  // Both the home card and the find-booth page render this form; a page could
-  // hold both at once and neither may be left inert.
+  // design-system §7.10: a refused field is aria-invalid and described by its message.
+  it('marks the field aria-invalid and linked to the message when the number is refused, and clears it on edit', async () => {
+    const { form, input, result } = buildForm();
+    initBoothLookup();
+    input.value = 'ABC';
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: 'bad' }) });
+
+    submit(form);
+    await flush();
+
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(result.id).not.toBe('');
+    expect(input.getAttribute('aria-describedby')).toBe(result.id);
+
+    input.value = 'ABC1';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+    expect(input.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('an empty field is answered inline too (the form is novalidate), marked invalid and focused', () => {
+    const { form, input, result } = buildForm();
+    initBoothLookup();
+    input.value = '';
+
+    submit(form);
+
+    expect(result.textContent).toBe(t('en', 'findBooth.result.invalid'));
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('a lookup that finds nothing is not an invalid field', async () => {
+    const { form, input } = buildForm();
+    initBoothLookup();
+    input.value = 'ZZZ0000002';
+    respond({ result: 'not_found' });
+
+    submit(form);
+    await flush();
+
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  // The form may be rendered more than once on a page and neither may be left
+  // inert.
   it('wires every form on the page, not just the first', async () => {
     document.body.innerHTML = formMarkup('en') + formMarkup('en');
     initBoothLookup();
@@ -152,9 +202,10 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
       expect(result.textContent).toContain('1242');
       expect(result.textContent).not.toContain('{serialNo}');
 
+      // The public place label, not the stored name.
       const wardLink = result.querySelector<HTMLAnchorElement>(`a[href="/ward/${WARD.id}"]`);
       expect(wardLink).not.toBeNull();
-      expect(wardLink!.textContent).toBe(WARD.nameEn);
+      expect(wardLink!.textContent).toBe('Ward 49 Shivanasamudra Ward');
     });
 
     it('links the ward under /kn/ on the Kannada page, with the Kannada names', async () => {
@@ -168,7 +219,7 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
 
       const wardLink = result.querySelector<HTMLAnchorElement>(`a[href="/kn/ward/${WARD.id}"]`);
       expect(wardLink).not.toBeNull();
-      expect(wardLink!.textContent).toBe(WARD.nameKn);
+      expect(wardLink!.textContent).toBe('ವಾರ್ಡ್ 49 ಶಿವನಸಮುದ್ರ ವಾರ್ಡ್');
       expect(result.textContent).toContain(BOOTH.nameKn);
       expect(result.textContent).toContain(VOTER.nameKn);
     });
@@ -269,11 +320,30 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
     });
   });
 
-  describe('fetch-failure -> native submit fallback (visitor never trapped)', () => {
-    it('a rejected fetch (network error) falls back to the real form submission', async () => {
-      const { form, input } = buildForm();
+  describe('failures are answered in place — never by a native submit', () => {
+    function lastSubmitSpy(form: HTMLFormElement): ReturnType<typeof vi.fn> {
       const submitSpy = vi.fn();
       form.submit = submitSpy;
+      return submitSpy;
+    }
+
+    it('a 400 says the number is not valid', async () => {
+      const { form, input, result } = buildForm();
+      const submitSpy = lastSubmitSpy(form);
+      initBoothLookup();
+      input.value = 'ABC';
+      fetchMock.mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: 'bad' }) });
+
+      submit(form);
+      await flush();
+
+      expect(result.textContent).toBe(t('en', 'findBooth.result.invalid'));
+      expect(submitSpy).not.toHaveBeenCalled();
+    });
+
+    it('a rejected fetch (network error) says the roll is unavailable', async () => {
+      const { form, input, result } = buildForm();
+      const submitSpy = lastSubmitSpy(form);
       initBoothLookup();
       input.value = 'ZZZ0000001';
       fetchMock.mockRejectedValueOnce(new Error('offline'));
@@ -281,21 +351,61 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
       submit(form);
       await flush();
 
-      expect(submitSpy).toHaveBeenCalledTimes(1);
+      expect(result.textContent).toBe(t('en', 'findBooth.result.unavailable'));
+      expect(submitSpy).not.toHaveBeenCalled();
     });
 
-    it('a non-2xx response also falls back to the real form submission', async () => {
-      const { form, input } = buildForm();
-      const submitSpy = vi.fn();
-      form.submit = submitSpy;
+    it.each([500, 502, 504])('a %s response says the roll is unavailable', async (status) => {
+      const { form, input, result } = buildForm();
+      const submitSpy = lastSubmitSpy(form);
       initBoothLookup();
       input.value = 'ZZZ0000001';
-      respond({ error: 'nope' }, false);
+      fetchMock.mockResolvedValueOnce({ ok: false, status, json: async () => ({}) });
 
       submit(form);
       await flush();
 
-      expect(submitSpy).toHaveBeenCalledTimes(1);
+      expect(result.textContent).toBe(t('en', 'findBooth.result.unavailable'));
+      expect(submitSpy).not.toHaveBeenCalled();
+    });
+
+    it('an unreadable body says the roll is unavailable', async () => {
+      const { form, input, result } = buildForm();
+      initBoothLookup();
+      input.value = 'ZZZ0000001';
+      fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => { throw new SyntaxError('bad json'); } });
+
+      submit(form);
+      await flush();
+
+      expect(result.textContent).toBe(t('en', 'findBooth.result.unavailable'));
+    });
+
+    it('gives up on a stalled request after the timeout, and frees the button', async () => {
+      vi.useFakeTimers();
+      try {
+        const { form, input, result } = buildForm();
+        initBoothLookup();
+        input.value = 'ZZZ0000001';
+        const button = form.querySelector('button')!;
+        // A fetch that only ever settles when it is aborted.
+        fetchMock.mockImplementationOnce((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+          init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }));
+
+        submit(form);
+        expect(button.disabled).toBe(true);
+
+        await vi.advanceTimersByTimeAsync(LOOKUP_TIMEOUT_MS - 1);
+        expect(button.disabled).toBe(true);
+        await vi.advanceTimersByTimeAsync(2);
+
+        expect(result.textContent).toBe(t('en', 'findBooth.result.unavailable'));
+        expect(button.disabled).toBe(false);
+        expect(result.hasAttribute('aria-busy')).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
@@ -312,6 +422,8 @@ describe('BoothLookup island (src/islands/BoothLookup.ts)', () => {
       submit(form);
       expect(result.getAttribute('aria-busy')).toBe('true');
       expect(button.disabled).toBe(true);
+      // The live region says something is happening while the request is pending.
+      expect(result.textContent).toBe(t('en', 'findBooth.result.searching'));
 
       resolve({ ok: true, status: 200, json: async () => FOUND });
       await flush();

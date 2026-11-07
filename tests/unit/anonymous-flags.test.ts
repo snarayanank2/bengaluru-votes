@@ -185,6 +185,10 @@ describe('report budgets and bounded review', () => {
     expect(snapshot.counts.accepted).toBeGreaterThan(0);
     expect(snapshot.counts.spam).toBeGreaterThan(0);
     expect(snapshot.pending).toBeGreaterThan(0);
+    // The oldest pending report is a real moment (the console formats it), not raw SQL text.
+    expect(snapshot.oldest).toBeInstanceOf(Date);
+    expect(Number.isNaN(snapshot.oldest!.getTime())).toBe(false);
+    expect(snapshot.oldest!.getTime()).toBeLessThanOrEqual(Date.now() + 60_000);
     expect(JSON.stringify(snapshot)).not.toContain('browserHash');
   });
 });

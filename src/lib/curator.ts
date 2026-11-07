@@ -364,6 +364,25 @@ export interface CandidateEditData {
   affidavits: CandidateAffidavitRow[];
 }
 
+/**
+ * Whether the candidate was written to within the last `windowMs`: a field
+ * published (which stamps that field row; only a name or party also stamps the
+ * candidate) or a ward move (which stamps the candidate). Backs the
+ * "Saved and published" notice, which must be true rather than read off the
+ * query string.
+ */
+export async function wasEditedRecently(candidateId: number, windowMs: number): Promise<boolean> {
+  const [row] = await db
+    .select({
+      // Both columns are UTC `timestamp`s without a zone; render the later one as an ISO instant to parse it as UTC.
+      // (Written out with table names: drizzle drops them from a single-table select, which would make `id` below mean the field row's.)
+      editedAt: sql<string | null>`to_char(greatest(candidates.updated_at, (select max(candidate_fields.updated_at) from candidate_fields where candidate_fields.candidate_id = candidates.id)), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
+    })
+    .from(candidates)
+    .where(eq(candidates.id, candidateId));
+  return !!row?.editedAt && Date.now() - new Date(row.editedAt).getTime() < windowMs;
+}
+
 /** Loads everything `/curator/candidate/{id}` needs to render: the candidate's core row (+ ward name) and its seven affidavit fields as the structured forms open them. `null` when no such candidate exists — the route twin turns that into a 404. */
 export async function loadCandidateForEdit(candidateId: number): Promise<CandidateEditData | null> {
   const [row] = await db

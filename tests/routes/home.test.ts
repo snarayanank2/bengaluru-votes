@@ -132,8 +132,33 @@ describe('Home page (/, /kn/)', () => {
       expect(html).toContain('What is a ward');
       expect(html).toContain('Every ward elects one councillor');
       expect(html).toContain('What is a ward councillor?');
-      expect((html.match(/<details class="basics-item" open/g) ?? []).length).toBe(1);
+      // The shared disclosure (44px summary, chevron, padded body), not a local look-alike.
+      expect((html.match(/<details class="disclosure basics-item" open/g) ?? []).length).toBe(1);
+      expect((html.match(/<details class="disclosure basics-item"/g) ?? []).length).toBe(3);
+      expect((html.match(/<div class="disclosure-body">/g) ?? []).length).toBe(3);
+      expect(html).not.toContain('basics-chevron');
       expect(html.indexOf('class="home-hero"')).toBeLessThan(html.indexOf('class="booth-section"'));
+    });
+
+    // The booth form's old action (/voting-guide/find-booth) is a removed route;
+    // its failure messages point at the official finder, so the link-out is on the card.
+    it('the booth card has no form action and always carries the official booth-finder link-out', async () => {
+      for (const lang of ['en', 'kn'] as const) {
+        const html = await renderHome(lang);
+        const boothForm = html.match(/<form\b[^>]*data-booth-lookup[^>]*>/)![0];
+        expect(boothForm).not.toContain('action=');
+        expect(boothForm).toContain('novalidate');
+        expect(boothForm).not.toContain('find-booth');
+        expect(html).toContain('data-external-link');
+        expect(html).toContain(t(lang, 'findBooth.linkOut.label'));
+      }
+    });
+
+    it('top-aligns the statistics so the lookup result cannot slide them down', async () => {
+      const source = readFileSync('src/features/pages/Home.astro', 'utf8');
+      const heroInner = source.match(/\.hero-inner \{[^}]*\}/)![0];
+      expect(heroInner).toContain('align-items: start');
+      expect(heroInner).not.toContain('align-items: center');
     });
 
     it('keeps the mobile ward-search controls in one row beneath the address field', async () => {
@@ -205,7 +230,44 @@ describe('Home page (/, /kn/)', () => {
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(html).toContain(`href="/ward/${WARD.id}"`);
       expect(html).toContain('class="ward-result ward-result--success"');
-      expect(html).toContain(WARD.nameEn);
+      // The public place label ("Ward 1 Home Test Ward"), not the stored "1 - Name".
+      expect(html).toContain(`>Ward ${WARD.id % 1000} ${WARD.nameEn}</a>`);
+    });
+
+    // The address field has no `required` once Places replaces the input, so
+    // an empty submit reaches the server: it must be told what is missing,
+    // not that the lookup is down.
+    it.each([[''], ['   ']])('answers an empty address (%j) with "Enter an address", not the outage message', async (query) => {
+      const container = await makeContainer();
+      const response = await container.renderToResponse(Home, {
+        partial: false,
+        props: { lang: 'en' },
+        request: new Request(`${SITE_ORIGIN}/`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: `query=${encodeURIComponent(query)}`,
+        }),
+      });
+      const html = normalize(await response.text());
+
+      expect(lookupWardByAddress).not.toHaveBeenCalled();
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(resultBlock(html)).toContain(t('en', 'home.result.emptyAddress'));
+      expect(resultBlock(html)).not.toContain(t('en', 'home.result.unavailable'));
+    });
+
+    it('answers an empty address in Kannada too', async () => {
+      const container = await makeContainer();
+      const response = await container.renderToResponse(Home, {
+        partial: false,
+        props: { lang: 'kn' },
+        request: new Request(`${SITE_ORIGIN}/kn/`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: 'query=',
+        }),
+      });
+      expect(resultBlock(normalize(await response.text()))).toContain(t('kn', 'home.result.emptyAddress'));
     });
 
     it('renders the explicit out-of-coverage message', async () => {

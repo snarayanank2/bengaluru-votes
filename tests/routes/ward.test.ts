@@ -224,6 +224,20 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
       expect(html).not.toContain('data-flag-action');
     });
 
+    // The identity band's "Old wards" / "Key areas" are key/value labels, not
+    // headings: they used to be H3 between the H1 and the next H2.
+    it.each(['en', 'kn'] as const)('%s: heading levels never skip (H1, then H2s, H3 only inside an H2 section)', async (lang) => {
+      const html = normalize(await (await renderWard(lang, WARD.id)).text());
+      const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+      const levels = [...main.matchAll(/<h([1-6])\b/g)].map((match) => Number(match[1]));
+      expect(levels[0]).toBe(1);
+      expect(levels.filter((level) => level === 1)).toHaveLength(1);
+      for (let i = 1; i < levels.length; i++) expect(levels[i] - levels[i - 1]).toBeLessThanOrEqual(1);
+      // The labels are still there, as named groups.
+      expect(main).toContain(`role="group" aria-labelledby="overview-old-wards-label"`);
+      expect(main).toContain(`id="overview-key-areas-label">${t(lang, 'ward.overview.keyAreas')}</p>`);
+    });
+
     it('en: corporation label maps "south" -> "South", not the raw enum value', async () => {
       const res = await renderWard('en', WARD.id);
       const html = normalize(await res.text());

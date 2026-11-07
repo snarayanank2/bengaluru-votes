@@ -5,17 +5,23 @@
  * already-resolved, caller-translated strings (not i18n keys) so this
  * component stays purely presentational. An optional default slot can add
  * a muted illustration or action (e.g. a Button).
+ *
+ * When the state IS the page (a 404 or 500 with nothing else on it) pass
+ * `headingLevel={1}` so the fact becomes the page's H1; inside a list or
+ * section it stays a paragraph.
  */
 interface Props {
   fact: string;
   nextStep?: string;
+  headingLevel?: 1 | 2 | 3;
 }
 
-const { fact, nextStep } = Astro.props;
+const { fact, nextStep, headingLevel } = Astro.props;
+const FactTag = headingLevel ? (`h${headingLevel}` as const) : 'p';
 ---
 
 <div class="empty-state">
-  <p class="fact">{fact}</p>
+  <FactTag class="fact">{fact}</FactTag>
   {nextStep && <p class="next-step">{nextStep}</p>}
   <slot />
 </div>
@@ -31,8 +37,19 @@ const { fact, nextStep } = Astro.props;
 
   .fact {
     margin: 0;
+    font-family: var(--font-body);
     font-size: var(--text-lg);
+    font-weight: 400;
+    line-height: var(--leading-lg);
     color: var(--color-text);
+  }
+
+  /* A page-level heading keeps the heading font and the page-title size. */
+  h1.fact {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: var(--leading-2xl);
   }
 
   .next-step {

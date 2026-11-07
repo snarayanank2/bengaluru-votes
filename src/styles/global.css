@@ -85,8 +85,18 @@ html {
   text-size-adjust: 100%;
 }
 
+/* A column that is at least one viewport tall, with <main> taking the slack,
+   so the footer sits on the bottom edge of a short page (a 404, the sign-in
+   form) instead of floating mid-screen. */
 body {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body > main {
+  flex: 1 0 auto;
 }
 
 img,
@@ -300,6 +310,72 @@ h6 {
   text-align: end;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Staff table links (design-system §7.13): a link in a cell is a 44px target,
+   but its text starts at the cell's top edge like the rest of the row
+   (rows are start-aligned), instead of floating in the middle of the 44px. */
+.staff-table .body-link {
+  align-items: flex-start;
+}
+
+/* Key and value list (design-system §7.13, §7.16): each pair stacks its
+   label above its value, 4px apart, sharing a left edge, with a 13px muted
+   label. Pairs flow into as many columns as fit. */
+.kv-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+}
+
+.kv-list > div {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 0;
+}
+
+.kv-list dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 400;
+}
+
+.kv-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Confirmation tick (design-system §7.3, §10): the enlarged 26px checkbox in
+   a row at least 48px tall and as wide as its form, so the whole row is the
+   target. Used by PublishConfirm and by every staff confirmation that has a
+   checkbox of its own (removing a user, discarding an affidavit). */
+.confirm-tick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  align-self: stretch;
+  min-height: 48px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.confirm-tick input {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.confirm-tick:has(input:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* Disclosure (design-system §7.15): a native details/summary in a light

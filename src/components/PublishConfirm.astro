@@ -3,7 +3,7 @@
  * PublishConfirm — the required confirmation and the submit it gates
  * (design-system.md §7.3 "Gated submit", §7.13 "Confirmation"). One
  * checkbox in an enlarged row (26px box, row at least 48px tall and as wide
- * as the form) followed by the primary button and a muted hint saying why
+ * as the form; the shared `.confirm-tick`, global.css) followed by the primary button and a muted hint saying why
  * it is disabled. src/islands/GatedSubmit.ts disables the button until the
  * box is ticked; the checkbox stays `required` and the route re-checks the
  * tick on the server, and without the script the button stays usable, so
@@ -47,33 +47,6 @@ const { lang, label, hint, submitLabel, name = 'confirmPublish', checked = false
 </script>
 
 <style>
-  /* The whole row is the target: a click anywhere on it toggles the box. */
-  .confirm-tick {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    align-self: stretch;
-    min-height: 48px;
-    font-weight: 700;
-    cursor: pointer;
-    overflow-wrap: anywhere;
-  }
-
-  .confirm-tick input {
-    width: 26px;
-    height: 26px;
-    flex: none;
-    margin: 0;
-    cursor: pointer;
-    accent-color: var(--color-primary);
-  }
-
-  .confirm-tick:has(input:focus-visible) {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
-  }
-
   .confirm-unit {
     display: flex;
     flex-direction: column;

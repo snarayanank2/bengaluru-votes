@@ -19,6 +19,16 @@ describe('renderContentHtml (src/lib/render-content.ts)', () => {
     expect(html).toContain('Visible after.');
   });
 
+  // Page CSS cannot reach markdown output, so the renderer applies the shared
+  // body-link class (forest, underlined, 44px) to every link it writes.
+  it('marks every rendered link as a body link, internal or external', () => {
+    const html = renderContentHtml('[a](/voter-faqs), [b](https://example.org/x "t") and [c](mailto:x@example.org)', 'en');
+    const anchors = html.match(/<a [^>]*>/g) ?? [];
+    expect(anchors).toHaveLength(3);
+    for (const anchor of anchors) expect(anchor).toMatch(/^<a class="body-link" href="/);
+    expect(html).toContain('title="t"');
+  });
+
   it('leaves EN internal links unprefixed', () => {
     const html = renderContentHtml('[link](/check-registration) and [home](/)', 'en');
     expect(html).toContain('href="/check-registration"');

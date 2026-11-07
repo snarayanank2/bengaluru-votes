@@ -55,7 +55,7 @@ const rollDeadlineActive = rollDeadline
     <h2 id="faq-toc-heading">{t(lang, 'voterFaqs.contents')}</h2>
     <ul>
       {toc.map(({ id, label, nested }) => (
-        <li class:list={{ nested }}><a href={`#${id}`}>{label}</a></li>
+        <li class:list={{ nested }}><a class="body-link" href={`#${id}`}>{label}</a></li>
       ))}
     </ul>
   </nav>
@@ -82,11 +82,6 @@ const rollDeadlineActive = rollDeadline
     padding: 0;
     display: grid;
     gap: var(--space-1);
-  }
-
-  .faq-toc a {
-    display: inline-block;
-    padding-block: var(--space-2);
   }
 
   .faq-toc .nested {

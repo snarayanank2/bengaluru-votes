@@ -58,6 +58,7 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { placeLd, breadcrumbLd } from '../../lib/seo';
 import { mapsConfig } from '../../lib/maps-config';
 import { getKnownSetting } from '../../lib/settings';
+import { zoneLabel } from '../../lib/ward-label';
 
 
 interface Props {
@@ -164,7 +165,7 @@ const wardJsonLd = ward
             </div>
             <div>
               <dt>{t(lang, 'ward.detail.zone')}</dt>
-              <dd>{ward.zone}</dd>
+              <dd>{zoneLabel(lang, ward.zone)}</dd>
             </div>
             {ward.assemblyNumber != null && (
               <div>
@@ -177,7 +178,7 @@ const wardJsonLd = ward
             )}
           </dl>
 
-          <section class="ward-overview">
+          <div class="ward-overview">
             <div class="overview-grid">
               {(ward.reservationEn || ward.reservationKn) && (
                 <dl class="overview-panel overview-reservation">
@@ -186,8 +187,8 @@ const wardJsonLd = ward
                 </dl>
               )}
               {oldWardOverlaps.length > 0 && (
-                <section class="overview-panel overview-old-wards">
-                  <h3>{t(lang, 'ward.overview.oldWards')}</h3>
+                <div class="overview-panel overview-old-wards" role="group" aria-labelledby="overview-old-wards-label">
+                  <p class="overview-label" id="overview-old-wards-label">{t(lang, 'ward.overview.oldWards')}</p>
                   <ul>
                     {oldWardOverlaps.map((item) => (
                       <li>
@@ -197,10 +198,10 @@ const wardJsonLd = ward
                       </li>
                     ))}
                   </ul>
-                </section>
+                </div>
               )}
-              <section class="overview-panel overview-key-areas">
-                <h3>{t(lang, 'ward.overview.keyAreas')}</h3>
+              <div class="overview-panel overview-key-areas" role="group" aria-labelledby="overview-key-areas-label">
+                <p class="overview-label" id="overview-key-areas-label">{t(lang, 'ward.overview.keyAreas')}</p>
                 {keyAreas.length > 0 ? (
                   <ul class="key-areas">
                     {keyAreas.map((item) => <li>{lang === 'kn' ? item.nameKn : item.nameEn}</li>)}
@@ -208,9 +209,9 @@ const wardJsonLd = ward
                 ) : (
                   <p>{t(lang, 'ward.overview.notAvailable')}</p>
                 )}
-              </section>
+              </div>
             </div>
-          </section>
+          </div>
         </header>
 
         <nav class="ward-section-nav" aria-label={t(lang, 'ward.nav.label')} data-ward-section-nav>
@@ -276,6 +277,7 @@ const wardJsonLd = ward
             data-ward-id={wardId}
             data-recaptcha-site-key={recaptchaSiteKey}
             data-msg-voted-elsewhere={t(lang, 'ward.vote.votedElsewhere')}
+            data-msg-ward-template={t(lang, 'nav.ward')}
           >
             <p class="ward-section-eyebrow eyebrow">{t(lang, 'ward.nav.issues')}</p>
             <h2 id="issue-vote-heading">{t(lang, 'ward.vote.heading')}</h2>
@@ -469,7 +471,7 @@ const wardJsonLd = ward
 
   .ward-details dt,
   .overview-panel dt,
-  .overview-panel h3 {
+  .overview-label {
     color: var(--color-hero-muted);
     font-size: var(--text-xs);
     line-height: inherit;
@@ -511,19 +513,10 @@ const wardJsonLd = ward
     border-top: 1px solid rgba(242, 234, 217, 0.22);
   }
 
-  .ward-overview h2,
-  .ward-overview h3,
   .ward-overview p,
   .ward-overview ul,
   .overview-panel {
     margin: 0;
-  }
-
-  .ward-overview h2 {
-    margin: 0;
-    color: var(--color-hero-muted);
-    font-size: var(--text-sm);
-    font-weight: 700;
   }
 
   .overview-panel {
@@ -533,7 +526,7 @@ const wardJsonLd = ward
     min-width: 0;
   }
 
-  .overview-panel h3 {
+  .overview-label {
     font-family: inherit;
     font-weight: 400;
     line-height: inherit;
@@ -543,7 +536,7 @@ const wardJsonLd = ward
     font-weight: 400;
   }
 
-  .overview-panel p,
+  .overview-panel p:not(.overview-label),
   .overview-panel li {
     color: var(--color-on-hero);
   }
@@ -713,17 +706,32 @@ const wardJsonLd = ward
   :global(.issue-result-header) {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  :global(.issue-result-rank),
+  :global(.issue-result-percentage) {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Rank is a fixed-width right-aligned column so the titles share a left
+     edge from the first bar to the fifth. */
+  :global(.issue-result-rank) {
+    min-width: 1.5ch;
+    text-align: end;
+    font-weight: 700;
+    color: var(--color-primary);
   }
 
   :global(.issue-result-title) {
+    flex: 1 1 auto;
+    min-width: 0;
     font-weight: 700;
   }
 
   :global(.issue-result-percentage) {
-    flex: none;
-    font-variant-numeric: tabular-nums;
+    margin-inline-start: auto;
     color: var(--color-text-muted);
   }
 

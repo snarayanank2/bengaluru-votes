@@ -10,6 +10,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { and, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import * as schema from '../../src/db/schema';
 import { SESSION_COOKIE, createSession } from '../../src/lib/session';
 import { issueCsrfToken, CSRF_FIELD_NAME } from '../../src/lib/csrf';
@@ -210,6 +211,48 @@ describe('/admin/affidavits', () => {
     });
   });
 
+  describe('page furniture', () => {
+    it('links back to the console as a body link', async () => {
+      const html = await (await run('/admin/affidavits', { cookieValue: admin.cookieValue })).text();
+      expect(html).toMatch(/<a[^>]*class="body-link"[^>]*href="\/admin"/);
+    });
+
+    // Five state tiles must not be forced into one row on a phone (they
+    // overflowed at 390px): they flow as many per row as fit, two-up at least.
+    it('the PDF links in the work lists are body links', async () => {
+      await waiting('needs_matching');
+      await waiting('failed');
+      const html = await (await run('/admin/affidavits', { cookieValue: admin.cookieValue })).text();
+      const pdfLinks = html.match(/<a[^>]*href="\/media\/[^"]*"[^>]*>/g) ?? [];
+      expect(pdfLinks.length).toBeGreaterThanOrEqual(2);
+      for (const link of pdfLinks) expect(link).toContain('class="body-link"');
+    });
+
+    it('stacks the match form and the failed row below 768px instead of squeezing them', () => {
+      const source = readFileSync('src/features/pages/admin/Affidavits.astro', 'utf8');
+      const narrow = source.slice(source.indexOf('@media (max-width: 767px)'));
+      expect(narrow).toMatch(/\.match-form \{\s*grid-template-columns: minmax\(0, 1fr\);/);
+    });
+
+    it('lets the five state tiles wrap instead of forcing one row', () => {
+      const source = readFileSync('src/features/pages/admin/Affidavits.astro', 'utf8');
+      const counts = source.match(/\.counts \{[^}]*\}/)![0];
+      expect(counts).toContain('repeat(auto-fit');
+      expect(counts).not.toContain('repeat(5');
+    });
+
+    it('shows each tile\'s label above its figure', async () => {
+      const html = await (await run('/admin/affidavits', { cookieValue: admin.cookieValue })).text();
+      expect((html.match(/class="count count--/g) ?? []).length).toBe(5);
+    });
+
+    it('empty work lists use the shared empty state, not an italic paragraph', () => {
+      const source = readFileSync('src/features/pages/admin/Affidavits.astro', 'utf8');
+      expect(source).not.toContain('placeholder-note');
+      expect(source.match(/<EmptyState\b/g)).toHaveLength(2);
+    });
+  });
+
   describe('needs matching', () => {
     it('lists the AI-read identity beside a link to the PDF', async () => {
       const w = await waiting('needs_matching');
@@ -336,6 +379,13 @@ describe('/admin/affidavits', () => {
       const res = await run('/admin/affidavits', { cookieValue: admin.cookieValue, form: form(admin.token, { formAction: 'retry', affidavitId: String(w.id) }) });
       expect(res.status).toBe(302);
       expect(await affidavit(w.id)).toMatchObject({ state: 'queued', attempts: 0, failure: null });
+    });
+
+    it('the discard confirmation is the shared enlarged tick row', async () => {
+      await waiting('failed');
+      const html = await (await run('/admin/affidavits', { cookieValue: admin.cookieValue })).text();
+      expect(html).toMatch(/<label[^>]*class="confirm-tick"/);
+      expect(html).not.toContain('class="checkbox"');
     });
 
     it('discards an affidavit and its stored file', async () => {

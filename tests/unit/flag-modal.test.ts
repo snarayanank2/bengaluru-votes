@@ -72,6 +72,7 @@ const MODAL_HTML = `
         <div>
           <label data-flag-detail-label data-label-default="Tell us what's incorrect" data-label-other="Describe the problem"></label>
           <textarea name="detail" rows="3" required></textarea>
+          <p data-flag-detail-error hidden></p>
         </div>
         <div>
           <label data-flag-source-label>Source link (optional)</label>
@@ -93,6 +94,7 @@ const MODAL_HTML = `
     <span hidden data-msg-source-invalid>${MSGS.sourceInvalid}</span>
     <span hidden data-msg-generic-error>${MSGS.genericError}</span>
     <span hidden data-msg-success>${MSGS.success}</span>
+    <span hidden data-msg-detail-required>Describe what is wrong before you submit.</span>
     <span hidden data-msg-select-one>Tick at least one item to report.</span>
     <span hidden data-msg-not-added>Not added again: {fields}.</span>
   </dialog>
@@ -192,6 +194,64 @@ describe('anonymous FlagModal', () => {
     submit(document.querySelector('form')!); await flush();
     expect(document.querySelector('[data-flag-generic-error]')!.textContent).toBe('Tick at least one item to report.');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // The form is `novalidate`: an empty required description is reported inline
+  // (design-system §7.10), not as the browser's own bubble.
+  it('an empty description is an inline error on the textarea, with focus there and nothing sent', async () => {
+    api.openFlagModal({ wardId: 1, targets: TARGETS });
+    tick('candidate:1:age');
+    submit(document.querySelector('form')!); await flush();
+    const box = block('candidate:1:age').querySelector<HTMLTextAreaElement>('textarea')!;
+    const error = block('candidate:1:age').querySelector<HTMLElement>('[data-flag-detail-error]')!;
+    expect(error.hidden).toBe(false);
+    expect(error.textContent).toBe('Describe what is wrong before you submit.');
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(box.getAttribute('aria-describedby')).toBe(error.id);
+    expect(error.id).not.toBe('');
+    expect(document.activeElement).toBe(box);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('whitespace is an empty description too', async () => {
+    api.openFlagModal({ wardId: 1, targets: ONE_TARGET });
+    document.querySelector('textarea')!.value = '   \n ';
+    submit(document.querySelector('form')!); await flush();
+    expect(document.querySelector<HTMLElement>('[data-flag-detail-error]')!.hidden).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('flags every ticked block that is missing its description and focuses the first', async () => {
+    api.openFlagModal({ wardId: 1, targets: TARGETS });
+    tick('candidate:1:age'); tick('candidate:1:party'); type('candidate:1:party', 'filled');
+    tick('candidate:1:other');
+    submit(document.querySelector('form')!); await flush();
+    const state = (ref: string) => block(ref).querySelector<HTMLTextAreaElement>('textarea')!.getAttribute('aria-invalid');
+    expect(state('candidate:1:age')).toBe('true');
+    expect(state('candidate:1:party')).toBeNull();
+    expect(state('candidate:1:other')).toBe('true');
+    expect(document.activeElement).toBe(block('candidate:1:age').querySelector('textarea'));
+  });
+
+  it('typing into a refused description clears its error', async () => {
+    api.openFlagModal({ wardId: 1, targets: ONE_TARGET });
+    submit(document.querySelector('form')!); await flush();
+    const box = document.querySelector<HTMLTextAreaElement>('textarea')!;
+    box.value = 'x';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(document.querySelector<HTMLElement>('[data-flag-detail-error]')!.hidden).toBe(true);
+    expect(box.hasAttribute('aria-invalid')).toBe(false);
+    expect(box.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('reports a missing description and a bad source link together', async () => {
+    api.openFlagModal({ wardId: 1, targets: ONE_TARGET });
+    block('candidate:1:age').querySelector<HTMLInputElement>('input[name=sourceUrl]')!.value = 'ftp://example.com';
+    submit(document.querySelector('form')!); await flush();
+    expect(block('candidate:1:age').querySelector<HTMLElement>('[data-flag-detail-error]')!.hidden).toBe(false);
+    expect(block('candidate:1:age').querySelector('[data-flag-source-error]')!.textContent).toBe(MSGS.sourceInvalid);
+    // Focus goes to the first problem in reading order: the description.
+    expect(document.activeElement).toBe(block('candidate:1:age').querySelector('textarea'));
   });
 
   it('rejects a non-http source link on its own block before sending', async () => {

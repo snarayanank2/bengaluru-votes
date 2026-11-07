@@ -90,6 +90,8 @@ function buildForm(lang: 'en' | 'kn' = 'en'): {
       data-msg-ambiguous="${t(lang, 'home.result.ambiguous')}"
       data-msg-out-of-coverage="${t(lang, 'home.result.outOfCoverage')}"
       data-msg-unavailable="${t(lang, 'home.result.unavailable')}"
+      data-msg-empty-address="${t(lang, 'home.result.emptyAddress')}"
+      data-msg-ward-template="${t(lang, 'nav.ward')}"
       data-msg-use-location="${t(lang, 'home.form.useLocation')}"
       data-msg-locating="${t(lang, 'home.form.locating')}"
       data-msg-location-approximate="${t(lang, 'home.result.locationApproximate')}"
@@ -169,16 +171,22 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
       expect(JSON.parse(init.body)).toEqual(expectedBody);
     });
 
-    it('does not fetch and leaves the event un-prevented for an empty query (native `required` handles it)', () => {
-      const { form, input } = buildForm();
+    // A real browser stops a truly empty `required` field before this event,
+    // but the Places element has no `required`, and spaces pass a native one.
+    // Either way the visitor is told what is missing — not that we are down.
+    it.each([[''], ['   ']])('does not fetch for the empty query %j; asks for an address instead', (query) => {
+      const { form, input, result } = buildForm();
       initWardLookup();
-      input.value = '';
+      input.value = query;
 
       const event = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(event);
 
       expect(fetchMock).not.toHaveBeenCalled();
-      expect(event.defaultPrevented).toBe(false);
+      expect(event.defaultPrevented).toBe(true);
+      expect(result.textContent).toBe(t('en', 'home.result.emptyAddress'));
+      expect(result.textContent).not.toContain(t('en', 'home.result.unavailable'));
+      expect(result.dataset.resultState).toBe('empty');
     });
   });
 
@@ -201,7 +209,8 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
         const link = result.querySelector('a');
         expect(link).not.toBeNull();
         expect(link!.getAttribute('href')).toBe(lang === 'kn' ? '/kn/ward/5025' : '/ward/5025');
-        expect(link!.textContent).toBe(lang === 'kn' ? WARD_A.nameKn : WARD_A.nameEn);
+        // The public place label: "Ward 25 X" in both languages (ward number is the id's remainder).
+        expect(link!.textContent).toBe(lang === 'kn' ? 'ವಾರ್ಡ್ 25 ಎಕ್ಸ್' : 'Ward 25 X');
       }
     });
 
@@ -646,6 +655,24 @@ describe('WardLookup island (src/islands/WardLookup.ts)', () => {
       await flush();
 
       expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ address: '560001' });
+    });
+
+    // The element has no `required`, so this is the path an empty home-page
+    // submit takes in production: it used to post to the server and come back
+    // as the outage message.
+    it('an empty autocomplete element asks for an address, makes no request and takes focus', async () => {
+      const { form, result } = buildFormWithKey('en');
+      initWardLookup();
+      await settle();
+      const focus = vi.spyOn(constructedElements[0], 'focus');
+
+      constructedElements[0].value = '';
+      submit(form);
+      await flush();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.textContent).toBe(t('en', 'home.result.emptyAddress'));
+      expect(focus).toHaveBeenCalled();
     });
 
     it('leaves the plain input in place when the places library fails to load', async () => {

@@ -33,6 +33,11 @@
  *    app; absolute/external hrefs (http(s), mailto, #fragment) are left
  *    untouched.
  *
+ * 3. MARKS EVERY LINK AS A BODY LINK. Each rendered `<a>` carries the shared
+ *    `.body-link` class (global.css; design-system §7.4): forest, underlined
+ *    and a 44px target. Left bare, the page CSS cannot reach markdown output
+ *    and the browser's default blue/20px link shows through.
+ *
  * SECURITY: content/pages/**\/*.md is repo-authored, not user input, so
  * feeding it to marked and `set:html`-ing the result is acceptable — see
  * the task brief. No `sanitize`/raw-HTML-passthrough option is enabled
@@ -66,7 +71,7 @@ function buildRenderer(lang: Lang) {
 
   renderer.link = (token) => {
     const resolvedHref = isInternalHref(token.href) ? localePath(lang, token.href) : token.href;
-    return baseLink({ ...token, href: resolvedHref });
+    return baseLink({ ...token, href: resolvedHref }).replace(/^<a /, '<a class="body-link" ');
   };
 
   return renderer;

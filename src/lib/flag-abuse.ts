@@ -96,10 +96,18 @@ export async function cleanupFlagAbuse(): Promise<void> {
     await tx.execute(sql`delete from flag_metrics where hour<=now()-interval '30 days'`);
   });
 }
+/** `flag_items.created_at` is a UTC `timestamp` without a zone; raw SQL hands it back as text, so read it as UTC. */
+function oldestPending(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const parsed = new Date(`${String(value).replace(' ', 'T')}Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export async function loadFlagMetrics() {
   const rows = await db.execute(sql`select event,sum(count)::int as total from flag_metrics where hour>=now()-interval '24 hours' group by event`);
   const counts = Object.fromEntries(rows.map(r => [String(r.event),Number(r.total)]));
   const [backlog] = await db.execute(sql`select count(*)::int as pending,min(created_at) as oldest from flag_items where status='pending'`);
   const [spike] = await db.execute(sql`select coalesce(sum(count) filter(where hour=date_trunc('hour',now())),0)::int as current, coalesce(sum(count) filter(where hour=date_trunc('hour',now())-interval '1 hour'),0)::int as previous from flag_metrics where event='accepted' and hour>=date_trunc('hour',now())-interval '1 hour'`);
-  return { counts,pending:Number(backlog!.pending),oldest:backlog!.oldest ? String(backlog!.oldest) : null, spike:Number(spike!.current)>=20 && Number(spike!.current)>Math.max(1,Number(spike!.previous))*3, paused:process.env.FLAGS_SUBMISSIONS_PAUSED==='true' };
+  return { counts,pending:Number(backlog!.pending),oldest:oldestPending(backlog!.oldest), spike:Number(spike!.current)>=20 && Number(spike!.current)>Math.max(1,Number(spike!.previous))*3, paused:process.env.FLAGS_SUBMISSIONS_PAUSED==='true' };
 }

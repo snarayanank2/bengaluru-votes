@@ -40,7 +40,7 @@ const { queueCount, matchCount } = data;
 
     <Card>
       <h2>{t(lang, 'curator.dashboard.queueHeading')}</h2>
-      <p class="queue-count">{t(lang, 'curator.dashboard.queueCount', { count: queueCount })}</p>
+      <p class="queue-count">{queueCount === 1 ? t(lang, 'curator.dashboard.queueCountOne') : t(lang, 'curator.dashboard.queueCount', { count: queueCount })}</p>
       <a class="body-link" href="/curator/queue">{t(lang, 'curator.dashboard.queueLink')}</a>
     </Card>
 

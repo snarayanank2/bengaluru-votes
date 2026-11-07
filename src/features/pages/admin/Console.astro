@@ -15,6 +15,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Card from '../../../components/Card.astro';
 import { t, type Lang } from '../../../i18n';
+import { formatDateTime } from '../../../lib/format-datetime';
 import type { ConsoleStats } from '../../../lib/admin';
 
 interface Props {
@@ -32,7 +33,7 @@ const { lang, stats, flagMetrics } = Astro.props;
 
     <Card>
       <h2>{t(lang, 'admin.console.overview.heading')}</h2>
-      <dl class="stat-list">
+      <dl class="kv-list">
         <div>
           <dt>{t(lang, 'admin.console.overview.transcribers')}</dt>
           <dd>{stats.transcriberCount}</dd>
@@ -52,20 +53,20 @@ const { lang, stats, flagMetrics } = Astro.props;
       <h2>{t(lang,'flag.metrics.heading')}</h2>
       <p>{t(lang,flagMetrics.paused ? 'flag.metrics.paused' : 'flag.metrics.open')}</p>
       {flagMetrics.spike && <p role="status">{t(lang,'flag.metrics.spike')}</p>}
-      <dl class="stat-list">
+      <dl class="kv-list">
         {(['accepted','duplicate','captcha_failed','captcha_error','rate_limited','spam'] as const).map(event => <div><dt>{t(lang,`flag.metrics.${event}`)}</dt><dd>{flagMetrics.counts[event] ?? 0}</dd></div>)}
         <div><dt>{t(lang,'flag.metrics.pending')}</dt><dd>{flagMetrics.pending}</dd></div>
-        <div><dt>{t(lang,'flag.metrics.oldest')}</dt><dd>{flagMetrics.oldest ?? '—'}</dd></div>
+        <div><dt>{t(lang,'flag.metrics.oldest')}</dt><dd>{flagMetrics.oldest ? formatDateTime(lang, flagMetrics.oldest) : '—'}</dd></div>
       </dl>
     </Card>}
     <Card>
       <h2>{t(lang, 'admin.console.nav.heading')}</h2>
       <ul class="nav-list">
         <li>
-          <a href="/admin/users">{t(lang, 'admin.console.nav.users')}</a>
+          <a class="body-link" href="/admin/users">{t(lang, 'admin.console.nav.users')}</a>
         </li>
         <li>
-          <a href="/admin/affidavits">{t(lang, 'admin.console.nav.affidavits')}</a>
+          <a class="body-link" href="/admin/affidavits">{t(lang, 'admin.console.nav.affidavits')}</a>
         </li>
       </ul>
     </Card>
@@ -94,24 +95,9 @@ const { lang, stats, flagMetrics } = Astro.props;
     margin: 0 0 var(--space-3);
   }
 
-  .stat-list {
-    margin: 0;
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: var(--space-1) var(--space-3);
-  }
-
-  .stat-list div {
-    display: contents;
-  }
-
-  .stat-list dt {
-    font-weight: 700;
-    color: var(--color-text-muted);
-  }
-
-  .stat-list dd {
-    margin: 0;
+  /* A line of text above a list keeps the default 16px gap (§6.1). */
+  p + .kv-list {
+    margin-top: var(--space-4);
   }
 
   .nav-list {

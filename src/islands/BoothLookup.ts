@@ -12,16 +12,23 @@
  * analytics call, no URL rewrite. Nothing personal may be added to any of
  * those; the result must stay as ephemeral as the request.
  *
- * On any failure to fetch/parse — network error, non-2xx, bad JSON — this
- * retains the legacy native submission behavior. Its action route is no
- * longer available; this is not a supported no-JS lookup fallback.
+ * NEVER FALLS BACK TO A NATIVE SUBMIT. The old `/voting-guide/find-booth`
+ * route is gone (architecture §15), so every failure is answered in place:
+ * a 400 says the number is malformed (`invalid`), and a timeout, network
+ * error, non-2xx or unreadable body says the roll is unavailable and points
+ * at the official finder (`unavailable`). While a request is pending the
+ * result region says so (`searching`), and the request is abandoned after
+ * `LOOKUP_TIMEOUT_MS` so a stalled upstream never leaves the visitor
+ * watching a disabled button.
  *
  * The directions link is built by the shared src/lib/maps-links.ts helper
- * from the lat/lng the API already returns — no separate API call. The
- * server-rendered POST branch in FindBooth.astro renders the identical link
- * from the same helper; keep both in sync rather than letting one drift.
+ * from the lat/lng the API already returns — no separate API call.
+ * BoothLookupForm.astro's server-rendered result (used only by the unrouted
+ * FindBooth.astro) renders the identical link from the same helper; keep
+ * both in sync rather than letting one drift.
  */
 import { directionsUrl } from '../lib/maps-links';
+import { formatWardLabel } from '../lib/ward-label-format';
 
 interface WardPayload {
   id: number;
@@ -47,16 +54,23 @@ interface VoterPayload {
 type LookupResponse =
   | { result: 'booth'; voter: VoterPayload; ward: WardPayload | null; booth: BoothPayload }
   | { result: 'not_found' }
-  | { result: 'unavailable'; reason?: string };
+  | { result: 'unavailable'; reason?: string }
+  | { result: 'invalid' };
+
+/** Longer than the server's own upstream timeout, short enough to give up on a stalled connection. */
+export const LOOKUP_TIMEOUT_MS = 15000;
 
 interface Messages {
   registeredAs: string;
   wardLabel: string;
+  wardTemplate: string;
   boothLabel: string;
   serialNo: string;
   wardUnknown: string;
   notFound: string;
   unavailable: string;
+  invalid: string;
+  searching: string;
   directions: string;
   directionsAria: string;
 }
@@ -111,7 +125,7 @@ function renderBooth(
   if (data.ward) {
     const link = document.createElement('a');
     link.href = wardHref(lang, data.ward.id);
-    link.textContent = pick(lang, data.ward.nameEn, data.ward.nameKn);
+    link.textContent = formatWardLabel(msgs.wardTemplate, lang, data.ward);
     ward.appendChild(link);
   } else {
     ward.appendChild(para(msgs.wardUnknown));
@@ -157,8 +171,13 @@ function renderResult(
       // the citizen's next step is identical (see the i18n hint).
       container.replaceChildren(para(msgs.unavailable));
       return;
+    case 'invalid':
+      container.replaceChildren(para(msgs.invalid));
+      return;
   }
 }
+
+let nextResultId = 1;
 
 function wire(form: HTMLFormElement): void {
   const input = form.querySelector<HTMLInputElement>('input[name="epic"]');
@@ -170,41 +189,72 @@ function wire(form: HTMLFormElement): void {
   const msgs: Messages = {
     registeredAs: form.dataset.msgRegisteredAs ?? '',
     wardLabel: form.dataset.msgWardLabel ?? '',
+    wardTemplate: form.dataset.msgWardTemplate ?? '',
     boothLabel: form.dataset.msgBoothLabel ?? '',
     serialNo: form.dataset.msgSerialNo ?? '',
     wardUnknown: form.dataset.msgWardUnknown ?? '',
     notFound: form.dataset.msgNotFound ?? '',
     unavailable: form.dataset.msgUnavailable ?? '',
+    invalid: form.dataset.msgInvalid ?? '',
+    searching: form.dataset.msgSearching ?? '',
     directions: form.dataset.msgDirections ?? '',
     directionsAria: form.dataset.msgDirectionsAria ?? '',
   };
 
+  // A number the app refuses is an invalid field (design-system §7.10): mark
+  // it so assistive technology links the field to the message in the result
+  // region, and drop the mark as soon as it is edited or re-submitted.
+  if (!result.id) result.id = `booth-result-${nextResultId++}`;
+  const markInvalid = (): void => {
+    input.setAttribute('aria-invalid', 'true');
+    input.setAttribute('aria-describedby', result.id);
+  };
+  const markValid = (): void => {
+    input.removeAttribute('aria-invalid');
+    input.removeAttribute('aria-describedby');
+  };
+  input.addEventListener('input', markValid);
+
   form.addEventListener('submit', (event) => {
     const value = input.value.trim();
-    if (!value) return; // native `required` validation handles this
-
     event.preventDefault();
+    markValid();
+    if (!value) {
+      // The form is `novalidate`, so an empty field is answered here, inline,
+      // instead of with the browser's own bubble.
+      result.replaceChildren(para(msgs.invalid));
+      markInvalid();
+      input.focus();
+      return;
+    }
     if (submitButton) submitButton.disabled = true;
     result.setAttribute('aria-busy', 'true');
+    // The result region is the live region: say what is happening before the
+    // answer arrives, so a slow lookup never looks like a dead button.
+    result.replaceChildren(para(msgs.searching));
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
 
     fetch('/api/booth-lookup', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ epic: value }),
+      signal: controller.signal,
     })
-      .then((res) => {
+      .then((res): Promise<LookupResponse> => {
+        // The endpoint answers 400 only for a number that cannot be a voter ID.
+        if (res.status === 400) return Promise.resolve({ result: 'invalid' });
         if (!res.ok) throw new Error(`booth-lookup: ${res.status}`);
         return res.json() as Promise<LookupResponse>;
       })
+      .catch((): LookupResponse => ({ result: 'unavailable', reason: 'failed' }))
       .then((data) => {
         renderResult(result, lang, msgs, data);
-      })
-      .catch(() => {
-        // Fetch/parse failed — degrade to the real no-JS submission rather
-        // than leave the visitor stuck with a spinner.
-        form.submit();
+        if (data.result === 'invalid') markInvalid();
       })
       .finally(() => {
+        clearTimeout(timer);
         if (submitButton) submitButton.disabled = false;
         result.removeAttribute('aria-busy');
       });

@@ -4,8 +4,10 @@
  *
  * Public lookup is mounted on the home page and handled by
  * `src/islands/BoothLookup.ts` through POST /api/booth-lookup.
- * The legacy form action is retained deliberately, but its informational
- * route has been removed: there is no supported no-JS booth lookup page.
+ * The form has no `action`: the old `/voting-guide/find-booth` route is
+ * removed (architecture §15) and there is no supported no-JS booth lookup.
+ * The island always cancels the native submit, so the voter ID is never put
+ * in a URL (hence `method="post"`, not a GET).
  * Keep the reusable result rendering available without moving POST
  * handling into the FAQ.
  *
@@ -23,6 +25,7 @@ import FormField from './FormField.astro';
 import Button from './Button.astro';
 import { t, localePath, type Lang } from '../i18n';
 import { directionsUrl } from '../lib/maps-links';
+import { wardLabel } from '../lib/ward-label';
 import type { BoothLookupResult } from '../lib/booth-lookup';
 
 interface Props {
@@ -51,17 +54,20 @@ const directionsAriaTemplate = t(lang, 'findBooth.result.directionsAriaLabel');
 
 <form
   method="post"
-  action={localePath(lang, '/voting-guide/find-booth')}
+  novalidate
   class="booth-form"
   data-booth-lookup
   data-lang={lang}
   data-msg-registered-as={t(lang, 'findBooth.result.registeredAs')}
   data-msg-ward-label={t(lang, 'findBooth.result.wardLabel')}
+  data-msg-ward-template={t(lang, 'nav.ward')}
   data-msg-booth-label={t(lang, 'findBooth.result.boothLabel')}
   data-msg-serial-no={serialTemplate}
   data-msg-ward-unknown={t(lang, 'findBooth.result.wardUnknown')}
   data-msg-not-found={t(lang, 'findBooth.result.notFound')}
   data-msg-unavailable={t(lang, 'findBooth.result.unavailable')}
+  data-msg-invalid={t(lang, 'findBooth.result.invalid')}
+  data-msg-searching={t(lang, 'findBooth.result.searching')}
   data-msg-directions={t(lang, 'findBooth.result.directions')}
   data-msg-directions-aria={directionsAriaTemplate}
 >
@@ -90,7 +96,7 @@ const directionsAriaTemplate = t(lang, 'findBooth.result.directionsAriaLabel');
           <p class="booth-section-label">{t(lang, 'findBooth.result.wardLabel')}</p>
           {booth.ward ? (
             <a href={localePath(lang, `/ward/${booth.ward.id}`)}>
-              {pick(booth.ward.nameEn, booth.ward.nameKn)}
+              {wardLabel(lang, booth.ward)}
             </a>
           ) : (
             <p>{t(lang, 'findBooth.result.wardUnknown')}</p>

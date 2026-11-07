@@ -48,6 +48,7 @@ interface Elements {
   msgSourceInvalid: string;
   msgGenericError: string;
   msgSuccess: string;
+  msgDetailRequired: string;
 }
 
 let els: Elements | null = null;
@@ -86,6 +87,7 @@ function findElements(root: ParentNode): Elements | null {
     msgSourceInvalid: text(dialog, '[data-msg-source-invalid]'),
     msgGenericError: text(dialog, '[data-msg-generic-error]'),
     msgSuccess: text(dialog, '[data-msg-success]'),
+    msgDetailRequired: text(dialog, '[data-msg-detail-required]'),
   };
 }
 
@@ -109,6 +111,7 @@ function renderBlocks(container: HTMLElement, template: HTMLTemplateElement, tar
     const block = (template.content.cloneNode(true) as DocumentFragment).querySelector<HTMLElement>('[data-flag-block]')!;
     block.dataset.targetRef = target.targetRef;
     block.querySelector('[data-flag-source-error]')!.id = `flag-source-error-${index}`;
+    block.querySelector('[data-flag-detail-error]')!.id = `flag-detail-error-${index}`;
     block.querySelector('[data-flag-block-title]')!.textContent = target.label;
     const detailLabel = block.querySelector<HTMLLabelElement>('[data-flag-detail-label]')!;
     detailLabel.textContent = (isOther(target) ? detailLabel.dataset.labelOther : detailLabel.dataset.labelDefault) ?? '';
@@ -116,6 +119,8 @@ function renderBlocks(container: HTMLElement, template: HTMLTemplateElement, tar
     const source = block.querySelector<HTMLInputElement>('input[name="sourceUrl"]')!;
     const suggested = block.querySelector<HTMLInputElement>('input[name="suggestedValue"]')!;
     detail.id = `flag-detail-${index}`;
+    // Typing into a refused field answers its error.
+    detail.addEventListener('input', () => clearFieldError(detail, block.querySelector<HTMLElement>('[data-flag-detail-error]')!));
     source.id = `flag-source-${index}`;
     suggested.id = `flag-suggested-${index}`;
     detailLabel.htmlFor = detail.id;
@@ -165,19 +170,31 @@ function selectedTargets(): FlagTarget[] {
   return currentTargets.filter((target) => ticked.has(target.targetRef));
 }
 
+/** Hides one field's error text and drops its invalid state. */
+function clearFieldError(control: HTMLElement, error: HTMLElement): void {
+  error.hidden = true;
+  error.textContent = '';
+  control.removeAttribute('aria-invalid');
+  control.removeAttribute('aria-describedby');
+}
+
+/** Shows one field's error text and marks the control invalid and described by it (§7.10). */
+function showFieldError(control: HTMLElement, error: HTMLElement, message: string): void {
+  error.hidden = false;
+  error.textContent = message;
+  control.setAttribute('aria-invalid', 'true');
+  control.setAttribute('aria-describedby', error.id);
+}
+
 function clearErrors(): void {
   if (!els) return;
   els.rateLimitError.hidden = true;
   els.rateLimitError.textContent = '';
   els.genericError.hidden = true;
   els.genericError.textContent = '';
-  for (const e of els.blocks.querySelectorAll<HTMLElement>('[data-flag-source-error]')) {
-    e.hidden = true;
-    e.textContent = '';
-  }
-  for (const input of els.blocks.querySelectorAll<HTMLInputElement>('input[name="sourceUrl"]')) {
-    input.removeAttribute('aria-invalid');
-    input.removeAttribute('aria-describedby');
+  for (const block of els.blocks.querySelectorAll<HTMLElement>('[data-flag-block]')) {
+    clearFieldError(block.querySelector<HTMLElement>('input[name="sourceUrl"]')!, block.querySelector<HTMLElement>('[data-flag-source-error]')!);
+    clearFieldError(block.querySelector<HTMLElement>('textarea[name="detail"]')!, block.querySelector<HTMLElement>('[data-flag-detail-error]')!);
   }
 }
 
@@ -282,7 +299,12 @@ async function submitTargets(targets: FlagTargetPayload[]): Promise<void> {
   } catch { showGenericError(); }
 }
 
-/** Reads every ticked target's block; reports the first problem (nothing ticked, or a bad source link) and returns null. */
+/**
+ * Reads every ticked target's block. The form is `novalidate`, so each
+ * problem (nothing ticked, an empty description, a bad source link) is shown
+ * inline next to its field (§7.10) rather than as a browser bubble; focus
+ * goes to the first one and null is returned.
+ */
 function captureTargets(): FlagTargetPayload[] | null {
   if (!els) return null;
   const chosen = selectedTargets();
@@ -293,21 +315,21 @@ function captureTargets(): FlagTargetPayload[] | null {
     return null;
   }
   const payload: FlagTargetPayload[] = [];
+  let firstInvalid: HTMLElement | null = null;
   for (const target of chosen) {
     const block = blockFor(target.targetRef)!;
-    const detail = block.querySelector<HTMLTextAreaElement>('textarea[name="detail"]')!.value.trim();
+    const detailBox = block.querySelector<HTMLTextAreaElement>('textarea[name="detail"]')!;
+    const detail = detailBox.value.trim();
     const source = block.querySelector<HTMLInputElement>('input[name="sourceUrl"]')!;
     const sourceUrl = source.value.trim() || null;
-    if (sourceUrl && !/^https?:\/\//i.test(sourceUrl)) {
-      const error = block.querySelector<HTMLElement>('[data-flag-source-error]')!;
-      error.hidden = false;
-      error.textContent = els.msgSourceInvalid;
-      source.setAttribute('aria-invalid', 'true');
-      source.setAttribute('aria-describedby', error.id);
-      source.focus();
-      return null;
+    if (!detail) {
+      showFieldError(detailBox, block.querySelector<HTMLElement>('[data-flag-detail-error]')!, els.msgDetailRequired);
+      firstInvalid ??= detailBox;
     }
-    if (!detail) return null; // native `required` reports the empty case
+    if (sourceUrl && !/^https?:\/\//i.test(sourceUrl)) {
+      showFieldError(source, block.querySelector<HTMLElement>('[data-flag-source-error]')!, els.msgSourceInvalid);
+      firstInvalid ??= source;
+    }
     payload.push({
       targetType: target.targetType,
       targetRef: target.targetRef,
@@ -315,6 +337,10 @@ function captureTargets(): FlagTargetPayload[] | null {
       suggestedValue: block.querySelector<HTMLInputElement>('input[name="suggestedValue"]')?.value.trim() || null,
       sourceUrl,
     });
+  }
+  if (firstInvalid) {
+    firstInvalid.focus();
+    return null;
   }
   return payload;
 }
@@ -324,8 +350,6 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
   if (!els) return;
 
   clearErrors();
-  if (selectedTargets().length === 0) { captureTargets(); return; }
-  if (!els.form.reportValidity()) return;
   const payload = captureTargets();
   if (!payload) return;
 

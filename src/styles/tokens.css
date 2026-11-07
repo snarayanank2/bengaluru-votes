@@ -44,8 +44,6 @@
   --why-vote-text: #6b4a06;
   --why-vote-ink: #18230f;
   --why-vote-pill: rgba(24, 35, 15, 0.1);
-  --basics-muted: #57624a;
-  --basics-border: rgba(24, 35, 15, 0.12);
   --methodology-bg: #ccdabd;
   --methodology-text: #28371c;
   --shadow-hero-button-hover: 0 2px 6px rgba(19, 32, 16, 0.08), 0 8px 18px rgba(19, 32, 16, 0.12);
@@ -63,13 +61,12 @@
   --color-hero-muted: var(--hero-muted);
   --color-hero-surface: var(--hero-surface);
   --color-hero-alert: var(--hero-alert);
+  --color-on-hero-alert: var(--white);
   --color-hero-button-text: var(--hero-button-text);
   --color-why-vote-bg: var(--why-vote-bg);
   --color-why-vote-text: var(--why-vote-text);
   --color-why-vote-ink: var(--why-vote-ink);
   --color-why-vote-pill: var(--why-vote-pill);
-  --color-basics-muted: var(--basics-muted);
-  --color-basics-border: var(--basics-border);
   --color-methodology-bg: var(--methodology-bg);
   --color-methodology-text: var(--methodology-text);
   --color-surface: var(--gray-100);

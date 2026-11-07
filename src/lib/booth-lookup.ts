@@ -3,11 +3,12 @@
  * between the raw upstream record (`src/lib/electoral-api.ts`) and something
  * this platform can render.
  *
- * Two callers, one function, deliberately: `src/pages/api/booth-lookup.ts`
- * and the no-JS POST branch of `src/features/pages/FindBooth.astro` (and the
- * home page's booth card, which posts to the same page). The page imports
- * this directly and never fetches its own endpoint — the same convention
- * Home.astro follows with `lookupWardByAddress`.
+ * Its one live caller is `src/pages/api/booth-lookup.ts`, which the home
+ * page's booth card reaches through `src/islands/BoothLookup.ts`. The
+ * unrouted `src/features/pages/FindBooth.astro` (architecture §15) still has
+ * a no-JS POST branch that imports this directly instead of fetching the
+ * endpoint — the same convention Home.astro follows with
+ * `lookupWardByAddress` — but no route renders it.
  *
  * WHAT THIS ADDS over the upstream call:
  *

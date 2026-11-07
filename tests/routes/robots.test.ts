@@ -16,12 +16,15 @@ describe('robots.txt (Task 57; architecture §8)', () => {
     const body = await (await GET({} as any)).text();
     expect(body).toContain('User-agent: *');
     expect(body).toContain('Allow: /');
-    expect(body).toContain('Disallow: /transcribe/');
-    expect(body).not.toContain('Disallow: /account/');
-    expect(body).toContain('Disallow: /curator/');
-    expect(body).toContain('Disallow: /admin/');
-    expect(body).not.toContain('Disallow: /partner/');
-    expect(body).toContain('Disallow: /api/');
+    // Path prefixes with no trailing slash, so the bare /curator and
+    // /transcribe URLs are matched as well as everything beneath them.
+    const rules = body.split('\n');
+    for (const prefix of ['/transcribe', '/curator', '/admin', '/api']) {
+      expect(rules).toContain(`Disallow: ${prefix}`);
+      expect(rules).not.toContain(`Disallow: ${prefix}/`);
+    }
+    expect(body).not.toContain('Disallow: /account');
+    expect(body).not.toContain('Disallow: /partner');
     expect(body).toContain('Disallow: /login');
     expect(body).toContain('Sitemap: https://bengaluruvotes.opencity.in/sitemap.xml');
   });

@@ -6,14 +6,15 @@
  *     that doesn't exist — same pattern as src/pages/ward/[id].astro);
  *   - dispatching the POST by its hidden `formAction` field (`fix` or
  *     `reject`; anything else is a 400), and the resulting redirect or
- *     re-render: a refused fix re-renders with 400 and what was typed;
+ *     re-render: a refused fix re-renders with 400 and what was typed (a fix
+ *     that changes nothing re-renders with a 200 and a notice);
  *   - no-store on every response.
  */
 import { markFlagSpam } from '../../../lib/flags';
 import QueueItem from '../../../features/pages/curator/QueueItem.astro';
 import StaffError from '../../../features/pages/StaffError.astro';
 import { handleFlagFix, handleReject, loadCuratorLang, loadQueueItem } from '../../../lib/curator';
-import { loadWardOptions, type WardOption } from '../../../lib/curator-fix';
+import { loadWardOptions, refusalPresentation, type WardOption } from '../../../lib/curator-fix';
 import type { FieldError, RawField } from '../../../lib/affidavit-form';
 
 const session = Astro.locals.session!;
@@ -64,8 +65,10 @@ if (item && Astro.request.method === 'POST') {
     message = { kind: 'notice', key: 'curator.queueItem.alreadyResolved' };
     item = (await loadQueueItem(itemId))!;
   } else {
-    message = { kind: 'error', key: outcome.key };
-    status = 400;
+    // "Nothing changed" is a notice with a 200; every other refusal is an error with a 400.
+    const presentation = refusalPresentation(outcome.key);
+    message = { kind: presentation.kind, key: outcome.key };
+    status = presentation.status;
     if (outcome.kind === 'refused') {
       fixError = outcome.error;
       fixRaw = outcome.raw;

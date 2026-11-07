@@ -51,7 +51,7 @@ describe('the candidate editor on structured fields', () => {
     const c = await fx.candidateWithAffidavit(WARD_A.id);
     const res = await page(c.candidateId, save('field:age', { 'status.age': 'value', age: '47' }));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe(`/curator/candidate/${c.candidateId}`);
+    expect(res.headers.get('location')).toBe(`/curator/candidate/${c.candidateId}?saved=1`);
     const age = (await fieldRow(c.candidateId, 'age'))!;
     expect(age.valueData).toEqual({ key: 'age', status: 'value', years: 47 });
     expect(age.checkedBy).toBe(curator.userId);
@@ -71,15 +71,30 @@ describe('the candidate editor on structured fields', () => {
     expect((await candidateRow(c.candidateId)).wardId).toBe(WARD_B.id);
   });
 
+  it('refuses an invalid value with an error banner and a 400', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    const res = await page(c.candidateId, save('field:age', { 'status.age': 'value', age: '121' }));
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain(t('en', 'transcribe.error.age_range'));
+    expect(html).toContain('role="alert"');
+    expect((await fieldRow(c.candidateId, 'age'))!.checkedBy).toBeNull();
+    expect((await candidateRow(c.candidateId)).wardId).toBe(WARD_A.id);
+  });
+
+  // Nothing failed and there is nothing to recover from: a notice (role=status)
+  // with a 200, not an error banner with a 400 (design-system §7.6).
   it.each([
-    ['an unchanged value', 'field:age', { 'status.age': 'value', age: '52' }, 'curator.fix.error.unchanged'],
-    ['an invalid value', 'field:age', { 'status.age': 'value', age: '121' }, 'transcribe.error.age_range'],
-    ['the same ward', 'ward', { wardId: String(99421) }, 'curator.fix.error.unchanged'],
-  ] as const)('refuses %s', async (_label, action, fields, key) => {
+    ['an unchanged value', 'field:age', { 'status.age': 'value', age: '52' }],
+    ['the same ward', 'ward', { wardId: String(99421) }],
+  ] as const)('answers %s with a notice and a 200, and writes nothing', async (_label, action, fields) => {
     const c = await fx.candidateWithAffidavit(WARD_A.id);
     const res = await page(c.candidateId, save(action, fields));
-    expect(res.status).toBe(400);
-    expect(await res.text()).toContain(t('en', key));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain(t('en', 'curator.fix.error.unchanged'));
+    expect(html).toContain('role="status"');
+    expect(html).not.toContain('role="alert"');
     expect((await fieldRow(c.candidateId, 'age'))!.checkedBy).toBeNull();
     expect((await candidateRow(c.candidateId)).wardId).toBe(WARD_A.id);
   });
@@ -141,6 +156,63 @@ async function batch(id: number, overrides: Record<string, string> = {}) {
   return save('fields', { ...values, ...overrides });
 }
 
+describe('the confirmation after a save', () => {
+  const saved = (id: number, query = '?saved=1') => run(CandidateRoute, `/curator/candidate/${id}${query}`, { auth: curator, params: { id: String(id) } });
+
+  it('shows "Saved and published" as a notice after a real save', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    expect((await page(c.candidateId, save('field:age', { 'status.age': 'value', age: '47' }))).status).toBe(302);
+    const res = await saved(c.candidateId);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain(t('en', 'curator.candidateEdit.notice.saved'));
+    expect(html).toContain('role="status"');
+  });
+
+  // Only a name or party also stamps the candidate row; every other field stamps
+  // just its own row, and the notice must still appear for those.
+  it('shows it after saving a field that does not touch the candidate row, on an older candidate', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    await db.update(schema.candidates).set({ updatedAt: new Date(Date.now() - 60 * 60 * 1000) }).where(eq(schema.candidates.id, c.candidateId));
+    expect((await page(c.candidateId, save('field:age', { 'status.age': 'value', age: '47' }))).status).toBe(302);
+    expect((await candidateRow(c.candidateId)).updatedAt.getTime()).toBeLessThan(Date.now() - 30 * 60 * 1000);
+    expect(await (await saved(c.candidateId)).text()).toContain(t('en', 'curator.candidateEdit.notice.saved'));
+  });
+
+  it('shows it after a ward-only save too', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    await page(c.candidateId, save('ward', { wardId: String(WARD_B.id) }));
+    expect(await (await saved(c.candidateId)).text()).toContain(t('en', 'curator.candidateEdit.notice.saved'));
+  });
+
+  // The query string is never proof: a stale or typed URL for a candidate
+  // nobody just edited shows no notice.
+  it('shows nothing for ?saved=1 when the candidate was not edited just now', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    const anHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    await db.update(schema.candidates).set({ updatedAt: anHourAgo }).where(eq(schema.candidates.id, c.candidateId));
+    await db.update(schema.candidateFields).set({ updatedAt: anHourAgo }).where(eq(schema.candidateFields.candidateId, c.candidateId));
+    expect(await (await saved(c.candidateId)).text()).not.toContain(t('en', 'curator.candidateEdit.notice.saved'));
+  });
+
+  it('shows nothing on a plain visit', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    await page(c.candidateId, save('field:age', { 'status.age': 'value', age: '47' }));
+    expect(await (await saved(c.candidateId, '')).text()).not.toContain(t('en', 'curator.candidateEdit.notice.saved'));
+  });
+
+  it('is in the curator\'s saved language', async () => {
+    const c = await fx.candidateWithAffidavit(WARD_A.id);
+    await page(c.candidateId, save('field:age', { 'status.age': 'value', age: '47' }));
+    await db.update(schema.users).set({ language: 'kn' }).where(eq(schema.users.id, curator.userId));
+    try {
+      expect(await (await saved(c.candidateId)).text()).toContain(t('kn', 'curator.candidateEdit.notice.saved'));
+    } finally {
+      await db.update(schema.users).set({ language: 'en' }).where(eq(schema.users.id, curator.userId));
+    }
+  });
+});
+
 describe('one save for report-card and ward changes', () => {
   it('saves multiple changes and ward together, leaving other provenance untouched', async () => {
     const c = await fx.candidateWithAffidavit(WARD_A.id);
@@ -177,7 +249,10 @@ describe('one save for report-card and ward changes', () => {
     const form = await batch(c.candidateId, { age: '48' });
     form.delete('confirmPublish');
     expect((await page(c.candidateId, form)).status).toBe(400);
-    expect((await page(c.candidateId, await batch(c.candidateId))).status).toBe(400);
+    // Saving the form exactly as it opened changes nothing: a notice, not an error.
+    const unchanged = await page(c.candidateId, await batch(c.candidateId));
+    expect(unchanged.status).toBe(200);
+    expect(await unchanged.text()).toContain(t('en', 'curator.fix.error.unchanged'));
     expect((await fieldRow(c.candidateId, 'age'))!.checkedBy).toBeNull();
   });
 

@@ -1,7 +1,9 @@
 ---
 /**
- * 404 (KN) — see src/pages/404.astro's header comment; Astro serves this
- * twin for unmatched routes under /kn/.
+ * 404 (KN) — see src/pages/404.astro's header comment. Astro reaches this
+ * twin only when a matched `/kn/…` route (e.g. a ward id that does not
+ * exist) ends its request with a 404; an unmatched `/kn/…` URL gets the
+ * Kannada page from src/pages/404.astro, which reads the language off the path.
  */
 import NotFound from '../../features/pages/NotFound.astro';
 

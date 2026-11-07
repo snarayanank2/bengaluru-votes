@@ -1,8 +1,8 @@
 ---
 /**
- * Friendly 404 (`/404`, `/kn/404`) — Task 23.
+ * Friendly 404 (`/404`, `/kn/404`) — Task 23. Its title is the page's H1.
  *
- * The actual HTTP 404 status is set by the two thin route twins
+ * The actual HTTP 404 status is set by the route shims
  * (src/pages/404.astro, src/pages/kn/404.astro), NOT here — a component
  * rendered as a page's slot child can't end the response with a custom
  * status (see src/pages/ward/[id].astro's header comment for the same
@@ -39,7 +39,7 @@ const body = t(lang, 'error.notFound.body');
 ---
 
 <Base lang={lang} title={title} description={body} path="/404" noindex={true}>
-  <EmptyState fact={title} nextStep={body}>
+  <EmptyState fact={title} nextStep={body} headingLevel={1}>
     <div class="links">
       <Button variant="primary" href={localePath(lang, '/')} lang={lang}>
         {t(lang, 'error.backHome')}

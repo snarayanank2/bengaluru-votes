@@ -157,6 +157,30 @@ describe('/login, /kn/login', () => {
     expect(html).not.toContain('wrong-password-wrong-password');
   });
 
+  // Design-system §7.10: a failed submit puts focus on the relevant field (a
+  // keyboard user must not restart at the top). `autofocus` does it without a script.
+  it('a failed sign-in autofocuses the email field and links the error to both fields', async () => {
+    await db.insert(schema.users).values({ email: KNOWN_EMAIL, role: 'curator', status: 'active', passwordHash: HASH });
+    const html = normalize(await (await post('en', { destination: KNOWN_EMAIL, password: 'wrong-password-wrong-password', next: '/' })).text());
+    const email = html.match(/<input[^>]*id="login-destination"[^>]*>/)![0];
+    const secret = html.match(/<input[^>]*id="login-password"[^>]*>/)![0];
+    expect(email).toContain('autofocus');
+    expect(email).toContain('aria-describedby="login-error"');
+    expect(email).toContain('aria-invalid="true"');
+    expect(secret).toContain('aria-invalid="true"');
+    expect(secret).not.toContain('autofocus');
+    expect(secret).toContain('aria-describedby="login-error"');
+    expect(html).toContain('id="login-error"');
+    expect(html).toContain('role="alert"');
+  });
+
+  it('a first visit does not steal focus or point at an error that is not there', async () => {
+    const html = normalize(await (await get('en')).text());
+    expect(html).not.toContain('autofocus');
+    expect(html).not.toContain('aria-describedby="login-error"');
+    expect(html).not.toContain('aria-invalid');
+  });
+
   it('an unknown email with the right password gets the SAME error and creates no user', async () => {
     const res = await post('en', { destination: NEW_EMAIL, password: PASSWORD, next: '/' });
     expect(res.status).toBe(200);

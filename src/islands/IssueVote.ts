@@ -1,4 +1,5 @@
 /** Inline anonymous voting. Receipt state is fetched client-side to keep public HTML cache-safe. */
+import { formatWardLabel } from '../lib/ward-label-format';
 type Grecaptcha = { ready(cb: () => void): void; execute(key: string, opts: { action: string }): Promise<string> };
 declare global { interface Window { grecaptcha?: Grecaptcha } }
 const MAX_SELECTIONS = 3;
@@ -22,8 +23,16 @@ function applyStatus(zone: HTMLElement, payload: { status: string; wardId?: numb
   if (elsewhere) {
     elsewhere.hidden = payload.status !== 'voted_elsewhere';
     if (!elsewhere.hidden) {
-      const name = document.documentElement.lang === 'kn' ? payload.wardNameKn : payload.wardNameEn;
-      elsewhere.textContent = (zone.dataset.msgVotedElsewhere ?? '').replace('{ward}', name ?? String(payload.wardId ?? ''));
+      // The public place label ("Ward 1 Ramaswamy Palya"), built from the
+      // `nav.ward` template the server rendered, like every other ward label.
+      const label = payload.wardId === undefined
+        ? ''
+        : formatWardLabel(zone.dataset.msgWardTemplate ?? '', document.documentElement.lang, {
+            id: payload.wardId,
+            nameEn: payload.wardNameEn ?? '',
+            nameKn: payload.wardNameKn ?? '',
+          });
+      elsewhere.textContent = (zone.dataset.msgVotedElsewhere ?? '').replace('{ward}', () => label);
     }
   }
 }
@@ -52,22 +61,29 @@ function renderResults(zone: HTMLElement, results: Array<{ issueId: number; titl
   if (personal) personal.hidden = false;
   const heading = zone.querySelector<HTMLElement>('[data-vote-results-heading]');
   if (heading) heading.hidden = false;
-  list.replaceChildren(...results.filter((result) => result.count > 0).slice(0, 5).map((result) => {
+  list.replaceChildren(...results.filter((result) => result.count > 0).slice(0, 5).map((result, index) => {
     const li = document.createElement('li');
     const title = titleFor(result);
     const percentage = `${result.sharePct}%`;
+    const rank = String(index + 1);
     li.className = 'issue-result';
-    li.setAttribute('aria-label', `${title ?? ''}: ${percentage}`);
+    li.setAttribute('aria-label', `${rank}. ${title ?? ''}: ${percentage}`);
 
     const header = document.createElement('div');
     header.className = 'issue-result-header';
+    // Rank is shown as a number as well as by order (design-system §7.11), so
+    // it still reads without the colour of the bar.
+    const rankElement = document.createElement('span');
+    rankElement.className = 'issue-result-rank';
+    rankElement.setAttribute('aria-hidden', 'true');
+    rankElement.textContent = rank;
     const titleElement = document.createElement('span');
     titleElement.className = 'issue-result-title';
     titleElement.textContent = title ?? '';
     const percentageElement = document.createElement('span');
     percentageElement.className = 'issue-result-percentage';
     percentageElement.textContent = percentage;
-    header.append(titleElement, percentageElement);
+    header.append(rankElement, titleElement, percentageElement);
 
     const track = document.createElement('div');
     track.className = 'issue-result-track';

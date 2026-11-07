@@ -15,5 +15,6 @@
   "BJP": { "kn": "ಬಿಜೆಪಿ" },
   "INC": { "kn": "ಕಾಂಗ್ರೆಸ್", "note": "Kannada media refers to the party as 'ಕಾಂಗ್ರೆಸ್' (Congress), not an INC acronym." },
   "JD(S)": { "kn": "ಜೆಡಿಎಸ್" },
+  "flag an error": { "kn": "ತಪ್ಪು ವರದಿ ಮಾಡಿ", "note": "The citizen-facing action (trigger button and modal title) is one phrase in Kannada: 'ತಪ್ಪು ವರದಿ ಮಾಡಿ'. Do not mix in 'ದೋಷ' or the transliterated 'ಫ್ಲ್ಯಾಗ್' for citizens; 'ಫ್ಲ್ಯಾಗ್' is staff vocabulary (curator queue)." },
   "AAP": { "kn": "ಆಪ್", "review": true, "note": "Short transliterated form used in Kannada media; full name 'ಆಮ್ ಆದ್ಮಿ ಪಕ್ಷ' may be preferred on first mention — confirm house style." }
 }

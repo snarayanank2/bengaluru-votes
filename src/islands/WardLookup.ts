@@ -34,6 +34,7 @@
  * the same rule as `localePath()` (src/i18n/index.ts) without importing it.
  */
 import { configureMapsApi, importLibrary } from '../lib/maps-loader';
+import { formatWardLabel } from '../lib/ward-label-format';
 
 interface WardRow {
   id: number;
@@ -52,18 +53,15 @@ function wardHref(lang: string, id: number): string {
   return lang === 'kn' ? `/kn/ward/${id}` : `/ward/${id}`;
 }
 
-function wardName(lang: string, ward: WardRow): string {
-  return lang === 'kn' ? ward.nameKn : ward.nameEn;
-}
-
 function setResultState(container: HTMLElement, state: string): void {
   container.dataset.resultState = state;
 }
 
-function renderWard(container: HTMLElement, lang: string, ward: WardRow, note?: string): void {
+function renderWard(container: HTMLElement, lang: string, wardTemplate: string, ward: WardRow, note?: string): void {
   const link = document.createElement('a');
   link.href = wardHref(lang, ward.id);
-  link.textContent = wardName(lang, ward);
+  // The public place label ("Ward 24 Agaram"), the same one the server builds.
+  link.textContent = formatWardLabel(wardTemplate, lang, ward);
 
   if (!note) {
     setResultState(container, 'success');
@@ -97,7 +95,7 @@ function renderResult(
 ): void {
   switch (data.result) {
     case 'ward':
-      renderWard(container, lang, data.ward, wardNote);
+      renderWard(container, lang, msgs.wardTemplate ?? '', data.ward, wardNote);
       return;
     case 'out_of_coverage':
       renderMessage(container, msgs.outOfCoverage ?? '', 'out-of-coverage');
@@ -148,16 +146,15 @@ const GBA_BOUNDS = { south: 12.7834, west: 77.4098, north: 13.1927, east: 77.834
  * `gmp-error` all leave the server-rendered input exactly where it is —
  * which is the field this page shipped with before autocomplete existed.
  *
- * KNOWN GAP: the element has no `required` property, so replacing the input
- * loses native empty-field validation. An empty submit falls through to the
- * no-JS server path, which handles it — the same place an empty submit went
- * before this island existed.
+ * The element has no `required` property, so replacing the input loses
+ * native empty-field validation; the submit handler below answers an empty
+ * field itself ("Enter an address"), as the no-JS server path does.
  */
 async function attachAutocomplete(
   form: HTMLFormElement,
   input: HTMLInputElement,
   lang: string,
-  onReady: (el: { value: string }) => void,
+  onReady: (el: { value: string; focus(): void }) => void,
 ): Promise<void> {
   const apiKey = form.dataset.mapsKey;
   if (!apiKey) return;
@@ -185,7 +182,7 @@ async function attachAutocomplete(
     });
 
     input.replaceWith(el as unknown as Node);
-    onReady(el as unknown as { value: string });
+    onReady(el as unknown as { value: string; focus(): void });
   } catch {
     // Script blocked, offline, or refused by CSP — the plain input stands.
   }
@@ -334,6 +331,8 @@ export function initWardLookup(root: ParentNode = document): void {
     outOfCoverage: form.dataset.msgOutOfCoverage ?? '',
     ambiguous: form.dataset.msgAmbiguous ?? '',
     unavailable: form.dataset.msgUnavailable ?? '',
+    emptyAddress: form.dataset.msgEmptyAddress ?? '',
+    wardTemplate: form.dataset.msgWardTemplate ?? '',
     locating: form.dataset.msgLocating ?? '',
     locationApproximate: form.dataset.msgLocationApproximate ?? '',
     locationDenied: form.dataset.msgLocationDenied ?? '',
@@ -346,16 +345,22 @@ export function initWardLookup(root: ParentNode = document): void {
   // server-rendered <input>; `attachAutocomplete` swaps in the Places element
   // if — and only if — that succeeds. Both expose a plain `value`, which is
   // the entire reason the swap is safe (see attachAutocomplete's header).
-  let queryField: { value: string } = input;
+  let queryField: { value: string; focus(): void } = input;
   void attachAutocomplete(form, input, lang, (el) => {
     queryField = el;
   });
 
   form.addEventListener('submit', (event) => {
     const value = queryField.value.trim();
-    if (!value) return; // native `required` validation handles this
-
     event.preventDefault();
+    if (!value) {
+      // The Places element has no `required`, and spaces pass a native one:
+      // say what is missing instead of posting an empty query (which used to
+      // come back as the outage message).
+      renderMessage(result, msgs.emptyAddress, 'empty');
+      queryField.focus();
+      return;
+    }
     if (submitButton) submitButton.disabled = true;
     result.setAttribute('aria-busy', 'true');
 

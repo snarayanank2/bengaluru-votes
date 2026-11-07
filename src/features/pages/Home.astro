@@ -15,9 +15,11 @@
  * inline without a page reload.
  *
  * The booth card is `src/components/BoothLookupForm.astro`, handled by the
- * JavaScript island through /api/booth-lookup. Its legacy form action is
- * retained, but the old guide route has been removed. This file has no
- * booth POST branch; public booth lookup requires JavaScript.
+ * JavaScript island through /api/booth-lookup. The old guide route is gone
+ * and the form has no action; this file has no booth POST branch, and public
+ * booth lookup requires JavaScript. Below the form the card always carries
+ * the guided link-out to the official booth finder, because the lookup's
+ * failure messages point at it.
  *
  * CACHE-SAFETY: the GET render below never reads cookies/session and reads
  * app_settings only (src/lib/settings.ts — safe under the anonymous-page
@@ -34,9 +36,12 @@ import Card from '../../components/Card.astro';
 import BoothLookupForm from '../../components/BoothLookupForm.astro';
 import FormField from '../../components/FormField.astro';
 import Button from '../../components/Button.astro';
+import ExternalLinkOut from '../../components/ExternalLinkOut.astro';
 import { t, localePath, type Lang } from '../../i18n';
 import { lookupWardByAddress } from '../../lib/geocode';
 import { mapsConfig } from '../../lib/maps-config';
+import { getSettings } from '../../lib/settings';
+import { wardLabel } from '../../lib/ward-label';
 import { db } from '../../db/client';
 import { wards } from '../../db/schema';
 
@@ -50,6 +55,7 @@ type WardRow = { id: number; nameEn: string; nameKn: string; corporation: string
 
 type LookupResult =
   | { result: 'ward'; ward: WardRow }
+  | { result: 'empty' }
   | { result: 'out_of_coverage' }
   | { result: 'ambiguous' }
   | { result: 'unavailable'; reason: 'budget' | 'failed' };
@@ -92,11 +98,22 @@ if (Astro.request.method === 'POST') {
         break;
     }
   } else {
-    // Defensive only — the input carries `required`, so an empty query
-    // should never reach here from a real browser submit.
-    postResult = { result: 'unavailable', reason: 'failed' };
+    // The Places element has no `required`, so an empty field does reach
+    // here. Nothing failed: there was nothing to look up, so say that rather
+    // than claim an outage.
+    postResult = { result: 'empty' };
   }
 }
+
+// The official booth finder the booth card links out to (the lookup's failure
+// messages send people there). Same value for every visitor, so cache-safe.
+// The home page must still render during a database outage (it did not read
+// the database on GET before), so a failed or slow read just shows the
+// link-out's "official link pending" state instead of holding the page up.
+const boothFinderUrl = await Promise.race([
+  getSettings(['booth_lookup_url']).then((settings) => settings.booth_lookup_url),
+  new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+]).catch(() => null);
 
 // Places Autocomplete on the lookup input (src/islands/WardLookup.ts). Same
 // runtime-config discipline as the ward map: read here, handed over as a data
@@ -109,9 +126,6 @@ function wardHref(id: number): string {
   return localePath(lang, `/ward/${id}`);
 }
 
-function wardName(ward: WardRow): string {
-  return lang === 'kn' ? ward.nameKn : ward.nameEn;
-}
 ---
 
 <Base
@@ -138,6 +152,8 @@ function wardName(ward: WardRow): string {
             data-msg-ambiguous={t(lang, 'home.result.ambiguous')}
             data-msg-out-of-coverage={t(lang, 'home.result.outOfCoverage')}
             data-msg-unavailable={t(lang, 'home.result.unavailable')}
+            data-msg-empty-address={t(lang, 'home.result.emptyAddress')}
+            data-msg-ward-template={t(lang, 'nav.ward')}
             data-msg-use-location={t(lang, 'home.form.useLocation')}
             data-msg-locating={t(lang, 'home.form.locating')}
             data-msg-location-approximate={t(lang, 'home.result.locationApproximate')}
@@ -168,9 +184,10 @@ function wardName(ward: WardRow): string {
             >
               {postResult?.result === 'ward' && (
                 <p>
-                  <a href={wardHref(postResult.ward.id)}>{wardName(postResult.ward)}</a>
+                  <a href={wardHref(postResult.ward.id)}>{wardLabel(lang, postResult.ward)}</a>
                 </p>
               )}
+              {postResult?.result === 'empty' && <p>{t(lang, 'home.result.emptyAddress')}</p>}
               {postResult?.result === 'out_of_coverage' && <p>{t(lang, 'home.result.outOfCoverage')}</p>}
               {postResult?.result === 'ambiguous' && <p>{t(lang, 'home.result.ambiguous')}</p>}
               {postResult?.result === 'unavailable' && <p>{t(lang, 'home.result.unavailable')}</p>}
@@ -230,17 +247,17 @@ function wardName(ward: WardRow): string {
         </div>
 
         <div class="basics-list">
-          <details class="basics-item" open>
-            <summary><span class="basics-number">01</span>{t(lang, 'home.basics.item1.title')}<span class="basics-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></span></summary>
-            <p>{t(lang, 'home.basics.item1.body')}</p>
+          <details class="disclosure basics-item" open>
+            <summary><span class="basics-number">01</span>{t(lang, 'home.basics.item1.title')}</summary>
+            <div class="disclosure-body"><p>{t(lang, 'home.basics.item1.body')}</p></div>
           </details>
-          <details class="basics-item">
-            <summary><span class="basics-number">02</span>{t(lang, 'home.basics.item2.title')}<span class="basics-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></span></summary>
-            <p>{t(lang, 'home.basics.item2.body')}</p>
+          <details class="disclosure basics-item">
+            <summary><span class="basics-number">02</span>{t(lang, 'home.basics.item2.title')}</summary>
+            <div class="disclosure-body"><p>{t(lang, 'home.basics.item2.body')}</p></div>
           </details>
-          <details class="basics-item">
-            <summary><span class="basics-number">03</span>{t(lang, 'home.basics.item3.title')}<span class="basics-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></span></summary>
-            <p>{t(lang, 'home.basics.item3.body')}</p>
+          <details class="disclosure basics-item">
+            <summary><span class="basics-number">03</span>{t(lang, 'home.basics.item3.title')}</summary>
+            <div class="disclosure-body"><p>{t(lang, 'home.basics.item3.body')}</p></div>
           </details>
         </div>
       </div>
@@ -252,6 +269,10 @@ function wardName(ward: WardRow): string {
         <h2>{t(lang, 'home.shortcuts.findBooth.title')}</h2>
         <p class="subheading">{t(lang, 'home.shortcuts.findBooth.description')}</p>
         <BoothLookupForm lang={lang} />
+        <div class="booth-linkout">
+          <p>{t(lang, 'findBooth.linkOut.heading')}</p>
+          <ExternalLinkOut lang={lang} href={boothFinderUrl} label={t(lang, 'findBooth.linkOut.label')} />
+        </div>
         </Card>
       </div>
     </section>
@@ -291,7 +312,9 @@ function wardName(ward: WardRow): string {
   .hero-inner {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 260px;
-    align-items: center;
+    /* Start-aligned, not centred: the lookup result grows the left column
+       and a centred statistics grid would slide down with it. */
+    align-items: start;
     gap: var(--space-8);
     padding-block: var(--space-12);
   }
@@ -444,8 +467,15 @@ function wardName(ward: WardRow): string {
     font-size: var(--text-xs);
   }
 
+  /* The editorial highlight: white text, 5.4:1 on the red. The muted label
+     colour used on the green tiles is only 2.6:1 here. */
   .hero-stat--accent {
     background: var(--color-hero-alert);
+  }
+
+  .hero-stat--accent strong,
+  .hero-stat--accent span {
+    color: var(--color-on-hero-alert);
   }
 
   .why-vote-section {
@@ -558,11 +588,9 @@ function wardName(ward: WardRow): string {
     gap: var(--space-2);
   }
 
+  /* Position and tone only: the box, the 44px summary and the chevron come
+     from the shared .disclosure (global.css). */
   .basics-item {
-    padding: var(--space-4);
-    border: 1px solid var(--color-basics-border);
-    border-radius: 11px;
-    background: var(--color-bg);
     transition: box-shadow 0.18s;
   }
 
@@ -571,18 +599,14 @@ function wardName(ward: WardRow): string {
   }
 
   .basics-item summary {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+    justify-content: flex-start;
     color: var(--color-why-vote-ink);
     font-weight: 600;
     line-height: 1.5;
-    cursor: pointer;
-    list-style: none;
   }
 
-  .basics-item summary::-webkit-details-marker {
-    display: none;
+  .basics-item summary::after {
+    margin-inline-start: auto;
   }
 
   .basics-number {
@@ -593,20 +617,8 @@ function wardName(ward: WardRow): string {
     font-weight: 800;
   }
 
-  .basics-chevron {
-    display: inline-flex;
-    flex: 0 0 auto;
-    margin-inline-start: auto;
-    color: var(--color-basics-muted);
-    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
-  }
-
-  .basics-item[open] .basics-chevron {
-    transform: rotate(180deg);
-  }
-
   .basics-item p {
-    margin: 10px 0 2px;
+    margin: 0;
     color: var(--color-why-vote-ink);
     font-size: 1rem;
     line-height: 1.5;
@@ -660,6 +672,23 @@ function wardName(ward: WardRow): string {
     min-height: 48px;
     background: var(--color-bg);
     border-color: var(--color-bg);
+  }
+
+  .booth-linkout {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-block-start: var(--space-6);
+  }
+
+  .booth-linkout p {
+    margin: 0;
+  }
+
+  /* A refused voter ID: brick border (§7.10), set by BoothLookup.ts via aria-invalid. */
+  .booth-inner :global(.booth-form .form-input[aria-invalid='true']) {
+    border-color: var(--color-danger);
   }
 
   .subheading {

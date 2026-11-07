@@ -37,14 +37,17 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
 
 <dialog class="flag-modal" data-flag-modal data-recaptcha-site-key={recaptchaSiteKey} aria-labelledby="flag-modal-title">
   <div class="flag-modal-inner">
-    <Button variant="tertiary" iconOnly label={t(lang, 'flag.modal.close')} lang={lang} data-modal-close>
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
-    </Button>
-    <h2 id="flag-modal-title">{t(lang, 'flag.modal.title')}</h2>
+    <div class="flag-modal-head">
+      <h2 id="flag-modal-title">{t(lang, 'flag.modal.title')}</h2>
+      <Button variant="tertiary" iconOnly label={t(lang, 'flag.modal.close')} lang={lang} data-modal-close>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </Button>
+    </div>
 
+    <div class="flag-modal-body">
     <p class="flag-candidate" data-flag-candidate hidden></p>
     <p>{t(lang, 'flag.modal.explanation')}</p>
-    <form data-flag-form>
+    <form data-flag-form novalidate>
       <fieldset class="form-field flag-picker">
         <legend class="form-label">{t(lang, 'flag.modal.targetLabel')}</legend>
         <div data-flag-target-options></div>
@@ -59,6 +62,7 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
         {t(lang, 'flag.modal.submit')}
       </Button>
     </form>
+    </div>
   </div>
 
   <template data-flag-block-template>
@@ -68,6 +72,7 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
       <div class="form-field">
         <label class="form-label" data-flag-detail-label data-label-default={t(lang, 'flag.modal.detailLabel')} data-label-other={t(lang, 'flag.modal.otherDetailLabel')}></label>
         <textarea class="form-input" name="detail" rows="3" maxlength="2000" required></textarea>
+        <p class="form-error" data-flag-detail-error hidden></p>
       </div>
       <div class="form-field">
         <label class="form-label" data-flag-source-label>{t(lang, 'flag.modal.sourceLabel')}</label>
@@ -87,6 +92,7 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
   <span hidden data-msg-success>{t(lang, 'flag.modal.success')}</span>
   <span hidden data-msg-verification>{t(lang, 'flag.modal.verification')}</span>
   <span hidden data-msg-paused>{t(lang, 'flag.modal.paused')}</span>
+  <span hidden data-msg-detail-required>{t(lang, 'flag.modal.detailRequired')}</span>
   <span hidden data-msg-select-one>{t(lang, 'flag.modal.selectAtLeastOne')}</span>
   <span hidden data-msg-not-added>{t(lang, 'flag.modal.notAdded')}</span>
   <span hidden data-msg-rate-limit-minute>{t(lang, 'flag.modal.rateLimitedMinute')}</span>
@@ -97,6 +103,9 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
 {isCandidate && recaptchaSiteKey && <script is:inline src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(recaptchaSiteKey)}`} async defer></script>}
 
 <style>
+  /* The dialog itself scrolls when it is taller than the viewport (the
+     browser's modal default); the head below is sticky, so the title and
+     Close stay in view whichever field has focus. */
   .flag-modal {
     padding: 0;
     border: none;
@@ -104,31 +113,44 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
     box-shadow: var(--shadow-modal);
     max-width: 28rem;
     width: calc(100% - var(--space-8));
+    max-height: calc(100dvh - var(--space-8));
+    overflow-y: auto;
   }
 
   .flag-modal::backdrop {
     background: rgba(26, 26, 26, 0.5);
   }
 
-  .flag-modal-inner {
-    position: relative;
-    padding: var(--space-6);
+  .flag-modal-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-6) var(--space-6) var(--space-3);
+    background: var(--color-bg);
+  }
+
+  .flag-modal-body {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    padding: 0 var(--space-6) var(--space-6);
   }
 
   .flag-modal h2 {
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);
     margin: 0;
-    padding-right: var(--space-8);
   }
 
-  .flag-modal-inner :global([data-modal-close]) {
-    position: absolute;
-    top: var(--space-4);
-    right: var(--space-4);
+  /* Pull the 44px Close target's padding into the head's corner. */
+  .flag-modal-head :global([data-modal-close]) {
+    flex: none;
+    margin-block-start: calc(-1 * var(--space-2));
+    margin-inline-end: calc(-1 * var(--space-2));
   }
 
   .flag-candidate {
@@ -172,6 +194,11 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
     border-color: var(--color-primary);
   }
 
+  /* Invalid (§7.10): brick border plus the error text beneath. */
+  :global(.flag-block .form-input[aria-invalid='true']) {
+    border-color: var(--color-danger);
+  }
+
   .form-error {
     margin: 0;
     font-size: var(--text-sm);
@@ -183,6 +210,12 @@ const isCandidate = /^\/(kn\/)?(candidate\/|ward\/\d+\/compare)/.test(Astro.url.
     padding: 0;
     margin: 0;
     min-width: 0;
+  }
+
+  /* The browser gives a legend 2px of inline padding; zero it so the legend
+     shares its left edge with the option rows below (§7.10). */
+  .flag-picker legend {
+    padding: 0;
   }
 
   :global([data-flag-target-options]) {

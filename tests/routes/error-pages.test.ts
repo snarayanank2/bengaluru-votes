@@ -76,6 +76,39 @@ describe('404 page (Task 23) — friendly not-found', () => {
     expect(html).toContain(`href="${localePath('kn', '/voter-faqs')}"`);
   });
 
+  // Astro renders the EN 404.astro for every URL that matches no route, kn or not;
+  // only a matched route returning 404 reaches kn/404.astro. So the EN shim
+  // must pick Kannada itself from the requested path.
+  it.each(['/kn/nosuchpage', '/kn/some/deeper/path', '/kn'])('EN shim renders the Kannada 404 for the unmatched path %s', async (path) => {
+    const { html, response } = await renderPage(NotFoundEn, path);
+
+    expect(response.status).toBe(404);
+    expect(html).toMatch(/<html lang="kn"/);
+    expect(html).toContain(t('kn', 'error.notFound.title'));
+    expect(html).not.toContain(t('en', 'error.notFound.title'));
+    expect(html).toContain(`href="${localePath('kn', '/')}"`);
+    // The toggle's alternate is the English twin.
+    expect(html).toContain('hreflang="en"');
+  });
+
+  it('EN shim stays English for a path that only starts like /kn', async () => {
+    const { html } = await renderPage(NotFoundEn, '/knowledge/base');
+    expect(html).toMatch(/<html lang="en"/);
+    expect(html).toContain(t('en', 'error.notFound.title'));
+  });
+
+  // The page's only heading; without it screen-reader heading navigation
+  // finds nothing on a 404.
+  it.each([
+    ['EN', NotFoundEn, '/missing', 'en'],
+    ['KN', NotFoundKn, '/kn/missing', 'kn'],
+  ] as const)('%s 404 has the title as its one H1', async (_label, Page, path, lang) => {
+    const { html } = await renderPage(Page, path);
+    const h1s = html.match(/<h1\b[^>]*>.*?<\/h1>/g) ?? [];
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toContain(t(lang, 'error.notFound.title'));
+  });
+
   it('does not read any cookie/session — identical markup with/without a cookie on the request, no set-cookie', async () => {
     const container = await makeContainer();
     const plain = await container.renderToResponse(NotFoundEn, {
@@ -103,6 +136,13 @@ describe('500 page (Task 23) — generic, dependency-light error page', () => {
     expect(html).toContain(t('en', 'error.serverError.title'));
     expect(html).toContain(t('en', 'error.serverError.body'));
     expect(html).toContain(`href="${localePath('en', '/')}"`);
+  });
+
+  it('the 500 page has the title as its one H1', async () => {
+    const { html } = await renderPage(ServerError, '/500');
+    const h1s = html.match(/<h1\b[^>]*>.*?<\/h1>/g) ?? [];
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toContain(t('en', 'error.serverError.title'));
   });
 
   it('has no DB/settings import — must be renderable during a DB outage', () => {

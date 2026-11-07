@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import Base from '../../src/layouts/Base.astro';
+import { readFileSync } from 'node:fs';
 import { localePath, otherLang, type Lang } from '../../src/i18n';
 
 const SITE_ORIGIN = 'https://bengaluruvotes.opencity.in';
@@ -305,5 +306,37 @@ describe('Base layout inline scripts carry the per-request CSP nonce (architectu
     const plain = await renderWithNonce(`${SITE_ORIGIN}/ward/57`);
     expect(await renderWithNonce(`${SITE_ORIGIN}/ward/57?utm_source=whatsapp`)).toBe(plain);
     expect(await renderWithNonce(`${SITE_ORIGIN}/ward/57?lang=kn&x=1`)).toBe(plain);
+  });
+});
+
+describe('shared page CSS (src/styles/global.css)', () => {
+  const css = readFileSync('src/styles/global.css', 'utf8');
+  /** The first top-level rule with exactly this selector, or ''. */
+  function rule(selector: string): string {
+    const start = css.indexOf(`\n${selector} {`);
+    return start === -1 ? '' : css.slice(start, css.indexOf('}', start) + 1);
+  }
+
+  // A short page (a 404, the sign-in form) must still put the footer on the bottom edge.
+  it('makes the body a viewport-tall column and <main> take the slack', () => {
+    const body = rule('body');
+    expect(body).toContain('display: flex');
+    expect(body).toContain('flex-direction: column');
+    expect(body).toContain('min-height: 100dvh');
+    expect(rule('body > main')).toContain('flex: 1 0 auto');
+  });
+
+  it('defines the shared confirmation tick (26px box in a 48px row) and the key/value list', () => {
+    expect(rule('.confirm-tick')).toContain('min-height: 48px');
+    expect(rule('.confirm-tick input')).toContain('width: 26px');
+    expect(rule('.confirm-tick input')).toContain('height: 26px');
+    expect(rule('.kv-list dt')).toContain('font-size: var(--text-xs)');
+    expect(rule('.kv-list dt')).toContain('color: var(--color-text-muted)');
+  });
+
+  it('PublishConfirm uses the shared tick rather than redefining it', () => {
+    const component = readFileSync('src/components/PublishConfirm.astro', 'utf8');
+    expect(component).toContain('class="confirm-tick"');
+    expect(component).not.toContain('\n  .confirm-tick {');
   });
 });

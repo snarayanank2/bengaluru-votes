@@ -538,6 +538,15 @@ uses a bare `proxy_pass http://app:4321`, which nginx resolves at config-load
 time, so off-network the test fails with "host not found in upstream" and
 tells you nothing about your actual change.
 
+Two responses are worth a look after a deploy that touches this area: `curl -sI https://<host>/data/gba.geojson` should report
+`content-type: application/geo+json` (`.geojson` is not in nginx's stock
+`mime.types`, so `location /data/gba.geojson` sets `default_type`; without it
+the file goes out as `application/octet-stream`), and `curl -s
+https://<host>/robots.txt` should list `Disallow: /curator`, `/admin`,
+`/transcribe` and `/api` without a trailing slash (the app writes that file,
+not nginx). The static volume is only for the file's *content*; a change to
+this config needs no `static-init` run.
+
 ### What the script does, and why each step is there
 
 1. **Preflight** — ssh reachable, the tree exists and is clean, the env file

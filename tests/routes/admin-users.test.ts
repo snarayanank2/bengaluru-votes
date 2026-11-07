@@ -359,7 +359,33 @@ describe('/admin/users (Task 45)', () => {
       const res = await run(UsersRoute, `/admin/users?q=${encodeURIComponent(EMAILS.eraseTarget)}`, { cookieValue: adminAuth.cookieValue });
       const html = normalize(await res.text());
       expect(html).toContain(EMAILS.eraseTarget);
-      expect(html).toContain(`#${eraseTargetId}`);
+      // A row names an account by its email, never by a database id.
+      expect(html).not.toContain(`#${eraseTargetId}`);
+      expect(html).not.toMatch(/class="user-id"/);
+    });
+
+    it('searches by email and says so (the id is not advertised or shown)', async () => {
+      const html = normalize(await (await run(UsersRoute, '/admin/users', { cookieValue: adminAuth.cookieValue })).text());
+      expect(html).toContain('Search by email');
+      expect(html).not.toContain('Search by id or email');
+      expect(html).not.toMatch(/<span class="user-contact">[^<]*<span class="user-id">/);
+      // Still functional for someone who types an id.
+      const byId = normalize(await (await run(UsersRoute, `/admin/users?q=${eraseTargetId}`, { cookieValue: adminAuth.cookieValue })).text());
+      expect(byId).toContain(EMAILS.eraseTarget);
+    });
+
+    it('every confirmation tick is the shared 26px row, none is a bare checkbox', async () => {
+      const html = normalize(await (await run(UsersRoute, '/admin/users', { cookieValue: adminAuth.cookieValue })).text());
+      const ticks = html.match(/<label class="confirm-tick">/g) ?? [];
+      const boxes = html.match(/type="checkbox"/g) ?? [];
+      expect(boxes.length).toBeGreaterThan(1);
+      expect(ticks).toHaveLength(boxes.length);
+      expect(html).not.toContain('class="checkbox"');
+    });
+
+    it('links back to the console as a body link', async () => {
+      const html = normalize(await (await run(UsersRoute, '/admin/users', { cookieValue: adminAuth.cookieValue })).text());
+      expect(html).toContain('<a class="body-link" href="/admin">');
     });
 
     it('GET ?q=&status=banned narrows to banned accounts', async () => {
@@ -373,6 +399,9 @@ describe('/admin/users (Task 45)', () => {
       const res = await run(UsersRoute, '/admin/users?q=nobody-admin-users-route-test', { cookieValue: adminAuth.cookieValue });
       const html = normalize(await res.text());
       expect(html).toContain('No accounts match.');
+      // An empty list is the shared empty state, not an italic paragraph.
+      expect(html).toContain('class="empty-state"');
+      expect(html).not.toContain('placeholder-note');
     });
 
     it("each row's actions sit in a collapsed <details>, role change included", async () => {

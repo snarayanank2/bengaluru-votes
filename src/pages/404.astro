@@ -1,10 +1,11 @@
 ---
 /**
- * 404 (EN) — thin route twin over src/features/pages/NotFound.astro (see
- * src/features/pages/README.md). Astro auto-invokes this file for any
- * unmatched EN route, AND a dynamic route that ends its own request early
- * with `return new Response(null, { status: 404 })` (e.g.
- * src/pages/ward/[id].astro) falls through to this page for its body.
+ * 404 — route shim over src/features/pages/NotFound.astro (see
+ * src/features/pages/README.md). Astro renders THIS file for every URL that
+ * matches no route, English or `/kn/…` (it picks the language from the
+ * path, below), AND a dynamic route that ends its own request early with
+ * `return new Response(null, { status: 404 })` (e.g. src/pages/ward/[id].astro)
+ * falls through to this page for its body.
  *
  * Astro special-cases a top-level src/pages/404.astro to already respond
  * 404 for its own genuinely-unmatched-URL case, but NOT for the
@@ -17,6 +18,13 @@
 import NotFound from '../features/pages/NotFound.astro';
 
 Astro.response.status = 404;
+
+// Astro renders THIS file for any URL that matches no route, including
+// `/kn/<anything unknown>`: only a matched route that returns a 404 gets its
+// own locale's twin. So a Kannada visitor's dead link must pick Kannada here,
+// from the requested path, or they get an English page under /kn/.
+const { pathname } = Astro.url;
+const lang = pathname === '/kn' || pathname.startsWith('/kn/') ? 'kn' : 'en';
 ---
 
-<NotFound lang="en" />
+<NotFound lang={lang} />

@@ -8,7 +8,11 @@
  *   - dispatching the POSTs via the hidden `formAction` field (`fields`,
  *     with legacy single-field/ward corrections still supported), and the resulting
  *     redirect/re-render/400 status: a refused field save re-renders with
- *     400 and exactly what was typed;
+ *     400 and exactly what was typed, while a save that changes nothing
+ *     re-renders with a 200 and a notice;
+ *   - the "Saved and published" notice after a successful save's redirect
+ *     (`?saved=1`), shown only when the candidate really was edited a moment
+ *     ago (the query string alone is never proof, design-system §7.6);
  *   - no-store on every response.
  */
 import CandidateEdit from '../../../features/pages/curator/CandidateEdit.astro';
@@ -17,11 +21,18 @@ import {
   handleCandidateWardFix,
   loadCandidateForEdit,
   loadCuratorLang,
+  wasEditedRecently,
   type EditFixOutcome,
 } from '../../../lib/curator';
 import StaffError from '../../../features/pages/StaffError.astro';
 import type { FieldError, RawField } from '../../../lib/affidavit-form';
-import { loadFixCandidate, saveCandidateChanges, type CandidateBatchRefusal, loadWardOptions } from '../../../lib/curator-fix';
+import {
+  loadFixCandidate,
+  loadWardOptions,
+  refusalPresentation,
+  saveCandidateChanges,
+  type CandidateBatchRefusal,
+} from '../../../lib/curator-fix';
 import { AFFIDAVIT_FIELD_KEYS, type AffidavitFieldKey } from '../../../lib/affidavit-publish';
 
 const session = Astro.locals.session!;
@@ -36,6 +47,8 @@ const lang = await loadCuratorLang(session.userId);
 
 let message: { kind: 'notice' | 'error'; key: string } | undefined;
 let responseStatus = 200;
+/** How long after a save the redirect's notice is still true. */
+const SAVED_NOTICE_WINDOW_MS = 5 * 60 * 1000;
 let batchRefused: CandidateBatchRefusal | undefined;
 /** Which form was refused, and what was typed into it. */
 let refused: { formAction: string; error?: FieldError; raw?: RawField } | undefined;
@@ -50,11 +63,12 @@ if (candidate && Astro.request.method === 'POST') {
   } else if (formAction === 'fields') {
     const outcome = await saveCandidateChanges(actor, (await loadFixCandidate(candidateId))!, form);
     if (outcome.kind === 'saved') {
-      return new Response(null, { status: 302, headers: { Location: `/curator/candidate/${candidateId}`, 'cache-control': 'no-store' } });
+      return new Response(null, { status: 302, headers: { Location: `/curator/candidate/${candidateId}?saved=1`, 'cache-control': 'no-store' } });
     }
     batchRefused = outcome;
-    message = { kind: 'error', key: outcome.key };
-    responseStatus = 400;
+    const presentation = refusalPresentation(outcome.key);
+    message = { kind: presentation.kind, key: outcome.key };
+    responseStatus = presentation.status;
   } else if (formAction.startsWith('field:') || formAction === 'ward') {
     let outcome: EditFixOutcome;
     if (formAction === 'ward') {
@@ -69,17 +83,20 @@ if (candidate && Astro.request.method === 'POST') {
     if (outcome.kind === 'saved') {
       return new Response(null, {
         status: 302,
-        headers: { Location: `/curator/candidate/${candidateId}`, 'cache-control': 'no-store' },
+        headers: { Location: `/curator/candidate/${candidateId}?saved=1`, 'cache-control': 'no-store' },
       });
     }
-    message = { kind: 'error', key: outcome.key };
+    const presentation = refusalPresentation(outcome.key);
+    message = { kind: presentation.kind, key: outcome.key };
     refused = { formAction, error: outcome.error, raw: outcome.raw };
-    responseStatus = 400;
+    responseStatus = presentation.status;
   } else {
     return new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } });
   }
 
   candidate = (await loadCandidateForEdit(candidateId))!;
+} else if (candidate && Astro.url.searchParams.get('saved') === '1' && (await wasEditedRecently(candidateId, SAVED_NOTICE_WINDOW_MS))) {
+  message = { kind: 'notice', key: 'curator.candidateEdit.notice.saved' };
 }
 
 

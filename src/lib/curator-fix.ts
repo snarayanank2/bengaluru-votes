@@ -147,6 +147,19 @@ function unchanged(data: FieldData, published: FieldData): boolean {
   return [...new Set([...Object.keys(a), ...Object.keys(b)])].every((name) => part(a[name]) === part(b[name]));
 }
 
+/**
+ * The refusal key for a save that would publish exactly what is published
+ * already. Nothing failed and nothing needs recovering, so the screens show
+ * it as a notice with a 200, not as an error banner with a 400
+ * (design-system §7.6).
+ */
+export const NOTHING_CHANGED_KEY = 'curator.fix.error.unchanged';
+
+/** The banner kind and HTTP status a refusal key is shown with. */
+export function refusalPresentation(key: string): { kind: 'notice' | 'error'; status: 200 | 400 } {
+  return key === NOTHING_CHANGED_KEY ? { kind: 'notice', status: 200 } : { kind: 'error', status: 400 };
+}
+
 /** One field's posted correction: refused without the confirmation tick, when invalid, or when it is what is published already. */
 export function parseFieldFix(form: FormData, key: AffidavitFieldKey, published: FieldData | null): ParsedField {
   const raw = readFieldForm(form, key);
@@ -154,7 +167,7 @@ export function parseFieldFix(form: FormData, key: AffidavitFieldKey, published:
   const data = fieldFromInputs(key, raw.status, raw.inputs);
   const error = errorFor(data, raw.inputs);
   if (error) return { ok: false, key: `transcribe.error.${error}`, error, raw };
-  if (published && unchanged(data, published)) return { ok: false, key: 'curator.fix.error.unchanged', raw };
+  if (published && unchanged(data, published)) return { ok: false, key: NOTHING_CHANGED_KEY, raw };
   return { ok: true, data };
 }
 
@@ -165,7 +178,7 @@ export async function parseWardFix(form: FormData, currentWardId: number): Promi
   const wardId = /^\d{1,9}$/.test(raw) ? Number(raw) : NaN;
   const [ward] = Number.isInteger(wardId) ? await db.select({ id: wards.id }).from(wards).where(eq(wards.id, wardId)) : [];
   if (!ward) return { ok: false, key: 'curator.fix.error.unknownWard' };
-  if (ward.id === currentWardId) return { ok: false, key: 'curator.fix.error.unchanged' };
+  if (ward.id === currentWardId) return { ok: false, key: NOTHING_CHANGED_KEY };
   return { ok: true, wardId: ward.id };
 }
 
@@ -219,7 +232,7 @@ Promise<{ kind: 'saved' } | ({ kind: 'refused' } & CandidateBatchRefusal)> {
     if (!parsed.ok) return refuse(parsed.key);
     nextWard = parsed.wardId;
   }
-  if (!changes.length && nextWard === undefined) return refuse('curator.fix.error.unchanged');
+  if (!changes.length && nextWard === undefined) return refuse(NOTHING_CHANGED_KEY);
 
   const sourceUrl = candidate.pdfUrl;
   const translate = await db.transaction(async (tx) => {

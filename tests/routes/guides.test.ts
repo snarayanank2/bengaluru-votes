@@ -284,6 +284,8 @@ describe('Guide & explainer pages (Task 21)', () => {
       const links = [...toc!.querySelectorAll('a')];
       expect(headings).toHaveLength(19);
       expect(links).toHaveLength(headings.length);
+      // Forest, underlined, 44px: the shared body link, not the browser's default link.
+      for (const link of links) expect(link.classList.contains('body-link')).toBe(true);
       expect(toc!.compareDocumentPosition(headings[0]) & 4).toBe(4);
       links.forEach((link, index) => {
         expect(link.textContent?.trim()).toBe(headings[index].textContent?.trim());
@@ -421,11 +423,21 @@ describe('Guide & explainer pages (Task 21)', () => {
       expect(html).toContain(t('en', 'findBooth.form.label'));
     });
 
-    it('the no-JS form action is locale-correct (posts back to the kn URL on the kn page)', async () => {
-      const en = await renderPage(FindBooth, 'en', '/voting-guide/find-booth');
-      expect(en.html).toContain('action="/voting-guide/find-booth"');
-      const kn = await renderPage(FindBooth, 'kn', '/voting-guide/find-booth');
-      expect(kn.html).toContain('action="/kn/voting-guide/find-booth"');
+    // /voting-guide/find-booth was removed (architecture §15), so the form must
+    // not name it as its action: the island cancels every submit, and a
+    // native one would land on a 404.
+    it('the form has no action pointing at the removed find-booth route', async () => {
+      for (const lang of ['en', 'kn'] as const) {
+        const { html } = await renderPage(FindBooth, lang, '/voting-guide/find-booth');
+        const form = html.match(/<form\b[^>]*data-booth-lookup[^>]*>/)![0];
+        expect(form).not.toContain('action=');
+        expect(form).toContain('method="post"');
+        // The island reports a refused number inline, so the browser's own bubble is off.
+        expect(form).toContain('novalidate');
+        // Attribute values are double-quoted, so Astro leaves an apostrophe alone.
+        expect(form).toContain(`data-msg-invalid="${t(lang, 'findBooth.result.invalid')}"`);
+        expect(form).toContain(`data-msg-searching="${t(lang, 'findBooth.result.searching')}"`);
+      }
     });
 
     it('emits its own BoothLookup island script, plus Base.astro\'s global Flag script (Tasks 28/32) — no others', async () => {
@@ -513,7 +525,7 @@ describe('Guide & explainer pages (Task 21)', () => {
       expect(boothResult(html)).not.toContain('{serialNo}');
       // OUR name for the ward, linked to OUR ward page.
       expect(html).toContain(`href="/ward/${WARD.id}"`);
-      expect(html).toContain(WARD.nameEn);
+      expect(boothResult(html)).toContain(`Ward ${WARD.id % 1000} ${WARD.nameEn}`);
     });
 
     it('renders the directions link from the booth coordinates', async () => {

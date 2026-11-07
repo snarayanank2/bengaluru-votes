@@ -1,8 +1,8 @@
 /**
  * `/robots.txt` (Task 57; architecture §8). Allows everything except
  * the same exclusion set the sitemaps deliberately never enumerate
- * (`src/lib/seo/sitemaps.ts`'s module docstring): `/curator/*`,
- * `/admin/*`, `/transcribe/*`, `/api/*` and `/login`. Points crawlers at the sitemap index.
+ * (`src/lib/seo/sitemaps.ts`'s module docstring): `/curator`,
+ * `/admin`, `/transcribe`, `/api` (each with everything beneath it) and `/login`. Points crawlers at the sitemap index.
  *
  * CACHE-SAFE (architecture §5): identical output for every request — no
  * cookie/session read, no per-visitor branching — so this is a plain
@@ -14,7 +14,10 @@ import type { APIRoute } from 'astro';
 
 const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
 
-const DISALLOWED_PREFIXES = ['/curator/', '/admin/', '/transcribe/', '/api/'];
+// No trailing slash: a robots.txt rule is a path prefix, so `/curator` covers
+// the bare `/curator` URL as well as everything under `/curator/`. With the
+// slash the staff entry pages themselves were not matched.
+const DISALLOWED_PREFIXES = ['/curator', '/admin', '/transcribe', '/api'];
 
 export const GET: APIRoute = () => {
   const lines = [

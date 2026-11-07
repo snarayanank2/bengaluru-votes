@@ -88,7 +88,8 @@ describe('a flag on an affidavit field', () => {
     const c = await fx.candidateWithAffidavit(WARD_A.id);
     const id = await flag(c.candidateId, 'assets');
     const res = await item(id, curator, fix({ 'status.assets': 'value', movableInr: '1,02,10,000', immovableInr: '3,50,00,000' }));
-    expect(res.status).toBe(400);
+    // A fix that changes nothing is a notice with a 200, not an error.
+    expect(res.status).toBe(200);
     expect(await res.text()).toContain(t('en', 'curator.fix.error.unchanged'));
     expect((await flagRow(id)).status).toBe('pending');
     expect((await fieldRow(c.candidateId, 'assets'))!.checkedBy).toBeNull();
@@ -110,7 +111,7 @@ describe('a flag on an affidavit field', () => {
     const name = c.extraction.identity.name.text!;
     const id = await flag(c.candidateId, 'full_name');
     const res = await item(id, curator, fix({ 'status.full_name': 'value', name: `  ${name}  ` }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     expect(await res.text()).toContain(t('en', 'curator.fix.error.unchanged'));
     expect((await flagRow(id)).status).toBe('pending');
     expect((await fieldRow(c.candidateId, 'full_name'))!.checkedBy).toBeNull();
@@ -177,7 +178,6 @@ describe('a flag on the ward', () => {
   });
 
   const refusedWards: Array<[label: string, wardId: () => string, key: string]> = [
-    ['the ward the candidate is already in', () => String(WARD_A.id), 'curator.fix.error.unchanged'],
     ['a ward that does not exist', () => '99999999', 'curator.fix.error.unknownWard'],
     ['something that is not a number', () => 'north', 'curator.fix.error.unknownWard'],
   ];
@@ -190,6 +190,18 @@ describe('a flag on the ward', () => {
     expect((await db.select().from(schema.candidates).where(eq(schema.candidates.id, c.candidateId)))[0].wardId).toBe(WARD_A.id);
     expect((await flagRow(id)).status).toBe('pending');
   });
+});
+
+it('answers the ward the candidate is already in with a notice and a 200 (nothing changed), flag still pending', async () => {
+  const c = await fx.candidateWithAffidavit(WARD_A.id);
+  const id = await flag(c.candidateId, 'ward');
+  const res = await item(id, curator, fix({ wardId: String(WARD_A.id) }));
+  expect(res.status).toBe(200);
+  const html = await res.text();
+  expect(html).toContain(t('en', 'curator.fix.error.unchanged'));
+  expect(html).toContain('role="status"');
+  expect((await db.select().from(schema.candidates).where(eq(schema.candidates.id, c.candidateId)))[0].wardId).toBe(WARD_A.id);
+  expect((await flagRow(id)).status).toBe('pending');
 });
 
 describe('the source a reporter gave', () => {

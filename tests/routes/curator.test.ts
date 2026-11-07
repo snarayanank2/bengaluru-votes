@@ -326,7 +326,13 @@ describe('/curator, /curator/queue, /curator/queue/{id} (Task 34)', () => {
       expect(res.headers.get('cache-control')).toBe('no-store');
 
       const html = normalize(await res.text());
-      expect(html).toContain(t('en', 'curator.dashboard.queueCount', { count: expectedCount }));
+      // Singular and plural are separate strings; there is no "flag(s)" placeholder.
+      expect(html).toContain(
+        expectedCount === 1
+          ? t('en', 'curator.dashboard.queueCountOne')
+          : t('en', 'curator.dashboard.queueCount', { count: expectedCount }),
+      );
+      expect(html).not.toContain('flag(s)');
 
       expect(html).not.toContain('Awaiting sign-off');
       expect(html).not.toContain(WARD_D_NEVER_SIGNED_OFF.nameEn);

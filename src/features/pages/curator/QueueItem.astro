@@ -381,7 +381,6 @@ const publishedText = field
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    max-width: 32rem;
   }
 
   .spam-action {
@@ -440,11 +439,11 @@ const publishedText = field
     margin-top: var(--space-2);
   }
 
+  /* No width cap: the reason box ends where the card's other inputs end (§7.10). */
   .reject-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    max-width: 32rem;
   }
 
   .form-field {
@@ -467,5 +466,10 @@ const publishedText = field
     background: var(--color-bg);
     border: 1.5px solid var(--color-border);
     border-radius: var(--radius-sm);
+  }
+
+  textarea.form-input {
+    width: 100%;
+    resize: vertical;
   }
 </style>
