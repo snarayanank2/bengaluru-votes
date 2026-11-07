@@ -225,7 +225,7 @@ Treat the user's correcting instructions as authoritative project feedback, not 
 
 **Eyebrow and footer styling:** Eyebrow text should always be caps (uppercase for scripts with case; Kannada keeps normal letter spacing). Use one shared eyebrow treatment. The last full-width section of the ward page must meet the footer directly, with no blank gap. Ward section links should scroll smoothly beneath the sticky header, while respecting reduced-motion preferences.
 
-**User-facing documentation:** Keep public information pages, staff guides and help text simple. Use short sentences, familiar words and direct instructions. Remove AI-sounding phrases, promotional filler and unsupported promises. Preserve essential rules and keep English and Kannada in step.
+**User-facing documentation:** Keep public information pages, staff guides and help text simple. Use short sentences, familiar words and direct instructions. Remove AI-sounding phrases, promotional filler and unsupported promises. Preserve essential rules and keep English and Kannada in step. When editing guide wording, include `tests/routes/staff-guides.test.ts` in verification and update its wording assertions without weakening the rules they check.
 
 **Reusable design-system documentation:** The design system should describe generic foundations, section patterns, and components, including form fields, buttons, cards, and their states. It should not mention specific pages except as example usage; do not organize its rules as individual page specifications.
 

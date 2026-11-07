@@ -85,40 +85,41 @@ describe('guide wording', () => {
   it('both guides carry the owner-decided entry rules', async () => {
     for (const [route, path, who] of [[CuratorGuide, '/curator/guide', curator], [TranscribeGuide, '/transcribe/guide', transcriber]] as const) {
       const html = await (await run(route, path, { auth: who })).text();
-      expect(html).toContain('exactly as printed on the affidavit');
-      expect(html).toContain('If the affidavit says nil for assets, choose Not declared');
-      expect(html).toContain('lists as pending in its criminal-cases section');
-      expect(html).toContain('A curator can fix it later in the candidate editor');
+      expect(html).toContain('copy the affidavit in English letters, including titles and initials');
+      expect(html).toContain('For nil assets, choose Not declared');
+      expect(html).toContain('Enter pending cases and convictions as whole numbers');
+      expect(html).toContain('Count only what the affidavit’s criminal-cases section lists');
+      expect(html).toContain('It stays unchecked until a curator reads it and fixes it in the candidate editor');
     }
   });
 
   it('the curator guide says curators ignore AI confidence, how to escalate and what to do with links and old wards', async () => {
     const html = await (await run(CuratorGuide, '/curator/guide', { auth: curator })).text();
-    expect(html).toContain('Curators do not use it');
-    expect(html).toContain('message the admin directly');
+    expect(html).toContain('Ignore the AI confidence figure');
+    expect(html).toContain('Message the admin directly');
     expect(html).not.toMatch(/@|\+91|\b\d{10}\b/);
-    expect(html).toContain('never enter credentials or download files');
+    expect(html).toContain('Never enter credentials or download files');
     expect(html).toContain('leave it for matching');
-    expect(html).toContain('not sent to transcribers again');
-    expect(html).toContain('There is no list of such fields');
+    expect(html).toContain('not sent for transcription again');
+    expect(html).toContain('There is no separate list of unreadable fields');
   });
 
   it('each guide gives the 404 example that fits its reader', async () => {
     const c = await (await run(CuratorGuide, '/curator/guide', { auth: curator })).text();
     const tr = await (await run(TranscribeGuide, '/transcribe/guide', { auth: transcriber })).text();
-    expect(c).toContain('a flag someone has already handled');
-    expect(c).not.toContain('10 minutes have run out');
-    expect(tr).toContain('10 minutes have run out');
-    expect(tr).not.toContain('a flag someone');
-    expect(c).toContain('South 14 · J.P Nagar');
+    expect(c).toContain('a flag already handled by someone else');
+    expect(c).not.toContain('10-minute hold has expired');
+    expect(tr).toContain('10-minute hold has expired');
+    expect(tr).not.toContain('a flag already handled');
+    expect(c).toContain('ward numbers repeat across corporations');
   });
 
-  it('the transcriber guide covers release, resume, the 5-minute warning and the matching list', async () => {
+  it('the transcriber guide covers release, resume, the 5-minute warning and match review', async () => {
     const html = await (await run(TranscribeGuide, '/transcribe/guide', { auth: transcriber })).text();
     expect(html).toContain('Release this affidavit');
     expect(html).toContain('Resume');
-    expect(html).toContain('5 minutes are left');
-    expect(html).toContain('waiting for a match');
+    expect(html).toContain('5 minutes left');
+    expect(html).toContain('Admins or curators will check the match');
   });
 
   it('the fix-form strings no longer send a curator to add an affidavit or dismiss a flag', () => {
