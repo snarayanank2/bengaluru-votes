@@ -14,7 +14,7 @@
 ########################################################################
 # Stage 1: build — full (dev+prod) deps, `astro build` -> dist/
 ########################################################################
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -58,7 +58,7 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 # directly against this same pruned install, and without this move
 # `npm ci --omit=dev` would strip tsx and every cron job would fail.
 ########################################################################
-FROM node:22-slim AS deps-prod
+FROM node:26-slim AS deps-prod
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -67,7 +67,7 @@ RUN npm ci --omit=dev
 ########################################################################
 # Stage 3: runtime
 ########################################################################
-FROM node:22-slim AS runtime
+FROM node:26-slim AS runtime
 LABEL org.opencontainers.image.source="https://github.com/snarayanank2/bengaluru-votes"
 
 WORKDIR /app
