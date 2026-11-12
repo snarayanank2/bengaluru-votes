@@ -33,13 +33,14 @@ const { lang, issues } = Astro.props;
   .inline-vote { display: contents; }
   [data-vote-form] { display: grid; gap: var(--space-4); justify-items: start; }
   [data-vote-issue-options] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); width: 100%; }
-  .vote-issue-option { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; }
-  .vote-issue-option:has(input:checked) { border-color: var(--color-primary); background: var(--color-bg); }
+  .vote-issue-option { position: relative; display: flex; align-items: center; min-height: 48px; padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; transition: background-color 0.12s, border-color 0.12s, color 0.12s; }
   .vote-issue-option:hover { border-color: var(--color-primary); }
+  .vote-issue-option:has(input:checked) { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-on-primary); font-weight: 600; }
   .vote-issue-option:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
   .vote-issue-option:has(input:disabled:not(:checked)) { opacity: 0.55; cursor: default; }
-  input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--color-primary); }
-  .vote-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+  .vote-issue-option:has(input:disabled:not(:checked)):hover { border-color: var(--color-border); }
+  /* The checkbox stays in the DOM for keyboard and screen-reader use; the whole tile shows the state. */
+  input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
   .form-error { color: var(--color-danger); }
   [data-vote-success] { margin: 0; }
   @media (max-width: 767px) { [data-vote-issue-options] { grid-template-columns: minmax(0, 1fr); } }

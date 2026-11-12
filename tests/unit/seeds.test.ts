@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
-import { seedWards, loadCityIssueRows, loadWardFactRows, loadWardRows } from '../../scripts/seed-wards';
+import { seedWards, loadWardIssueRows, loadWardFactRows, loadWardRows } from '../../scripts/seed-wards';
 import { seedAdmin, isValidEmail } from '../../scripts/seed-admin';
 import { seedDev, assertNotProduction, type SeedDevResult } from '../../scripts/seed-dev';
 import { AFFIDAVIT_FIELD_KEYS } from '../../src/lib/affidavit-publish';
@@ -63,12 +63,17 @@ describe('seed-wards', () => {
     expect(overlaps.every((row) => row.publishedOverlapBasisPoints >= 0 && row.publishedOverlapBasisPoints <= 10_000)).toBe(true);
   });
 
-  it('maps the same 20 bilingual catalog issues to every ward', () => {
-    const rows = loadCityIssueRows();
-    expect(rows).toHaveLength(369 * 20);
+  it('gives every ward twelve distinct bilingual issues', () => {
+    const rows = loadWardIssueRows();
+    expect(rows).toHaveLength(369 * 12);
     expect(new Set(rows.map((row) => row.wardId)).size).toBe(369);
-    expect(new Set(rows.filter((row) => row.wardId === rows[0].wardId).map((row) => row.catalogKey)).size).toBe(20);
     expect(rows.every((row) => row.titleEn && row.titleKn)).toBe(true);
+    for (const wardId of new Set(rows.map((row) => row.wardId))) {
+      const ward = rows.filter((row) => row.wardId === wardId);
+      expect(new Set(ward.map((row) => row.catalogKey)).size).toBe(12);
+      expect(new Set(ward.map((row) => row.titleEn)).size).toBe(12);
+      expect(ward.map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    }
   });
 
   it('inserts 369 wards into the db with non-empty name_kn, and is idempotent', async () => {
@@ -92,7 +97,7 @@ describe('seed-wards', () => {
     }
 
     const issueRows = await db.select().from(schema.wardIssues).where(inArray(schema.wardIssues.wardId, seeded.map((row) => row.id)));
-    expect(issueRows.filter((row) => row.catalogKey !== null)).toHaveLength(369 * 20);
+    expect(issueRows.filter((row) => row.catalogKey !== null)).toHaveLength(369 * 12);
     const overlapRows = await db.select().from(schema.wardOldWardOverlaps)
       .where(inArray(schema.wardOldWardOverlaps.wardId, seeded.map((row) => row.id)));
     const keyAreaRows = await db.select().from(schema.wardKeyAreas)

@@ -85,7 +85,7 @@ Schema: `src/db/schema.ts`; migrations: `drizzle/`.
 | Staff | `users` (staff only: role `transcriber\|curator\|admin`, status `active\|banned\|erased`, email, language, `password_hash` (scrypt; null = cannot sign in) and `password_changed_at`) · `sessions` |
 | Operations | `app_settings` (election anchors, `low_confidence_threshold`, guide link-out URLs) · `geocode_cache` (normalized address → ward id only; null = out of coverage) · `budget_counters` (per-day counters: `geocode`, `epic_lookup`, `anonymous_vote`, …) |
 
-Seeds: `npm run seed:wards` loads `data/gba.geojson` (369 wards), `data/ward-facts.json` and `data/city-issues.json`; `npm run seed:admin` creates the first admin.
+Seeds: `npm run seed:wards` loads `data/gba.geojson` (369 wards), `data/ward-facts.json` and `data/ward-issues.json` (twelve issues per ward, rebuilt with `npm run build:ward-issues`; migration `0022` loads the same data on deploy, and `npm run migration:ward-issues` writes the SQL for any later change); `npm run seed:admin` creates the first admin.
 
 **Issue voting.** An anonymous ballot is a row in `anonymous_issue_vote_sets` holding only a SHA-256 hash of an opaque browser receipt (unique city-wide) plus exactly three `anonymous_issue_vote_selections`; immutable once written. Deleting a ward issue cascades its selections.
 

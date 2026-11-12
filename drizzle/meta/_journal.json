@@ -155,6 +155,13 @@
       "when": 1794200000000,
       "tag": "0021_staff_passwords",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794300000000,
+      "tag": "0022_ward_specific_issues",
+      "breakpoints": true
     }
   ]
 }

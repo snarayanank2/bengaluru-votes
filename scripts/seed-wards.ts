@@ -61,7 +61,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { inArray, sql } from 'drizzle-orm';
+import { and, inArray, isNotNull, sql } from 'drizzle-orm';
 import * as schema from '../src/db/schema';
 import type { Db } from '../src/db/client';
 
@@ -69,7 +69,7 @@ const VALID_CORPORATIONS = new Set(['north', 'south', 'east', 'west', 'central']
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_GEOJSON_PATH = path.join(__dirname, '..', 'data', 'gba.geojson');
-const DEFAULT_CITY_ISSUES_PATH = path.join(__dirname, '..', 'data', 'city-issues.json');
+const DEFAULT_WARD_ISSUES_PATH = path.join(__dirname, '..', 'data', 'ward-issues.json');
 const DEFAULT_WARD_FACTS_PATH = path.join(__dirname, '..', 'data', 'ward-facts.json');
 
 type WardRow = typeof schema.wards.$inferInsert;
@@ -77,7 +77,9 @@ type WardRow = typeof schema.wards.$inferInsert;
 type GeoJsonFeature = { properties: Record<string, unknown> };
 type GeoJsonFeatureCollection = { features: GeoJsonFeature[] };
 type WardIssueRow = typeof schema.wardIssues.$inferInsert;
-type CityIssue = { key: string; titleEn: string; titleKn: string };
+type WardIssueTitle = { key: string; titleEn: string; titleKn: string };
+type WardIssuesSeedData = { issues: WardIssueTitle[]; wards: Record<string, string[]> };
+const ISSUES_PER_WARD = 12;
 type WardFactsSeedData = {
   sourceUrl: string;
   sourceDate: string;
@@ -212,37 +214,45 @@ export function loadWardFactRows(
   return { overlaps, keyAreas };
 }
 
-/** Expand the shared 20-issue catalog into one bilingual row per ward. */
-export function loadCityIssueRows(
-  cityIssuesPath: string = DEFAULT_CITY_ISSUES_PATH,
+/** Expand data/ward-issues.json into one bilingual row per ward issue, in each ward's own order. */
+export function loadWardIssueRows(
+  wardIssuesPath: string = DEFAULT_WARD_ISSUES_PATH,
   wardGeojsonPath: string = DEFAULT_GEOJSON_PATH,
 ): WardIssueRow[] {
-  const issues = JSON.parse(readFileSync(cityIssuesPath, 'utf8')) as CityIssue[];
-  if (!Array.isArray(issues) || issues.length !== 20) {
-    throw new Error(`seed-wards: city issue catalog has ${issues.length} issues; expected 20`);
-  }
-  const keys = new Set<string>();
-  issues.forEach((issue, index) => {
+  const data = JSON.parse(readFileSync(wardIssuesPath, 'utf8')) as WardIssuesSeedData;
+  const titles = new Map<string, WardIssueTitle>();
+  data.issues.forEach((issue, index) => {
     if (!issue.key?.trim() || !issue.titleEn?.trim() || !issue.titleKn?.trim()) {
-      throw new Error(`seed-wards: invalid city issue at position ${index + 1}`);
+      throw new Error(`seed-wards: invalid ward issue title at index ${index}`);
     }
-    if (keys.has(issue.key)) throw new Error(`seed-wards: duplicate city issue key ${issue.key}`);
-    keys.add(issue.key);
+    if (titles.has(issue.key)) throw new Error(`seed-wards: duplicate ward issue key ${issue.key}`);
+    titles.set(issue.key, issue);
   });
 
-  return loadWardRows(wardGeojsonPath).flatMap((ward) => issues.map((issue, index) => ({
-    wardId: ward.id,
-    catalogKey: issue.key.trim(),
-    titleEn: issue.titleEn.trim(),
-    titleKn: issue.titleKn.trim(),
-    authoredLang: 'en' as const,
-    translationStatus: 'done' as const,
-    position: index + 1,
-  })));
+  return loadWardRows(wardGeojsonPath).flatMap((ward) => {
+    const keys = data.wards[String(ward.id)];
+    if (!keys) throw new Error(`seed-wards: no issues listed for ward ${ward.id}`);
+    if (keys.length !== ISSUES_PER_WARD || new Set(keys).size !== keys.length) {
+      throw new Error(`seed-wards: ward ${ward.id} needs ${ISSUES_PER_WARD} distinct issues, found ${keys.length}`);
+    }
+    return keys.map((key, index) => {
+      const issue = titles.get(key);
+      if (!issue) throw new Error(`seed-wards: ward ${ward.id} references unknown issue ${key}`);
+      return {
+        wardId: ward.id,
+        catalogKey: key,
+        titleEn: issue.titleEn.trim(),
+        titleKn: issue.titleKn.trim(),
+        authoredLang: 'en' as const,
+        translationStatus: 'done' as const,
+        position: index + 1,
+      };
+    });
+  });
 }
 
-export async function seedCityIssues(db: Db, cityIssuesPath?: string, wardGeojsonPath?: string): Promise<number> {
-  const rows = loadCityIssueRows(cityIssuesPath, wardGeojsonPath);
+export async function seedWardIssues(db: Db, wardIssuesPath?: string, wardGeojsonPath?: string): Promise<number> {
+  const rows = loadWardIssueRows(wardIssuesPath, wardGeojsonPath);
   // Keep batches comfortably below Postgres's bind-parameter limit.
   for (let offset = 0; offset < rows.length; offset += 500) {
     await db.insert(schema.wardIssues).values(rows.slice(offset, offset + 500)).onConflictDoUpdate({
@@ -256,6 +266,28 @@ export async function seedCityIssues(db: Db, cityIssuesPath?: string, wardGeojso
       },
     });
   }
+
+  // Drop catalog issues a ward no longer lists. A ballot that picked one of them
+  // can no longer be exactly three valid picks, so those ballots go too.
+  const wanted = new Set(rows.map((row) => `${row.wardId}:${row.catalogKey}`));
+  const wardIds = [...new Set(rows.map((row) => row.wardId))];
+  const stale: number[] = [];
+  for (let offset = 0; offset < wardIds.length; offset += 500) {
+    const existing = await db.select({ id: schema.wardIssues.id, wardId: schema.wardIssues.wardId, catalogKey: schema.wardIssues.catalogKey })
+      .from(schema.wardIssues)
+      .where(and(inArray(schema.wardIssues.wardId, wardIds.slice(offset, offset + 500)), isNotNull(schema.wardIssues.catalogKey)));
+    for (const row of existing) if (!wanted.has(`${row.wardId}:${row.catalogKey}`)) stale.push(row.id);
+  }
+  for (let offset = 0; offset < stale.length; offset += 500) {
+    const ids = stale.slice(offset, offset + 500);
+    await db.delete(schema.anonymousIssueVoteSets).where(inArray(
+      schema.anonymousIssueVoteSets.id,
+      db.select({ id: schema.anonymousIssueVoteSelections.setId }).from(schema.anonymousIssueVoteSelections)
+        .where(inArray(schema.anonymousIssueVoteSelections.wardIssueId, ids)),
+    ));
+    await db.delete(schema.wardIssues).where(inArray(schema.wardIssues.id, ids));
+  }
+  if (stale.length) console.log(`seed-wards: removed ${stale.length} ward issues no longer listed (and any ballots that picked them)`);
   return rows.length;
 }
 
@@ -304,7 +336,7 @@ export async function seedWards(db: Db, geojsonPath?: string): Promise<number> {
     await db.insert(schema.wardKeyAreas).values(facts.keyAreas.slice(offset, offset + 500));
   }
 
-  await seedCityIssues(db, undefined, geojsonPath);
+  await seedWardIssues(db, undefined, geojsonPath);
 
   return rows.length;
 }
@@ -324,7 +356,7 @@ async function main() {
   const db = drizzle(client, { schema });
   try {
     const count = await seedWards(db);
-    console.log(`seed-wards: upserted ${count} wards with facts and ${count * 20} city issues`);
+    console.log(`seed-wards: upserted ${count} wards with facts and ${count * ISSUES_PER_WARD} ward issues`);
   } finally {
     await client.end();
   }

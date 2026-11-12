@@ -72,7 +72,7 @@ That builds from your working tree and runs migrations. Seeding, the test setup 
 src/        Astro app: pages (EN at root, Kannada under /kn/), islands, lib, db schema
 jobs/       cron jobs and the affidavit extraction worker
 scripts/    seeds, translation, data updates, extraction evals
-data/       ward boundaries (GeoJSON), ward facts, city issues
+data/       ward boundaries (GeoJSON), ward facts, ward issues
 drizzle/    SQL migrations
 deploy/     Compose files, nginx config, deploy script, runbook
 docs/       product, architecture and operations docs
