@@ -44,7 +44,7 @@
  * anonymous-page microcache the same way.
  *
  * The Google Analytics (gtag.js) snippet (Task 58, src/lib/analytics.ts) is
- * mounted ONCE here too, in `<head>`, gated to `!noindex && GA_MEASUREMENT_ID`
+ * mounted ONCE here too, in `<head>`, gated to `(!noindex || analyticsWhenNoindex) && GA_MEASUREMENT_ID`
  * (env) — i.e. ONLY on public, indexable pages, and ONLY when a measurement
  * id is actually configured (unset in dev/test/CI, so this never perturbs
  * existing tests or the cache-safety byte-identical guard). That gate alone
@@ -90,6 +90,8 @@ interface Props {
   noindex?: boolean;
   /** Error pages: emit no canonical, hreflang alternates or og:url (their `path` is not a real page). */
   omitUrlTags?: boolean;
+  /** Keep GA on a noindex page that is still public (e.g. compare). */
+  analyticsWhenNoindex?: boolean;
   /**
    * Plain schema.org objects (from `src/lib/seo.ts`'s builders) this page
    * wants emitted as `<script type="application/ld+json">` tags in
@@ -101,7 +103,7 @@ interface Props {
   jsonLd?: Record<string, unknown>[];
 }
 
-const { lang, title, description, path, ogImage, ogImageAlt, noindex = false, omitUrlTags = false, jsonLd: jsonLdBlocks = [] } = Astro.props;
+const { lang, title, description, path, ogImage, ogImageAlt, noindex = false, omitUrlTags = false, analyticsWhenNoindex = false, jsonLd: jsonLdBlocks = [] } = Astro.props;
 
 // Astro.site is always configured (astro.config.mjs falls back to the
 // production origin when SITE_ORIGIN is unset) — the local fallback here
@@ -132,7 +134,7 @@ const cspNonce = Astro.locals.cspNonce;
 // measurement id is actually configured — see the docstring above and
 // src/lib/analytics.ts. Unset in dev/test/CI, so GA renders nothing there.
 const gaMeasurementId = process.env.GA_MEASUREMENT_ID;
-const showGa = !noindex && !!gaMeasurementId;
+const showGa = (!noindex || analyticsWhenNoindex) && !!gaMeasurementId;
 ---
 
 <!doctype html>

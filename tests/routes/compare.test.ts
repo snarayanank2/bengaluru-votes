@@ -504,4 +504,28 @@ describe('Candidate comparison (/ward/{id}/compare)', () => {
       expect(knHtml).toContain(`<link rel="alternate" hreflang="kn" href="${SITE_ORIGIN}/kn/ward/${WARD.id}/compare">`);
     });
   });
+
+  describe('indexing (architecture §8): every compare page is noindex', () => {
+    it.each(['en', 'kn'] as const)('%s: robots noindex + own canonical, with and without candidates', async (lang) => {
+      for (const id of [WARD.id, EMPTY_WARD.id]) {
+        const res = await renderCompare(lang, id);
+        expect(res.status).toBe(200);
+        const html = normalize(await res.text());
+        expect(html).toContain('<meta name="robots" content="noindex">');
+        expect(html).toContain(`<link rel="canonical" href="${SITE_ORIGIN}${localePath(lang, `/ward/${id}/compare`)}">`);
+      }
+    });
+
+    it.each(['en', 'kn'] as const)('%s: still emits Google Analytics when configured', async (lang) => {
+      const original = process.env.GA_MEASUREMENT_ID;
+      process.env.GA_MEASUREMENT_ID = 'G-TEST123456';
+      try {
+        const html = await (await renderCompare(lang, WARD.id)).text();
+        expect(html).toContain('googletagmanager.com/gtag/js?id=G-TEST123456');
+      } finally {
+        if (original === undefined) delete process.env.GA_MEASUREMENT_ID;
+        else process.env.GA_MEASUREMENT_ID = original;
+      }
+    });
+  });
 });
