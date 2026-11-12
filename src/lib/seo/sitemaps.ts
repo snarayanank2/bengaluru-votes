@@ -62,6 +62,12 @@ export const STATIC_ROUTES: string[] = [
   '/about',
   '/about-election',
   '/voter-faqs',
+  '/wards',
+  '/corporation/central',
+  '/corporation/north',
+  '/corporation/east',
+  '/corporation/south',
+  '/corporation/west',
   '/privacy',
   '/terms',
 ];

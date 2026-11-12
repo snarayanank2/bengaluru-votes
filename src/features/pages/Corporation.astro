@@ -1,0 +1,64 @@
+---
+/**
+ * One corporation (`/corporation/{slug}`, `/kn/corporation/{slug}`): its zones
+ * and wards as plain links (architecture §4 "Ward directory"). Like the
+ * all-wards page it reads only the `wards` table. The route shim has already
+ * answered an unknown slug with a 404 (status codes live in the shim), so
+ * `corporation` here is always one of the five.
+ */
+import Base from '../../layouts/Base.astro';
+import DirectoryHeader from '../../components/DirectoryHeader.astro';
+import WardDirectory from '../../components/WardDirectory.astro';
+import { t, localePath, type Lang } from '../../i18n';
+import { loadWardDirectory, type DirectoryCorporation } from '../../lib/ward-directory';
+import { breadcrumbLd } from '../../lib/seo';
+
+interface Props {
+  lang: Lang;
+  corporation: DirectoryCorporation['corporation'];
+}
+
+const { lang, corporation } = Astro.props;
+const [entry] = await loadWardDirectory(corporation);
+const name = t(lang, 'corporation.name', { corporation: t(lang, `ward.corporation.${corporation}`) });
+const pagePath = `/corporation/${corporation}`;
+const allWards = t(lang, 'wards.heading');
+
+const jsonLd = [
+  breadcrumbLd([
+    { name: 'Bengaluru Votes', url: localePath(lang, '/') },
+    { name: allWards, url: localePath(lang, '/wards') },
+    { name: name, url: localePath(lang, pagePath) },
+  ]),
+];
+---
+
+<Base
+  lang={lang}
+  title={t(lang, 'corporation.meta.title', { name, count: entry.wardCount })}
+  description={t(lang, 'corporation.meta.description', { name, count: entry.wardCount })}
+  path={pagePath}
+  jsonLd={jsonLd}
+>
+  <DirectoryHeader
+    lang={lang}
+    crumbs={[
+      { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
+      { label: allWards, href: localePath(lang, '/wards') },
+      { label: name },
+    ]}
+    title={name}
+    lead={t(lang, 'corporation.intro', { count: entry.wardCount })}
+  />
+  <div class="directory-body">
+    <WardDirectory lang={lang} entry={entry} heading="none" />
+  </div>
+</Base>
+
+<style>
+  .directory-body {
+    max-width: var(--container-app);
+    margin-inline: auto;
+    padding: var(--space-12) var(--container-pad-x) var(--space-8);
+  }
+</style>

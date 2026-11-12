@@ -3,6 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { readFileSync } from 'node:fs';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from '../../src/db/schema';
 import { localePath, t, type Lang } from '../../src/i18n';
@@ -115,7 +116,7 @@ describe('Home page (/, /kn/)', () => {
       const html = await renderHome('en');
       expect(html).toContain('class="home-hero"');
       expect(html).toContain('MAKE AN INFORMED CHOICE');
-      expect(html).toContain('Find your ward, read about the candidates, and prepare to vote.');
+      expect(html).toContain('Find your new ward, read about the candidates, and prepare to vote.');
       expect(html).toContain('class="hero-form"');
       expect(html).toContain('placeholder="Your address"');
       expect(html).toContain('Find Your Ward');
@@ -140,18 +141,49 @@ describe('Home page (/, /kn/)', () => {
       expect(html.indexOf('class="home-hero"')).toBeLessThan(html.indexOf('class="booth-section"'));
     });
 
-    // The booth form's old action (/voting-guide/find-booth) is a removed route;
-    // its failure messages point at the official finder, so the link-out is on the card.
-    it('the booth card has no form action and always carries the official booth-finder link-out', async () => {
-      for (const lang of ['en', 'kn'] as const) {
-        const html = await renderHome(lang);
-        const boothForm = html.match(/<form\b[^>]*data-booth-lookup[^>]*>/)![0];
-        expect(boothForm).not.toContain('action=');
-        expect(boothForm).toContain('novalidate');
-        expect(boothForm).not.toContain('find-booth');
-        expect(html).toContain('data-external-link');
-        expect(html).toContain(t(lang, 'findBooth.linkOut.label'));
-      }
+    // The booth form's old action (/voting-guide/find-booth) is a removed route.
+    // The official booth-finder link-out is admin data (`booth_lookup_url`): with
+    // no URL the card shows no link at all, never a placeholder `href="#"`.
+    describe('booth card link-out', () => {
+      const BOOTH_URL = 'https://example.test/official-booth-finder';
+      const clearSetting = () =>
+        db.delete(schema.appSettings).where(eq(schema.appSettings.key, 'booth_lookup_url'));
+      beforeEach(clearSetting);
+      afterAll(clearSetting);
+
+      it('has no form action and renders no link-out or placeholder while the setting is unset', async () => {
+        for (const lang of ['en', 'kn'] as const) {
+          const html = await renderHome(lang);
+          const boothForm = html.match(/<form\b[^>]*data-booth-lookup[^>]*>/)![0];
+          expect(boothForm).not.toContain('action=');
+          expect(boothForm).toContain('novalidate');
+          expect(boothForm).not.toContain('find-booth');
+          expect(html).not.toContain('href="#"');
+          expect(html).not.toContain('data-external-link');
+          expect(html).not.toContain('class="booth-linkout"');
+          expect(html).not.toContain(t(lang, 'findBooth.linkOut.heading'));
+          expect(html).not.toContain(t(lang, 'findBooth.linkOut.label'));
+          expect(html).not.toContain(t(lang, 'common.officialLinkPending'));
+        }
+      });
+
+      it('renders the link-out pointing at the configured URL, in both languages', async () => {
+        await db
+          .insert(schema.appSettings)
+          .values({ key: 'booth_lookup_url', value: BOOTH_URL })
+          .onConflictDoUpdate({ target: schema.appSettings.key, set: { value: BOOTH_URL } });
+        for (const lang of ['en', 'kn'] as const) {
+          const html = await renderHome(lang);
+          expect(html).toContain('class="booth-linkout"');
+          expect(html).toContain(`href="${BOOTH_URL}"`);
+          expect(html).toContain('data-external-link');
+          // Astro escapes the apostrophe in the English heading.
+          expect(html).toContain(t(lang, 'findBooth.linkOut.heading').replace(/'/g, '&#39;'));
+          expect(html).toContain(t(lang, 'findBooth.linkOut.label'));
+          expect(html).not.toContain('href="#"');
+          expect(html).not.toContain(t(lang, 'common.officialLinkPending'));
+        }
+      });
     });
 
     it('top-aligns the statistics so the lookup result cannot slide them down', async () => {
@@ -168,6 +200,17 @@ describe('Home page (/, /kn/)', () => {
       expect(source).toContain(
         '.hero-form .ward-result[data-result-state]:not([data-result-state="success"]) {\n    grid-column: 1;',
       );
+    });
+
+    it('puts BBMP in the server-rendered title, meta description and intro, in both languages', async () => {
+      const bbmp = { en: 'BBMP', kn: 'ಬಿಬಿಎಂಪಿ' } as const;
+      for (const lang of ['en', 'kn'] as const) {
+        const html = await renderHome(lang);
+        expect(html).toMatch(new RegExp(`<title>[^<]*${bbmp[lang]}[^<]*</title>`));
+        expect(html).toMatch(new RegExp(`<meta name="description" content="[^"]*${bbmp[lang]}`));
+        expect(html).toContain(t(lang, 'home.hero.subheading'));
+        expect(t(lang, 'home.hero.subheading')).toContain(bbmp[lang]);
+      }
     });
 
     it('sets <html lang> correctly and emits the hreflang pair (via Base)', async () => {

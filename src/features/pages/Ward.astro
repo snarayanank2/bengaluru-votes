@@ -58,7 +58,8 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { placeLd, breadcrumbLd } from '../../lib/seo';
 import { mapsConfig } from '../../lib/maps-config';
 import { getKnownSetting } from '../../lib/settings';
-import { zoneLabel } from '../../lib/ward-label';
+import { zoneLabel, wardLabel } from '../../lib/ward-label';
+import { loadNeighbourWards } from '../../lib/ward-neighbours';
 import { oldWardsClause, titleWardName } from '../../lib/ward-meta';
 
 
@@ -117,6 +118,7 @@ const voteIssues = cityIssues.map((issue) => ({
   title: lang === 'kn' ? (issue.titleKn ?? issue.titleEn ?? '') : (issue.titleEn ?? issue.titleKn ?? ''),
 }));
 const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY ?? '';
+const neighbours = ward ? await loadNeighbourWards(wardId) : [];
 
 // `wards.id` is a collision-free route/database key: corporation_id * 1000
 // + the per-corporation ward number. Citizens should see the latter (49 for
@@ -125,6 +127,8 @@ const wardNumber = wardId % 1000;
 const wardNameRaw = ward ? (lang === 'kn' ? ward.nameKn : ward.nameEn) : '';
 const wardName = wardNameRaw.replace(/^\d+\s*-\s*/, '');
 const corporationLabel = ward ? t(lang, `ward.corporation.${ward.corporation}`) : '';
+const corporationPath = ward ? `/corporation/${ward.corporation}` : '';
+const corporationName = (corporation: string) => t(lang, 'corporation.name', { corporation: t(lang, `ward.corporation.${corporation}`) });
 const numberFormatter = new Intl.NumberFormat(lang === 'kn' ? 'kn-IN' : 'en-IN');
 
 // Boundary geometry now comes from this ward's own URL rather than the
@@ -152,6 +156,7 @@ const wardJsonLd = ward
       placeLd({ id: wardId, name: wardName, path: localePath(lang, pagePath) }),
       breadcrumbLd([
         { name: 'Bengaluru Votes', url: localePath(lang, '/') },
+        { name: corporationName(ward.corporation), url: localePath(lang, corporationPath) },
         { name: t(lang, 'nav.ward', { wardNumber, wardName }), url: localePath(lang, pagePath) },
       ]),
     ]
@@ -165,6 +170,7 @@ const wardJsonLd = ward
         <header class="ward-header">
           <Breadcrumbs lang={lang} items={[
             { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
+            { label: corporationName(ward.corporation), href: localePath(lang, corporationPath) },
             { label: t(lang, 'nav.ward', { wardNumber, wardName }) },
           ]} />
           <h1>{wardName}</h1>
@@ -202,7 +208,8 @@ const wardJsonLd = ward
                   <ul>
                     {oldWardOverlaps.map((item) => (
                       <li>
-                        {item.oldWardNumber != null && `${numberFormatter.format(item.oldWardNumber)} — `}
+                        {item.oldWardNumber != null &&
+                          `${t(lang, 'ward.overview.oldWardItem', { number: numberFormatter.format(item.oldWardNumber) })} — `}
                         {lang === 'kn' ? item.oldWardNameKn : item.oldWardNameEn}
                         <strong>{numberFormatter.format(item.publishedOverlapBasisPoints / 100)}%</strong>
                       </li>
@@ -308,6 +315,23 @@ const wardJsonLd = ward
             </div>
             <h3 class="vote-results-heading" data-vote-results-heading hidden>{t(lang, 'ward.vote.topIssues')}</h3>
             <ol class="issue-vote-results" data-vote-results hidden aria-live="polite"></ol>
+          </section>
+        )}
+
+        {neighbours.length > 0 && (
+          <section id="ward-neighbours" class="ward-section ward-neighbours-section" aria-labelledby="ward-neighbours-heading">
+            <h2 id="ward-neighbours-heading">{t(lang, 'ward.neighbours.heading')}</h2>
+            <p class="neighbours-intro">{t(lang, 'ward.neighbours.intro')}</p>
+            <ul class="neighbour-list">
+              {neighbours.map((neighbour) => (
+                <li>
+                  <a class="body-link" href={localePath(lang, `/ward/${neighbour.id}`)}>{wardLabel(lang, neighbour)}</a>
+                  {neighbour.corporation !== ward.corporation && (
+                    <span class="neighbour-corporation">{corporationName(neighbour.corporation)}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
@@ -440,6 +464,44 @@ const wardJsonLd = ward
 
   .issue-vote-section {
     background: var(--color-bg);
+  }
+
+  .ward-neighbours-section {
+    background: var(--color-header-bg);
+    color: var(--color-text);
+  }
+
+  .ward-neighbours-section h2 {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+  }
+
+  .neighbours-intro {
+    margin: 0 0 var(--space-4);
+    color: var(--color-text-muted);
+  }
+
+  .neighbour-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-2) var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .neighbour-list li {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 44px;
+  }
+
+  .neighbour-corporation {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .ward-header h1 {

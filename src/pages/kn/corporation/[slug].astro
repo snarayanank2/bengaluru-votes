@@ -1,0 +1,15 @@
+---
+/**
+ * Corporation page (`/kn/corporation/{slug}`) — Kannada twin, see
+ * src/pages/corporation/[slug].astro for why the 404 lives here.
+ */
+import Corporation from '../../../features/pages/Corporation.astro';
+import { isCorporation } from '../../../lib/ward-directory';
+
+const slug = Astro.params.slug;
+if (!isCorporation(slug)) {
+  return new Response(null, { status: 404 });
+}
+---
+
+<Corporation lang="kn" corporation={slug} />

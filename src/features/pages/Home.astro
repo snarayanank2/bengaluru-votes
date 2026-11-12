@@ -109,7 +109,8 @@ if (Astro.request.method === 'POST') {
 // messages send people there). Same value for every visitor, so cache-safe.
 // The home page must still render during a database outage (it did not read
 // the database on GET before), so a failed or slow read just shows the
-// link-out's "official link pending" state instead of holding the page up.
+// link-out out of the card instead of holding the page up. An unset setting
+// hides it too: no placeholder `href="#"` is ever rendered here.
 const boothFinderUrl = await Promise.race([
   getSettings(['booth_lookup_url']).then((settings) => settings.booth_lookup_url),
   new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
@@ -193,6 +194,7 @@ function wardHref(id: number): string {
               {postResult?.result === 'unavailable' && <p>{t(lang, 'home.result.unavailable')}</p>}
             </div>
           </form>
+          <p class="hero-directory-link"><a href={localePath(lang, '/wards')}>{t(lang, 'home.wardsLink')}</a></p>
         </div>
 
         <div class="hero-stats" aria-label="Key election facts">
@@ -269,10 +271,12 @@ function wardHref(id: number): string {
         <h2>{t(lang, 'home.shortcuts.findBooth.title')}</h2>
         <p class="subheading">{t(lang, 'home.shortcuts.findBooth.description')}</p>
         <BoothLookupForm lang={lang} />
-        <div class="booth-linkout">
-          <p>{t(lang, 'findBooth.linkOut.heading')}</p>
-          <ExternalLinkOut lang={lang} href={boothFinderUrl} label={t(lang, 'findBooth.linkOut.label')} />
-        </div>
+        {boothFinderUrl && (
+          <div class="booth-linkout">
+            <p>{t(lang, 'findBooth.linkOut.heading')}</p>
+            <ExternalLinkOut lang={lang} href={boothFinderUrl} label={t(lang, 'findBooth.linkOut.label')} />
+          </div>
+        )}
         </Card>
       </div>
     </section>
@@ -434,6 +438,31 @@ function wardHref(id: number): string {
   .hero-form .ward-result :global(a:hover),
   .hero-form .ward-result :global(a:focus-visible) {
     color: var(--color-on-hero);
+  }
+
+  .hero-directory-link {
+    margin: var(--space-4) 0 0;
+  }
+
+  .hero-directory-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-accent);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  .hero-directory-link a:hover,
+  .hero-directory-link a:focus-visible {
+    color: var(--color-on-hero);
+  }
+
+  .hero-directory-link a:focus-visible {
+    outline-color: var(--color-accent);
   }
 
   .hero-stats {

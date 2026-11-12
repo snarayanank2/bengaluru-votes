@@ -29,3 +29,37 @@ describe('nginx static data', () => {
     expect(gzipTypes).toContain('application/geo+json');
   });
 });
+
+describe('nginx static asset caching (tracker 201)', () => {
+  const fixed = locationBlock('~ ^/(?:fonts/|img/|favicon\\.ico$)');
+  const astro = locationBlock('/_astro/');
+
+  it('keeps hashed /_astro/ files one-year immutable, with one Cache-Control', () => {
+    expect(astro).toContain('add_header Cache-Control "public, max-age=31536000, immutable" always;');
+    expect(astro?.match(/Cache-Control/g)).toHaveLength(1);
+  });
+
+  it('gives fixed-name /fonts, /img and /favicon.ico a 7-day cache, never immutable', () => {
+    expect(fixed).not.toBeNull();
+    expect(fixed).toContain('root /srv/static;');
+    expect(fixed).toContain('add_header Cache-Control "public, max-age=604800";');
+    expect(fixed).not.toContain('immutable');
+    expect(fixed).not.toContain('expires'); // `expires` would add a second Cache-Control
+    expect(fixed?.match(/Cache-Control/g)).toHaveLength(1);
+  });
+
+  it('re-includes the security headers, since the location sets its own add_header', () => {
+    expect(fixed).toContain('include /etc/nginx/snippets/security-headers.conf;');
+  });
+
+  it('does not cache 404s for a week (no `always` on the fixed-name header)', () => {
+    expect(fixed).not.toMatch(/Cache-Control[^\n]*always/);
+  });
+
+  it('leaves the public page location on the micro-cache', () => {
+    const pages = locationBlock('/');
+    expect(pages).toContain('proxy_cache_valid 200 60s;');
+    expect(pages).toContain('proxy_set_header Cookie "";');
+    expect(pages).not.toContain('Cache-Control');
+  });
+});
