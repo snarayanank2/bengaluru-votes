@@ -268,8 +268,10 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
       expect(block).toContain(`<lastmod>${FIELD_UPDATED_AT.toISOString()}</lastmod>`);
     });
 
-    it('a ward with zero candidates gets NO <lastmod> (never a fabricated now())', () => {
-      const block = extractUrlBlock(readSitemap('sitemap-en.xml'), `<loc>${SITE_ORIGIN}/ward/${WARD_EMPTY.id}</loc>`);
+    it('a ward with zero candidates gets NO <lastmod> (never a fabricated now())', async () => {
+      await db.delete(schema.appSettings).where(eq(schema.appSettings.key, 'notification_date'));
+      const rebuilt = await buildSitemaps();
+      const block = extractUrlBlock(rebuilt.en, `<loc>${SITE_ORIGIN}/ward/${WARD_EMPTY.id}</loc>`);
       expect(block).not.toContain('<lastmod>');
     });
 
@@ -281,5 +283,71 @@ describe('Sitemaps (Task 57; src/lib/seo/sitemaps.ts)', () => {
         expect(block).toContain(`<loc>${SITE_ORIGIN}/candidate/${WITHDRAWN_SLUG}</loc>`);
       },
     );
+  });
+  describe('stable, meaningful lastmod (task 198)', () => {
+    const urlBlocks = (xml: string) => new Map((xml.match(/<url>[\s\S]*?<\/url>/g) ?? []).map((b) => [b.match(/<loc>([^<]+)<\/loc>/)![1]!, b]));
+    const lastmodOf = (xml: string, loc: string) => urlBlocks(xml).get(loc)?.match(/<lastmod>([^<]+)<\/lastmod>/)?.[1];
+    const NEWER = new Date('2027-01-15T09:30:00.000Z'); // later than every editorial date, so the index moves too
+
+    it('two builds with no data change are byte-identical (index, EN, KN)', async () => {
+      const first = await buildSitemaps();
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      const second = await buildSitemaps();
+      expect(second.index).toBe(first.index);
+      expect(second.en).toBe(first.en);
+      expect(second.kn).toBe(first.kn);
+    });
+
+    it('editorial pages carry the updated date from their EN frontmatter; the ward directory pages carry none', async () => {
+      const files = await buildSitemaps();
+      for (const route of ['/about', '/privacy', '/terms']) {
+        expect(lastmodOf(files.en, `${SITE_ORIGIN}${route}`)).toBe('2026-11-07T00:00:00.000Z');
+        expect(lastmodOf(files.kn, `${SITE_ORIGIN}/kn${route}`)).toBe('2026-11-07T00:00:00.000Z');
+      }
+      for (const route of ['/wards', '/corporation/south']) {
+        expect(urlBlocks(files.en).get(`${SITE_ORIGIN}${route}`)).not.toContain('<lastmod>');
+      }
+    });
+
+    it('a rendered app_settings row moves only the pages that render it', async () => {
+      await db.delete(schema.appSettings).where(eq(schema.appSettings.key, 'booth_lookup_url'));
+      const before = await buildSitemaps();
+      await db.insert(schema.appSettings).values({ key: 'booth_lookup_url', value: 'https://example.com/booth', updatedAt: NEWER });
+      try {
+        const after = await buildSitemaps();
+        expect(lastmodOf(after.en, `${SITE_ORIGIN}/`)).toBe(NEWER.toISOString());
+        expect(lastmodOf(after.en, `${SITE_ORIGIN}/about`)).toBe(lastmodOf(before.en, `${SITE_ORIGIN}/about`));
+        expect(lastmodOf(after.en, `${SITE_ORIGIN}/voter-faqs`)).toBe(lastmodOf(before.en, `${SITE_ORIGIN}/voter-faqs`));
+      } finally {
+        await db.delete(schema.appSettings).where(eq(schema.appSettings.key, 'booth_lookup_url'));
+      }
+    });
+
+    it('updating a candidate field bumps that candidate, its ward and the index, and nothing unrelated', async () => {
+      const before = await buildSitemaps();
+      await db
+        .update(schema.candidateFields)
+        .set({ updatedAt: NEWER })
+        .where(eq(schema.candidateFields.candidateId, activeCandidateId));
+      try {
+        const after = await buildSitemaps();
+        const changed = (xml: string, prev: string) =>
+          [...urlBlocks(xml)].filter(([loc, block]) => urlBlocks(prev).get(loc) !== block).map(([loc]) => loc).sort();
+        expect(changed(after.en, before.en)).toEqual(
+          [`${SITE_ORIGIN}/candidate/${ACTIVE_SLUG}`, `${SITE_ORIGIN}/ward/${WARD_WITH_CANDIDATE.id}`].sort(),
+        );
+        expect(changed(after.kn, before.kn)).toEqual(
+          [`${SITE_ORIGIN}/kn/candidate/${ACTIVE_SLUG}`, `${SITE_ORIGIN}/kn/ward/${WARD_WITH_CANDIDATE.id}`].sort(),
+        );
+        expect(lastmodOf(after.en, `${SITE_ORIGIN}/candidate/${ACTIVE_SLUG}`)).toBe(NEWER.toISOString());
+        expect(lastmodOf(after.en, `${SITE_ORIGIN}/ward/${WARD_WITH_CANDIDATE.id}`)).toBe(NEWER.toISOString());
+        expect(after.index).not.toBe(before.index);
+      } finally {
+        await db
+          .update(schema.candidateFields)
+          .set({ updatedAt: FIELD_UPDATED_AT })
+          .where(eq(schema.candidateFields.candidateId, activeCandidateId));
+      }
+    });
   });
 });

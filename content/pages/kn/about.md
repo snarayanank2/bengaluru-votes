@@ -1,7 +1,7 @@
 ---
 title: ಬೆಂಗಳೂರು ವೋಟ್ಸ್ ಬಗ್ಗೆ
 description: ಬೆಂಗಳೂರು ವೋಟ್ಸ್ ಏನು ಮಾಡುತ್ತದೆ, ಯಾರು ನಡೆಸುತ್ತಾರೆ ಮತ್ತು ಮಾಹಿತಿ ಎಲ್ಲಿಂದ ಬರುತ್ತದೆ.
-sourceHash: f450a81260f4cfbfc6ba4db6a34a041bc334b38ac05ac9c8a571ce3282334c7f
+sourceHash: 5ef4c0d4f0168ae1d9ea3cb8f8ec93b30c7eff529a8ffb844653b293ecab02a9
 ---
 
 ## ಬೆಂಗಳೂರು ವೋಟ್ಸ್ ಎಂದರೇನು?

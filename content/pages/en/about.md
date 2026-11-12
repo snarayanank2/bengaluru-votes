@@ -1,6 +1,7 @@
 ---
 title: About Bengaluru Votes
 description: What Bengaluru Votes does, who runs it, and where the information comes from.
+updated: "2026-11-07"
 ---
 
 ## What is Bengaluru Votes?

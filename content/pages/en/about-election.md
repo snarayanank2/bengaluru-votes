@@ -1,6 +1,7 @@
 ---
 title: About the GBA ward election
 description: What the GBA ward election is and what a corporator does.
+updated: "2026-11-07"
 ---
 
 <!-- The election status and official-notice countdown banner renders above this content, driven by app_settings (architecture §9) — this page never hard-codes a status or date. -->

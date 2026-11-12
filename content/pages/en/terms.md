@@ -1,6 +1,7 @@
 ---
 title: Terms and conditions
 description: Rules for using Bengaluru Votes and submitting votes or reports.
+updated: "2026-11-07"
 ---
 
 *Last updated: 7 November 2026*
