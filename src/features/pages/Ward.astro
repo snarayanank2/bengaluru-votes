@@ -60,6 +60,7 @@ import { mapsConfig } from '../../lib/maps-config';
 import { getKnownSetting } from '../../lib/settings';
 import { zoneLabel, wardLabel } from '../../lib/ward-label';
 import { loadNeighbourWards } from '../../lib/ward-neighbours';
+import { oldWardsClause, titleWardName } from '../../lib/ward-meta';
 
 
 interface Props {
@@ -138,8 +139,17 @@ const maps = mapsConfig();
 const boundaryUrl = ward ? `/ward/${wardId}/boundary.json` : null;
 
 const pagePath = `/ward/${wardId}`;
-const title = ward ? t(lang, 'ward.meta.title', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
-const description = ward ? t(lang, 'ward.meta.description', { wardName, wardNumber }) : t(lang, 'ward.notFound.fact');
+const title = ward
+  ? t(lang, 'ward.meta.title', { wardName: titleWardName(lang, wardName), wardNumber, corporation: corporationLabel })
+  : t(lang, 'ward.notFound.fact');
+const description = ward
+  ? t(lang, 'ward.meta.description', {
+      wardName: titleWardName(lang, wardName),
+      wardNumber,
+      corporation: corporationLabel,
+      oldWards: oldWardsClause(lang, oldWardOverlaps),
+    })
+  : t(lang, 'ward.notFound.fact');
 
 const wardJsonLd = ward
   ? [
