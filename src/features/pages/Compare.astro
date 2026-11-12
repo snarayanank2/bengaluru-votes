@@ -26,6 +26,7 @@ import {
   type CandidateProfileFieldKey,
 } from '../../lib/candidate-profile';
 import { getKnownSetting } from '../../lib/settings';
+import { wardOgMeta } from '../../lib/ward-og';
 
 
 interface Props {
@@ -152,6 +153,7 @@ const emptyFact = notificationDateSetting
   : t(lang, 'compare.empty.awaited');
 
 const pagePath = `/ward/${wardId}/compare`;
+const ogMeta = ward ? wardOgMeta(lang, ward) : {};
 const title = ward ? t(lang, 'compare.meta.title', { wardName }) : t(lang, 'ward.notFound.fact');
 const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t(lang, 'ward.notFound.fact');
 
@@ -170,7 +172,7 @@ const compareJsonLd = ward
   : [];
 ---
 
-<Base lang={lang} title={title} description={description} path={pagePath} jsonLd={compareJsonLd}>
+<Base lang={lang} title={title} description={description} path={pagePath} jsonLd={compareJsonLd} {...ogMeta}>
   {
     ward ? (
       <div class="compare">

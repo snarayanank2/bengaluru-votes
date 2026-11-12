@@ -63,7 +63,7 @@ import SkipLink from '../components/SkipLink.astro';
 import AppBar from '../components/AppBar.astro';
 import Footer from '../components/Footer.astro';
 import FlagModal from '../components/FlagModal.astro';
-import { localePath, type Lang } from '../i18n';
+import { localePath, t, type Lang } from '../i18n';
 import { gaLoaderSrc, gaConfigScriptSource } from '../lib/analytics';
 import { jsonLd } from '../lib/seo';
 
@@ -85,6 +85,8 @@ interface Props {
    */
   path: string;
   ogImage?: string;
+  /** Localized description of `ogImage`; the default image's alt is used when omitted. */
+  ogImageAlt?: string;
   noindex?: boolean;
   /** Error pages: emit no canonical, hreflang alternates or og:url (their `path` is not a real page). */
   omitUrlTags?: boolean;
@@ -99,7 +101,7 @@ interface Props {
   jsonLd?: Record<string, unknown>[];
 }
 
-const { lang, title, description, path, ogImage, noindex = false, omitUrlTags = false, jsonLd: jsonLdBlocks = [] } = Astro.props;
+const { lang, title, description, path, ogImage, ogImageAlt, noindex = false, omitUrlTags = false, jsonLd: jsonLdBlocks = [] } = Astro.props;
 
 // Astro.site is always configured (astro.config.mjs falls back to the
 // production origin when SITE_ORIGIN is unset) — the local fallback here
@@ -111,6 +113,7 @@ const canonicalHref = new URL(localePath(lang, path), siteOrigin).href;
 const enHref = new URL(localePath('en', path), siteOrigin).href;
 const knHref = new URL(localePath('kn', path), siteOrigin).href;
 const ogImageHref = new URL(ogImage ?? DEFAULT_OG_IMAGE, siteOrigin).href;
+const ogImageAltText = ogImageAlt ?? t(lang, 'meta.ogImageAlt');
 const ogLocale = lang === 'en' ? 'en_IN' : 'kn_IN';
 
 // Per-request CSP nonce (architecture §13, src/middleware.ts) for the
@@ -160,11 +163,15 @@ const showGa = !noindex && !!gaMeasurementId;
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={ogLocale} />
     <meta property="og:image" content={ogImageHref} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAltText} />
     <meta property="og:site_name" content="Bengaluru Votes" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageHref} />
+    <meta name="twitter:image:alt" content={ogImageAltText} />
     <link rel="manifest" href="/manifest.webmanifest" />
 
     {
