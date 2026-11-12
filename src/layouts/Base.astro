@@ -86,6 +86,8 @@ interface Props {
   path: string;
   ogImage?: string;
   noindex?: boolean;
+  /** Error pages: emit no canonical, hreflang alternates or og:url (their `path` is not a real page). */
+  omitUrlTags?: boolean;
   /**
    * Plain schema.org objects (from `src/lib/seo.ts`'s builders) this page
    * wants emitted as `<script type="application/ld+json">` tags in
@@ -97,7 +99,7 @@ interface Props {
   jsonLd?: Record<string, unknown>[];
 }
 
-const { lang, title, description, path, ogImage, noindex = false, jsonLd: jsonLdBlocks = [] } = Astro.props;
+const { lang, title, description, path, ogImage, noindex = false, omitUrlTags = false, jsonLd: jsonLdBlocks = [] } = Astro.props;
 
 // Astro.site is always configured (astro.config.mjs falls back to the
 // production origin when SITE_ORIGIN is unset) — the local fallback here
@@ -147,14 +149,14 @@ const showGa = !noindex && !!gaMeasurementId;
     <link rel="icon" type="image/png" href="/img/favicon-192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
 
-    <link rel="canonical" href={canonicalHref} />
-    <link rel="alternate" hreflang="en" href={enHref} />
-    <link rel="alternate" hreflang="kn" href={knHref} />
-    <link rel="alternate" hreflang="x-default" href={enHref} />
+    {!omitUrlTags && <link rel="canonical" href={canonicalHref} />}
+    {!omitUrlTags && <link rel="alternate" hreflang="en" href={enHref} />}
+    {!omitUrlTags && <link rel="alternate" hreflang="kn" href={knHref} />}
+    {!omitUrlTags && <link rel="alternate" hreflang="x-default" href={enHref} />}
 
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonicalHref} />
+    {!omitUrlTags && <meta property="og:url" content={canonicalHref} />}
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={ogLocale} />
     <meta property="og:image" content={ogImageHref} />

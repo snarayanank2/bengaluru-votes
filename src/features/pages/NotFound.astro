@@ -17,11 +17,9 @@
  * micro-cache. noindex is always on (Base's noindex prop) — a 404 page
  * must never be indexed.
  *
- * hreflang: Base's default alternates are kept (not suppressed) — the
- * fixed path "/404" isn't a real page a search engine could reach as a
- * canonical destination anyway, and noindex already keeps this page (and
- * its alternates) out of the index, so there's no separate case to guard
- * here. See the task-23 report for this explicit call.
+ * No canonical, hreflang alternates or og:url (Base's omitUrlTags): the
+ * fixed path "/404" is not a real page, and a canonical pointing at it would
+ * be wrong for every missing URL that renders this.
  */
 import Base from '../../layouts/Base.astro';
 import EmptyState from '../../components/EmptyState.astro';
@@ -38,7 +36,7 @@ const title = t(lang, 'error.notFound.title');
 const body = t(lang, 'error.notFound.body');
 ---
 
-<Base lang={lang} title={title} description={body} path="/404" noindex={true}>
+<Base lang={lang} title={title} description={body} path="/404" noindex={true} omitUrlTags={true}>
   <EmptyState fact={title} nextStep={body} headingLevel={1}>
     <div class="links">
       <Button variant="primary" href={localePath(lang, '/')} lang={lang}>
