@@ -15,6 +15,7 @@
     "typecheck": "astro check && tsc --noEmit",
     "migrate": "tsx src/db/migrate.ts",
     "build:ward-issues": "tsx scripts/build-ward-issues.ts",
+    "build:ward-neighbours": "tsx scripts/build-ward-neighbours.ts",
     "migration:ward-issues": "tsx scripts/write-ward-issues-migration.ts",
     "seed:wards": "tsx scripts/seed-wards.ts",
     "update:ward-facts": "tsx scripts/update-ward-facts.ts",

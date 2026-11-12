@@ -42,6 +42,7 @@ const [row] = await db
     wardId: candidates.wardId,
     wardNameEn: wards.nameEn,
     wardNameKn: wards.nameKn,
+    wardCorporation: wards.corporation,
     ...candidateIdentitySelection(),
     status: candidates.status,
   })
@@ -56,6 +57,9 @@ const partyName = row ? (lang === 'kn' && row.partyKn ? row.partyKn : row.partyE
 // composite route id).
 const wardName = row ? (lang === 'kn' ? row.wardNameKn : row.wardNameEn).replace(/^\d+\s*-\s*/, '') : '';
 const wardLabel = row ? t(lang, 'nav.ward', { wardNumber: row.wardId % 1000, wardName }) : '';
+// The corporation sits between Home and the ward, as on the ward page.
+const corporationName = row ? t(lang, 'corporation.name', { corporation: t(lang, `ward.corporation.${row.wardCorporation}`) }) : '';
+const corporationPath = row ? `/corporation/${row.wardCorporation}` : '';
 
 // Neutral initials placeholder — same derivation as
 // CandidateRow.astro: first letter of up to the first two words of the
@@ -132,6 +136,7 @@ const candidateJsonLd = row
       personLd({ name: candidateName, party: partyName || null, path: localePath(lang, pagePath) }),
       breadcrumbLd([
         { name: 'Bengaluru Votes', url: localePath(lang, '/') },
+        { name: corporationName, url: localePath(lang, corporationPath) },
         { name: wardLabel, url: localePath(lang, `/ward/${row.wardId}`) },
         { name: candidateName, url: localePath(lang, pagePath) },
       ]),
@@ -154,6 +159,7 @@ const candidateJsonLd = row
           <div class="candidate-container hero-content">
             <Breadcrumbs lang={lang} items={[
               { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
+              { label: corporationName, href: localePath(lang, corporationPath) },
               { label: wardLabel, href: localePath(lang, `/ward/${row.wardId}`) },
               { label: candidateName },
             ]} />

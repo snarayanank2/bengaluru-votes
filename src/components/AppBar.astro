@@ -27,7 +27,7 @@
  * cookies/session. The sign-in entry point is intentionally hidden for now;
  * the login route and modal remain available to other authenticated flows.
  */
-import { localePath, type Lang } from '../i18n';
+import { t, localePath, type Lang } from '../i18n';
 
 interface Props {
   lang: Lang;
@@ -40,6 +40,11 @@ const { lang, path } = Astro.props;
 // §7.1: "EN | ಕನ್ನಡ", each label always in its own script). The current
 // language renders as a styled, non-interactive segment; the other language
 // renders as the link that navigates to the same page in that language.
+// The ward-directory link is current on its own page ("page") and on the
+// pages beneath it: corporation and ward pages ("true"). design-system §7.1.
+const wardsCurrent =
+  path === '/wards' ? 'page' : /^\/(corporation|ward)\//.test(path) ? 'true' : undefined;
+
 const segments: Array<{ lang: Lang; label: string }> = [
   { lang: 'en', label: 'EN' },
   { lang: 'kn', label: 'ಕನ್ನಡ' },
@@ -62,6 +67,10 @@ const segments: Array<{ lang: Lang; label: string }> = [
     </div>
 
     <div class="controls">
+      <a class="nav-link" href={localePath(lang, '/wards')} aria-current={wardsCurrent}>
+        <svg class="nav-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        <span class="nav-label">{t(lang, 'nav.wards')}</span>
+      </a>
       <div class="lang-toggle" role="group" aria-label="Language">
         {
           segments.map((segment) =>
@@ -173,6 +182,32 @@ const segments: Array<{ lang: Lang; label: string }> = [
     overflow: hidden;
   }
 
+  /* The one primary navigation link (design-system §7.1): plain text with the
+     same 44px target as the language segments; the current page is bold. */
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .nav-icon {
+    display: none;
+  }
+
+  .nav-link:hover,
+  .nav-link:focus-visible,
+  .nav-link[aria-current] {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
   .segment {
     display: inline-flex;
     align-items: center;
@@ -256,6 +291,41 @@ const segments: Array<{ lang: Lang; label: string }> = [
       padding-inline: 4px;
     }
 
+    /* Phones: the link shrinks to an icon-only 44px control. Its text stays
+       in the DOM as the accessible name (the Kannada word alone is wider than
+       the room the logos leave). */
+    .nav-icon {
+      display: block;
+    }
+
+    .nav-link {
+      justify-content: center;
+      min-width: 44px;
+      padding-inline: 0;
+    }
+
+    .nav-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+  }
+
+  /* Narrow phones: the ward link, both logos and the language toggle must
+     fit with at least 8px between controls. The decorative star goes and the
+     bar's side padding tightens. */
+  @media (max-width: 375px) {
+    .bar-inner {
+      padding-inline: 12px;
+    }
+
+    .header-star {
+      display: none;
+    }
   }
 
   /* Keep the complete lockup usable at the 320px floor as well. */
@@ -277,15 +347,11 @@ const segments: Array<{ lang: Lang; label: string }> = [
     }
 
     .oc-logo {
-      height: 12px;
+      height: 11px;
     }
 
     .janaagraha-logo {
-      height: 12px;
-    }
-
-    .controls {
-      gap: 4px;
+      height: 11px;
     }
   }
 </style>

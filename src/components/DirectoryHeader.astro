@@ -1,0 +1,60 @@
+---
+/**
+ * DirectoryHeader — the dark identity band that opens a directory page
+ * (design-system §7.15): breadcrumbs, the H1 and one lead paragraph. The band
+ * is full width; its content aligns to the app container like the ward page's
+ * header. Cache-safe: it renders only what the page passes in.
+ */
+import Breadcrumbs from './Breadcrumbs.astro';
+import type { Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  crumbs: { label: string; href?: string }[];
+  title: string;
+  lead: string;
+}
+
+const { lang, crumbs, title, lead } = Astro.props;
+---
+
+<header class="directory-header">
+  <div class="directory-header-inner">
+    <Breadcrumbs lang={lang} items={crumbs} />
+    <h1>{title}</h1>
+    <p>{lead}</p>
+  </div>
+</header>
+
+<style>
+  .directory-header {
+    background: var(--color-hero-bg);
+    color: var(--color-on-hero);
+  }
+
+  .directory-header-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    max-width: var(--container-app);
+    margin-inline: auto;
+    padding: var(--space-12) var(--container-pad-x);
+  }
+
+  h1 {
+    margin: 0;
+    color: var(--color-on-hero);
+    font-family: var(--font-heading);
+    font-size: var(--text-3xl);
+    line-height: var(--leading-3xl);
+  }
+
+  p {
+    max-width: 64ch;
+    margin: 0;
+    color: var(--color-hero-muted);
+    font-size: var(--text-base);
+    line-height: var(--leading-lg);
+  }
+</style>

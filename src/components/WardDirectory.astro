@@ -1,0 +1,117 @@
+---
+/**
+ * WardDirectory — one corporation's zones and wards as plain server-rendered
+ * links (design-system §7.15, directory list). Used by the all-wards page,
+ * where each corporation is a section with a heading that links to its own
+ * page, and by the corporation page, where the page's own H1 already names
+ * the corporation (`heading="none"`) and zones start at H2.
+ *
+ * Every ward is a real `<a href>` with its public label ("Ward 1 Ramaswamy
+ * Palya"), never the route id, so crawlers and keyboard users reach all 369
+ * wards without script. Ward numbers repeat across corporations, which is why
+ * each list sits under its corporation and zone headings.
+ */
+import { t, localePath, type Lang } from '../i18n';
+import { wardLabel, zoneLabel } from '../lib/ward-label';
+import type { DirectoryCorporation } from '../lib/ward-directory';
+
+interface Props {
+  lang: Lang;
+  entry: DirectoryCorporation;
+  /** `link`: an H2 linking to the corporation page. `none`: no corporation heading; zones are H2. */
+  heading: 'link' | 'none';
+}
+
+const { lang, entry, heading } = Astro.props;
+const corporationName = t(lang, 'corporation.name', { corporation: t(lang, `ward.corporation.${entry.corporation}`) });
+const zoneTag = heading === 'link' ? 'h3' : 'h2';
+const ZoneHeading = zoneTag;
+const sectionId = `directory-${entry.corporation}`;
+---
+
+<section class="directory-corporation" aria-labelledby={heading === 'link' ? `${sectionId}-heading` : undefined}>
+  {
+    heading === 'link' && (
+      <h2 id={`${sectionId}-heading`} class="directory-corporation-heading">
+        <a href={localePath(lang, `/corporation/${entry.corporation}`)}>{corporationName}</a>
+        <span class="directory-count">{t(lang, 'directory.wardCount', { count: entry.wardCount })}</span>
+      </h2>
+    )
+  }
+  {
+    entry.zones.map((zone) => (
+      <div class="directory-zone">
+        <ZoneHeading class="directory-zone-heading">
+          {t(lang, 'directory.zone', { zone: zoneLabel(lang, zone.zone) })}
+          <span class="directory-count">{t(lang, 'directory.wardCount', { count: zone.wards.length })}</span>
+        </ZoneHeading>
+        <ul class="directory-wards">
+          {zone.wards.map((ward) => (
+            <li>
+              <a class="body-link" href={localePath(lang, `/ward/${ward.id}`)}>{wardLabel(lang, ward)}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+</section>
+
+<style>
+  .directory-corporation {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .directory-corporation-heading,
+  .directory-zone-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    margin: 0;
+    font-family: var(--font-heading);
+    color: var(--color-text);
+  }
+
+  .directory-corporation-heading {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+  }
+
+  .directory-corporation-heading a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-primary);
+    text-underline-offset: 3px;
+  }
+
+  .directory-zone-heading {
+    font-size: var(--text-lg);
+    line-height: var(--leading-lg);
+  }
+
+  .directory-count {
+    color: var(--color-text-muted);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 400;
+  }
+
+  .directory-zone {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .directory-wards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 0 var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+</style>
