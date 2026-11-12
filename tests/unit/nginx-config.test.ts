@@ -31,7 +31,7 @@ describe('nginx static data', () => {
 });
 
 describe('nginx static asset caching (tracker 201)', () => {
-  const fixed = locationBlock('~ ^/(?:fonts/|img/|favicon\\.ico$)');
+  const fixed = locationBlock('~ ^/(?:fonts/|img/|og/|favicon\\.ico$)');
   const astro = locationBlock('/_astro/');
 
   it('keeps hashed /_astro/ files one-year immutable, with one Cache-Control', () => {
@@ -39,7 +39,7 @@ describe('nginx static asset caching (tracker 201)', () => {
     expect(astro?.match(/Cache-Control/g)).toHaveLength(1);
   });
 
-  it('gives fixed-name /fonts, /img and /favicon.ico a 7-day cache, never immutable', () => {
+  it('gives fixed-name /fonts, /img, /og and /favicon.ico a 7-day cache, never immutable', () => {
     expect(fixed).not.toBeNull();
     expect(fixed).toContain('root /srv/static;');
     expect(fixed).toContain('add_header Cache-Control "public, max-age=604800";');

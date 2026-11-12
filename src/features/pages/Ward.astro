@@ -61,6 +61,7 @@ import { getKnownSetting } from '../../lib/settings';
 import { zoneLabel, wardLabel } from '../../lib/ward-label';
 import { loadNeighbourWards } from '../../lib/ward-neighbours';
 import { oldWardsClause, titleWardName } from '../../lib/ward-meta';
+import { wardOgMeta } from '../../lib/ward-og';
 
 
 interface Props {
@@ -151,6 +152,7 @@ const description = ward
     })
   : t(lang, 'ward.notFound.fact');
 
+const ogMeta = ward ? wardOgMeta(lang, ward) : {};
 const wardJsonLd = ward
   ? [
       placeLd({ id: wardId, name: wardName, path: localePath(lang, pagePath) }),
@@ -163,7 +165,7 @@ const wardJsonLd = ward
   : [];
 ---
 
-<Base lang={lang} title={title} description={description} path={pagePath} jsonLd={wardJsonLd}>
+<Base lang={lang} title={title} description={description} path={pagePath} jsonLd={wardJsonLd} {...ogMeta}>
   {
     ward ? (
       <div class="ward">

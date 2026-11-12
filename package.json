@@ -18,6 +18,7 @@
     "build:ward-neighbours": "tsx scripts/build-ward-neighbours.ts",
     "migration:ward-issues": "tsx scripts/write-ward-issues-migration.ts",
     "seed:wards": "tsx scripts/seed-wards.ts",
+    "generate:ward-og": "tsx scripts/generate-ward-og.ts",
     "update:ward-facts": "tsx scripts/update-ward-facts.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "set-password": "tsx scripts/set-password.ts",

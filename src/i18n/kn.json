@@ -90,6 +90,8 @@
   "home.shortcuts.votingGuide.title": "ಮತದಾನ ಮಾರ್ಗದರ್ಶಿ",
   "ward.meta.title": "{wardName} ವಾರ್ಡ್ {wardNumber}, {corporation} ನಗರ ಪಾಲಿಕೆ — ಜಿಬಿಎ ಚುನಾವಣಾ ಅಭ್ಯರ್ಥಿಗಳು",
   "ward.meta.description": "{wardName} (ವಾರ್ಡ್ {wardNumber}, {corporation} ನಗರ ಪಾಲಿಕೆ{oldWards}): ಅಭ್ಯರ್ಥಿಗಳು, ವಾರ್ಡ್ ನಕ್ಷೆ, ಪ್ರಮುಖ ಪ್ರದೇಶಗಳು ಮತ್ತು ಜಿಬಿಎ ಚುನಾವಣೆಯಲ್ಲಿ ಮತ ಹಾಕುವುದು ಹೇಗೆ.",
+  "ward.og.alt": "Bengaluru Votes: {wardName}, {details}",
+  "meta.ogImageAlt": "Bengaluru Votes: ನಿಮ್ಮ ವಾರ್ಡ್ ತಿಳಿಯಿರಿ, ನಿಮ್ಮ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ತಿಳಿಯಿರಿ.",
   "ward.meta.oldWards.within": ", ಹಳೆಯ ಬಿಬಿಎಂಪಿ ವಾರ್ಡ್ {oldWards} ಒಳಗೆ ಇದೆ",
   "ward.meta.oldWards.mostly": ", ಹೆಚ್ಚಿನ ಭಾಗ ಹಳೆಯ ಬಿಬಿಎಂಪಿ ವಾರ್ಡ್ {oldWards} ಒಳಗೆ ಇದೆ",
   "ward.meta.oldWards.partOne": ", ಹಳೆಯ ಬಿಬಿಎಂಪಿ ವಾರ್ಡ್ {oldWards}ರ ಒಂದು ಭಾಗವನ್ನು ಒಳಗೊಂಡಿದೆ",
@@ -927,7 +929,9 @@
     "ward.meta.oldWards.within": "b30a7907472ef116ff253ede3ade8d9a40986adef2a1a4ab7ec6545a396ef600",
     "ward.meta.oldWards.mostly": "2b7e955048ffa9c71a4a4a78568e0bb8726d3ec8d25c7b79f414e36abcf67800",
     "ward.meta.oldWards.partOne": "d168b1271a887e3afaa2b8dc571efb5ef2b3bf706404d8403176fcf454a2fbdd",
-    "ward.meta.oldWards.partMany": "6f5789817a5720ee4ef580d4737165ed8b0289a5a60bd3c3cc11a44e1ecc01b3"
+    "ward.meta.oldWards.partMany": "6f5789817a5720ee4ef580d4737165ed8b0289a5a60bd3c3cc11a44e1ecc01b3",
+    "ward.og.alt": "8b2e00d45e0747c1b998768e2e288dce9a223271fe0169100d212c71149b6853",
+    "meta.ogImageAlt": "f207bb78449e4ff52d46d8d2341ccdeff91af18e089c45ab6a6fa5eb04b28ae3"
   },
   "legal.courtesyNote": "ಇದು ಸೌಜನ್ಯ ಅನುವಾದವಾಗಿದೆ. ಈ ಪುಟದ ಇಂಗ್ಲಿಷ್ ಆವೃತ್ತಿಯು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಯಂತ್ರಿಸುವ ಪಠ್ಯವಾಗಿದೆ.",
   "error.notFound.title": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
