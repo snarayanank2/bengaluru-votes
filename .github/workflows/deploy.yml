@@ -51,6 +51,10 @@ jobs:
           fetch-depth: 0
       # A push that changed nothing the image or the box runs (docs, tests, CI
       # config) neither tests nor deploys. Manual runs always deploy.
+      # The diff base is the last release tag (the last commit a deploy actually
+      # started on; stale runs below never tag), not the previous push. Pushes
+      # in quick succession mark the older runs stale, so a docs-only head must
+      # still ship the runtime commits they skipped (2026-11-12).
       - name: Did this push change anything production runs?
         id: changes
         env:
@@ -58,7 +62,9 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: |
           if [ "$EVENT" = push ]; then
-            node scripts/ci/changed-paths.mjs "$BEFORE" HEAD
+            base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)
+            echo "diff base: ${base:-$BEFORE (no release tag)}"
+            node scripts/ci/changed-paths.mjs "${base:-$BEFORE}" HEAD
           else
             echo "runtime=true" >> "$GITHUB_OUTPUT"
           fi
