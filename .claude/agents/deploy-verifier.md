@@ -38,6 +38,12 @@ an image built with the wrong `SITE_ORIGIN` serves 200s and 403s every POST
 4. **Static assets:** fetch the CSS/JS URLs referenced by the home page and
    `/data/gba.geojson`; all must be 200. 404s or old styling after a deploy
    mean `static-init` did not re-run (`docker compose ... run --rm static-init`).
+   Then `curl -sI` one hashed `/_astro/*` asset: exactly one `cache-control:
+   public, max-age=31536000, immutable`. And `/img/og-default.png`,
+   `/fonts/manrope-latin-wght-normal.woff2`, `/favicon.ico`: each exactly one
+   `cache-control: public, max-age=604800` (FAIL on `max-age=0` or
+   `immutable`), with `strict-transport-security` and
+   `x-content-type-options` present. HTML (`/`) stays `max-age=0`.
 5. Spot-check the change that shipped (the caller says what): fetch the affected
    public URL, remembering pages can lag a publish by a few minutes because of
    the nginx cache and the cache key ignores the query string.

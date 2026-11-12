@@ -38,6 +38,7 @@ verified.
 |---|---|---|
 | Forms 403, pages fine | Image built with the wrong `SITE_ORIGIN` | Redeploy via `deploy.sh` — it passes the right one |
 | New CSS/JS 404s, or old styling persists | `static-init` did not re-run — `up -d` skips a one-shot that already succeeded | `deploy.sh` always re-runs it; by hand it is `docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm static-init` |
+| `/img/*`, `/fonts/*` or `/favicon.ico` answer `max-age=0` or 404 | They are served by nginx from the static volume (`max-age=604800`); `max-age=0` means the request fell through to the app (config not reloaded), a 404 means `static-init` did not copy the build | `deploy.sh` reloads nginx and re-runs `static-init`; check with `curl -sI https://bengaluruvotes.opencity.in/img/og-default.png` |
 | App container restart-loops | Usually a migration that has not run | `docker compose -p bengaluru-votes-production -f deploy/compose.production.yml run --rm app npm run migrate` |
 | `git pull`/checkout refuses | The checkout has local modifications | Reconcile by hand — never `--force` blindly, someone edited that box for a reason |
 | Ward lookup says "try again shortly" for every address | Geocoding is unavailable: `GOOGLE_GEOCODING_API_KEY` unset/rejected, or `GEOCODE_DAILY_BUDGET` exhausted | Not a deploy bug in itself. Pincode lookup was removed 2026-08-14, so there is no fallback — check the key and the budget counter |
