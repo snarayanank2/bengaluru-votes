@@ -224,6 +224,27 @@ describe('Home page (/, /kn/)', () => {
       expect(knHtml).toContain(`<link rel="alternate" hreflang="kn" href="${SITE_ORIGIN}/kn/">`);
     });
 
+    it('localises landmark and group accessible names, and leaves no English ones on /kn/', async () => {
+      const labels: Array<[string, string]> = [
+        ['footer.nav.primary', 'Footer'],
+        ['footer.nav.more', 'More footer links'],
+        ['footer.social.label', 'Open City on social media'],
+        ['nav.language', 'Language'],
+        ['nav.partners', 'OpenCity and Janaagraha'],
+        ['home.hero.stats.label', 'Key election facts'],
+      ];
+      const enHtml = await renderHome('en');
+      const knHtml = await renderHome('kn');
+      for (const [key, english] of labels) {
+        expect(enHtml).toContain(`aria-label="${english}"`);
+        expect(t('en', key as never)).toBe(english);
+        const kannada = t('kn', key as never);
+        expect(kannada).not.toBe(english);
+        expect(knHtml).toContain(`aria-label="${kannada}"`);
+        expect(knHtml).not.toContain(`aria-label="${english}"`);
+      }
+    });
+
     it('emits its own WardLookup island script, plus Base.astro\'s global Flag script (Tasks 28/32) — no others', async () => {
       const html = await renderHome('en');
       const scriptOpenTags = html.match(/<script\b[^>]*>/g) ?? [];

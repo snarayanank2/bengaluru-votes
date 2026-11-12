@@ -99,7 +99,7 @@ const social = [
           />
         </li>
       </ul>
-      <ul role="list" class="social-links" aria-label="Open City on social media">
+      <ul role="list" class="social-links" aria-label={t(lang, 'footer.social.label')}>
         {
           social.map((account) => (
             <li>
@@ -118,7 +118,7 @@ const social = [
         }
       </ul>
     </div>
-    <nav class="footer-link-column footer-link-column--divided" aria-label="Footer">
+    <nav class="footer-link-column footer-link-column--divided" aria-label={t(lang, 'footer.nav.primary')}>
       <ul role="list" class="footer-links">
         {
           links.slice(0, 4).map((link) => (
@@ -129,7 +129,7 @@ const social = [
         }
       </ul>
     </nav>
-    <nav class="footer-link-column footer-link-column--divided" aria-label="More footer links">
+    <nav class="footer-link-column footer-link-column--divided" aria-label={t(lang, 'footer.nav.more')}>
       <img class="opencity-logo" src="/img/opencity-wordmark.png" alt="OpenCity" width="128" height="45" />
       <ul role="list" class="footer-links">
         {
