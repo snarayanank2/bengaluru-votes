@@ -24,7 +24,7 @@ const body = t('en', 'error.serverError.body');
 Astro.response.status = 500;
 ---
 
-<Base lang="en" title={title} description={body} path="/500" noindex={true}>
+<Base lang="en" title={title} description={body} path="/500" noindex={true} omitUrlTags={true}>
   <EmptyState fact={title} nextStep={body} headingLevel={1}>
     <div class="links">
       <Button variant="primary" href={localePath('en', '/')} lang="en">

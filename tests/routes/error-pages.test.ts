@@ -88,7 +88,7 @@ describe('404 page (Task 23) — friendly not-found', () => {
     expect(html).not.toContain(t('en', 'error.notFound.title'));
     expect(html).toContain(`href="${localePath('kn', '/')}"`);
     // The toggle's alternate is the English twin.
-    expect(html).toContain('hreflang="en"');
+    expect(html).toContain('<a class="segment" href="/404">EN</a>');
   });
 
   it('EN shim stays English for a path that only starts like /kn', async () => {
@@ -107,6 +107,22 @@ describe('404 page (Task 23) — friendly not-found', () => {
     const h1s = html.match(/<h1\b[^>]*>.*?<\/h1>/g) ?? [];
     expect(h1s).toHaveLength(1);
     expect(h1s[0]).toContain(t(lang, 'error.notFound.title'));
+  });
+
+  // The fixed "/404" path is not a real page: no canonical, hreflang
+  // alternate <link>s or og:url may point at it (SEO audit, task 203).
+  it.each([
+    ['EN', NotFoundEn, '/missing'],
+    ['KN', NotFoundKn, '/kn/missing'],
+    ['EN shim, Kannada path', NotFoundEn, '/kn/ward/99999'],
+    ['EN, missing candidate', NotFoundEn, '/candidate/no-such-person'],
+  ] as const)('%s 404 has no canonical, alternate links or og:url, but keeps 404 + noindex', async (_label, Page, path) => {
+    const { html, response } = await renderPage(Page, path);
+    expect(response.status).toBe(404);
+    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(html).not.toMatch(/<link[^>]*rel="canonical"/);
+    expect(html).not.toMatch(/<link[^>]*rel="alternate"/);
+    expect(html).not.toContain('og:url');
   });
 
   it('does not read any cookie/session — identical markup with/without a cookie on the request, no set-cookie', async () => {
@@ -136,6 +152,12 @@ describe('500 page (Task 23) — generic, dependency-light error page', () => {
     expect(html).toContain(t('en', 'error.serverError.title'));
     expect(html).toContain(t('en', 'error.serverError.body'));
     expect(html).toContain(`href="${localePath('en', '/')}"`);
+  });
+
+  it('the 500 page has no canonical, alternate links or og:url', async () => {
+    const { html } = await renderPage(ServerError, '/500');
+    expect(html).not.toMatch(/<link[^>]*rel="(canonical|alternate)"/);
+    expect(html).not.toContain('og:url');
   });
 
   it('the 500 page has the title as its one H1', async () => {
