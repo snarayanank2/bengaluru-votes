@@ -316,7 +316,7 @@ Body links use forest and an underline. Shared class `.body-link` (`global.css`)
 
 **Return link:** where a page sits under a parent and a visible way back is wanted beyond the breadcrumb (§7.15), add a text link, never a button: a body link (forest, underlined, semibold) led by a decorative `‹` chevron (`aria-hidden`), localized, at least 44px high, using the global forest focus outline. It sits at the start of the light content area, directly beneath the dark identity band. The destination is the parent in the same language twin. A report card uses it to return to its ward (“Back to ward”).
 
-**Guided link-out (`ExternalLinkOut.astro`):** a primary-styled anchor to an official external process, always `target="_blank" rel="noopener noreferrer"` with the labeled glyph. When the URL setting is empty, it renders a disabled-looking placeholder and a visible “(official link pending)” note rather than inventing a URL.
+**Guided link-out (`ExternalLinkOut.astro`):** a primary-styled anchor to an official external process, always `target="_blank" rel="noopener noreferrer"` with the labeled glyph. When the URL setting is empty, the guide pages render a disabled-looking placeholder and a visible “(official link pending)” note rather than inventing a URL. A surface where a placeholder would only be noise (the home booth card) omits the link-out and its heading instead, so no `href="#"` is ever rendered.
 
 ### 7.5 Cards, rows, and collections
 
@@ -560,7 +560,7 @@ Examples illustrate the patterns; they do not limit where a pattern may be used.
 | Home: introduction and ward finder | Dark hero with supporting statistics; compact lookup (light + light icon-only location); outlined eyebrow; inline response |
 | Home: why vote | Gold split explanatory section; topic pills |
 | Home: election basics | White split explanatory section with numbered disclosures |
-| Home: booth finder | Sage content/action band with compact lookup (`BoothLookupForm`) and the guided link-out to the official finder |
+| Home: booth finder | Sage content/action band with compact lookup (`BoothLookupForm`) and the guided link-out to the official finder (omitted while its URL setting is empty) |
 | Ward: identity and local facts | Dark identity band; breadcrumbs; structured facts |
 | Ward: navigation and boundary | Sticky section navigation; map frame and fallback |
 | Ward: candidates | Paper collection band; `CandidateRow` identity rows; plain status text; secondary compare link |
