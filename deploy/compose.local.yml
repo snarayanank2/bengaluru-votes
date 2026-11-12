@@ -4,7 +4,7 @@
 # the Dockerfile (architecture §14.3), but it fronts it with a TLS
 # nginx, run certbot and the jobs container, and expect real vendor
 # credentials. This file exposes the Astro server directly on
-# http://localhost:4321 with none of that — no nginx, no certbot, no cron
+# http://localhost:4321 (BV_LOCAL_PORT in a worktree) with none of that — no nginx, no certbot, no cron
 # jobs container (the local database is disposable demo data).
 # It does define `extract-worker`, the affidavit extraction worker, which
 # takes an Anthropic key from YOUR SHELL and exits without one.
@@ -32,7 +32,7 @@
 # override is safe HERE and nowhere else.
 #
 # Read the database directly with:
-#   psql postgres://gba:gba_local_dev@localhost:5433/gba
+#   psql postgres://gba:gba_local_dev@localhost:5433/gba   # BV_LOCAL_PG_PORT in a worktree
 #
 # THE ORIGIN ARGS ARE LOAD-BEARING. astro.config.mjs resolves `site` and
 # `security.allowedDomains` once, at BUILD time, against two hard-coded
@@ -41,10 +41,21 @@
 # 403s every POST — ward lookup, login, votes and flags all break, and
 # nothing in `ps`, the healthcheck or the logs says so (see the deploy-vps
 # skill, "The one thing that breaks silently"). They are wired below, so the
-# only way to hit this is to change PORT without rebuilding: after changing
-# it, re-run with `--build`.
+# only way to hit this is to change BV_LOCAL_PORT without rebuilding: after
+# changing it, re-run with `--build`.
+#
+# PARALLEL WORKTREES. As written, every checkout of this file is the same
+# Compose project on the same ports and image tag, so a second worktree's
+# `up` would recreate the first one's containers. In a git worktree, run
+# `scripts/local-instance.sh` once first: it writes deploy/.env (gitignored,
+# read automatically by Compose for this file) with this checkout's own
+# BV_LOCAL_PROJECT, BV_LOCAL_IMAGE_TAG, BV_LOCAL_PORT and BV_LOCAL_PG_PORT,
+# and copies deploy/.env.local from the primary checkout. The primary
+# checkout keeps the defaults below. Each project has its own Postgres volume,
+# so a worktree's stack starts with an empty database; `--up` also starts the
+# stack, creates bv_test/bv_e2e and seeds it.
 
-name: bengaluru-votes-local
+name: ${BV_LOCAL_PROJECT:-bengaluru-votes-local}
 
 services:
   # Same Dockerfile the deployed images are built from, using its development
@@ -56,20 +67,26 @@ services:
       dockerfile: Dockerfile
       target: development
       args:
-        SITE_ORIGIN: http://localhost:${PORT:-4321}
-        EXTRA_ALLOWED_ORIGIN: http://localhost:${PORT:-4321}
-    image: bengaluru-votes:local
+        SITE_ORIGIN: http://localhost:${BV_LOCAL_PORT:-4321}
+        EXTRA_ALLOWED_ORIGIN: http://localhost:${BV_LOCAL_PORT:-4321}
+    image: bengaluru-votes:${BV_LOCAL_IMAGE_TAG:-local}
+    # The Dockerfile's development CMD plus `--ignore-lock`. Astro writes a
+    # dev-server lock (.astro/dev.json, PID included) into the mounted working
+    # tree; a recreated container reuses that PID, so Astro thinks the old
+    # server still runs and exits with "Another astro dev server is already
+    # running". This container is the checkout's only dev server.
+    command: ['npm', 'run', 'dev', '--', '--host', '0.0.0.0', '--ignore-lock']
     # Gitignored local credentials; never commit this file.
     env_file:
       - ./.env.local
     # 127.0.0.1 only — never 0.0.0.0. This stack has weak fixed credentials
     # and no TLS; it must not be reachable from the local network.
     ports:
-      - '127.0.0.1:${PORT:-4321}:4321'
+      - '127.0.0.1:${BV_LOCAL_PORT:-4321}:4321'
     environment:
       NODE_ENV: development
       DATABASE_URL: postgres://gba:gba_local_dev@postgres:5432/gba
-      SITE_ORIGIN: http://localhost:${PORT:-4321}
+      SITE_ORIGIN: http://localhost:${BV_LOCAL_PORT:-4321}
       # Fixed, public, local-only. Rotating it just logs out your local
       # sessions. `openssl rand -hex 32` for anything that isn't this.
       SESSION_SECRET: local_dev_only_not_a_secret_0000000000000000000000000000000000
@@ -107,7 +124,7 @@ services:
   #
   #   docker compose -f deploy/compose.local.yml up -d extract-worker
   extract-worker:
-    image: bengaluru-votes:local
+    image: bengaluru-votes:${BV_LOCAL_IMAGE_TAG:-local}
     pull_policy: never
     command: ['npx', 'tsx', 'jobs/extract-affidavits.ts']
     environment:
@@ -130,13 +147,13 @@ services:
   # Deliberately `image:` + `pull_policy: never` rather than repeating `app`'s
   # build block. Two services declaring a build for the SAME tag makes
   # Compose run both builds concurrently and both export to
-  # `bengaluru-votes:local`, and the loser dies with `image ... already
+  # `bengaluru-votes:<tag>`, and the loser dies with `image ... already
   # exists` (hit while writing this file). Compose finishes the whole build
   # phase before it creates any container, so `app`'s build has already
   # produced the tag by the time this service starts; `pull_policy: never`
   # stops Compose reaching for a registry copy that has never existed.
   migrate:
-    image: bengaluru-votes:local
+    image: bengaluru-votes:${BV_LOCAL_IMAGE_TAG:-local}
     pull_policy: never
     command: ['npm', 'run', 'migrate']
     environment:
@@ -154,11 +171,12 @@ services:
       POSTGRES_PASSWORD: gba_local_dev
       POSTGRES_DB: gba
     # Exposed for psql/GUI access from the host. 127.0.0.1 only, and on 5433
-    # so it never collides with a Postgres already running on the default
-    # 5432. Containers still reach it as `postgres:5432` on the internal
-    # network — DATABASE_URL above uses that, not this.
+    # (or a worktree's BV_LOCAL_PG_PORT) so it never collides with a Postgres
+    # already running on the default 5432. Containers still reach it as
+    # `postgres:5432` on the internal network — DATABASE_URL above uses that,
+    # not this.
     ports:
-      - '127.0.0.1:5433:5432'
+      - '127.0.0.1:${BV_LOCAL_PG_PORT:-5433}:5432'
     volumes:
       - pg_data_local:/var/lib/postgresql/data
     healthcheck:

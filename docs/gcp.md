@@ -62,10 +62,17 @@ who obtains it.
 | Key | Application restriction | API restriction | Env var |
 |---|---|---|---|
 | A `bv-prod-server` | IP addresses → VPS egress IP | Geocoding API only | `GOOGLE_GEOCODING_API_KEY` |
-| B `bv-prod-browser` | HTTP referrers → `https://bengaluruvotes.opencity.in/*` | Maps JavaScript API, Places API (New) | `GOOGLE_MAPS_BROWSER_KEY` |
+| B (console name "Maps JavaScript API") | HTTP referrers → `https://bengaluruvotes.opencity.in/*`, plus the local ports below | Maps JavaScript API, Places API (New) | `GOOGLE_MAPS_BROWSER_KEY` |
 
-For local development use a separate browser key restricted to
-`http://localhost:4321/*`; never add localhost to Key B.
+The project has one browser key, B, used by production and by local stacks alike. Besides the production site it
+allows `http://localhost:<port>/*` and `http://127.0.0.1:<port>/*` for ports
+4321–4331 (owner decision 2026-11-12). This deliberately accepts that a page
+served from those localhost ports can use the production key; it is a browser
+key, already visible in every public page's markup. The primary checkout's
+local stack uses 4321; `scripts/local-instance.sh` gives each git worktree's
+stack a port from 4322–4331 and stops with an error when all are taken,
+because a stack on any other port loads no map. To allow more worktrees, add
+the ports to the key first, then widen `APP_PORT_MAX` in that script.
 
 Restrictions take several minutes to propagate; a 403 right after editing
 usually just needs the wait.

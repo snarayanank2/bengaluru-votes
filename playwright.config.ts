@@ -35,7 +35,8 @@
  *   1. `npm run build:e2e` — NOT plain `npm run build`. `astro.config.mjs`'s
  *      `security.allowedDomains` (and `site`) are resolved once at BUILD
  *      time, not read per-request; without `E2E_ALLOWED_HOST=127.0.0.1
- *      E2E_ALLOWED_PORT=4321` set for THIS build, the Node standalone
+ *      E2E_ALLOWED_PORT=4321` (or `$E2E_PORT`, in a worktree) set for THIS
+ *      build, the Node standalone
  *      adapter refuses to trust the direct `Host: 127.0.0.1:4321` header
  *      (it only trusts the real production hostname), falls back to
  *      computing its own request origin as `http://localhost`, and every

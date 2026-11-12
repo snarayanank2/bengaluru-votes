@@ -53,7 +53,7 @@ npm run seed:admin -- <email>   # idempotent; bootstraps the first admin (later 
 docker compose -f deploy/compose.local.yml up --build -d   # http://localhost:4321
 ```
 
-Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). The other Compose file (`compose.production.yml`) targets the VPS — it builds the same Dockerfile but add TLS nginx, certbot and the jobs container, and expect real credentials, so they won't come up on a laptop.
+Builds from the working tree; runs migrations automatically; seeding is manual (commands in the file's header). In a git worktree, run `scripts/local-instance.sh --up` instead. It gives that checkout its own Compose project, image tag and host ports (written to the gitignored `deploy/.env`), copies `deploy/.env.local` from the primary checkout, starts the stack, creates `bv_test` and `bv_e2e`, seeds the empty database (real wards, fictional demo content and one local staff account per role, with passwords printed once), and prints the URL once the app is healthy. It is idempotent: it seeds the wards only when there are none and the demo content only when there are no candidates, so it also works in the primary checkout. Every `docker compose -f deploy/compose.local.yml …` command in this file then works unchanged in the worktree. The other Compose file (`compose.production.yml`) targets the VPS — it builds the same Dockerfile but add TLS nginx, certbot and the jobs container, and expect real credentials, so they won't come up on a laptop.
 
 ### Tests need a database
 
@@ -102,6 +102,8 @@ npm run build:e2e                                  # sets E2E_ALLOWED_HOST/_PORT
 DATABASE_URL=<...>/bv_e2e npm run seed:e2e         # migrates, seeds, writes tests/e2e/.fixtures.json
 npm run test:e2e
 ```
+
+In a worktree, use the values `scripts/local-instance.sh` prints: `build:e2e` needs `E2E_PORT` (it is baked into the build), `seed:e2e` needs `DATABASE_URL` (the worktree's own Postgres port), and `test:e2e` needs both.
 
 E2E uses a dedicated `bv_e2e` database, never `bv_test`: `seed-e2e` picks wards by `ORDER BY id ASC LIMIT 3`, so leftover fixture rows from the vitest suite would make it nondeterministic.
 
@@ -201,19 +203,19 @@ Anonymous citizen (no account; all citizen traffic) · Transcriber · Data curat
 
 ## Agent sessions and git workflow
 
-These rules apply to every coding agent, whichever tool runs it. Use normal sessions for implementation. Work in the primary checkout, one session at a time; two sessions must never edit the same checkout or branch at the same time.
+These rules apply to every coding agent, whichever tool runs it. Use normal sessions for implementation. Two sessions (or subagents) must never edit the same checkout or branch at the same time.
 
-Every new session must start its own instance of Docker Compose, configured to listen on a different host port from other active sessions. After starting it, present the resulting review URL to the user so they can inspect the changes directly.
+Every new session must start its own instance of Docker Compose, configured to listen on a different host port from other active sessions. In a worktree, `scripts/local-instance.sh --up` does this and prints the URL. After starting it, present the resulting review URL to the user so they can inspect the changes directly.
 
-**Do not use git worktrees.** A new worktree does not get the git-ignored `deploy/.env.local` copied in automatically, which breaks local development (the local Compose stack and the test commands read it). Work in the primary checkout on one descriptive branch per task (for example, `agent/<short-task-name>`), created from an up-to-date `main`. Keep changes focused, and report the branch, commit, tests, and limitations. Do not use `git reset --hard`, `git checkout --`, or broad cleanup commands that could discard another person's uncommitted work.
+**Parallel work uses git worktrees.** A single session may work in the primary checkout. When work runs in parallel (several sessions, or subagents that edit files), each writer gets its own worktree: a project-local `.worktrees/<short-task-name>` (gitignored) or one the agent tool creates. Run `scripts/local-instance.sh --up` in a new worktree before anything else; it copies the gitignored `deploy/.env.local`, gives the stack its own project, ports and database (so stacks never replace each other's containers), and leaves it seeded and ready for tests. `.worktreeinclude` also lists `deploy/.env.local` for tools that copy ignored files themselves. Either way, use one descriptive branch per task (for example, `agent/<short-task-name>`), created from an up-to-date `main`. Remove a finished worktree's stack with `docker compose -f deploy/compose.local.yml down -v --rmi local` before `git worktree remove`, or its containers, volume and `bengaluru-votes:<worktree>` image linger, and its app port stays reserved. Keep changes focused, and report the branch, commit, tests, and limitations. Do not use `git reset --hard`, `git checkout --`, or broad cleanup commands that could discard another person's uncommitted work.
 
 **Every change raises a PR.** Push the branch and open a pull request against `main`; never commit or push to `main` directly, however small the change. If GitHub is unavailable, keep committing on the local branch and open the PR once it is back.
 
 **No agent session links in commits or PRs.** Commit messages, PR descriptions and PR comments must not link to an agent session (for example a `claude.ai/code/session_…` URL), even when a tool's default attribution adds one.
 
-Return the primary checkout to `main` once a task's PR is raised. Changes reach `main` only by merging their PR, which deploys production (see Fixed decisions). If two sessions touch overlapping files, stop one or coordinate explicitly before either PR merges; never rely on concurrent edits resolving themselves.
+Return the primary checkout to `main` once a task's PR is raised (a worktree's branch stays in its worktree). Changes reach `main` only by merging their PR, which deploys production (see Fixed decisions). If two sessions touch overlapping files, stop one or coordinate explicitly before either PR merges; never rely on concurrent edits resolving themselves.
 
-Sessions may run tests and local servers independently, but use distinct ports, databases, and temporary files where applicable. Never point destructive test commands at another session's database or at the production database.
+Sessions may run tests and local servers independently, but use distinct ports, databases, and temporary files where applicable. For Playwright in a worktree, see "E2E (Playwright)" above. Never point destructive test commands at another session's database or at the production database.
 
 ## Learning from corrections
 

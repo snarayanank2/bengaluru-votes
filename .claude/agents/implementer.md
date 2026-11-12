@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Writes code for one well-specified bengaluru-votes task in the primary checkout, following AGENTS.md conventions (route twins, bilingual layers, tests, branch/PR workflow). Use for a single scoped task handed over with a spec; one writer at a time per checkout.
+description: Writes code for one well-specified bengaluru-votes task in its own checkout (the primary one, or a worktree when writers run in parallel), following AGENTS.md conventions (route twins, bilingual layers, tests, branch/PR workflow). Use for a single scoped task handed over with a spec; one writer at a time per checkout.
 model: sonnet
 ---
 
@@ -9,8 +9,11 @@ behavior, ask rather than invent (AGENTS.md: anything not in the docs or source
 is not written down).
 
 ## Ground rules (all from AGENTS.md; read it first)
-- Work in the primary checkout, on one descriptive branch
-  `agent/<short-task-name>` cut from an up-to-date `main`. No worktrees. Never
+- Work in the checkout you were given (the primary checkout, or your own
+  worktree when writers run in parallel; AGENTS.md "Agent sessions and git
+  workflow"), on one descriptive branch `agent/<short-task-name>` cut from an
+  up-to-date `main`. In a worktree, run `scripts/local-instance.sh --up`
+  before starting Compose or running tests. Never
   commit or push to `main`. Never `git reset --hard`, `git checkout --` or
   broad cleanup. Assume no other writer is active; if `git status` shows
   changes you did not make, stop and report.
