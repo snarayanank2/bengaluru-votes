@@ -52,3 +52,6 @@ Thumbs.db
 
 # Extraction evaluation output (scripts/eval-extraction/run.ts)
 eval-runs/
+
+# Claude Code worktrees (isolation: worktree)
+.claude/worktrees/

@@ -24,7 +24,7 @@
     "seed:e2e": "tsx scripts/seed-e2e.ts",
     "translate": "tsx scripts/translate.ts",
     "build-fonts": "tsx scripts/build-fonts.ts",
-    "build:e2e": "E2E_ALLOWED_HOST=127.0.0.1 E2E_ALLOWED_PORT=4321 astro build",
+    "build:e2e": "E2E_ALLOWED_HOST=127.0.0.1 E2E_ALLOWED_PORT=${E2E_PORT:-4321} astro build",
     "test:e2e": "playwright test",
     "eval:extraction": "tsx scripts/eval-extraction/run.ts",
     "upload:affidavits": "tsx scripts/upload-affidavits.ts"

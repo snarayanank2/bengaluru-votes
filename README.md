@@ -64,7 +64,7 @@ You need Node ≥ 22 and Docker.
 docker compose -f deploy/compose.local.yml up --build -d   # http://localhost:4321
 ```
 
-That builds from your working tree and runs migrations. Seeding, the test setup (Vitest and Playwright each need their own database), the full command list and the codebase conventions are all in **[`AGENTS.md`](AGENTS.md)**. It is the working guide for anyone, human or agent, changing this code.
+That builds from your working tree and runs migrations. In a git worktree, run `scripts/local-instance.sh --up` instead: it gives the stack its own ports and database, and seeds it. Seeding, the test setup (Vitest and Playwright each need their own database), the full command list and the codebase conventions are all in **[`AGENTS.md`](AGENTS.md)**. It is the working guide for anyone, human or agent, changing this code.
 
 ## Project layout
 
