@@ -547,6 +547,17 @@ https://<host>/robots.txt` should list `Disallow: /curator`, `/admin`,
 not nginx). The static volume is only for the file's *content*; a change to
 this config needs no `static-init` run.
 
+Static cache headers (architecture §5): `curl -sI` a hashed `/_astro/*.css`
+(from the home page's HTML) and expect exactly one `cache-control: public,
+max-age=31536000, immutable`; `/img/og-default.png`,
+`/fonts/manrope-latin-wght-normal.woff2` and `/favicon.ico` should each give
+`cache-control: public, max-age=604800` (never `immutable`, never
+`max-age=0`), and all four must still carry `strict-transport-security` and
+`x-content-type-options`. `/` must still show `max-age=0` and no
+`set-cookie`. A replaced fixed-name file (a new `og-default.png`) reaches
+nginx only through `static-init` on the next deploy, and browsers that cached
+the old one keep it for up to 7 days.
+
 ### What the script does, and why each step is there
 
 1. **Preflight** — ssh reachable, the tree exists and is clean, the env file
