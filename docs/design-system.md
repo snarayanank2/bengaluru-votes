@@ -310,7 +310,7 @@ Use a native `button` for an action and an anchor for navigation (`Button.astro`
 
 Language segments (§7.1), social icon links (§7.2), section navigation, and disclosure toggles (§7.15) have their own control patterns. Noninteractive pills (§7.7) are not buttons.
 
-**Action groups:** main action first, start-aligned, flex-wrap; gap 8px, or 12px in a spacious row. Place the group 24px after its content. If actions stack, use a consistent width. Avoid per-button compensating margins.
+**Action groups:** the shared `.action-group` class (`buttons.css`; `.action-group--spacious` for the 12px row) wraps sibling buttons: main action first, start-aligned, flex-wrap; gap 8px, or 12px in a spacious row. Place the group 24px after its content. If actions stack, use a consistent width. Avoid per-button compensating margins.
 
 ### 7.4 Links
 

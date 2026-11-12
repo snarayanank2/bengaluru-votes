@@ -180,3 +180,17 @@
     transform: none !important;
   }
 }
+
+/* Action group (design-system §7.3): sibling buttons in one row. Start-aligned,
+   wraps, 8px gap; `.action-group--spacious` is the 12px row. Page CSS places
+   the group and never adds margins to its buttons. */
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.action-group--spacious {
+  gap: var(--space-3);
+}

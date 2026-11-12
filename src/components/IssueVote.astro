@@ -10,7 +10,7 @@ const { lang, issues } = Astro.props;
         <div data-vote-issue-options role="group" aria-label={t(lang, 'vote.modal.issuesLabel')}>
           {issues.map((issue) => <label class="vote-issue-option"><input type="checkbox" value={issue.id} /><span>{issue.title}</span></label>)}
         </div>
-        <div class="vote-actions">
+        <div class="action-group">
           <Button type="submit" variant="primary" lang={lang} data-vote-submit disabled>
             {t(lang, 'vote.modal.submitTemplate').replace('{n}', '0')}
           </Button>
