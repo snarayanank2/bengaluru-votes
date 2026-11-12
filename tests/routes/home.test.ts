@@ -115,7 +115,7 @@ describe('Home page (/, /kn/)', () => {
       const html = await renderHome('en');
       expect(html).toContain('class="home-hero"');
       expect(html).toContain('MAKE AN INFORMED CHOICE');
-      expect(html).toContain('Find your ward, read about the candidates, and prepare to vote.');
+      expect(html).toContain('Find your new ward, read about the candidates, and prepare to vote.');
       expect(html).toContain('class="hero-form"');
       expect(html).toContain('placeholder="Your address"');
       expect(html).toContain('Find Your Ward');
@@ -168,6 +168,17 @@ describe('Home page (/, /kn/)', () => {
       expect(source).toContain(
         '.hero-form .ward-result[data-result-state]:not([data-result-state="success"]) {\n    grid-column: 1;',
       );
+    });
+
+    it('puts BBMP in the server-rendered title, meta description and intro, in both languages', async () => {
+      const bbmp = { en: 'BBMP', kn: 'ಬಿಬಿಎಂಪಿ' } as const;
+      for (const lang of ['en', 'kn'] as const) {
+        const html = await renderHome(lang);
+        expect(html).toMatch(new RegExp(`<title>[^<]*${bbmp[lang]}[^<]*</title>`));
+        expect(html).toMatch(new RegExp(`<meta name="description" content="[^"]*${bbmp[lang]}`));
+        expect(html).toContain(t(lang, 'home.hero.subheading'));
+        expect(t(lang, 'home.hero.subheading')).toContain(bbmp[lang]);
+      }
     });
 
     it('sets <html lang> correctly and emits the hreflang pair (via Base)', async () => {

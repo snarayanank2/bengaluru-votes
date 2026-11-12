@@ -249,6 +249,8 @@ describe('Ward result page (/ward/{id}, /kn/ward/{id})', () => {
       const html = normalize(await (await renderWard(lang, WARD.id)).text());
       expect(html).toContain(t(lang, 'ward.overview.reservation'));
       expect(html).toContain(t(lang, 'ward.overview.oldWards'));
+      expect(html).toContain(t(lang, 'ward.overview.oldWardItem', { number: OLD_WARD.oldWardNumber }));
+      expect(html).toContain(lang === 'kn' ? 'ಹಳೆಯ ಬಿಬಿಎಂಪಿ ವಾರ್ಡ್ 112' : 'Old BBMP ward 112');
       expect(html).toContain(t(lang, 'ward.overview.keyAreas'));
       expect(html).toContain(lang === 'kn' ? WARD.assemblyNameKn : WARD.assemblyNameEn);
       expect(html).toContain(lang === 'kn' ? WARD.reservationKn : WARD.reservationEn);

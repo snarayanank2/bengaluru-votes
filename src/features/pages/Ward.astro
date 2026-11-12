@@ -192,7 +192,8 @@ const wardJsonLd = ward
                   <ul>
                     {oldWardOverlaps.map((item) => (
                       <li>
-                        {item.oldWardNumber != null && `${numberFormatter.format(item.oldWardNumber)} — `}
+                        {item.oldWardNumber != null &&
+                          `${t(lang, 'ward.overview.oldWardItem', { number: numberFormatter.format(item.oldWardNumber) })} — `}
                         {lang === 'kn' ? item.oldWardNameKn : item.oldWardNameEn}
                         <strong>{numberFormatter.format(item.publishedOverlapBasisPoints / 100)}%</strong>
                       </li>
