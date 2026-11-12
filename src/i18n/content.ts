@@ -28,6 +28,10 @@ export const pageFrontmatterSchema = z.object({
   // Y, not a literal translation". Site-wide terms belong in glossary.json
   // instead; hints here are for a single page's wording.
   hints: z.array(z.string()).optional(),
+  // EN files only: the date (YYYY-MM-DD, quoted so YAML keeps it a string) the
+  // page's wording last changed. Feeds the sitemap `<lastmod>`
+  // (src/lib/seo/sitemaps.ts); authors bump it when they edit the page.
+  updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export type PageFrontmatter = z.infer<typeof pageFrontmatterSchema>;

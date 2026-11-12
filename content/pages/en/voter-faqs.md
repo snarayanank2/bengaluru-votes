@@ -3,6 +3,7 @@ title: Voter FAQs
 description: How to check your registration, find your booth and prepare for voting day.
 hints:
   - "Keep the title concise and natural in Kannada as a public-facing voter FAQ page title."
+updated: "2026-11-07"
 ---
 
 Check your registration, prepare your documents, and find out what to expect at your polling booth.

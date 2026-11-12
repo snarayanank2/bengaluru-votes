@@ -1,6 +1,7 @@
 ---
 title: Privacy policy
 description: How Bengaluru Votes handles ward lookups, anonymous contributions, cookies and technical data.
+updated: "2026-11-07"
 ---
 
 *Last updated: 7 November 2026*

@@ -1,7 +1,7 @@
 ---
 title: GBA ವಾರ್ಡ್ ಚುನಾವಣೆಯ ಬಗ್ಗೆ
 description: GBA ವಾರ್ಡ್ ಚುನಾವಣೆ ಎಂದರೇನು ಮತ್ತು ಕಾರ್ಪೊರೇಟರ್ ಏನು ಮಾಡುತ್ತಾರೆ.
-sourceHash: e522267191cd1f5120e4dba63fb47a83485298b756b2190eaff70e239895fda1
+sourceHash: 66e22f472f5173bc478b543431d53c68cd38be20f773b85cee6ba54d7f1dd7ab
 ---
 
 <!-- The election status and official-notice countdown banner renders above this content, driven by app_settings (architecture §9) — this page never hard-codes a status or date. -->

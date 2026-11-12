@@ -15,19 +15,35 @@
  * crawler reading either language's sitemap learns about both URLs for
  * that resource.
  *
- * LASTMOD DERIVATION:
- *   - Candidate `/candidate/{slug}`: MAX(`candidate_fields.updated_at`)
- *     across that candidate's fields, falling back to `candidates.updated_at`
- *     when it has no fields row yet (one grouped query — see
- *     `candidateRows` below).
- *   - Ward `/ward/{id}`: MAX of the (already-resolved) lastmod of every
- *     candidate in that ward — `ward_issues` carries no `updated_at`
- *     column and `wards` itself carries no timestamp column at all, so a
- *     ward with zero candidates gets NO `<lastmod>` tag rather than a
- *     fabricated `now()`.
- *   - STATIC_ROUTES: the regeneration timestamp, same as before — this is
- *     a small, fixed set of static pages, so "the last time the job ran"
- *     is an acceptable, honest signal for them.
+ * LASTMOD DERIVATION (task 198): every `<lastmod>` is the time the content
+ * the URL renders last changed. Nothing is request-time, so repeated fetches
+ * of unchanged content return byte-identical files. A URL with no honest
+ * signal gets NO `<lastmod>` rather than an invented one.
+ *   - Candidate `/candidate/{slug}`: the later of `candidates.updated_at`
+ *     (status, ward move, name/party projection) and MAX(`candidate_fields.
+ *     updated_at`) across its fields (one grouped query: `candidateRows`).
+ *   - Ward `/ward/{id}`: MAX of its candidates' lastmod (the page lists every
+ *     candidate). A ward with no candidates renders the `notification_date`
+ *     setting instead, so that setting's `updated_at` is its signal; with
+ *     neither it has none. Ward issues, key areas and old-ward overlaps carry
+ *     no timestamp, and vote tallies reach the browser only through the
+ *     uncached `/api/issue-votes`, never the HTML.
+ *   - `/wards` and `/corporation/*`: built from the `wards` table alone (names
+ *     only, no candidate data, no timestamp), so no `<lastmod>`.
+ *   - `/`: the `booth_lookup_url` setting it links to.
+ *   - Editorial pages (`/about`, `/about-election`, `/voter-faqs`, `/privacy`,
+ *     `/terms`): the `updated` date in the page's EN frontmatter
+ *     (content/pages/en/*.md), plus, for `/about-election` and `/voter-faqs`,
+ *     the `app_settings` rows they render. One date serves both languages: the
+ *     Kannada file's `sourceHash` ties it to the EN source, so the two change
+ *     together. Authors bump `updated` when they change the page's wording
+ *     (a frontmatter date survives Docker builds, which have no version
+ *     history and no meaningful file mtimes). UI-string (`en.json`) edits are
+ *     not tracked.
+ *   - Sitemap index: MAX of the entries in that child sitemap; omitted when
+ *     none has one.
+ *   Known limit: moving a candidate out of a ward lowers that ward's MAX
+ *   (no tombstone is kept), so its lastmod can go backwards.
  *
  * DEMO DATA: fixture candidates (`isTestCandidate`) are never listed.
  *
@@ -45,10 +61,11 @@
  * STATIC_ROUTES is a fixed public allowlist, and the ward/candidate
  * queries only ever produce `/ward/{id}` and `/candidate/{slug}` paths.
  */
-import { eq, max } from 'drizzle-orm';
+import { eq, inArray, max } from 'drizzle-orm';
 import { localePath, type Lang } from '../../i18n';
 import { db } from '../../db/client';
-import { candidates, candidateFields, wards } from '../../db/schema';
+import { appSettings, candidates, candidateFields, wards } from '../../db/schema';
+import { getPageContent } from '../../i18n/content';
 import { isTestCandidate } from '../demo-data';
 
 /**
@@ -71,6 +88,37 @@ export const STATIC_ROUTES: string[] = [
   '/privacy',
   '/terms',
 ];
+
+/**
+ * What each static URL renders besides fixed UI strings: the editorial
+ * Markdown slug whose `updated` date applies, and the `app_settings` keys it
+ * reads. Routes absent here (the ward directory pages) render no dated
+ * content and so carry no `<lastmod>`.
+ */
+const STATIC_SOURCES: Record<string, { slug?: string; settings?: string[] }> = {
+  '/': { settings: ['booth_lookup_url'] },
+  '/about': { slug: 'about' },
+  '/about-election': { slug: 'about-election', settings: ['notification_date', 'election_date'] },
+  '/voter-faqs': { slug: 'voter-faqs', settings: ['roll_deadline', 'roll_lookup_url'] },
+  '/privacy': { slug: 'privacy' },
+  '/terms': { slug: 'terms' },
+};
+
+/** Ward pages with no candidates render this setting in their empty state. */
+const WARD_EMPTY_SETTINGS = ['notification_date'];
+
+/** The later of several optional dates. */
+function latest(...dates: (Date | null | undefined)[]): Date | undefined {
+  let best: Date | undefined;
+  for (const d of dates) if (d && (!best || d > best)) best = d;
+  return best;
+}
+
+/** The `updated` date of an editorial page's EN source (UTC midnight), if it has one. */
+function editorialUpdated(slug: string): Date | undefined {
+  const updated = getPageContent('en', slug)?.updated;
+  return updated ? new Date(`${updated}T00:00:00.000Z`) : undefined;
+}
 
 /** Same fallback convention as astro.config.mjs / src/lib/send/calendar.ts. */
 const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://bengaluruvotes.opencity.in';
@@ -109,13 +157,14 @@ function buildUrlSet(lang: Lang, entries: RouteEntry[]): string {
   );
 }
 
-function buildSitemapIndex(lastmod: string): string {
+function buildSitemapIndex(lastmod: string | undefined): string {
   const enLoc = new URL('/sitemap-en.xml', SITE_ORIGIN).href;
   const knLoc = new URL('/sitemap-kn.xml', SITE_ORIGIN).href;
+  const tag = lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : '';
   return (
     `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    `  <sitemap>\n    <loc>${enLoc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>\n` +
-    `  <sitemap>\n    <loc>${knLoc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>\n` +
+    `  <sitemap>\n    <loc>${enLoc}</loc>${tag}\n  </sitemap>\n` +
+    `  <sitemap>\n    <loc>${knLoc}</loc>${tag}\n  </sitemap>\n` +
     `</sitemapindex>\n`
   );
 }
@@ -134,7 +183,13 @@ export interface SitemapFiles {
  * (`isTestCandidate`) are never listed.
  */
 export async function buildSitemaps(): Promise<SitemapFiles> {
-  const regenTimestamp = new Date().toISOString();
+  const settingKeys = [...new Set([...WARD_EMPTY_SETTINGS, ...Object.values(STATIC_SOURCES).flatMap((source) => source.settings ?? [])])];
+  const settingRows = await db
+    .select({ key: appSettings.key, updatedAt: appSettings.updatedAt })
+    .from(appSettings)
+    .where(inArray(appSettings.key, settingKeys));
+  const settingUpdatedAt = (keys: string[] = []) =>
+    latest(...settingRows.filter((row) => keys.includes(row.key)).map((row) => row.updatedAt));
 
   const wardRows = await db.select({ id: wards.id }).from(wards);
 
@@ -161,7 +216,7 @@ export async function buildSitemaps(): Promise<SitemapFiles> {
   const wardLastmodByWardId = new Map<number, Date>();
 
   for (const row of candidateRows) {
-    const lastmodDate = row.maxFieldUpdatedAt ?? row.candidateUpdatedAt;
+    const lastmodDate = latest(row.maxFieldUpdatedAt, row.candidateUpdatedAt)!;
     candidateEntries.push({ path: `/candidate/${row.slug}`, lastmod: lastmodDate.toISOString() });
 
     const currentWardMax = wardLastmodByWardId.get(row.wardId);
@@ -171,15 +226,21 @@ export async function buildSitemaps(): Promise<SitemapFiles> {
   }
 
   const wardEntries: RouteEntry[] = wardRows.map((ward) => {
-    const lastmodDate = wardLastmodByWardId.get(ward.id);
+    const lastmodDate = wardLastmodByWardId.get(ward.id) ?? settingUpdatedAt(WARD_EMPTY_SETTINGS);
     return { path: `/ward/${ward.id}`, lastmod: lastmodDate?.toISOString() };
   });
 
-  const staticEntries: RouteEntry[] = STATIC_ROUTES.map((route) => ({ path: route, lastmod: regenTimestamp }));
+  const staticEntries: RouteEntry[] = STATIC_ROUTES.map((route) => {
+    const source = STATIC_SOURCES[route];
+    const date = source ? latest(source.slug ? editorialUpdated(source.slug) : undefined, settingUpdatedAt(source.settings)) : undefined;
+    return { path: route, lastmod: date?.toISOString() };
+  });
   const allEntries = [...staticEntries, ...wardEntries, ...candidateEntries];
+  // ISO 8601 strings of equal precision sort chronologically.
+  const newest = allEntries.map((entry) => entry.lastmod).filter((v): v is string => !!v).sort().pop();
 
   return {
-    index: buildSitemapIndex(regenTimestamp),
+    index: buildSitemapIndex(newest),
     en: buildUrlSet('en', allEntries),
     kn: buildUrlSet('kn', allEntries),
     routesPerLanguage: allEntries.length,
