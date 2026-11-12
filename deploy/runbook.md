@@ -487,7 +487,10 @@ Merge a PR to `main`: `ci.yml` must pass, then `deploy.yml` tags, installs the
 env file from the GitHub `production` environment, and runs
 `deploy/deploy.sh`. Failures roll back, and GitHub emails whoever triggered the run.
 A push that changes only docs, tests or CI config is skipped (no gate, no deploy);
-use Run workflow → `deploy-head` to ship such a commit anyway.
+use Run workflow → `deploy-head` to ship such a commit anyway. "Only docs" is
+measured from the last release tag, so a docs-only push still deploys runtime
+commits whose own runs skipped because `main` had moved on. After a failed,
+rolled-back deploy, run `deploy-head` once the fix is on `main`.
 
 Manual actions: GitHub Actions → deploy → Run workflow
 (`redeploy-current`, `deploy-tag`, `rollback`). By hand from a laptop,
