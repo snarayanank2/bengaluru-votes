@@ -18,6 +18,10 @@ Open questions live in `docs/architecture.md` → Open questions (monitoring, re
 
 Anything not stated in these docs or in the source is not written down. Do not invent a requirement to fill the gap — ask.
 
+## Project tracker
+
+Work is tracked in the [project tracker](https://docs.google.com/spreadsheets/d/18wXM6IgKERWQdOLfRpJ42lYtyHQsJtdk8jYilmmWTRA/edit) (restricted sharing; ask the owner for access). Its **Tasks** tab lists numbered tasks with ID, Item, Comments, Priority, Status, Completion Date and Source; the Comments column is the specification. When asked to work on "task N", read that row first. Record new work as a row with the next ID, and when a task ships, set Status to Complete and fill in Completion Date. The same spreadsheet's Test Accounts tab holds staff credentials (see "Verifying against production"): never copy them anywhere.
+
 Source comments cite "Task NN" throughout — historical task briefs, mostly no longer in the repo. Treat them as provenance, not as files to find.
 
 ## Commands
