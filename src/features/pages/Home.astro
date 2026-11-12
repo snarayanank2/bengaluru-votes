@@ -193,6 +193,7 @@ function wardHref(id: number): string {
               {postResult?.result === 'unavailable' && <p>{t(lang, 'home.result.unavailable')}</p>}
             </div>
           </form>
+          <p class="hero-directory-link"><a href={localePath(lang, '/wards')}>{t(lang, 'home.wardsLink')}</a></p>
         </div>
 
         <div class="hero-stats" aria-label="Key election facts">
@@ -434,6 +435,31 @@ function wardHref(id: number): string {
   .hero-form .ward-result :global(a:hover),
   .hero-form .ward-result :global(a:focus-visible) {
     color: var(--color-on-hero);
+  }
+
+  .hero-directory-link {
+    margin: var(--space-4) 0 0;
+  }
+
+  .hero-directory-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-accent);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  .hero-directory-link a:hover,
+  .hero-directory-link a:focus-visible {
+    color: var(--color-on-hero);
+  }
+
+  .hero-directory-link a:focus-visible {
+    outline-color: var(--color-accent);
   }
 
   .hero-stats {

@@ -1,0 +1,54 @@
+---
+/**
+ * All wards (`/wards`, `/kn/wards`): the server-rendered directory of every
+ * ward, grouped Corporation → Zone → Ward (architecture §4 "Ward directory").
+ * Built from the `wards` table alone, so it is complete before any candidate
+ * is loaded and never varies by visitor (architecture §5 caching invariant).
+ * Each corporation heading links to its own page (`Corporation.astro`).
+ */
+import Base from '../../layouts/Base.astro';
+import DirectoryHeader from '../../components/DirectoryHeader.astro';
+import WardDirectory from '../../components/WardDirectory.astro';
+import { t, localePath, type Lang } from '../../i18n';
+import { loadWardDirectory } from '../../lib/ward-directory';
+import { breadcrumbLd } from '../../lib/seo';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const directory = await loadWardDirectory();
+const pagePath = '/wards';
+const heading = t(lang, 'wards.heading');
+
+const jsonLd = [
+  breadcrumbLd([
+    { name: 'Bengaluru Votes', url: localePath(lang, '/') },
+    { name: heading, url: localePath(lang, pagePath) },
+  ]),
+];
+---
+
+<Base lang={lang} title={t(lang, 'wards.meta.title')} description={t(lang, 'wards.meta.description')} path={pagePath} jsonLd={jsonLd}>
+  <DirectoryHeader
+    lang={lang}
+    crumbs={[{ label: t(lang, 'nav.home'), href: localePath(lang, '/') }, { label: heading }]}
+    title={heading}
+    lead={t(lang, 'wards.intro')}
+  />
+  <div class="directory-body">
+    {directory.map((entry) => <WardDirectory lang={lang} entry={entry} heading="link" />)}
+  </div>
+</Base>
+
+<style>
+  .directory-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    max-width: var(--container-app);
+    margin-inline: auto;
+    padding: var(--space-12) var(--container-pad-x) var(--space-8);
+  }
+</style>

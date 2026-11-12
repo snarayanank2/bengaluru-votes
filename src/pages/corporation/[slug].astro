@@ -1,0 +1,17 @@
+---
+/**
+ * Corporation page (`/corporation/{slug}`) — thin route twin over
+ * src/features/pages/Corporation.astro. The slug check lives here, not in the
+ * component: only page-level frontmatter can end a request with a real 404
+ * (see src/pages/ward/[id].astro).
+ */
+import Corporation from '../../features/pages/Corporation.astro';
+import { isCorporation } from '../../lib/ward-directory';
+
+const slug = Astro.params.slug;
+if (!isCorporation(slug)) {
+  return new Response(null, { status: 404 });
+}
+---
+
+<Corporation lang="en" corporation={slug} />

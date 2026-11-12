@@ -156,10 +156,13 @@ const title = ward ? t(lang, 'compare.meta.title', { wardName }) : t(lang, 'ward
 const description = ward ? t(lang, 'compare.meta.description', { wardName }) : t(lang, 'ward.notFound.fact');
 
 const wardPath = `/ward/${wardId}`;
+const corporationName = ward ? t(lang, 'corporation.name', { corporation: t(lang, `ward.corporation.${ward.corporation}`) }) : '';
+const corporationPath = ward ? `/corporation/${ward.corporation}` : '';
 const compareJsonLd = ward
   ? [
       breadcrumbLd([
         { name: 'Bengaluru Votes', url: localePath(lang, '/') },
+        { name: corporationName, url: localePath(lang, corporationPath) },
         { name: t(lang, 'nav.ward', { wardNumber: wardId % 1000, wardName }), url: localePath(lang, wardPath) },
         { name: t(lang, 'compare.pageHeading'), url: localePath(lang, pagePath) },
       ]),
@@ -175,6 +178,7 @@ const compareJsonLd = ward
           <div class="compare-container header-content">
             <Breadcrumbs lang={lang} items={[
               { label: t(lang, 'nav.home'), href: localePath(lang, '/') },
+              { label: corporationName, href: localePath(lang, corporationPath) },
               {
                 label: t(lang, 'nav.ward', { wardNumber: wardId % 1000, wardName }),
                 href: localePath(lang, `/ward/${wardId}`),

@@ -373,23 +373,29 @@ describe('Candidate report card (/candidate/{slug}, /kn/candidate/{slug})', () =
       expect(person).not.toHaveProperty('subjectOf');
     });
 
-    it('emits a BreadcrumbList trail Home -> Ward -> Candidate, absolute item URLs', async () => {
+    it('emits a BreadcrumbList trail Home -> Corporation -> Ward -> Candidate, absolute item URLs', async () => {
       const html = await (await renderCandidate('en', MAIN_SLUG)).text();
       const scripts = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
       const breadcrumb = scripts.map((m) => JSON.parse(m[1])).find((obj) => obj['@type'] === 'BreadcrumbList');
       expect(breadcrumb, 'expected a BreadcrumbList JSON-LD block').toBeTruthy();
       const items = breadcrumb.itemListElement;
-      expect(items).toHaveLength(3);
+      expect(items).toHaveLength(4);
       expect(items[0]).toEqual({ '@type': 'ListItem', position: 1, name: 'Bengaluru Votes', item: `${SITE_ORIGIN}/` });
       expect(items[1]).toEqual({
         '@type': 'ListItem',
         position: 2,
-        name: t('en', 'nav.ward', { wardNumber: WARD.id % 1000, wardName: WARD.nameEn }),
-        item: `${SITE_ORIGIN}/ward/${WARD.id}`,
+        name: 'South Corporation',
+        item: `${SITE_ORIGIN}/corporation/south`,
       });
       expect(items[2]).toEqual({
         '@type': 'ListItem',
         position: 3,
+        name: t('en', 'nav.ward', { wardNumber: WARD.id % 1000, wardName: WARD.nameEn }),
+        item: `${SITE_ORIGIN}/ward/${WARD.id}`,
+      });
+      expect(items[3]).toEqual({
+        '@type': 'ListItem',
+        position: 4,
         name: 'Report Card Test Candidate',
         item: `${SITE_ORIGIN}/candidate/${MAIN_SLUG}`,
       });
