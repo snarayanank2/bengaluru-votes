@@ -6,7 +6,7 @@ import postgres from 'postgres';
 import { inArray } from 'drizzle-orm';
 import * as schema from '../../src/db/schema';
 import { localePath, type Lang } from '../../src/i18n';
-import { oldWardsClause, titleWardName } from '../../src/lib/ward-meta';
+import { oldWardsClause, titleWardName, wardSummary } from '../../src/lib/ward-meta';
 import WardEn from '../../src/pages/ward/[id].astro';
 import WardKn from '../../src/pages/kn/ward/[id].astro';
 
@@ -56,13 +56,14 @@ const OVERLAPS = [
   overlap(94102, 2, 62, 4_000),
 ];
 
-function meta(html: string): { title: string; description: string; ogTitle: string; twitterTitle: string } {
+function meta(html: string): { title: string; description: string; ogTitle: string; twitterTitle: string; summary: string } {
   const pick = (re: RegExp) => (html.match(re)?.[1] ?? '').replace(/&amp;/g, '&');
   return {
     title: pick(/<title>([^<]*)<\/title>/),
     description: pick(/<meta name="description" content="([^"]*)"/),
     ogTitle: pick(/<meta property="og:title" content="([^"]*)"/),
     twitterTitle: pick(/<meta name="twitter:title" content="([^"]*)"/),
+    summary: pick(/<p class="ward-summary"[^>]*>([^<]*)<\/p>/),
   };
 }
 
@@ -81,15 +82,16 @@ async function render(lang: Lang, id: number) {
   return meta(await res.text());
 }
 
+afterAll(async () => {
+  await client.end();
+});
+
 describe('Ward page <title> and meta description (task 194)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: './drizzle' });
     for (const w of WARDS) await db.insert(schema.wards).values(w).onConflictDoUpdate({ target: schema.wards.id, set: w });
     await db.delete(schema.wardOldWardOverlaps).where(inArray(schema.wardOldWardOverlaps.wardId, WARDS.map((w) => w.id)));
     await db.insert(schema.wardOldWardOverlaps).values(OVERLAPS);
-  });
-  afterAll(async () => {
-    await client.end();
   });
 
   it('en: one old ward lying wholly inside', async () => {
@@ -145,6 +147,72 @@ describe('Ward page <title> and meta description (task 194)', () => {
     const m = await render(lang, 94101);
     expect(m.ogTitle).toBe(m.title);
     expect(m.twitterTitle).toBe(m.title);
+  });
+});
+
+describe('Ward page summary under the H1 (task 207)', () => {
+  beforeAll(async () => {
+    await migrate(db, { migrationsFolder: './drizzle' });
+    for (const w of WARDS) await db.insert(schema.wards).values(w).onConflictDoUpdate({ target: schema.wards.id, set: w });
+    await db.delete(schema.wardOldWardOverlaps).where(inArray(schema.wardOldWardOverlaps.wardId, WARDS.map((w) => w.id)));
+    await db.insert(schema.wardOldWardOverlaps).values(OVERLAPS);
+  });
+
+  it('en: states the ward, corporation, zone, constituency, reservation and old ward in server HTML', async () => {
+    const m = await render('en', 94101);
+    expect(m.summary).toBe(
+      'Meta One is Ward 101 in the North Corporation. It is in the Zone T zone and the Test Assembly assembly constituency. ' +
+        'Its reservation category is General. The ward lies within old BBMP ward 62.',
+    );
+  });
+
+  it('kn: renders the Kannada summary with Kannada names', async () => {
+    const m = await render('kn', 94101);
+    expect(m.summary).toBe(
+      'ಮೆಟಾ ಒಂದು, ಉತ್ತರ ನಗರ ಪಾಲಿಕೆಯ ವಾರ್ಡ್ 101 ಆಗಿದೆ. ಇದು Zone T ವಲಯ ಮತ್ತು ಪರೀಕ್ಷಾ ವಿಧಾನಸಭಾ ಕ್ಷೇತ್ರ ವಿಧಾನಸಭಾ ಕ್ಷೇತ್ರದಲ್ಲಿದೆ. ' +
+        'ಇದರ ಮೀಸಲಾತಿ ವರ್ಗ ಸಾಮಾನ್ಯ. ಈ ವಾರ್ಡ್ ಹಳೆಯ ಬಿಬಿಎಂಪಿ ವಾರ್ಡ್ 62 ಒಳಗೆ ಇದೆ.',
+    );
+  });
+
+  it('uses the plural old-ward sentence, and leaves it out when none is recorded', async () => {
+    expect((await render('en', 94102)).summary).toContain('The ward includes parts of old BBMP wards 62, 63.');
+    const none = await render('en', 93102);
+    expect(none.summary).toContain('Meta Three is Ward 102 in the East Corporation.');
+    expect(none.summary).not.toContain('old BBMP');
+  });
+});
+
+describe('wardSummary', () => {
+  const o = (n: number | null, bp: number) => ({ oldWardNumber: n, publishedOverlapBasisPoints: bp });
+  const facts = {
+    wardName: 'Doddabommasandra',
+    wardNumber: 11,
+    corporation: 'North',
+    zone: 'Byatarayanapura',
+    assembly: 'Byatarayanapura',
+    reservation: 'General (Women)',
+    oldWardOverlaps: [o(10, 8_580), o(9, 1_410)],
+  };
+
+  it('joins the sentences in order', () => {
+    expect(wardSummary('en', facts)).toBe(
+      'Doddabommasandra is Ward 11 in the North Corporation. It is in the Byatarayanapura zone and the Byatarayanapura assembly constituency. ' +
+        'Its reservation category is General (Women). The ward includes parts of old BBMP wards 9, 10.',
+    );
+  });
+
+  it('leaves out sentences whose facts are missing', () => {
+    expect(wardSummary('en', { ...facts, assembly: null, reservation: null, oldWardOverlaps: [] })).toBe(
+      'Doddabommasandra is Ward 11 in the North Corporation. It is in the Byatarayanapura zone.',
+    );
+  });
+
+  it('chooses the old-ward wording by share, as the meta description does', () => {
+    const only = (overlaps: ReturnType<typeof o>[]) => wardSummary('en', { ...facts, oldWardOverlaps: overlaps });
+    expect(only([o(5, 9_900)])).toContain('The ward lies within old BBMP ward 5.');
+    expect(only([o(5, 6_260)])).toContain('Most of the ward lies within old BBMP ward 5.');
+    expect(only([o(5, 3_000)])).toContain('The ward includes part of old BBMP ward 5.');
+    expect(only([o(5, 10_000), o(null, 0)])).toContain('The ward includes part of old BBMP ward 5.');
   });
 });
 
