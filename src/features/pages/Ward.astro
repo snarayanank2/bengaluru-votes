@@ -32,6 +32,11 @@
  * (there is none to leak: `maps.browserKey` is simply never read in that
  * branch).
  *
+ * SUMMARY (task 207, architecture §8 AEO): a plain paragraph in the
+ * Overview section, below the map,
+ * (`wardSummary`, src/lib/ward-meta.ts) states the ward's stored facts in
+ * one place, so search and answer engines get them as a sentence.
+ *
  * PLACE JSON-LD (architecture §8/§13, Task 56): `src/lib/seo.ts#placeLd`
  * builds this ward's `AdministrativeArea` (name, id, page URL,
  * `containedInPlace` Bengaluru) from data this page already loaded, passed
@@ -60,7 +65,7 @@ import { mapsConfig } from '../../lib/maps-config';
 import { getKnownSetting } from '../../lib/settings';
 import { zoneLabel, wardLabel } from '../../lib/ward-label';
 import { loadNeighbourWards } from '../../lib/ward-neighbours';
-import { oldWardsClause, titleWardName } from '../../lib/ward-meta';
+import { oldWardsClause, titleWardName, wardSummary } from '../../lib/ward-meta';
 import { wardOgMeta } from '../../lib/ward-og';
 
 
@@ -151,6 +156,19 @@ const description = ward
       oldWards: oldWardsClause(lang, oldWardOverlaps),
     })
   : t(lang, 'ward.notFound.fact');
+
+// Plain-language facts under the H1 (task 207, architecture §8 AEO).
+const summary = ward
+  ? wardSummary(lang, {
+      wardName,
+      wardNumber,
+      corporation: corporationLabel,
+      zone: zoneLabel(lang, ward.zone),
+      assembly: (lang === 'kn' ? ward.assemblyNameKn : ward.assemblyNameEn) || null,
+      reservation: (lang === 'kn' ? ward.reservationKn : ward.reservationEn) || null,
+      oldWardOverlaps,
+    })
+  : '';
 
 const ogMeta = ward ? wardOgMeta(lang, ward) : {};
 const wardJsonLd = ward
@@ -257,6 +275,7 @@ const wardJsonLd = ward
               <p class="map-fallback">{t(lang, 'ward.map.fallback')}</p>
             </div>
           )}
+          <p class="ward-summary">{summary}</p>
         </section>
 
         <section id="ward-candidates" class="ward-section ward-candidates ward-candidates-section" aria-labelledby="ward-candidates-heading">
@@ -439,6 +458,15 @@ const wardJsonLd = ward
     font-size: var(--text-xs);
     font-weight: 700;
     line-height: var(--leading-xs);
+  }
+
+  /* The plain-language summary (task 207) follows the map, 16px below it,
+     and spans the same width. */
+  .ward-summary {
+    margin: var(--space-4) 0 0;
+    color: var(--color-text);
+    font-size: var(--text-lg);
+    line-height: var(--leading-lg);
   }
 
   .ward-overview-section .map-container {

@@ -247,7 +247,7 @@ Every section starts with a content hierarchy: optional eyebrow → heading → 
 | Content/action band | Heading, description, one task or content collection | White, paper, or sage; 32px vertical padding | Same hierarchy; controls wrap or stack |
 | Structured fact group | Parallel label/value units with optional lists | Equal columns, start-aligned, 32px gaps | Single column, 16px gaps |
 | Collection section | Heading plus rows, cards, or disclosures | One enclosing band; 16px card gaps or 24px identity-row gaps | Preserve item order and hierarchy |
-| Data/media section | Heading, map/chart/media frame, optional explanatory text | Frame aligned to container | Frame resizes; no page overflow |
+| Data/media section | Heading, map/chart/media frame, optional explanatory text (below the frame: 16px gap, `--text-lg` ink, the frame's full width) | Frame aligned to container | Frame resizes; no page overflow |
 | Report card (identity + document beside data) | Dark identity band: breadcrumbs (§7.15), then initials placeholder, name, party and source note; below it a return link (§7.4), then an action group (secondary navigation, tertiary flag) and the fields-and-document layout (§7.17) | Band, then 24px-gap content on white | Same order; document becomes a link |
 | Document beside data | Structured fields next to their source PDF (§7.17) | Two columns, document panel sticky and internally scrolled | Fields only; document becomes a link |
 
